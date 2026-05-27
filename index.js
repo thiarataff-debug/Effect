@@ -104,7 +104,7 @@ async function sendWhatsAppMessage(to, message) {
     },
     {
       headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
         "Content-Type": "application/json",
       },
     }
