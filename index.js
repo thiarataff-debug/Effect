@@ -10,7 +10,7 @@ const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || "11212191877743079";
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "effect_webhook_2024";
-const SHEET_ID = "1rue0dhiZZdlaLENq7sZ6KSWVLLi7iJeA";
+const SHEET_ID = "1p0BpaqBOGBn-Mmzt_omuZ1d9U1TzeMzwrIjIEN42NCk";
 const DRIVE_FOLDER_ID = "1CERKBaTRq5ztoSCj94V5H8lgVqROZQqS";
 const NUMERO_THIARATAFF = "5527997925288";
 
