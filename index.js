@@ -1,10 +1,10 @@
 const express = require("express");
 const axios = require("axios");
 const { google } = require("googleapis");
-
+ 
 const app = express();
 app.use(express.json());
-
+ 
 const PORT = process.env.PORT || 3000;
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -13,7 +13,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "effect_webhook_2024";
 const SHEET_ID = "1p0BpaqBOGBn-Mmzt_omuZ1d9U1TzeMzwrIjIEN42NCk";
 const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
-
+ 
 function getGoogleAuth() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   return new google.auth.GoogleAuth({
@@ -24,7 +24,7 @@ function getGoogleAuth() {
     ],
   });
 }
-
+ 
 // ─────────────────────────────────────────
 // GOOGLE DRIVE
 // ─────────────────────────────────────────
@@ -40,7 +40,7 @@ async function getWhatsAppFileUrl(mediaId) {
     return null;
   }
 }
-
+ 
 async function salvarCurriculoNoDrive(telefone, nomeCanditado, fileUrl, fileName, mimeType) {
   try {
     const auth = getGoogleAuth();
@@ -56,6 +56,7 @@ async function salvarCurriculoNoDrive(telefone, nomeCanditado, fileUrl, fileName
       requestBody: { name: nomeArquivo, parents: [DRIVE_FOLDER_ID] },
       media: { mimeType: mimeType || "application/octet-stream", body: response.data },
       fields: "id, webViewLink",
+      supportsAllDrives: true,
     });
     console.log(`Currículo salvo: ${nomeArquivo}`);
     return { link: uploaded.data.webViewLink, nome: nomeArquivo };
@@ -64,7 +65,7 @@ async function salvarCurriculoNoDrive(telefone, nomeCanditado, fileUrl, fileName
     return null;
   }
 }
-
+ 
 // ─────────────────────────────────────────
 // GOOGLE SHEETS
 // ─────────────────────────────────────────
@@ -86,14 +87,14 @@ async function buscarCandidato(telefone) {
     return null;
   }
 }
-
+ 
 async function salvarCandidato(telefone, dados) {
   try {
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: "v4", auth });
     const existente = await buscarCandidato(telefone);
     const agora = new Date().toLocaleDateString("pt-BR");
-
+ 
     if (existente) {
       const atual = existente.dados;
       const atualizado = [
@@ -138,7 +139,7 @@ async function salvarCandidato(telefone, dados) {
     console.error("Erro ao salvar candidato:", e.message);
   }
 }
-
+ 
 // Busca até 5 vagas compatíveis com detalhes completos
 async function buscarVagasCompativeis(area) {
   try {
@@ -181,7 +182,7 @@ async function buscarVagasCompativeis(area) {
     return [];
   }
 }
-
+ 
 function formatarVagasParaLia(vagas) {
   if (vagas.length === 0) return "";
   return vagas.map((v, i) => {
@@ -194,7 +195,7 @@ function formatarVagasParaLia(vagas) {
     return partes.join("\n");
   }).join("\n\n");
 }
-
+ 
 // ─────────────────────────────────────────
 // RETORNO NEGATIVO — verifica descartados e envia mensagem
 // ─────────────────────────────────────────
@@ -211,7 +212,7 @@ async function enviarRetornosNegativos() {
     const ontem = new Date(hoje);
     ontem.setDate(ontem.getDate() - 1);
     const ontemStr = ontem.toLocaleDateString("pt-BR");
-
+ 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const telefone      = row[0] || "";
@@ -220,7 +221,7 @@ async function enviarRetornosNegativos() {
       const ultimaInteracao = row[8] || "";
       const vagaInteresse = row[10] || "";
       const retornoEnviado = (row[9] || "").includes("Retorno enviado");
-
+ 
       // Só envia se: descartado, alterado ontem e retorno ainda não enviado
       if (
         status === "descartado" &&
@@ -229,7 +230,7 @@ async function enviarRetornosNegativos() {
         telefone
       ) {
         const nomePrimeiro = nome.split(" ")[0] || "candidato(a)";
-
+ 
         let mensagem;
         if (vagaInteresse && vagaInteresse.trim() !== "") {
           mensagem =
@@ -248,10 +249,10 @@ async function enviarRetornosNegativos() {
             `Obrigada pela confiança na Effect!\n` +
             `*Equipe Effect Pessoas & Performance*`;
         }
-
+ 
         await sendWhatsAppMessage(telefone, mensagem);
         console.log(`Retorno negativo enviado para ${nome} (${telefone})`);
-
+ 
         // Marca que o retorno foi enviado na coluna de observações
         const obsAtual = row[9] || "";
         await sheets.spreadsheets.values.update({
@@ -260,7 +261,7 @@ async function enviarRetornosNegativos() {
           valueInputOption: "USER_ENTERED",
           requestBody: { values: [[obsAtual + " | Retorno enviado: " + hoje.toLocaleDateString("pt-BR")]] },
         });
-
+ 
         // Aguarda 2s entre mensagens para não sobrecarregar a API
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -270,7 +271,7 @@ async function enviarRetornosNegativos() {
     console.error("Erro ao enviar retornos negativos:", e.message);
   }
 }
-
+ 
 // Agenda para rodar todo dia às 9h (horário de Brasília = UTC-3 = 12h UTC)
 function agendarRetornos() {
   const agora = new Date();
@@ -285,7 +286,7 @@ function agendarRetornos() {
   console.log(`Retornos negativos agendados para ${proximaNove.toLocaleString("pt-BR")}`);
 }
 agendarRetornos();
-
+ 
 // ─────────────────────────────────────────
 // SCORE E EXTRAÇÃO
 // ─────────────────────────────────────────
@@ -297,12 +298,12 @@ function calcularScore(dados) {
   if (dados.curriculo === "Sim")                score += 25;
   return Math.min(score, 100);
 }
-
+ 
 async function extrairDadosDaConversa(historico) {
   try {
     const prompt = `Analise esta conversa e extraia os dados do candidato em JSON.
 Retorne APENAS o JSON, sem texto adicional, sem markdown.
-
+ 
 Campos a extrair:
 - nome: nome completo mencionado (ou null)
 - cidade: cidade ou estado mencionado (ou null)
@@ -311,10 +312,10 @@ Campos a extrair:
 - pediu_humano: true se pediu para falar com alguém da equipe, false caso contrário
 - vaga_interesse: cargo exato da vaga que o candidato demonstrou interesse (ex: "Garçom", "Auxiliar de Cozinha") ou null se não escolheu vaga específica
 - obs: observação relevante em até 10 palavras (ou null)
-
+ 
 Conversa:
 ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`).join("\n")}`;
-
+ 
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
       { model: "claude-haiku-4-5-20251001", max_tokens: 300, messages: [{ role: "user", content: prompt }] },
@@ -327,7 +328,7 @@ ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`)
     return {};
   }
 }
-
+ 
 // ─────────────────────────────────────────
 // NOTIFICAÇÕES
 // ─────────────────────────────────────────
@@ -347,7 +348,7 @@ async function notificarAtendimentoHumano(telefone, nome, area, cidade) {
     console.error("Erro ao notificar atendimento:", e.message);
   }
 }
-
+ 
 async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive) {
   try {
     const horario = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -363,7 +364,7 @@ async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive
     console.error("Erro ao notificar currículo:", e.message);
   }
 }
-
+ 
 // ─────────────────────────────────────────
 // HISTÓRICO
 // ─────────────────────────────────────────
@@ -371,7 +372,7 @@ const conversationHistory         = {};
 const lastActivity                = {};
 const atendimentoHumanoNotificado = {};
 const HISTORY_TTL_MS              = 2 * 60 * 60 * 1000;
-
+ 
 function cleanOldHistories() {
   const now = Date.now();
   for (const phone in lastActivity) {
@@ -383,36 +384,36 @@ function cleanOldHistories() {
   }
 }
 setInterval(cleanOldHistories, 30 * 60 * 1000);
-
+ 
 // ─────────────────────────────────────────
 // SYSTEM PROMPT
 // ─────────────────────────────────────────
 const SYSTEM_PROMPT = `
 Você é Lia, representante da Effect Pessoas & Performance.
 A Effect é uma consultoria especializada em Gestão de Pessoas que atende empresas e profissionais em todo o Brasil.
-
+ 
 IDENTIDADE E TOM:
 - Tom acolhedor, humano, profissional e organizado.
 - Respostas curtas e diretas.
 - Emojis com moderação.
 - Nunca revele que é IA, assistente virtual ou robô.
-
+ 
 APRESENTAÇÃO:
 - Apresente-se como Lia SOMENTE na primeira mensagem da conversa.
 - Nunca repita "Eu sou a Lia" após a primeira mensagem.
-
+ 
 PRIMEIRA MENSAGEM (use exatamente este texto):
 "Olá! Seja muito bem-vindo(a) à Effect Pessoas & Performance 💙
 Eu sou a Lia.
 Como posso te ajudar hoje? 😊"
-
+ 
 REGRAS DE CONVERSA:
 - Considere SEMPRE o histórico completo da conversa.
 - Faça apenas UMA pergunta por vez.
 - Nunca repita uma pergunta já respondida.
 - Não envie menus ou listas numeradas do tipo "Digite 1".
 - Nunca reinicie a conversa do zero.
-
+ 
 PROGRESSÃO PARA CANDIDATOS:
 1. Acolha e pergunte o nome.
 2. Pergunte cidade ou estado.
@@ -420,35 +421,35 @@ PROGRESSÃO PARA CANDIDATOS:
 4. Apresente vagas se houver [VAGAS_ENCONTRADAS].
 5. Pergunte se tem interesse em alguma vaga específica.
 6. Solicite currículo.
-
+ 
 QUANDO HOUVER VAGAS COMPATÍVEIS:
 - Recebendo a tag [VAGAS_ENCONTRADAS], apresente TODAS as vagas listadas com todos os detalhes.
 - Use o formato:
 "Ótima notícia! Encontrei [X] vaga(s) compatível(is) com seu perfil 🎉
-
+ 
 [detalhes das vagas]
-
+ 
 Alguma dessas vagas te interessou? 😊"
-
+ 
 QUANDO NÃO HOUVER VAGAS:
 "Registrei seu interesse em [área]. No momento não temos vagas abertas nessa área, mas você ficará em nosso banco de talentos e será avisado assim que surgir uma oportunidade 💙
 Você consegue me enviar seu currículo para deixar tudo pronto?"
-
+ 
 ATENDIMENTO HUMANO:
 "Claro! 😊 Já avisei nossa equipe e em breve alguém entrará em contato com você."
-
+ 
 SERVIÇOS DA EFFECT:
 - Recrutamento e Seleção, Treinamentos, Desenvolvimento de Lideranças
 - Clima e Cultura, Performance, Estruturação de RH, NR-01 e riscos psicossociais
-
+ 
 NUNCA INVENTE vagas, salários, benefícios ou processos fictícios.
 `;
-
+ 
 // ─────────────────────────────────────────
 // ROTAS
 // ─────────────────────────────────────────
 app.get("/", (req, res) => res.send("Effect WhatsApp Bot rodando!"));
-
+ 
 app.get("/webhook", (req, res) => {
   const mode      = req.query["hub.mode"];
   const token     = req.query["hub.verify_token"];
@@ -456,24 +457,24 @@ app.get("/webhook", (req, res) => {
   if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) return res.status(200).send(challenge);
   return res.sendStatus(403);
 });
-
+ 
 app.post("/webhook", async (req, res) => {
   try {
     const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return res.sendStatus(200);
-
+ 
     const from       = message.from;
     const text       = message.text?.body || "";
     const isDocument = message.type === "document";
     const isImage    = message.type === "image";
-
+ 
     if (!text && !isDocument && !isImage) {
       await sendWhatsAppMessage(from, "Recebi sua mensagem. No momento consigo responder melhor mensagens em texto.");
       return res.sendStatus(200);
     }
-
+ 
     let userInput = text;
-
+ 
     if (isDocument || isImage) {
       const mediaId  = message.document?.id || message.image?.id;
       const fileName = message.document?.filename || "curriculo";
@@ -498,12 +499,12 @@ app.post("/webhook", async (req, res) => {
       });
       await notificarCurriculoRecebido(from, dadosAtuais[1], fileName, linkDrive);
     }
-
+ 
     if (!conversationHistory[from]) conversationHistory[from] = [];
     conversationHistory[from].push({ role: "user", content: userInput });
     lastActivity[from] = Date.now();
     if (conversationHistory[from].length > 20) conversationHistory[from] = conversationHistory[from].slice(-20);
-
+ 
     if (conversationHistory[from].length >= 2) {
       const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
       if (dadosExtraidos && Object.keys(dadosExtraidos).length > 0) {
@@ -522,18 +523,18 @@ app.post("/webhook", async (req, res) => {
         }
       }
     }
-
+ 
     const aiResponse = await askClaude(from);
     conversationHistory[from].push({ role: "assistant", content: aiResponse });
     await sendWhatsAppMessage(from, aiResponse);
     return res.sendStatus(200);
-
+ 
   } catch (error) {
     console.error("Erro no webhook:", error.response?.data || error.message);
     return res.sendStatus(200);
   }
 });
-
+ 
 async function askClaude(phone) {
   const response = await axios.post(
     "https://api.anthropic.com/v1/messages",
@@ -542,7 +543,7 @@ async function askClaude(phone) {
   );
   return response.data.content?.[0]?.text || "Não consegui gerar uma resposta agora.";
 }
-
+ 
 async function sendWhatsAppMessage(to, message) {
   await axios.post(
     `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -550,5 +551,6 @@ async function sendWhatsAppMessage(to, message) {
     { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" } }
   );
 }
-
+ 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+ 
