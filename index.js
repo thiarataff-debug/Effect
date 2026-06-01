@@ -74,7 +74,7 @@ async function buscarCandidato(telefone) {
     const sheets = google.sheets({ version: "v4", auth });
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Candidatos!A:J",
+      range: "Candidatos!A:K",
     });
     const rows = res.data.values || [];
     for (let i = 1; i < rows.length; i++) {
@@ -93,6 +93,7 @@ async function salvarCandidato(telefone, dados) {
     const sheets = google.sheets({ version: "v4", auth });
     const existente = await buscarCandidato(telefone);
     const agora = new Date().toLocaleDateString("pt-BR");
+
     if (existente) {
       const atual = existente.dados;
       const atualizado = [
@@ -106,17 +107,18 @@ async function salvarCandidato(telefone, dados) {
         atual[7]        || agora,
         agora,
         dados.obs       || atual[9] || "",
+        dados.vaga_interesse || atual[10] || "", // coluna K — vaga de interesse
       ];
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `Candidatos!A${existente.linha}:J${existente.linha}`,
+        range: `Candidatos!A${existente.linha}:K${existente.linha}`,
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [atualizado] },
       });
     } else {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: "Candidatos!A:J",
+        range: "Candidatos!A:K",
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [[
           telefone,
@@ -128,6 +130,7 @@ async function salvarCandidato(telefone, dados) {
           dados.status    || "Em triagem",
           agora, agora,
           dados.obs       || "",
+          dados.vaga_interesse || "",
         ]] },
       });
     }
@@ -141,7 +144,6 @@ async function buscarVagasCompativeis(area) {
   try {
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: "v4", auth });
-    // Agora lê até a coluna L (12 colunas) para pegar os novos campos
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: "Vagas!A:L",
@@ -159,18 +161,18 @@ async function buscarVagasCompativeis(area) {
          areaCandidate.includes(areaVaga.split("/")[0].trim()))
       ) {
         vagas.push({
-          id:        row[0]  || "",
-          cargo:     row[1]  || "",
-          area:      row[2]  || "",
-          empresa:   row[3]  || "",
-          cidade:    row[4]  || "",
-          salario:   row[5]  || "",
-          turno:     row[8]  || "",
-          beneficios:row[9]  || "",
-          requisitos:row[10] || "",
-          descricao: row[11] || "",
+          id:         row[0]  || "",
+          cargo:      row[1]  || "",
+          area:       row[2]  || "",
+          empresa:    row[3]  || "",
+          cidade:     row[4]  || "",
+          salario:    row[5]  || "",
+          turno:      row[8]  || "",
+          beneficios: row[9]  || "",
+          requisitos: row[10] || "",
+          descricao:  row[11] || "",
         });
-        if (vagas.length >= 5) break; // máximo 5 vagas
+        if (vagas.length >= 5) break;
       }
     }
     return vagas;
@@ -180,22 +182,109 @@ async function buscarVagasCompativeis(area) {
   }
 }
 
-// Formata vagas para a Lia apresentar de forma detalhada e legível
 function formatarVagasParaLia(vagas) {
   if (vagas.length === 0) return "";
-  const linhas = vagas.map((v, i) => {
-    const partes = [
-      `*${i + 1}. ${v.cargo}* — ${v.empresa}, ${v.cidade}`,
-    ];
+  return vagas.map((v, i) => {
+    const partes = [`*${i + 1}. ${v.cargo}* — ${v.empresa}, ${v.cidade}`];
     if (v.salario)    partes.push(`💰 Salário: ${v.salario}`);
     if (v.turno)      partes.push(`🕐 Turno: ${v.turno}`);
     if (v.beneficios) partes.push(`🎁 Benefícios: ${v.beneficios}`);
     if (v.requisitos) partes.push(`📋 Requisitos: ${v.requisitos}`);
     if (v.descricao)  partes.push(`📝 Função: ${v.descricao}`);
     return partes.join("\n");
-  });
-  return linhas.join("\n\n");
+  }).join("\n\n");
 }
+
+// ─────────────────────────────────────────
+// RETORNO NEGATIVO — verifica descartados e envia mensagem
+// ─────────────────────────────────────────
+async function enviarRetornosNegativos() {
+  try {
+    const auth = getGoogleAuth();
+    const sheets = google.sheets({ version: "v4", auth });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "Candidatos!A:K",
+    });
+    const rows = res.data.values || [];
+    const hoje = new Date();
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    const ontemStr = ontem.toLocaleDateString("pt-BR");
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const telefone      = row[0] || "";
+      const nome          = row[1] || "";
+      const status        = (row[6] || "").toLowerCase();
+      const ultimaInteracao = row[8] || "";
+      const vagaInteresse = row[10] || "";
+      const retornoEnviado = (row[9] || "").includes("Retorno enviado");
+
+      // Só envia se: descartado, alterado ontem e retorno ainda não enviado
+      if (
+        status === "descartado" &&
+        ultimaInteracao === ontemStr &&
+        !retornoEnviado &&
+        telefone
+      ) {
+        const nomePrimeiro = nome.split(" ")[0] || "candidato(a)";
+
+        let mensagem;
+        if (vagaInteresse && vagaInteresse.trim() !== "") {
+          mensagem =
+            `Olá, ${nomePrimeiro}! 😊\n\n` +
+            `Passando para te dar um retorno sobre o processo seletivo para a vaga de *${vagaInteresse}* na Effect Pessoas & Performance.\n\n` +
+            `Após análise cuidadosa do seu perfil, desta vez não seguiremos com sua candidatura para essa oportunidade específica.\n\n` +
+            `Seu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\n` +
+            `Obrigada pela confiança na Effect!\n` +
+            `*Equipe Effect Pessoas & Performance*`;
+        } else {
+          mensagem =
+            `Olá, ${nomePrimeiro}! 😊\n\n` +
+            `Passando para te dar um retorno sobre o seu cadastro na Effect Pessoas & Performance.\n\n` +
+            `Após análise cuidadosa do seu perfil, no momento não temos uma oportunidade compatível com seu histórico.\n\n` +
+            `Seu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\n` +
+            `Obrigada pela confiança na Effect!\n` +
+            `*Equipe Effect Pessoas & Performance*`;
+        }
+
+        await sendWhatsAppMessage(telefone, mensagem);
+        console.log(`Retorno negativo enviado para ${nome} (${telefone})`);
+
+        // Marca que o retorno foi enviado na coluna de observações
+        const obsAtual = row[9] || "";
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `Candidatos!J${i + 1}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[obsAtual + " | Retorno enviado: " + hoje.toLocaleDateString("pt-BR")]] },
+        });
+
+        // Aguarda 2s entre mensagens para não sobrecarregar a API
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    console.log("Verificação de retornos negativos concluída.");
+  } catch (e) {
+    console.error("Erro ao enviar retornos negativos:", e.message);
+  }
+}
+
+// Agenda para rodar todo dia às 9h (horário de Brasília = UTC-3 = 12h UTC)
+function agendarRetornos() {
+  const agora = new Date();
+  const proximaNove = new Date();
+  proximaNove.setHours(12, 0, 0, 0); // 9h Brasília = 12h UTC
+  if (agora >= proximaNove) proximaNove.setDate(proximaNove.getDate() + 1);
+  const msAteNove = proximaNove - agora;
+  setTimeout(() => {
+    enviarRetornosNegativos();
+    setInterval(enviarRetornosNegativos, 24 * 60 * 60 * 1000);
+  }, msAteNove);
+  console.log(`Retornos negativos agendados para ${proximaNove.toLocaleString("pt-BR")}`);
+}
+agendarRetornos();
 
 // ─────────────────────────────────────────
 // SCORE E EXTRAÇÃO
@@ -220,6 +309,7 @@ Campos a extrair:
 - area: área de interesse como "Salão / Garçom", "Cozinha / Auxiliar", "Cozinha / Cozinheiro", "Bar / Barman", "Gestão / Supervisão", "RH / Administrativo" (ou null)
 - curriculo: "Sim" se enviou currículo, "Não" se disse que não tem, null se não mencionou
 - pediu_humano: true se pediu para falar com alguém da equipe, false caso contrário
+- vaga_interesse: cargo exato da vaga que o candidato demonstrou interesse (ex: "Garçom", "Auxiliar de Cozinha") ou null se não escolheu vaga específica
 - obs: observação relevante em até 10 palavras (ou null)
 
 Conversa:
@@ -327,37 +417,31 @@ PROGRESSÃO PARA CANDIDATOS:
 1. Acolha e pergunte o nome.
 2. Pergunte cidade ou estado.
 3. Pergunte a área de interesse.
-4. Apresente vagas se houver [VAGAS_ENCONTRADAS] — use os detalhes exatos fornecidos.
+4. Apresente vagas se houver [VAGAS_ENCONTRADAS].
 5. Pergunte se tem interesse em alguma vaga específica.
 6. Solicite currículo.
 
 QUANDO HOUVER VAGAS COMPATÍVEIS:
-- Recebendo a tag [VAGAS_ENCONTRADAS], apresente TODAS as vagas listadas, uma por uma, com todos os detalhes.
-- Use exatamente o formato abaixo, sem inventar nada:
-
+- Recebendo a tag [VAGAS_ENCONTRADAS], apresente TODAS as vagas listadas com todos os detalhes.
+- Use o formato:
 "Ótima notícia! Encontrei [X] vaga(s) compatível(is) com seu perfil 🎉
 
-[Cole aqui os detalhes das vagas exatamente como recebidos]
+[detalhes das vagas]
 
 Alguma dessas vagas te interessou? 😊"
-
-- Após o candidato confirmar interesse em uma vaga específica, diga:
-"Ótimo! Vou registrar seu interesse na vaga de [cargo] na [empresa]. Para agilizar o processo, você consegue me enviar seu currículo por aqui?"
 
 QUANDO NÃO HOUVER VAGAS:
 "Registrei seu interesse em [área]. No momento não temos vagas abertas nessa área, mas você ficará em nosso banco de talentos e será avisado assim que surgir uma oportunidade 💙
 Você consegue me enviar seu currículo para deixar tudo pronto?"
 
 ATENDIMENTO HUMANO:
-Se a pessoa quiser falar com alguém da equipe:
 "Claro! 😊 Já avisei nossa equipe e em breve alguém entrará em contato com você."
 
 SERVIÇOS DA EFFECT:
 - Recrutamento e Seleção, Treinamentos, Desenvolvimento de Lideranças
 - Clima e Cultura, Performance, Estruturação de RH, NR-01 e riscos psicossociais
 
-NUNCA INVENTE vagas, salários, benefícios, horários ou requisitos fictícios.
-Use APENAS as informações recebidas via [VAGAS_ENCONTRADAS].
+NUNCA INVENTE vagas, salários, benefícios ou processos fictícios.
 `;
 
 // ─────────────────────────────────────────
@@ -369,9 +453,7 @@ app.get("/webhook", (req, res) => {
   const mode      = req.query["hub.mode"];
   const token     = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
-  }
+  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) return res.status(200).send(challenge);
   return res.sendStatus(403);
 });
 
@@ -392,18 +474,14 @@ app.post("/webhook", async (req, res) => {
 
     let userInput = text;
 
-    // ── Currículo recebido ──
     if (isDocument || isImage) {
       const mediaId  = message.document?.id || message.image?.id;
       const fileName = message.document?.filename || "curriculo";
       const mimeType = message.document?.mime_type || message.image?.mime_type || "application/octet-stream";
-
       userInput = `O candidato enviou o currículo (arquivo: ${fileName}). Confirme o recebimento de forma acolhedora e informe que a equipe irá analisar e entrar em contato em breve.`;
-
       const existente   = await buscarCandidato(from);
       const dadosAtuais = existente?.dados || [];
       const score       = calcularScore({ nome: dadosAtuais[1], cidade: dadosAtuais[2], area: dadosAtuais[3], curriculo: "Sim" });
-
       let linkDrive = null;
       if (mediaId) {
         const fileInfo = await getWhatsAppFileUrl(mediaId);
@@ -412,36 +490,29 @@ app.post("/webhook", async (req, res) => {
           if (uploaded) linkDrive = uploaded.link;
         }
       }
-
       await salvarCandidato(from, {
         nome: dadosAtuais[1], cidade: dadosAtuais[2], area: dadosAtuais[3],
         curriculo: "Sim", score, status: "Currículo recebido",
         obs: linkDrive ? `Drive: ${linkDrive}` : `Arquivo: ${fileName}`,
+        vaga_interesse: dadosAtuais[10] || "",
       });
-
       await notificarCurriculoRecebido(from, dadosAtuais[1], fileName, linkDrive);
     }
 
-    // ── Histórico ──
     if (!conversationHistory[from]) conversationHistory[from] = [];
     conversationHistory[from].push({ role: "user", content: userInput });
     lastActivity[from] = Date.now();
     if (conversationHistory[from].length > 20) conversationHistory[from] = conversationHistory[from].slice(-20);
 
-    // ── Extrai dados e salva ──
     if (conversationHistory[from].length >= 2) {
       const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
-
       if (dadosExtraidos && Object.keys(dadosExtraidos).length > 0) {
         await salvarCandidato(from, { ...dadosExtraidos, score: calcularScore(dadosExtraidos) });
-
         if (dadosExtraidos.pediu_humano === true && !atendimentoHumanoNotificado[from]) {
           atendimentoHumanoNotificado[from] = true;
           await notificarAtendimentoHumano(from, dadosExtraidos.nome, dadosExtraidos.area, dadosExtraidos.cidade);
         }
       }
-
-      // Busca vagas quando área é identificada (nas primeiras 8 mensagens)
       if (dadosExtraidos?.area && conversationHistory[from].length <= 8) {
         const vagas = await buscarVagasCompativeis(dadosExtraidos.area);
         if (vagas.length > 0) {
@@ -463,9 +534,6 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────
-// CLAUDE E WHATSAPP
-// ─────────────────────────────────────────
 async function askClaude(phone) {
   const response = await axios.post(
     "https://api.anthropic.com/v1/messages",
