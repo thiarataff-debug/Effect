@@ -423,7 +423,12 @@ app.post("/webhook", async (req, res) => {
     if (!message) return res.sendStatus(200);
 
     const from = message.from;
-    const text = message.text?.body || "";
+
+if (message.fromMe === true || message.key?.fromMe === true) {
+  return res.sendStatus(200);
+}
+
+const text = message.text?.body || "";
     const isDocument = message.type === "document";
     const isImage = message.type === "image";
 
