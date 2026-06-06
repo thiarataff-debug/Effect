@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 const CONFIG = {
   CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
-  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
+  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
   VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
   VAGAS_URL: process.env.VAGAS_URL
@@ -36,11 +36,7 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const entry = req.body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const message = value?.messages?.[0];
-
+    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return;
 
     const from = message.from;
@@ -53,7 +49,6 @@ app.post("/webhook", async (req, res) => {
 
     const resposta = await processarMensagem(from, text);
     await enviarMensagem(from, resposta);
-
   } catch (erro) {
     console.error("Erro no webhook:", erro.response?.data || erro.message);
   }
@@ -61,20 +56,14 @@ app.post("/webhook", async (req, res) => {
 
 async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) {
-    sessoes[telefone] = {
-      nome: "",
-      historico: [],
-      etapa: "inicio"
-    };
+    sessoes[telefone] = { historico: [] };
   }
 
   const sessao = sessoes[telefone];
   sessao.historico.push({ role: "user", content: mensagem });
 
   const vagas = await buscarVagas();
-
   const prompt = montarPrompt(sessao, mensagem, vagas);
-
   const resposta = await chamarClaude(prompt);
 
   sessao.historico.push({ role: "assistant", content: resposta });
@@ -89,7 +78,7 @@ async function buscarVagas() {
     const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
     return response.data?.vagas || [];
   } catch (erro) {
-    console.error("Erro ao buscar vagas:", erro.message);
+    console.error("Erro ao buscar vagas:", erro.response?.data || erro.message);
     return [];
   }
 }
@@ -120,21 +109,20 @@ function montarPrompt(sessao, mensagemAtual, vagas) {
   return `
 Você é a Lia, da Effect Pessoas e Performance.
 
-PERSONALIDADE:
-- Humana, acolhedora, organizada, profissional e leve.
+REGRAS FIXAS:
 - Nunca diga que é robô, IA, chatbot ou assistente virtual.
 - Nunca use menu numérico.
 - Nunca faça várias perguntas na mesma mensagem.
 - Faça somente uma pergunta por vez.
 - Não repita "Eu sou a Lia" se a conversa já começou.
-- Seja natural, como uma pessoa de RH conversando pelo WhatsApp.
+- Seja humana, acolhedora, organizada, profissional e leve.
 
 ABERTURA:
-Se for o primeiro contato, responda:
+Se for o primeiro contato, responda exatamente:
 "Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
 
 CANDIDATOS:
-Conduza aos poucos e colete:
+Colete aos poucos:
 1. Nome
 2. Cidade/bairro
 3. Área ou vaga de interesse
@@ -144,44 +132,43 @@ Conduza aos poucos e colete:
 7. Se possui currículo
 
 EMPRESAS:
-Se a pessoa parecer cliente/empresa, pergunte primeiro qual necessidade de contratação ou gestão de pessoas ela tem.
+Se parecer cliente/empresa, pergunte qual necessidade de contratação ou gestão de pessoas ela tem.
 
 VAGAS DISPONÍVEIS:
 ${JSON.stringify(vagasResumidas, null, 2)}
 
 REGRAS DE MATCH:
-- Nunca diga que uma pessoa é excelente para uma vaga se ela não tiver experiência ou requisito obrigatório compatível.
-- Se a vaga exigir requisito obrigatório e o candidato não tiver, classifique como "sem aderência" ou "match parcial", nunca excelente.
+- Nunca diga que alguém é excelente para uma vaga sem experiência ou requisito obrigatório compatível.
+- Se a vaga exigir requisito obrigatório e a pessoa não tiver, nunca classifique como excelente.
 - Se a vaga aceitar sem experiência, pode considerar perfil iniciante.
 - Considere cidade, área, experiência, escolaridade, disponibilidade e requisitos.
-- Quando encontrar vaga compatível, explique de forma simples.
 - Não prometa contratação.
-- Use frases como: "Seu perfil pode ter aderência inicial com essa oportunidade" ou "Vou sinalizar seu interesse para análise da equipe."
+- Use: "seu perfil pode ter aderência inicial" ou "vou sinalizar seu interesse para análise da equipe."
 
-HISTÓRICO DA CONVERSA:
+HISTÓRICO:
 ${sessao.historico.map(h => `${h.role}: ${h.content}`).join("\n")}
 
 MENSAGEM ATUAL:
 ${mensagemAtual}
 
-Responda somente a próxima mensagem da Lia para o WhatsApp.
+Responda somente a próxima mensagem da Lia para WhatsApp.
 `;
 }
 
 async function chamarClaude(prompt) {
   try {
+    if (!CONFIG.CLAUDE_API_KEY) {
+      console.error("Erro Claude: CLAUDE_API_KEY ausente");
+      return "Tive uma instabilidade aqui. Pode me mandar novamente?";
+    }
+
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
       {
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-3-5-sonnet-latest",
         max_tokens: 700,
         temperature: 0.4,
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
+        messages: [{ role: "user", content: prompt }]
       },
       {
         headers: {
@@ -195,13 +182,18 @@ async function chamarClaude(prompt) {
 
     return response.data?.content?.[0]?.text || "Tive uma instabilidade aqui. Pode me mandar novamente?";
   } catch (erro) {
-    console.error("Erro Claude:", erro.response?.data || erro.message);
+    console.error("Erro Claude:", JSON.stringify(erro.response?.data || erro.message));
     return "Tive uma instabilidade aqui. Pode me mandar novamente?";
   }
 }
 
 async function enviarMensagem(to, body) {
   try {
+    if (!CONFIG.META_ACCESS_TOKEN) {
+      console.error("Erro Meta: META_ACCESS_TOKEN ausente");
+      return;
+    }
+
     await axios.post(
       `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
       {
@@ -222,7 +214,7 @@ async function enviarMensagem(to, body) {
       }
     );
   } catch (erro) {
-    console.error("Erro ao enviar WhatsApp:", erro.response?.data || erro.message);
+    console.error("Erro ao enviar WhatsApp:", JSON.stringify(erro.response?.data || erro.message));
   }
 }
 
