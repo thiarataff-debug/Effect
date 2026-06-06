@@ -43,15 +43,13 @@ app.post("/webhook", async (req, res) => {
     const text = message.text?.body || "";
 
     if (!text) {
-      await enviarMensagem(
-        from,
-        "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?"
-      );
+      await enviarMensagem(from, "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?");
       return;
     }
 
     const resposta = await processarMensagem(from, text);
     await enviarMensagem(from, resposta);
+
   } catch (erro) {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
@@ -69,6 +67,9 @@ async function processarMensagem(telefone, mensagem) {
     content: mensagem
   });
 
+  // Mantém só as últimas 10 mensagens para não estourar limite de tokens
+  sessao.historico = sessao.historico.slice(-10);
+
   const vagas = await buscarVagas();
   const prompt = montarPrompt(sessao, mensagem, vagas);
   const resposta = await chamarClaude(prompt);
@@ -77,6 +78,8 @@ async function processarMensagem(telefone, mensagem) {
     role: "assistant",
     content: resposta
   });
+
+  sessao.historico = sessao.historico.slice(-10);
 
   return resposta;
 }
@@ -88,10 +91,7 @@ async function buscarVagas() {
       return [];
     }
 
-    const response = await axios.get(CONFIG.VAGAS_URL, {
-      timeout: 15000
-    });
-
+    const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
     return response.data?.vagas || [];
   } catch (erro) {
     console.error("Erro ao buscar vagas:", JSON.stringify(erro.response?.data || erro.message));
@@ -99,78 +99,106 @@ async function buscarVagas() {
   }
 }
 
+function normalizarTexto(texto) {
+  return String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function filtrarVagasRelevantes(vagas, mensagemAtual, historico) {
+  const textoBusca = normalizarTexto(
+    mensagemAtual + " " + historico.map(h => h.content).join(" ")
+  );
+
+  const vagasComScore = vagas.map(vaga => {
+    const textoVaga = normalizarTexto([
+      vaga.cargo,
+      vaga.area,
+      vaga.cidade,
+      vaga.perfilResumido,
+      vaga.palavrasChave,
+      vaga.requisitosDaVaga,
+      vaga.requisitoObrigatorio
+    ].join(" "));
+
+    let score = 0;
+
+    const palavras = textoBusca.split(/\s+/).filter(p => p.length >= 4);
+
+    palavras.forEach(palavra => {
+      if (textoVaga.includes(palavra)) score++;
+    });
+
+    return { vaga, score };
+  });
+
+  const filtradas = vagasComScore
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(item => item.vaga);
+
+  return filtradas.length > 0 ? filtradas : vagas.slice(0, 8);
+}
+
 function montarPrompt(sessao, mensagemAtual, vagas) {
-  const vagasResumidas = vagas.map(vaga => ({
-    idVaga: vaga.idVaga,
+  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagemAtual, sessao.historico);
+
+  const vagasResumidas = vagasFiltradas.map(vaga => ({
     cargo: vaga.cargo,
-    area: vaga.area,
-    cliente: vaga.cliente,
     cidade: vaga.cidade,
-    salario: vaga.salario,
     horario: vaga.horario,
     beneficios: vaga.beneficios,
-    genero: vaga.genero,
-    faixaEtaria: vaga.faixaEtaria,
     escolaridade: vaga.escolaridade,
     experienciaMinima: vaga.experienciaMinima,
-    requisitosDaVaga: vaga.requisitosDaVaga,
     requisitoObrigatorio: vaga.requisitoObrigatorio,
     aceitaSemExperiencia: vaga.aceitaSemExperiencia,
-    exigeFimDeSemana: vaga.exigeFimDeSemana,
-    exigeTransporteProprio: vaga.exigeTransporteProprio,
-    exigeCltImediato: vaga.exigeCltImediato,
     perfilResumido: vaga.perfilResumido,
-    palavrasChave: vaga.palavrasChave,
-    status: vaga.status
+    palavrasChave: vaga.palavrasChave
   }));
+
+  const historicoCurto = sessao.historico
+    .slice(-8)
+    .map(h => `${h.role}: ${h.content}`)
+    .join("\n");
 
   return `
 Você é a Lia, da Effect Pessoas e Performance.
 
-REGRAS FIXAS:
+REGRAS:
 - Nunca diga que é robô, IA, chatbot ou assistente virtual.
 - Nunca use menu numérico.
-- Nunca faça várias perguntas na mesma mensagem.
 - Faça somente uma pergunta por vez.
 - Não repita "Eu sou a Lia" se a conversa já começou.
 - Seja humana, acolhedora, organizada, profissional e leve.
-- Responda como mensagem de WhatsApp, curta e natural.
+- Responda curto, como WhatsApp.
 
 ABERTURA:
-Se for o primeiro contato e a pessoa ainda não informou o nome, responda exatamente:
+Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
 "Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
 
-CANDIDATOS:
+COLETA DE CANDIDATO:
 Colete aos poucos:
-1. Nome
-2. Cidade/bairro
-3. Área ou vaga de interesse
-4. Experiência
-5. Escolaridade
-6. Disponibilidade de horário
-7. Se possui currículo
+Nome, cidade/bairro, área ou vaga de interesse, experiência, escolaridade, disponibilidade e currículo.
 
-EMPRESAS:
-Se parecer cliente/empresa, pergunte qual necessidade de contratação ou gestão de pessoas ela tem.
-
-VAGAS DISPONÍVEIS:
+VAGAS RELEVANTES:
 ${JSON.stringify(vagasResumidas, null, 2)}
 
-REGRAS DE MATCH:
-- Nunca diga que alguém é excelente para uma vaga sem experiência ou requisito obrigatório compatível.
-- Se a vaga exigir requisito obrigatório e a pessoa não tiver, nunca classifique como excelente.
+MATCH:
+- Nunca classifique como excelente se faltar experiência ou requisito obrigatório.
+- Se a vaga exigir requisito obrigatório e a pessoa não tiver, diga que precisa avaliar melhor.
 - Se a vaga aceitar sem experiência, pode considerar perfil iniciante.
-- Considere cidade, área, experiência, escolaridade, disponibilidade e requisitos.
 - Não prometa contratação.
 - Use: "seu perfil pode ter aderência inicial" ou "vou sinalizar seu interesse para análise da equipe."
 
-HISTÓRICO:
-${sessao.historico.map(h => `${h.role}: ${h.content}`).join("\n")}
+HISTÓRICO RECENTE:
+${historicoCurto}
 
 MENSAGEM ATUAL:
 ${mensagemAtual}
 
-Responda somente a próxima mensagem da Lia para WhatsApp.
+Responda somente a próxima mensagem da Lia.
 `;
 }
 
@@ -185,7 +213,7 @@ async function chamarClaude(prompt) {
       "https://api.anthropic.com/v1/messages",
       {
         model: "claude-sonnet-4-6",
-        max_tokens: 700,
+        max_tokens: 400,
         temperature: 0.4,
         messages: [
           {
@@ -207,6 +235,13 @@ async function chamarClaude(prompt) {
     return response.data?.content?.[0]?.text || "Tive uma instabilidade aqui. Pode me mandar novamente?";
   } catch (erro) {
     console.error("Erro Claude:", JSON.stringify(erro.response?.data || erro.message));
+
+    const mensagemErro = JSON.stringify(erro.response?.data || erro.message);
+
+    if (mensagemErro.includes("rate_limit")) {
+      return "Estou processando suas informações, só preciso de um instantinho. Pode me responder novamente em alguns segundos?";
+    }
+
     return "Tive uma instabilidade aqui. Pode me mandar novamente?";
   }
 }
@@ -248,5 +283,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - modelo Haiku`);
+  console.log(`Lia rodando na porta ${PORT} - versão otimizada sem estouro de tokens`);
 });
