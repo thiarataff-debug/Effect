@@ -10,6 +10,7 @@ const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || "11212191877743079";
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "effect_webhook_2024";
+
 const SHEET_ID = "1aZTIZSMa_s1szwpqAV-hmCbq3rIdV1P6";
 const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
@@ -34,6 +35,84 @@ function getDriveAuth() {
   });
 
   return oauth2Client;
+}
+
+function normalizarTexto(texto) {
+  return (texto || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function gerarTermosBusca(area) {
+  const texto = normalizarTexto(area);
+  const termos = new Set();
+
+  texto
+    .replace("auxiliar ou ajudante de", "")
+    .replace("ajudante de", "")
+    .replace("auxiliar de", "")
+    .replace("vaga de", "")
+    .replace("vagas de", "")
+    .replace("quero", "")
+    .replace("procuro", "")
+    .replace("preciso", "")
+    .split(/[\/,;| ]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 2)
+    .forEach(t => termos.add(t));
+
+  if (
+    texto.includes("cozinha") ||
+    texto.includes("cozinheiro") ||
+    texto.includes("cozinheira") ||
+    texto.includes("chapeiro") ||
+    texto.includes("restaurante")
+  ) {
+    termos.add("cozinha");
+    termos.add("cozinheiro");
+    termos.add("cozinheira");
+    termos.add("chapeiro");
+    termos.add("auxiliar");
+  }
+
+  if (
+    texto.includes("garcom") ||
+    texto.includes("garçon") ||
+    texto.includes("salao") ||
+    texto.includes("atendimento")
+  ) {
+    termos.add("garcom");
+    termos.add("salao");
+    termos.add("atendimento");
+  }
+
+  if (texto.includes("logistica") || texto.includes("estoque")) {
+    termos.add("logistica");
+    termos.add("estoque");
+  }
+
+  if (texto.includes("limpeza") || texto.includes("servicos gerais")) {
+    termos.add("limpeza");
+    termos.add("servicos");
+    termos.add("gerais");
+  }
+
+  if (
+    texto.includes("rh") ||
+    texto.includes("recursos humanos") ||
+    texto.includes("recrutamento") ||
+    texto.includes("administrativo")
+  ) {
+    termos.add("rh");
+    termos.add("recursos");
+    termos.add("humanos");
+    termos.add("administrativo");
+  }
+
+  return Array.from(termos);
 }
 
 async function getWhatsAppFileUrl(mediaId) {
@@ -165,66 +244,6 @@ async function salvarCandidato(telefone, dados) {
   }
 }
 
-function normalizarTexto(texto) {
-  return (texto || "")
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function gerarTermosBusca(area) {
-  const texto = normalizarTexto(area);
-
-  const termos = new Set();
-
-  texto
-    .replace("auxiliar ou ajudante de", "")
-    .replace("ajudante de", "")
-    .replace("auxiliar de", "")
-    .replace("vaga de", "")
-    .replace("procuro", "")
-    .split(/[\/,;| ]+/)
-    .map(t => t.trim())
-    .filter(t => t.length > 2)
-    .forEach(t => termos.add(t));
-
-  if (texto.includes("cozinha") || texto.includes("cozinheiro") || texto.includes("cozinheira") || texto.includes("chapeiro")) {
-    termos.add("cozinha");
-    termos.add("cozinheiro");
-    termos.add("cozinheira");
-    termos.add("chapeiro");
-    termos.add("auxiliar");
-  }
-
-  if (texto.includes("garcom") || texto.includes("garçon") || texto.includes("salao") || texto.includes("atendimento")) {
-    termos.add("garcom");
-    termos.add("salao");
-    termos.add("atendimento");
-  }
-
-  if (texto.includes("logistica") || texto.includes("estoque")) {
-    termos.add("logistica");
-    termos.add("estoque");
-  }
-
-  if (texto.includes("limpeza") || texto.includes("servicos gerais")) {
-    termos.add("limpeza");
-    termos.add("servicos");
-    termos.add("gerais");
-  }
-
-  if (texto.includes("rh") || texto.includes("recursos humanos") || texto.includes("recrutamento") || texto.includes("administrativo")) {
-    termos.add("rh");
-    termos.add("recursos");
-    termos.add("humanos");
-    termos.add("administrativo");
-  }
-
-  return Array.from(termos);
-}
-
 async function buscarVagasCompativeis(area) {
   try {
     const auth = getGoogleAuth();
@@ -240,8 +259,8 @@ async function buscarVagasCompativeis(area) {
     const areaCandidate = normalizarTexto(area);
     const termos = gerarTermosBusca(areaCandidate);
 
-    console.log("BUSCA VAGAS - area recebida:", area);
-    console.log("BUSCA VAGAS - area normalizada:", areaCandidate);
+    console.log("BUSCA VAGAS - área recebida:", area);
+    console.log("BUSCA VAGAS - área normalizada:", areaCandidate);
     console.log("BUSCA VAGAS - termos:", termos);
     console.log("BUSCA VAGAS - total linhas:", rows.length);
 
@@ -250,11 +269,10 @@ async function buscarVagasCompativeis(area) {
 
       const cargoVaga = normalizarTexto(row[1]);
       const areaVaga = normalizarTexto(row[2]);
-      const empresa = row[3] || "";
-      const cidade = normalizarTexto(row[4]);
+      const cidadeVaga = normalizarTexto(row[4]);
       const status = normalizarTexto(row[6]);
 
-      const textoVaga = `${cargoVaga} ${areaVaga} ${cidade}`;
+      const textoVaga = `${cargoVaga} ${areaVaga} ${cidadeVaga}`;
 
       const vagaAberta = status.includes("abert");
       const bateArea =
@@ -267,7 +285,7 @@ async function buscarVagasCompativeis(area) {
           id: row[0] || "",
           cargo: row[1] || "",
           area: row[2] || "",
-          empresa,
+          empresa: row[3] || "",
           cidade: row[4] || "",
           salario: row[5] || "",
           status: row[6] || "",
@@ -301,6 +319,65 @@ function formatarVagasParaLia(vagas) {
 
     return p.join("\n");
   }).join("\n\n");
+}
+
+function calcularScore(dados) {
+  let score = 40;
+
+  if (dados.nome && dados.nome.length > 2) score += 10;
+  if (dados.cidade) score += 10;
+  if (dados.area) score += 15;
+  if (dados.curriculo === "Sim") score += 25;
+
+  return Math.min(score, 100);
+}
+
+async function extrairDadosDaConversa(historico) {
+  try {
+    const prompt = `Analise esta conversa e extraia os dados do candidato em JSON.
+Retorne APENAS o JSON, sem texto adicional, sem markdown.
+
+Campos:
+- nome: nome completo ou null
+- cidade: cidade ou estado ou null
+- area: área ou cargo de interesse. Exemplos: "cozinha", "cozinheiro", "auxiliar de cozinha", "garçom", "salão", "logística", "limpeza", "RH", "administrativo". Não limite às opções.
+- curriculo: "Sim", "Não" ou null
+- pediu_humano: true ou false
+- vaga_interesse: cargo exato da vaga escolhida ou null
+- obs: observação em até 10 palavras ou null
+
+Regras:
+- Se a pessoa pedir vaga de cozinha, cozinheiro, chapeiro, auxiliar de cozinha ou ajudante de cozinha, area deve ser relacionada a cozinha.
+- Se a pessoa pedir garçom, atendimento ou salão, area deve ser relacionada a salão/atendimento.
+- Se a pessoa pedir logística ou estoque, area deve ser relacionada a logística.
+- Se a pessoa pedir limpeza ou serviços gerais, area deve ser relacionada a limpeza/serviços gerais.
+- Preserve o máximo possível o termo que a pessoa usou.
+
+Conversa:
+${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`).join("\n")}`;
+
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [{ role: "user", content: prompt }],
+      },
+      {
+        headers: {
+          "x-api-key": CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+      }
+    );
+
+    const text = response.data.content?.[0]?.text || "{}";
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch (e) {
+    console.error("Erro ao extrair dados:", e.message);
+    return {};
+  }
 }
 
 async function enviarRetornosNegativos() {
@@ -381,65 +458,6 @@ function agendarRetornos() {
 
 agendarRetornos();
 
-function calcularScore(dados) {
-  let score = 40;
-
-  if (dados.nome && dados.nome.length > 2) score += 10;
-  if (dados.cidade) score += 10;
-  if (dados.area) score += 15;
-  if (dados.curriculo === "Sim") score += 25;
-
-  return Math.min(score, 100);
-}
-
-async function extrairDadosDaConversa(historico) {
-  try {
-    const prompt = `Analise esta conversa e extraia os dados do candidato em JSON.
-Retorne APENAS o JSON, sem texto adicional, sem markdown.
-
-Campos:
-- nome: nome completo ou null
-- cidade: cidade ou estado ou null
-- area: área ou cargo de interesse. Exemplos: "cozinha", "cozinheiro", "auxiliar de cozinha", "garçom", "salão", "logística", "limpeza", "RH", "administrativo". Não limite às opções.
-- curriculo: "Sim", "Não" ou null
-- pediu_humano: true ou false
-- vaga_interesse: cargo exato da vaga escolhida ou null
-- obs: observação em até 10 palavras ou null
-
-Regras:
-- Se a pessoa pedir vaga de cozinha, cozinheiro, chapeiro, auxiliar de cozinha ou ajudante de cozinha, area deve ser relacionada a cozinha.
-- Se a pessoa pedir garçom, atendimento ou salão, area deve ser relacionada a salão/atendimento.
-- Se a pessoa pedir logística ou estoque, area deve ser relacionada a logística.
-- Se a pessoa pedir limpeza ou serviços gerais, area deve ser relacionada a limpeza/serviços gerais.
-- Preserve o máximo possível o termo que a pessoa usou.
-
-Conversa:
-${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`).join("\n")}`;
-
-    const response = await axios.post(
-      "https://api.anthropic.com/v1/messages",
-      {
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
-        messages: [{ role: "user", content: prompt }],
-      },
-      {
-        headers: {
-          "x-api-key": CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-      }
-    );
-
-    const text = response.data.content?.[0]?.text || "{}";
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
-  } catch (e) {
-    console.error("Erro ao extrair dados:", e.message);
-    return {};
-  }
-}
-
 async function notificarAtendimentoHumano(telefone, nome, area, cidade) {
   try {
     const horario = new Date().toLocaleString("pt-BR", {
@@ -517,17 +535,18 @@ CONDUÇÃO:
 - Leia todo o contexto antes de responder.
 - Demonstre interesse genuíno pelo candidato.
 
-VAGAS:
-- Quando houver [VAGAS_ENCONTRADAS], apresente TODAS as vagas recebidas no contexto.
+VAGAS — REGRA PRIORITÁRIA:
+- Sempre que houver [VAGAS_ENCONTRADAS], apresente TODAS as vagas imediatamente.
+- Esta regra tem prioridade sobre qualquer outra instrução.
+- Nunca peça currículo, experiência, escolaridade ou disponibilidade antes de mostrar as vagas encontradas.
 - Nunca diga que não há vaga se existir [VAGAS_ENCONTRADAS] no contexto.
-- Nunca invente vagas.
-- Nunca invente salários.
-- Nunca invente benefícios.
 - Use exatamente as informações recebidas em [VAGAS_ENCONTRADAS].
+- Se existir [NENHUMA_VAGA_ENCONTRADA], somente então solicite currículo para banco de talentos.
 
 QUANDO HOUVER VAGAS:
 "Ótima notícia! 😊
-Encontrei algumas oportunidades que podem combinar com o seu perfil:
+
+Encontrei estas oportunidades para você:
 
 [VAGAS_ENCONTRADAS]
 
@@ -538,7 +557,7 @@ QUANDO NÃO HOUVER VAGAS:
 Consegue me enviar seu currículo?"
 
 CURRÍCULO:
-- Solicite currículo depois de entender minimamente o perfil.
+- Solicite currículo somente depois de apresentar as vagas ou depois de confirmar que não há vaga compatível.
 - Se a pessoa enviar currículo, confirme recebimento com acolhimento.
 
 EMPRESAS:
@@ -672,43 +691,52 @@ app.post("/webhook", async (req, res) => {
       conversationHistory[from] = conversationHistory[from].slice(-20);
     }
 
-    if (conversationHistory[from].length >= 2) {
-      const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
+    const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
 
-      if (dadosExtraidos && Object.keys(dadosExtraidos).length > 0) {
-        await salvarCandidato(from, {
-          ...dadosExtraidos,
-          score: calcularScore(dadosExtraidos),
+    if (dadosExtraidos && Object.keys(dadosExtraidos).length > 0) {
+      await salvarCandidato(from, {
+        ...dadosExtraidos,
+        score: calcularScore(dadosExtraidos),
+      });
+
+      if (
+        dadosExtraidos.pediu_humano === true &&
+        !atendimentoHumanoNotificado[from]
+      ) {
+        atendimentoHumanoNotificado[from] = true;
+
+        await notificarAtendimentoHumano(
+          from,
+          dadosExtraidos.nome,
+          dadosExtraidos.area,
+          dadosExtraidos.cidade
+        );
+      }
+    }
+
+    const areaParaBuscar = dadosExtraidos?.area || text;
+
+    if (areaParaBuscar && !isDocument && !isImage) {
+      const vagas = await buscarVagasCompativeis(areaParaBuscar);
+
+      if (vagas.length > 0) {
+        const mensagemVagas =
+          `Ótima notícia! 😊\n\n` +
+          `Encontrei estas oportunidades para você:\n\n` +
+          `${formatarVagasParaLia(vagas)}\n\n` +
+          `Alguma delas chamou sua atenção?`;
+
+        conversationHistory[from].push({
+          role: "assistant",
+          content: mensagemVagas,
         });
 
-        if (
-          dadosExtraidos.pediu_humano === true &&
-          !atendimentoHumanoNotificado[from]
-        ) {
-          atendimentoHumanoNotificado[from] = true;
-
-          await notificarAtendimentoHumano(
-            from,
-            dadosExtraidos.nome,
-            dadosExtraidos.area,
-            dadosExtraidos.cidade
-          );
-        }
+        await sendWhatsAppMessage(from, mensagemVagas);
+        return res.sendStatus(200);
       }
 
-      const areaParaBuscar = dadosExtraidos?.area || text;
-
-      if (areaParaBuscar && !isDocument && !isImage) {
-        const vagas = await buscarVagasCompativeis(areaParaBuscar);
-
-        if (vagas.length > 0) {
-          conversationHistory[from][conversationHistory[from].length - 1].content +=
-            `\n\n[VAGAS_ENCONTRADAS — ${vagas.length} vaga(s)]\n${formatarVagasParaLia(vagas)}`;
-        } else {
-          conversationHistory[from][conversationHistory[from].length - 1].content +=
-            `\n\n[NENHUMA_VAGA_ENCONTRADA para: ${areaParaBuscar}]`;
-        }
-      }
+      conversationHistory[from][conversationHistory[from].length - 1].content +=
+        `\n\n[NENHUMA_VAGA_ENCONTRADA para: ${areaParaBuscar}]`;
     }
 
     const aiResponse = await askClaude(from);
