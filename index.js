@@ -161,12 +161,22 @@ async function buscarVagasCompativeis(area) {
     const vagas = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const areaVaga      = (row[2] || "").toLowerCase();
-      const status        = (row[6] || "").toLowerCase();
-      const areaCandidate = (area  || "").toLowerCase();
-      if (status === "aberta" && areaVaga && areaCandidate &&
-          (areaVaga.includes(areaCandidate.split("/")[0].trim()) ||
-           areaCandidate.includes(areaVaga.split("/")[0].trim()))) {
+      const cargoVaga     = (row[1] || "").toLowerCase();
+const areaVaga      = (row[2] || "").toLowerCase();
+const status        = (row[6] || "").toLowerCase();
+const areaCandidate = (area  || "").toLowerCase();
+
+const termos = areaCandidate
+  .replace("auxiliar ou ajudante de", "")
+  .replace("ajudante de", "")
+  .replace("auxiliar de", "")
+  .split(/[\/, ]+/)
+  .map(t => t.trim())
+  .filter(t => t.length > 2);
+
+const textoVaga = `${cargoVaga} ${areaVaga}`;
+
+if (status === "aberta" && areaCandidate && termos.some(t => textoVaga.includes(t))) {
         vagas.push({
           id: row[0], cargo: row[1], area: row[2], empresa: row[3],
           cidade: row[4], salario: row[5], turno: row[8],
