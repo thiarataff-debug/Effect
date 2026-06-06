@@ -14,7 +14,6 @@ const SHEET_ID = "1aZTIZSMa_s1szwpqAV-hmCbq3rIdV1P6";
 const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
 
-// Auth para Sheets (Service Account)
 function getGoogleAuth() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   return new google.auth.GoogleAuth({
@@ -23,28 +22,26 @@ function getGoogleAuth() {
   });
 }
 
-// Auth para Drive (OAuth — usa suas credenciais pessoais)
 function getDriveAuth() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
     process.env.GOOGLE_OAUTH_CLIENT_SECRET,
     "https://developers.google.com/oauthplayground"
   );
+
   oauth2Client.setCredentials({
     refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
   });
+
   return oauth2Client;
 }
 
-// ─────────────────────────────────────────
-// GOOGLE DRIVE (OAuth)
-// ─────────────────────────────────────────
 async function getWhatsAppFileUrl(mediaId) {
   try {
-    const res = await axios.get(
-      `https://graph.facebook.com/v19.0/${mediaId}`,
-      { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
-    );
+    const res = await axios.get(`https://graph.facebook.com/v19.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
+    });
+
     return { url: res.data.url, mimeType: res.data.mime_type };
   } catch (e) {
     console.error("Erro ao buscar URL do arquivo:", e.message);
@@ -56,18 +53,28 @@ async function salvarCurriculoNoDrive(telefone, nomeCanditado, fileUrl, fileName
   try {
     const auth = getDriveAuth();
     const drive = google.drive({ version: "v3", auth });
+
     const response = await axios.get(fileUrl, {
       responseType: "stream",
       headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
     });
+
     const data = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     const ext = fileName.split(".").pop() || "pdf";
     const nomeArquivo = `${(nomeCanditado || "Candidato").replace(/\s+/g, "_")}_${telefone}_${data}.${ext}`;
+
     const uploaded = await drive.files.create({
-      requestBody: { name: nomeArquivo, parents: [DRIVE_FOLDER_ID] },
-      media: { mimeType: mimeType || "application/octet-stream", body: response.data },
+      requestBody: {
+        name: nomeArquivo,
+        parents: [DRIVE_FOLDER_ID],
+      },
+      media: {
+        mimeType: mimeType || "application/octet-stream",
+        body: response.data,
+      },
       fields: "id, webViewLink",
     });
+
     console.log(`Currículo salvo: ${nomeArquivo}`);
     return { link: uploaded.data.webViewLink, nome: nomeArquivo };
   } catch (e) {
@@ -76,21 +83,24 @@ async function salvarCurriculoNoDrive(telefone, nomeCanditado, fileUrl, fileName
   }
 }
 
-// ─────────────────────────────────────────
-// GOOGLE SHEETS
-// ─────────────────────────────────────────
 async function buscarCandidato(telefone) {
   try {
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: "v4", auth });
+
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: "Candidatos!A:K",
     });
+
     const rows = res.data.values || [];
+
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === telefone) return { linha: i + 1, dados: rows[i] };
+      if (rows[i][0] === telefone) {
+        return { linha: i + 1, dados: rows[i] };
+      }
     }
+
     return null;
   } catch (e) {
     console.error("Erro ao buscar candidato:", e.message);
@@ -104,21 +114,24 @@ async function salvarCandidato(telefone, dados) {
     const sheets = google.sheets({ version: "v4", auth });
     const existente = await buscarCandidato(telefone);
     const agora = new Date().toLocaleDateString("pt-BR");
+
     if (existente) {
       const atual = existente.dados;
+
       const atualizado = [
         telefone,
-        dados.nome      || atual[1] || "",
-        dados.cidade    || atual[2] || "",
-        dados.area      || atual[3] || "",
+        dados.nome || atual[1] || "",
+        dados.cidade || atual[2] || "",
+        dados.area || atual[3] || "",
         dados.curriculo || atual[4] || "",
-        dados.score !== undefined ? dados.score : (atual[5] || ""),
-        dados.status    || atual[6] || "Em triagem",
-        atual[7]        || agora,
+        dados.score !== undefined ? dados.score : atual[5] || "",
+        dados.status || atual[6] || "Em triagem",
+        atual[7] || agora,
         agora,
-        dados.obs       || atual[9] || "",
+        dados.obs || atual[9] || "",
         dados.vaga_interesse || atual[10] || "",
       ];
+
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `Candidatos!A${existente.linha}:K${existente.linha}`,
@@ -130,18 +143,21 @@ async function salvarCandidato(telefone, dados) {
         spreadsheetId: SHEET_ID,
         range: "Candidatos!A:K",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[
-          telefone,
-          dados.nome      || "",
-          dados.cidade    || "",
-          dados.area      || "",
-          dados.curriculo || "",
-          dados.score     || "",
-          dados.status    || "Em triagem",
-          agora, agora,
-          dados.obs       || "",
-          dados.vaga_interesse || "",
-        ]] },
+        requestBody: {
+          values: [[
+            telefone,
+            dados.nome || "",
+            dados.cidade || "",
+            dados.area || "",
+            dados.curriculo || "",
+            dados.score || "",
+            dados.status || "Em triagem",
+            agora,
+            agora,
+            dados.obs || "",
+            dados.vaga_interesse || "",
+          ]],
+        },
       });
     }
   } catch (e) {
@@ -149,42 +165,123 @@ async function salvarCandidato(telefone, dados) {
   }
 }
 
+function normalizarTexto(texto) {
+  return (texto || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function gerarTermosBusca(area) {
+  const texto = normalizarTexto(area);
+
+  const termos = new Set();
+
+  texto
+    .replace("auxiliar ou ajudante de", "")
+    .replace("ajudante de", "")
+    .replace("auxiliar de", "")
+    .replace("vaga de", "")
+    .replace("procuro", "")
+    .split(/[\/,;| ]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 2)
+    .forEach(t => termos.add(t));
+
+  if (texto.includes("cozinha") || texto.includes("cozinheiro") || texto.includes("cozinheira") || texto.includes("chapeiro")) {
+    termos.add("cozinha");
+    termos.add("cozinheiro");
+    termos.add("cozinheira");
+    termos.add("chapeiro");
+    termos.add("auxiliar");
+  }
+
+  if (texto.includes("garcom") || texto.includes("garçon") || texto.includes("salao") || texto.includes("atendimento")) {
+    termos.add("garcom");
+    termos.add("salao");
+    termos.add("atendimento");
+  }
+
+  if (texto.includes("logistica") || texto.includes("estoque")) {
+    termos.add("logistica");
+    termos.add("estoque");
+  }
+
+  if (texto.includes("limpeza") || texto.includes("servicos gerais")) {
+    termos.add("limpeza");
+    termos.add("servicos");
+    termos.add("gerais");
+  }
+
+  if (texto.includes("rh") || texto.includes("recursos humanos") || texto.includes("recrutamento") || texto.includes("administrativo")) {
+    termos.add("rh");
+    termos.add("recursos");
+    termos.add("humanos");
+    termos.add("administrativo");
+  }
+
+  return Array.from(termos);
+}
+
 async function buscarVagasCompativeis(area) {
   try {
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: "v4", auth });
+
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: "Vagas!A:L",
     });
+
     const rows = res.data.values || [];
     const vagas = [];
+    const areaCandidate = normalizarTexto(area);
+    const termos = gerarTermosBusca(areaCandidate);
+
+    console.log("BUSCA VAGAS - area recebida:", area);
+    console.log("BUSCA VAGAS - area normalizada:", areaCandidate);
+    console.log("BUSCA VAGAS - termos:", termos);
+    console.log("BUSCA VAGAS - total linhas:", rows.length);
+
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const cargoVaga     = (row[1] || "").toLowerCase();
-const areaVaga      = (row[2] || "").toLowerCase();
-const status        = (row[6] || "").toLowerCase();
-const areaCandidate = (area  || "").toLowerCase();
 
-const termos = areaCandidate
-  .replace("auxiliar ou ajudante de", "")
-  .replace("ajudante de", "")
-  .replace("auxiliar de", "")
-  .split(/[\/, ]+/)
-  .map(t => t.trim())
-  .filter(t => t.length > 2);
+      const cargoVaga = normalizarTexto(row[1]);
+      const areaVaga = normalizarTexto(row[2]);
+      const empresa = row[3] || "";
+      const cidade = normalizarTexto(row[4]);
+      const status = normalizarTexto(row[6]);
 
-const textoVaga = `${cargoVaga} ${areaVaga}`;
+      const textoVaga = `${cargoVaga} ${areaVaga} ${cidade}`;
 
-if (status.includes("abert") && areaCandidate && termos.some(t => textoVaga.includes(t))) {
+      const vagaAberta = status.includes("abert");
+      const bateArea =
+        termos.some(t => textoVaga.includes(t)) ||
+        textoVaga.includes(areaCandidate) ||
+        areaCandidate.includes(areaVaga);
+
+      if (vagaAberta && bateArea) {
         vagas.push({
-          id: row[0], cargo: row[1], area: row[2], empresa: row[3],
-          cidade: row[4], salario: row[5], turno: row[8],
-          beneficios: row[9], requisitos: row[10], descricao: row[11],
+          id: row[0] || "",
+          cargo: row[1] || "",
+          area: row[2] || "",
+          empresa,
+          cidade: row[4] || "",
+          salario: row[5] || "",
+          status: row[6] || "",
+          turno: row[8] || "",
+          beneficios: row[9] || "",
+          requisitos: row[10] || "",
+          descricao: row[11] || "",
         });
-        if (vagas.length >= 5) break;
       }
+
+      if (vagas.length >= 8) break;
     }
+
+    console.log("BUSCA VAGAS - encontradas:", vagas.length);
     return vagas;
   } catch (e) {
     console.error("Erro ao buscar vagas:", e.message);
@@ -195,26 +292,27 @@ if (status.includes("abert") && areaCandidate && termos.some(t => textoVaga.incl
 function formatarVagasParaLia(vagas) {
   return vagas.map((v, i) => {
     const p = [`*${i + 1}. ${v.cargo}* — ${v.empresa}, ${v.cidade}`];
-    if (v.salario)    p.push(`💰 Salário: ${v.salario}`);
-    if (v.turno)      p.push(`🕐 Turno: ${v.turno}`);
+
+    if (v.salario) p.push(`💰 Salário: ${v.salario}`);
+    if (v.turno) p.push(`🕐 Horário/Escala: ${v.turno}`);
     if (v.beneficios) p.push(`🎁 Benefícios: ${v.beneficios}`);
     if (v.requisitos) p.push(`📋 Requisitos: ${v.requisitos}`);
-    if (v.descricao)  p.push(`📝 Função: ${v.descricao}`);
+    if (v.descricao) p.push(`📝 Atividades: ${v.descricao}`);
+
     return p.join("\n");
   }).join("\n\n");
 }
 
-// ─────────────────────────────────────────
-// RETORNO NEGATIVO
-// ─────────────────────────────────────────
 async function enviarRetornosNegativos() {
   try {
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: "v4", auth });
+
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: "Candidatos!A:K",
     });
+
     const rows = res.data.values || [];
     const hoje = new Date();
     const ontem = new Date(hoje);
@@ -223,32 +321,38 @@ async function enviarRetornosNegativos() {
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const telefone       = row[0] || "";
-      const nome           = row[1] || "";
-      const status         = (row[6] || "").toLowerCase();
+
+      const telefone = row[0] || "";
+      const nome = row[1] || "";
+      const status = normalizarTexto(row[6]);
       const ultimaInteracao = row[8] || "";
-      const vagaInteresse  = row[10] || "";
+      const vagaInteresse = row[10] || "";
       const retornoEnviado = (row[9] || "").includes("Retorno enviado");
 
       if (status === "descartado" && ultimaInteracao === ontemStr && !retornoEnviado && telefone) {
         const nomePrimeiro = nome.split(" ")[0] || "candidato(a)";
+
         const mensagem = vagaInteresse
           ? `Olá, ${nomePrimeiro}! 😊\n\nPassando para te dar um retorno sobre o processo seletivo para a vaga de *${vagaInteresse}* na Effect Pessoas & Performance.\n\nApós análise cuidadosa do seu perfil, desta vez não seguiremos com sua candidatura para essa oportunidade específica.\n\nSeu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\nObrigada pela confiança na Effect!\n*Equipe Effect Pessoas & Performance*`
           : `Olá, ${nomePrimeiro}! 😊\n\nPassando para te dar um retorno sobre o seu cadastro na Effect Pessoas & Performance.\n\nApós análise cuidadosa do seu perfil, no momento não temos uma oportunidade compatível com seu histórico.\n\nSeu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\nObrigada pela confiança na Effect!\n*Equipe Effect Pessoas & Performance*`;
 
         await sendWhatsAppMessage(telefone, mensagem);
-        console.log(`Retorno negativo enviado para ${nome} (${telefone})`);
 
         const obsAtual = row[9] || "";
+
         await sheets.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
           range: `Candidatos!J${i + 1}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[obsAtual + " | Retorno enviado: " + hoje.toLocaleDateString("pt-BR")]] },
+          requestBody: {
+            values: [[`${obsAtual} | Retorno enviado: ${hoje.toLocaleDateString("pt-BR")}`]],
+          },
         });
+
         await new Promise(r => setTimeout(r, 2000));
       }
     }
+
     console.log("Verificação de retornos negativos concluída.");
   } catch (e) {
     console.error("Erro ao enviar retornos negativos:", e.message);
@@ -258,26 +362,33 @@ async function enviarRetornosNegativos() {
 function agendarRetornos() {
   const agora = new Date();
   const proximaNove = new Date();
+
   proximaNove.setHours(12, 0, 0, 0);
-  if (agora >= proximaNove) proximaNove.setDate(proximaNove.getDate() + 1);
+
+  if (agora >= proximaNove) {
+    proximaNove.setDate(proximaNove.getDate() + 1);
+  }
+
   const msAteNove = proximaNove - agora;
+
   setTimeout(() => {
     enviarRetornosNegativos();
     setInterval(enviarRetornosNegativos, 24 * 60 * 60 * 1000);
   }, msAteNove);
+
   console.log(`Retornos agendados para ${proximaNove.toLocaleString("pt-BR")}`);
 }
+
 agendarRetornos();
 
-// ─────────────────────────────────────────
-// SCORE E EXTRAÇÃO
-// ─────────────────────────────────────────
 function calcularScore(dados) {
   let score = 40;
-  if (dados.nome     && dados.nome.length > 2) score += 10;
-  if (dados.cidade)                             score += 10;
-  if (dados.area)                               score += 15;
-  if (dados.curriculo === "Sim")                score += 25;
+
+  if (dados.nome && dados.nome.length > 2) score += 10;
+  if (dados.cidade) score += 10;
+  if (dados.area) score += 15;
+  if (dados.curriculo === "Sim") score += 25;
+
   return Math.min(score, 100);
 }
 
@@ -287,22 +398,40 @@ async function extrairDadosDaConversa(historico) {
 Retorne APENAS o JSON, sem texto adicional, sem markdown.
 
 Campos:
-- nome: nome completo (ou null)
-- cidade: cidade ou estado (ou null)
-- area: "Salão / Garçom", "Cozinha / Auxiliar", "Cozinha / Cozinheiro", "Bar / Barman", "Gestão / Supervisão", "RH / Administrativo" (ou null)
+- nome: nome completo ou null
+- cidade: cidade ou estado ou null
+- area: área ou cargo de interesse. Exemplos: "cozinha", "cozinheiro", "auxiliar de cozinha", "garçom", "salão", "logística", "limpeza", "RH", "administrativo". Não limite às opções.
 - curriculo: "Sim", "Não" ou null
-- pediu_humano: true/false
-- vaga_interesse: cargo exato da vaga escolhida (ou null)
-- obs: observação em até 10 palavras (ou null)
+- pediu_humano: true ou false
+- vaga_interesse: cargo exato da vaga escolhida ou null
+- obs: observação em até 10 palavras ou null
+
+Regras:
+- Se a pessoa pedir vaga de cozinha, cozinheiro, chapeiro, auxiliar de cozinha ou ajudante de cozinha, area deve ser relacionada a cozinha.
+- Se a pessoa pedir garçom, atendimento ou salão, area deve ser relacionada a salão/atendimento.
+- Se a pessoa pedir logística ou estoque, area deve ser relacionada a logística.
+- Se a pessoa pedir limpeza ou serviços gerais, area deve ser relacionada a limpeza/serviços gerais.
+- Preserve o máximo possível o termo que a pessoa usou.
 
 Conversa:
 ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`).join("\n")}`;
 
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
-      { model: "claude-haiku-4-5-20251001", max_tokens: 300, messages: [{ role: "user", content: prompt }] },
-      { headers: { "x-api-key": CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" } }
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [{ role: "user", content: prompt }],
+      },
+      {
+        headers: {
+          "x-api-key": CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+      }
     );
+
     const text = response.data.content?.[0]?.text || "{}";
     return JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch (e) {
@@ -311,30 +440,36 @@ ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`)
   }
 }
 
-// ─────────────────────────────────────────
-// NOTIFICAÇÕES
-// ─────────────────────────────────────────
 async function notificarAtendimentoHumano(telefone, nome, area, cidade) {
   try {
-    const horario = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-    await sendWhatsAppMessage(NUMERO_THIARATAFF,
+    const horario = new Date().toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    });
+
+    await sendWhatsAppMessage(
+      NUMERO_THIARATAFF,
       `🔔 *Atendimento humano solicitado*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n📍 *Cidade:* ${cidade || "Não informada"}\n💼 *Área:* ${area || "Não informada"}\n🕐 *Horário:* ${horario}\n\n_Responda diretamente para esse número no WhatsApp._`
     );
-  } catch (e) { console.error("Erro ao notificar atendimento:", e.message); }
+  } catch (e) {
+    console.error("Erro ao notificar atendimento:", e.message);
+  }
 }
 
 async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive) {
   try {
-    const horario = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-    await sendWhatsAppMessage(NUMERO_THIARATAFF,
+    const horario = new Date().toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    });
+
+    await sendWhatsAppMessage(
+      NUMERO_THIARATAFF,
       `📄 *Currículo recebido*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n📁 *Arquivo:* ${nomeArquivo}\n🕐 *Horário:* ${horario}\n${linkDrive ? `🔗 *Drive:* ${linkDrive}` : ""}`
     );
-  } catch (e) { console.error("Erro ao notificar currículo:", e.message); }
+  } catch (e) {
+    console.error("Erro ao notificar currículo:", e.message);
+  }
 }
 
-// ─────────────────────────────────────────
-// HISTÓRICO
-// ─────────────────────────────────────────
 const conversationHistory = {};
 const lastActivity = {};
 const atendimentoHumanoNotificado = {};
@@ -342,6 +477,7 @@ const HISTORY_TTL_MS = 2 * 60 * 60 * 1000;
 
 function cleanOldHistories() {
   const now = Date.now();
+
   for (const phone in lastActivity) {
     if (now - lastActivity[phone] > HISTORY_TTL_MS) {
       delete conversationHistory[phone];
@@ -350,148 +486,241 @@ function cleanOldHistories() {
     }
   }
 }
+
 setInterval(cleanOldHistories, 30 * 60 * 1000);
 
-// ─────────────────────────────────────────
-// SYSTEM PROMPT
-// ─────────────────────────────────────────
 const SYSTEM_PROMPT = `
-Você é Lia, representante da Effect Pessoas & Performance.
-A Effect é uma consultoria especializada em Gestão de Pessoas que atende empresas e profissionais em todo o Brasil.
+Você é Lia, da Effect Pessoas & Performance.
 
-IDENTIDADE E TOM:
-- Tom acolhedor, humano, profissional e organizado.
-- Respostas curtas e diretas.
-- Emojis com moderação.
-- Nunca revele que é IA, assistente virtual ou robô.
+A Effect é uma consultoria especializada em Recrutamento e Seleção, Hunting, Desenvolvimento de Pessoas, Consultoria em RH e Cargos e Salários.
 
-APRESENTAÇÃO:
-- Apresente-se como Lia SOMENTE na primeira mensagem.
-- Nunca repita "Eu sou a Lia" após a primeira mensagem.
+IDENTIDADE:
+- Você é humana, acolhedora, profissional e objetiva.
+- Nunca diga que é robô, IA, chatbot ou assistente virtual.
+- Fale como uma recrutadora experiente.
+- Seja leve, simpática e organizada.
+- Utilize emojis com moderação.
 
-PRIMEIRA MENSAGEM:
+PRIMEIRO CONTATO:
+Apresente-se apenas na primeira interação:
 "Olá! Seja muito bem-vindo(a) à Effect Pessoas & Performance 💙
 Eu sou a Lia.
-Como posso te ajudar hoje? 😊"
+Que bom falar com você. Como posso te ajudar hoje? 😊"
 
-REGRAS:
+Nunca repita essa apresentação depois.
+
+CONDUÇÃO:
 - Faça apenas UMA pergunta por vez.
+- Nunca faça interrogatório.
+- Nunca transforme a conversa em formulário.
 - Nunca repita perguntas já respondidas.
-- Nunca reinicie a conversa do zero.
+- Leia todo o contexto antes de responder.
+- Demonstre interesse genuíno pelo candidato.
 
-PROGRESSÃO PARA CANDIDATOS:
-1. Acolha e pergunte o nome.
-2. Pergunte cidade ou estado.
-3. Pergunte a área de interesse.
-4. Apresente vagas se houver [VAGAS_ENCONTRADAS].
-5. Pergunte se tem interesse em alguma vaga específica.
-6. Solicite currículo.
+VAGAS:
+- Quando houver [VAGAS_ENCONTRADAS], apresente TODAS as vagas recebidas no contexto.
+- Nunca diga que não há vaga se existir [VAGAS_ENCONTRADAS] no contexto.
+- Nunca invente vagas.
+- Nunca invente salários.
+- Nunca invente benefícios.
+- Use exatamente as informações recebidas em [VAGAS_ENCONTRADAS].
 
 QUANDO HOUVER VAGAS:
-"Ótima notícia! Encontrei [X] vaga(s) compatível(is) com seu perfil 🎉
+"Ótima notícia! 😊
+Encontrei algumas oportunidades que podem combinar com o seu perfil:
 
-[detalhes]
+[VAGAS_ENCONTRADAS]
 
-Alguma dessas vagas te interessou? 😊"
+Alguma delas chamou sua atenção?"
 
 QUANDO NÃO HOUVER VAGAS:
-"Registrei seu interesse em [área]. No momento não temos vagas abertas, mas você ficará em nosso banco de talentos 💙
+"Registrei seu interesse. No momento não temos vagas abertas compatíveis, mas você ficará em nosso banco de talentos 💙
 Consegue me enviar seu currículo?"
 
-ATENDIMENTO HUMANO:
-"Claro! 😊 Já avisei nossa equipe e em breve alguém entrará em contato."
+CURRÍCULO:
+- Solicite currículo depois de entender minimamente o perfil.
+- Se a pessoa enviar currículo, confirme recebimento com acolhimento.
 
-NUNCA INVENTE vagas, salários ou benefícios.
+EMPRESAS:
+Se a pessoa for empresa:
+- Descubra a necessidade primeiro.
+- Entenda o contexto.
+- Depois apresente os serviços da Effect.
+
+ATENDIMENTO HUMANO:
+Se a pessoa solicitar falar com alguém:
+"Claro! 😊
+Vou encaminhar sua solicitação para nossa equipe e em breve alguém fará contato."
+
+THIARA:
+Se identificar que está falando com Thiara:
+- Seja mais direta.
+- Considere Thiara administradora da Effect.
+- Não trate Thiara como candidata.
+
+OBJETIVO:
+Seu objetivo é fazer com que cada pessoa se sinta acolhida, compreendida e bem atendida, conduzindo a conversa de forma natural até uma oportunidade ou atendimento adequado.
 `;
 
-// ─────────────────────────────────────────
-// ROTAS
-// ─────────────────────────────────────────
-app.get("/", (req, res) => res.send("Effect WhatsApp Bot rodando!"));
+app.get("/", (req, res) => {
+  res.send("Effect WhatsApp Bot rodando!");
+});
 
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) return res.status(200).send(challenge);
+
+  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
+  }
+
   return res.sendStatus(403);
 });
 
 app.post("/webhook", async (req, res) => {
   try {
     const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
     if (!message) return res.sendStatus(200);
 
     const from = message.from;
 
-if (message.fromMe === true || message.key?.fromMe === true) {
-  return res.sendStatus(200);
-}
+    if (message.fromMe === true || message.key?.fromMe === true) {
+      return res.sendStatus(200);
+    }
 
-const text = message.text?.body || "";
+    const text = message.text?.body || "";
     const isDocument = message.type === "document";
     const isImage = message.type === "image";
 
     if (!text && !isDocument && !isImage) {
-      await sendWhatsAppMessage(from, "Recebi sua mensagem. No momento consigo responder melhor mensagens em texto.");
+      await sendWhatsAppMessage(
+        from,
+        "Recebi sua mensagem. No momento consigo responder melhor mensagens em texto."
+      );
+
       return res.sendStatus(200);
     }
 
     let userInput = text;
 
     if (isDocument || isImage) {
-      const mediaId  = message.document?.id || message.image?.id;
+      const mediaId = message.document?.id || message.image?.id;
       const fileName = message.document?.filename || "curriculo";
-      const mimeType = message.document?.mime_type || message.image?.mime_type || "application/octet-stream";
+      const mimeType =
+        message.document?.mime_type ||
+        message.image?.mime_type ||
+        "application/octet-stream";
+
       userInput = `O candidato enviou o currículo (arquivo: ${fileName}). Confirme o recebimento de forma acolhedora e informe que a equipe irá analisar e entrar em contato em breve.`;
+
       const existente = await buscarCandidato(from);
       const dadosAtuais = existente?.dados || [];
-      const score = calcularScore({ nome: dadosAtuais[1], cidade: dadosAtuais[2], area: dadosAtuais[3], curriculo: "Sim" });
+
+      const score = calcularScore({
+        nome: dadosAtuais[1],
+        cidade: dadosAtuais[2],
+        area: dadosAtuais[3],
+        curriculo: "Sim",
+      });
+
       let linkDrive = null;
+
       if (mediaId) {
         const fileInfo = await getWhatsAppFileUrl(mediaId);
+
         if (fileInfo) {
-          const uploaded = await salvarCurriculoNoDrive(from, dadosAtuais[1], fileInfo.url, fileName, fileInfo.mimeType || mimeType);
+          const uploaded = await salvarCurriculoNoDrive(
+            from,
+            dadosAtuais[1],
+            fileInfo.url,
+            fileName,
+            fileInfo.mimeType || mimeType
+          );
+
           if (uploaded) linkDrive = uploaded.link;
         }
       }
+
       await salvarCandidato(from, {
-        nome: dadosAtuais[1], cidade: dadosAtuais[2], area: dadosAtuais[3],
-        curriculo: "Sim", score, status: "Currículo recebido",
+        nome: dadosAtuais[1],
+        cidade: dadosAtuais[2],
+        area: dadosAtuais[3],
+        curriculo: "Sim",
+        score,
+        status: "Currículo recebido",
         obs: linkDrive ? `Drive: ${linkDrive}` : `Arquivo: ${fileName}`,
         vaga_interesse: dadosAtuais[10] || "",
       });
+
       await notificarCurriculoRecebido(from, dadosAtuais[1], fileName, linkDrive);
     }
 
-    if (!conversationHistory[from]) conversationHistory[from] = [];
-    conversationHistory[from].push({ role: "user", content: userInput });
+    if (!conversationHistory[from]) {
+      conversationHistory[from] = [];
+    }
+
+    conversationHistory[from].push({
+      role: "user",
+      content: userInput,
+    });
+
     lastActivity[from] = Date.now();
-    if (conversationHistory[from].length > 20) conversationHistory[from] = conversationHistory[from].slice(-20);
+
+    if (conversationHistory[from].length > 20) {
+      conversationHistory[from] = conversationHistory[from].slice(-20);
+    }
 
     if (conversationHistory[from].length >= 2) {
       const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
+
       if (dadosExtraidos && Object.keys(dadosExtraidos).length > 0) {
-        await salvarCandidato(from, { ...dadosExtraidos, score: calcularScore(dadosExtraidos) });
-        if (dadosExtraidos.pediu_humano === true && !atendimentoHumanoNotificado[from]) {
+        await salvarCandidato(from, {
+          ...dadosExtraidos,
+          score: calcularScore(dadosExtraidos),
+        });
+
+        if (
+          dadosExtraidos.pediu_humano === true &&
+          !atendimentoHumanoNotificado[from]
+        ) {
           atendimentoHumanoNotificado[from] = true;
-          await notificarAtendimentoHumano(from, dadosExtraidos.nome, dadosExtraidos.area, dadosExtraidos.cidade);
+
+          await notificarAtendimentoHumano(
+            from,
+            dadosExtraidos.nome,
+            dadosExtraidos.area,
+            dadosExtraidos.cidade
+          );
         }
       }
-      if (dadosExtraidos?.area && conversationHistory[from].length <= 8) {
-        const vagas = await buscarVagasCompativeis(dadosExtraidos.area);
+
+      const areaParaBuscar = dadosExtraidos?.area || text;
+
+      if (areaParaBuscar && !isDocument && !isImage) {
+        const vagas = await buscarVagasCompativeis(areaParaBuscar);
+
         if (vagas.length > 0) {
           conversationHistory[from][conversationHistory[from].length - 1].content +=
             `\n\n[VAGAS_ENCONTRADAS — ${vagas.length} vaga(s)]\n${formatarVagasParaLia(vagas)}`;
+        } else {
+          conversationHistory[from][conversationHistory[from].length - 1].content +=
+            `\n\n[NENHUMA_VAGA_ENCONTRADA para: ${areaParaBuscar}]`;
         }
       }
     }
 
     const aiResponse = await askClaude(from);
-    conversationHistory[from].push({ role: "assistant", content: aiResponse });
-    await sendWhatsAppMessage(from, aiResponse);
-    return res.sendStatus(200);
 
+    conversationHistory[from].push({
+      role: "assistant",
+      content: aiResponse,
+    });
+
+    await sendWhatsAppMessage(from, aiResponse);
+
+    return res.sendStatus(200);
   } catch (error) {
     console.error("Erro no webhook:", error.response?.data || error.message);
     return res.sendStatus(200);
@@ -501,18 +730,42 @@ const text = message.text?.body || "";
 async function askClaude(phone) {
   const response = await axios.post(
     "https://api.anthropic.com/v1/messages",
-    { model: "claude-haiku-4-5-20251001", max_tokens: 800, system: SYSTEM_PROMPT, messages: conversationHistory[phone] },
-    { headers: { "x-api-key": CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" } }
+    {
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 900,
+      system: SYSTEM_PROMPT,
+      messages: conversationHistory[phone],
+    },
+    {
+      headers: {
+        "x-api-key": CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+    }
   );
+
   return response.data.content?.[0]?.text || "Não consegui gerar uma resposta agora.";
 }
 
 async function sendWhatsAppMessage(to, message) {
   await axios.post(
     `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
-    { messaging_product: "whatsapp", to, type: "text", text: { body: message } },
-    { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" } }
+    {
+      messaging_product: "whatsapp",
+      to,
+      type: "text",
+      text: { body: message },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+    }
   );
 }
 
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
