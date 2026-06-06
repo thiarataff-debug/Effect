@@ -138,15 +138,16 @@ async function buscarVagasCompativeis(area) {
 }
 
 function formatarVagasParaLia(vagas) {
-  return vagas
+  const vagasLimitadas = vagas.slice(0, 3);
+
+  return vagasLimitadas
     .map((v, i) => {
       const linhas = [`*${i + 1}. ${v.cargo}* — ${v.empresa}, ${v.cidade}`];
 
       if (v.salario) linhas.push(`💰 Salário: ${v.salario}`);
       if (v.turno) linhas.push(`🕐 Horário/Escala: ${v.turno}`);
-      if (v.beneficios) linhas.push(`🎁 Benefícios: ${v.beneficios}`);
-      if (v.requisitos) linhas.push(`📋 Requisitos: ${v.requisitos}`);
-      if (v.descricao) linhas.push(`📝 Atividades: ${v.descricao}`);
+      if (v.beneficios) linhas.push(`🎁 Benefícios: ${String(v.beneficios).substring(0, 100)}`);
+      if (v.requisitos) linhas.push(`📋 Requisitos: ${String(v.requisitos).substring(0, 100)}`);
 
       return linhas.join("\n");
     })
