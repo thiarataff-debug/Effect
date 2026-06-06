@@ -184,7 +184,7 @@ async function chamarClaude(prompt) {
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
       {
-        model: "claude-3-5-haiku-latest",
+        model: "claude-3-haiku-20240307",
         max_tokens: 700,
         temperature: 0.4,
         messages: [
