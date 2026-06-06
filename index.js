@@ -28,8 +28,6 @@ const conversationHistory = {};
 const conversationState = {};
 
 function resetarConversa(from) {
-  delete conversationState[from];
-  delete conversationHistory[from];
   conversationState[from] = {};
   conversationHistory[from] = [];
 }
@@ -43,14 +41,26 @@ function normalizarTexto(texto) {
     .trim();
 }
 
+function ehSaudacao(texto) {
+  const t = normalizarTexto(texto);
+  return ["oi", "ola", "olá", "bom dia", "boa tarde", "boa noite", "tudo bem"].includes(t);
+}
+
+function ehEncerramento(texto) {
+  const t = normalizarTexto(texto);
+  const palavras = ["obrigado", "obrigada", "obg", "valeu", "tchau", "até"];
+  return palavras.some(p => t === p || t.includes(p));
+}
+
 function gerarTermoBusca(texto) {
   const t = normalizarTexto(texto);
 
   if (t.includes("costureira") || t.includes("costureiro") || t.includes("costura") || t.includes("confeccao") || t.includes("confecção") || t.includes("maquina") || t.includes("máquina")) return "costureira";
   if (t.includes("cozinha") || t.includes("cozinheiro") || t.includes("cozinheira") || t.includes("chapeiro") || t.includes("restaurante")) return "cozinha";
-  if (t.includes("garcom") || t.includes("garçon") || t.includes("salao") || t.includes("atendimento")) return "garcom";
-  if (t.includes("logistica") || t.includes("estoque")) return "logistica";
-  if (t.includes("limpeza") || t.includes("servicos gerais")) return "limpeza";
+  if (t.includes("garcom") || t.includes("garçon") || t.includes("garçom") || t.includes("salao") || t.includes("salão") || t.includes("atendimento")) return "garcom";
+  if (t.includes("caixa")) return "caixa";
+  if (t.includes("logistica") || t.includes("logística") || t.includes("estoque")) return "logistica";
+  if (t.includes("limpeza") || t.includes("servicos gerais") || t.includes("serviços gerais")) return "limpeza";
   if (t.includes("rh") || t.includes("recursos humanos") || t.includes("recrutamento") || t.includes("administrativo")) return "rh";
 
   return t
@@ -64,11 +74,13 @@ function gerarTermoBusca(texto) {
 
 function identificarRegiao(cidade) {
   const c = normalizarTexto(cidade);
+
   for (const [regiao, cidades] of Object.entries(REGIOES)) {
     if (cidades.some(nome => c.includes(normalizarTexto(nome)) || normalizarTexto(nome).includes(c))) {
       return regiao;
     }
   }
+
   return "";
 }
 
@@ -164,6 +176,7 @@ async function buscarVagasCompativeis(area) {
 function formatarVagasParaLia(vagas, offset = 0) {
   return vagas.map((v, i) => {
     const numero = offset + i + 1;
+
     const linhas = [
       `*${numero}. ${v.cargo}* — ${v.empresa || "Empresa confidencial"}, ${v.cidade || "Local não informado"}`,
     ];
@@ -233,12 +246,11 @@ async function apresentarVagas(from, state) {
     state.vagasCache = vagas;
     state.aguardandoInteresse = true;
 
-    await enviarListaDeVagas(
-      from,
-      vagas,
-      `Encontrei estas oportunidades compatíveis com ${state.areaInteresse}${state.cidadePreferida ? ` em ${state.cidadePreferida} e região` : ""}:`
-    );
+    const intro = state.cidadePreferida
+      ? `Encontrei estas oportunidades compatíveis com ${state.areaInteresse} em ${state.cidadePreferida} e região:`
+      : `Encontrei estas oportunidades compatíveis com ${state.areaInteresse}:`;
 
+    await enviarListaDeVagas(from, vagas, intro);
     return true;
   }
 
@@ -271,6 +283,7 @@ async function getWhatsAppFileUrl(mediaId) {
     const res = await axios.get(`https://graph.facebook.com/v19.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
     });
+
     return { url: res.data.url, mimeType: res.data.mime_type };
   } catch (e) {
     console.error("Erro ao buscar URL do arquivo:", e.message);
@@ -393,7 +406,10 @@ app.get("/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) return res.status(200).send(challenge);
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
+  }
+
   return res.sendStatus(403);
 });
 
@@ -412,8 +428,15 @@ app.post("/webhook", async (req, res) => {
     if (!conversationHistory[from]) conversationHistory[from] = [];
     if (!conversationState[from]) conversationState[from] = {};
 
-    if (["oi", "ola", "olá", "bom dia", "boa tarde", "boa noite"].includes(textoNormalizado)) {
+    if (ehSaudacao(text)) {
       resetarConversa(from);
+
+      await sendWhatsAppMessage(
+        from,
+        "Olá, que bom falar com você. Eu sou a Lia, da Effect. 😊\n\nVocê está buscando vaga em qual área ou cargo?"
+      );
+
+      return res.sendStatus(200);
     }
 
     const state = conversationState[from];
@@ -430,6 +453,7 @@ app.post("/webhook", async (req, res) => {
 
       if (mediaId) {
         const fileInfo = await getWhatsAppFileUrl(mediaId);
+
         if (fileInfo) {
           const uploaded = await salvarCurriculoNoDrive(
             from,
@@ -438,6 +462,7 @@ app.post("/webhook", async (req, res) => {
             fileName,
             fileInfo.mimeType || mimeType
           );
+
           if (uploaded) linkDrive = uploaded.link;
         }
       }
@@ -466,7 +491,6 @@ app.post("/webhook", async (req, res) => {
       );
 
       resetarConversa(from);
-
       return res.sendStatus(200);
     }
 
@@ -474,6 +498,12 @@ app.post("/webhook", async (req, res) => {
 
     if (conversationHistory[from].length > 20) {
       conversationHistory[from] = conversationHistory[from].slice(-20);
+    }
+
+    if (ehEncerramento(text)) {
+      await sendWhatsAppMessage(from, "Por nada! 😊 Fico à disposição. 💙");
+      resetarConversa(from);
+      return res.sendStatus(200);
     }
 
     if (state.aguardandoCidade) {
@@ -527,14 +557,6 @@ app.post("/webhook", async (req, res) => {
       }
     }
 
-    const mensagensEncerramento = ["obrigado", "obrigada", "obg", "valeu", "tchau", "até"];
-
-    if (mensagensEncerramento.some(p => textoNormalizado === p || textoNormalizado.includes(p))) {
-      await sendWhatsAppMessage(from, "Por nada! 😊 Fico à disposição. 💙");
-      resetarConversa(from);
-      return res.sendStatus(200);
-    }
-
     const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
 
     if (dadosExtraidos?.nome) state.nome = dadosExtraidos.nome;
@@ -547,15 +569,14 @@ app.post("/webhook", async (req, res) => {
     });
 
     if (!state.areaInteresse) {
-      state.areaInteresse = dadosExtraidos?.area || text;
-    }
-
-    if (state.areaInteresse && !state.cidadePreferida && !state.vagasApresentadas) {
+      state.areaInteresse = text;
       state.aguardandoCidade = true;
+
       await sendWhatsAppMessage(
         from,
         "Perfeito. Para eu buscar as melhores opções, qual cidade ou região você prefere trabalhar?"
       );
+
       return res.sendStatus(200);
     }
 
@@ -569,6 +590,7 @@ app.post("/webhook", async (req, res) => {
 
     await sendWhatsAppMessage(from, resposta);
     return res.sendStatus(200);
+
   } catch (error) {
     console.error("Erro no webhook:", error.response?.data || error.message);
     return res.sendStatus(200);
