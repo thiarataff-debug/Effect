@@ -17,6 +17,12 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2PiEcDWi0RqqI
 const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
 
+const REGIOES = {
+  "Grande Vitória": ["vitoria", "vitória", "serra", "vila velha", "cariacica", "viana", "fundao", "fundão", "guarapari"],
+  "Norte do ES": ["linhares", "sao mateus", "são mateus", "colatina", "aracruz", "sooretama", "joao neiva", "joão neiva"],
+  "Sul do ES": ["cachoeiro", "itapemirim", "marataizes", "marataízes", "anchieta"],
+};
+
 function getDriveAuth() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
@@ -54,7 +60,70 @@ function gerarTermoBusca(texto) {
     .replace("procuro", "")
     .replace("vaga de", "")
     .replace("vagas de", "")
+    .replace("emprego de", "")
     .trim();
+}
+
+function detectarTurno(texto) {
+  const t = normalizarTexto(texto);
+
+  if (t.includes("noite") || t.includes("noturno") || t.includes("madrugada")) return "noite";
+  if (t.includes("dia") || t.includes("manha") || t.includes("manhã") || t.includes("tarde") || t.includes("comercial")) return "dia";
+  if (t.includes("tanto faz") || t.includes("qualquer") || t.includes("indiferente") || t.includes("disponibilidade total")) return "tanto faz";
+
+  return "";
+}
+
+function detectarExperiencia(texto) {
+  const t = normalizarTexto(texto);
+
+  if (t.includes("sem experiencia") || t.includes("sem experiência") || t.includes("primeiro emprego") || t.includes("nao tenho") || t.includes("não tenho")) return "sem experiencia";
+  if (t.includes("com experiencia") || t.includes("com experiência") || t.includes("tenho experiencia") || t.includes("tenho experiência") || t.includes("ja trabalhei") || t.includes("já trabalhei")) return "com experiencia";
+  if (t.includes("tanto faz") || t.includes("qualquer") || t.includes("indiferente")) return "tanto faz";
+
+  return "";
+}
+
+function identificarRegiao(cidade) {
+  const c = normalizarTexto(cidade);
+
+  for (const [regiao, cidades] of Object.entries(REGIOES)) {
+    if (cidades.some(nome => c.includes(normalizarTexto(nome)) || normalizarTexto(nome).includes(c))) {
+      return regiao;
+    }
+  }
+
+  return "";
+}
+
+function calcularDistanciaRegiao(cidadeCandidato, cidadeVaga) {
+  const cand = normalizarTexto(cidadeCandidato);
+  const vaga = normalizarTexto(cidadeVaga);
+
+  if (cand && vaga && vaga.includes(cand)) return 0;
+
+  const regiaoCand = identificarRegiao(cidadeCandidato);
+  const regiaoVaga = identificarRegiao(cidadeVaga);
+
+  if (regiaoCand && regiaoVaga && regiaoCand === regiaoVaga) return 1;
+
+  if (regiaoCand && regiaoVaga && regiaoCand !== regiaoVaga) return 2;
+
+  return 3;
+}
+
+function ordenarVagasPorRegiao(vagas, cidadeCandidato = "") {
+  return [...vagas].sort((a, b) => {
+    const distanciaA = calcularDistanciaRegiao(cidadeCandidato, a.cidade || "");
+    const distanciaB = calcularDistanciaRegiao(cidadeCandidato, b.cidade || "");
+
+    if (distanciaA !== distanciaB) return distanciaA - distanciaB;
+
+    const dataA = new Date(a.data || a.criado_em || a.createdAt || a.data_abertura || 0).getTime();
+    const dataB = new Date(b.data || b.criado_em || b.createdAt || b.data_abertura || 0).getTime();
+
+    return dataB - dataA;
+  });
 }
 
 async function buscarCandidato(telefone) {
@@ -87,12 +156,19 @@ async function salvarCandidato(telefone, dados) {
   }
 }
 
-async function buscarVagasCompativeis(area) {
+async function buscarVagasCompativeis(area, filtros = {}) {
   try {
     const termo = gerarTermoBusca(area);
-    console.log("BUSCANDO VAGAS:", termo);
+    console.log("BUSCANDO VAGAS:", termo, filtros);
 
-    const url = `${APPS_SCRIPT_URL}?acao=vagas&termo=${encodeURIComponent(termo)}`;
+    const params = new URLSearchParams();
+    params.append("acao", "vagas");
+    params.append("termo", termo);
+
+    if (filtros.turno) params.append("turno", filtros.turno);
+    if (filtros.experiencia) params.append("experiencia", filtros.experiencia);
+
+    const url = `${APPS_SCRIPT_URL}?${params.toString()}`;
     const res = await axios.get(url);
 
     console.log("RETORNO APPS SCRIPT:", JSON.stringify(res.data));
@@ -106,31 +182,11 @@ async function buscarVagasCompativeis(area) {
   }
 }
 
-function ordenarVagas(vagas, cidadeCandidato = "") {
-  const cidadeNorm = normalizarTexto(cidadeCandidato);
-
-  return [...vagas].sort((a, b) => {
-    const cidadeA = normalizarTexto(a.cidade || "");
-    const cidadeB = normalizarTexto(b.cidade || "");
-
-    const aMesmaCidade = cidadeNorm && cidadeA.includes(cidadeNorm) ? 1 : 0;
-    const bMesmaCidade = cidadeNorm && cidadeB.includes(cidadeNorm) ? 1 : 0;
-
-    if (aMesmaCidade !== bMesmaCidade) {
-      return bMesmaCidade - aMesmaCidade;
-    }
-
-    const dataA = new Date(a.data || a.criado_em || a.createdAt || a.data_abertura || 0).getTime();
-    const dataB = new Date(b.data || b.criado_em || b.createdAt || b.data_abertura || 0).getTime();
-
-    return dataB - dataA;
-  });
-}
-
-function formatarVagasParaLia(vagas) {
+function formatarVagasParaLia(vagas, offset = 0) {
   return vagas
     .map((v, i) => {
-      const linhas = [`*${i + 1}. ${v.cargo}* — ${v.empresa || "Empresa confidencial"}, ${v.cidade || "Local não informado"}`];
+      const numero = offset + i + 1;
+      const linhas = [`*${numero}. ${v.cargo}* — ${v.empresa || "Empresa confidencial"}, ${v.cidade || "Local não informado"}`];
 
       if (v.salario) linhas.push(`💰 Salário: ${v.salario}`);
       if (v.turno) linhas.push(`🕐 Horário/Escala: ${v.turno}`);
@@ -140,6 +196,23 @@ function formatarVagasParaLia(vagas) {
       return linhas.join("\n");
     })
     .join("\n\n");
+}
+
+async function enviarListaDeVagas(from, vagas, mensagemInicial) {
+  const tamanhoBloco = 5;
+
+  for (let i = 0; i < vagas.length; i += tamanhoBloco) {
+    const bloco = vagas.slice(i, i + tamanhoBloco);
+    const texto = formatarVagasParaLia(bloco, i);
+
+    const mensagem = i === 0
+      ? `${mensagemInicial}\n\n${texto}`
+      : `Continuando as opções encontradas:\n\n${texto}`;
+
+    await sendWhatsAppMessage(from, mensagem);
+  }
+
+  await sendWhatsAppMessage(from, "Alguma dessas vagas chamou sua atenção? Pode me responder com o número da vaga. 😊");
 }
 
 function formatarVagaDetalhada(vaga) {
@@ -165,32 +238,12 @@ function detectarInteresseVaga(texto, totalVagas) {
   if (semInteresse.some(p => t.includes(p))) return { interesse: false };
 
   const numeros = {
-    "1": 1,
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5,
-    "6": 6,
-    "7": 7,
-    "8": 8,
-    "9": 9,
-    "10": 10,
-    "um": 1,
-    "dois": 2,
-    "tres": 3,
-    "três": 3,
-    "quatro": 4,
-    "cinco": 5,
-    "seis": 6,
-    "sete": 7,
-    "oito": 8,
-    "nove": 9,
-    "dez": 10,
-    "primeira": 1,
-    "segunda": 2,
-    "terceira": 3,
-    "quarta": 4,
-    "quinta": 5,
+    "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
+    "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
+    "11": 11, "12": 12, "13": 13, "14": 14, "15": 15,
+    "um": 1, "dois": 2, "tres": 3, "três": 3, "quatro": 4,
+    "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9, "dez": 10,
+    "primeira": 1, "segunda": 2, "terceira": 3, "quarta": 4, "quinta": 5,
   };
 
   for (const [chave, num] of Object.entries(numeros)) {
@@ -357,7 +410,7 @@ REGRAS:
 - Nunca peça currículo antes de verificar vagas.
 
 VAGAS:
-Quando houver vagas, apresente todas as vagas recebidas.
+Quando houver vagas, apresente as vagas compatíveis.
 Nunca invente vagas, salários ou benefícios.
 `;
 
@@ -374,6 +427,50 @@ app.get("/webhook", (req, res) => {
 
   return res.sendStatus(403);
 });
+
+async function apresentarVagasComFiltros(from, state) {
+  let vagas = await buscarVagasCompativeis(state.areaInteresse, {
+    turno: state.turnoPreferido,
+    experiencia: state.experienciaPreferida,
+  });
+
+  vagas = ordenarVagasPorRegiao(vagas, state.cidadePreferida);
+
+  if (vagas.length > 0) {
+    const regiao = identificarRegiao(state.cidadePreferida);
+    const intro = `Encontrei estas oportunidades compatíveis com o seu perfil, começando pelas opções mais próximas de ${state.cidadePreferida}${regiao ? ` / ${regiao}` : ""}:`;
+
+    state.vagasApresentadas = true;
+    state.vagasCache = vagas;
+    state.aguardandoInteresse = true;
+
+    await enviarListaDeVagas(from, vagas, intro);
+    return true;
+  }
+
+  let vagasSemFiltro = await buscarVagasCompativeis(state.areaInteresse, {});
+  vagasSemFiltro = ordenarVagasPorRegiao(vagasSemFiltro, state.cidadePreferida);
+
+  if (vagasSemFiltro.length > 0) {
+    const intro = `Não encontrei vagas exatamente com todos os filtros, mas encontrei estas opções próximas ao seu perfil e à sua região:`;
+
+    state.vagasApresentadas = true;
+    state.vagasCache = vagasSemFiltro;
+    state.aguardandoInteresse = true;
+
+    await enviarListaDeVagas(from, vagasSemFiltro, intro);
+    return true;
+  }
+
+  state.aguardandoCurriculo = true;
+
+  await sendWhatsAppMessage(
+    from,
+    "No momento não encontrei uma vaga compatível com esses dados, mas posso deixar seu currículo no nosso banco de talentos 💙\n\nVocê pode me enviar seu currículo por aqui?"
+  );
+
+  return false;
+}
 
 app.post("/webhook", async (req, res) => {
   try {
@@ -420,17 +517,18 @@ app.post("/webhook", async (req, res) => {
 
       await salvarCandidato(from, {
         nome: dados[1] || "",
-        cidade: dados[2] || "",
-        area: dados[3] || "",
+        cidade: dados[2] || state.cidadePreferida || "",
+        area: dados[3] || state.areaInteresse || "",
         curriculo: "Sim",
         score: calcularScore({
           nome: dados[1],
-          cidade: dados[2],
-          area: dados[3],
+          cidade: dados[2] || state.cidadePreferida,
+          area: dados[3] || state.areaInteresse,
           curriculo: "Sim",
         }),
         status: "Currículo recebido",
         obs: linkDrive ? `Drive: ${linkDrive}` : `Arquivo: ${fileName}`,
+        vaga_interesse: state.vagaInteresse || "",
       });
 
       await notificarCurriculoRecebido(from, dados[1], fileName, linkDrive);
@@ -441,6 +539,47 @@ app.post("/webhook", async (req, res) => {
       );
 
       state.encerrado = true;
+      return res.sendStatus(200);
+    }
+
+    if (state.etapaFiltro === "cidade") {
+      state.cidadePreferida = text;
+      state.etapaFiltro = "turno";
+
+      conversationHistory[from].push({ role: "user", content: text });
+
+      await sendWhatsAppMessage(
+        from,
+        "Perfeito. Você prefere vagas de dia, à noite ou tanto faz?"
+      );
+
+      return res.sendStatus(200);
+    }
+
+    if (state.etapaFiltro === "turno") {
+      const turno = detectarTurno(text);
+      state.turnoPreferido = turno || "tanto faz";
+      state.etapaFiltro = "experiencia";
+
+      conversationHistory[from].push({ role: "user", content: text });
+
+      await sendWhatsAppMessage(
+        from,
+        "Entendi. E sobre experiência: você já tem experiência na área ou busca oportunidade sem experiência?"
+      );
+
+      return res.sendStatus(200);
+    }
+
+    if (state.etapaFiltro === "experiencia") {
+      const experiencia = detectarExperiencia(text);
+      state.experienciaPreferida = experiencia || "tanto faz";
+      state.etapaFiltro = null;
+
+      conversationHistory[from].push({ role: "user", content: text });
+
+      await apresentarVagasComFiltros(from, state);
+
       return res.sendStatus(200);
     }
 
@@ -492,6 +631,7 @@ app.post("/webhook", async (req, res) => {
 
         state.aguardandoInteresse = false;
         state.vagaDetalhada = true;
+        state.vagaInteresse = vagaEscolhida.cargo;
 
         const candidato = await buscarCandidato(from);
         const nomeCandidato = candidato?.dados?.[1] || "";
@@ -499,6 +639,9 @@ app.post("/webhook", async (req, res) => {
         await salvarCandidato(from, {
           vaga_interesse: vagaEscolhida.cargo,
           status: "Interessado",
+          cidade: state.cidadePreferida || "",
+          area: state.areaInteresse || "",
+          obs: `Turno: ${state.turnoPreferido || ""} | Experiência: ${state.experienciaPreferida || ""}`,
         });
 
         await notificarInteresseVaga(from, nomeCandidato, vagaEscolhida);
@@ -507,68 +650,18 @@ app.post("/webhook", async (req, res) => {
       }
 
       if (resultado && !resultado.interesse) {
-        if (!state.semVagasRodada2) {
-          state.semVagasRodada2 = true;
-          state.aguardandoInteresse = false;
-          state.vagasCache = null;
-
-          conversationHistory[from].push({ role: "user", content: text });
-
-          const msg = "Entendo! 😊 Me conta então qual área ou cargo você está procurando? Assim posso buscar outras oportunidades para você.";
-
-          conversationHistory[from].push({ role: "assistant", content: msg });
-
-          await sendWhatsAppMessage(from, msg);
-          return res.sendStatus(200);
-        }
-
-        if (state.semVagasRodada2 && !state.pedidoCurriculo) {
-          state.pedidoCurriculo = true;
-
-          conversationHistory[from].push({ role: "user", content: text });
-
-          const msg = "Compreendo! No momento não temos uma vaga perfeita para você, mas adoraríamos ter seu perfil no nosso banco de talentos 💙\n\nVocê pode me enviar seu currículo? Assim te avisamos assim que surgir uma oportunidade compatível!";
-
-          conversationHistory[from].push({ role: "assistant", content: msg });
-
-          await sendWhatsAppMessage(from, msg);
-
-          state.aguardandoCurriculo = true;
-          return res.sendStatus(200);
-        }
-      }
-    }
-
-    if (state.semVagasRodada2 && !state.vagasCache && !state.pedidoCurriculo) {
-      let vagas2 = await buscarVagasCompativeis(text);
-      vagas2 = ordenarVagas(vagas2, "");
-
-      if (vagas2.length > 0) {
-        const listaFormatada = formatarVagasParaLia(vagas2);
-
-        const msg = `Encontrei estas oportunidades:\n\n${listaFormatada}\n\nAlguma delas chamou sua atenção?`;
-
-        conversationHistory[from].push({ role: "user", content: text });
-        conversationHistory[from].push({ role: "assistant", content: msg });
-
-        await sendWhatsAppMessage(from, msg);
-
-        state.vagasCache = vagas2;
-        state.aguardandoInteresse = true;
-
-        return res.sendStatus(200);
-      } else {
-        state.pedidoCurriculo = true;
+        state.aguardandoInteresse = false;
+        state.vagasCache = null;
+        state.vagasApresentadas = false;
+        state.etapaFiltro = "cidade";
 
         conversationHistory[from].push({ role: "user", content: text });
 
-        const msg = "No momento não temos vagas nessa área, mas adoraríamos ter seu perfil no nosso banco de talentos 💙\n\nVocê pode me enviar seu currículo? Assim te avisamos assim que surgir uma oportunidade compatível!";
+        await sendWhatsAppMessage(
+          from,
+          "Tudo bem! 😊 Vamos tentar buscar de outra forma. Qual cidade ou região você prefere?"
+        );
 
-        conversationHistory[from].push({ role: "assistant", content: msg });
-
-        await sendWhatsAppMessage(from, msg);
-
-        state.aguardandoCurriculo = true;
         return res.sendStatus(200);
       }
     }
@@ -604,27 +697,58 @@ app.post("/webhook", async (req, res) => {
       score: calcularScore(dadosExtraidos),
     });
 
-    const areaParaBuscar = dadosExtraidos?.area || text;
+    if (!state.areaInteresse) {
+      state.areaInteresse = dadosExtraidos?.area || text;
+    }
 
-    if (areaParaBuscar && !state.vagasApresentadas) {
-      let vagas = await buscarVagasCompativeis(areaParaBuscar);
-      vagas = ordenarVagas(vagas, dadosExtraidos?.cidade || "");
+    if (!state.cidadePreferida && dadosExtraidos?.cidade) {
+      state.cidadePreferida = dadosExtraidos.cidade;
+    }
 
-      if (vagas.length > 0) {
-        const listaFormatada = formatarVagasParaLia(vagas);
+    if (!state.turnoPreferido) {
+      state.turnoPreferido = detectarTurno(text);
+    }
 
-        const mensagem = `Ótima notícia! 😊\n\nEncontrei estas oportunidades para você:\n\n${listaFormatada}\n\nAlguma delas chamou sua atenção?`;
+    if (!state.experienciaPreferida) {
+      state.experienciaPreferida = detectarExperiencia(text);
+    }
 
-        conversationHistory[from].push({ role: "assistant", content: mensagem });
+    if (state.areaInteresse && !state.vagasApresentadas) {
+      if (!state.cidadePreferida) {
+        state.etapaFiltro = "cidade";
 
-        await sendWhatsAppMessage(from, mensagem);
-
-        state.vagasApresentadas = true;
-        state.vagasCache = vagas;
-        state.aguardandoInteresse = true;
+        await sendWhatsAppMessage(
+          from,
+          "Perfeito. Para eu buscar as melhores opções, qual cidade ou região você prefere trabalhar?"
+        );
 
         return res.sendStatus(200);
       }
+
+      if (!state.turnoPreferido) {
+        state.etapaFiltro = "turno";
+
+        await sendWhatsAppMessage(
+          from,
+          "Você prefere vagas de dia, à noite ou tanto faz?"
+        );
+
+        return res.sendStatus(200);
+      }
+
+      if (!state.experienciaPreferida) {
+        state.etapaFiltro = "experiencia";
+
+        await sendWhatsAppMessage(
+          from,
+          "Você já tem experiência na área ou busca uma oportunidade sem experiência?"
+        );
+
+        return res.sendStatus(200);
+      }
+
+      await apresentarVagasComFiltros(from, state);
+      return res.sendStatus(200);
     }
 
     const resposta = await askClaude(from);
