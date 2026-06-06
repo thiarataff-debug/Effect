@@ -18,9 +18,9 @@ const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
 
 const REGIOES = {
-  "Grande Vitória": ["vitoria", "vitória", "serra", "vila velha", "cariacica", "viana", "fundao", "fundão", "guarapari"],
-  "Norte do ES": ["linhares", "sao mateus", "são mateus", "colatina", "aracruz", "sooretama", "joao neiva", "joão neiva"],
-  "Sul do ES": ["cachoeiro", "itapemirim", "marataizes", "marataízes", "anchieta"],
+  "Grande Vitória": ["vitoria", "vitória", "serra", "vila velha", "cariacica", "viana", "guarapari"],
+  "Norte do ES": ["linhares", "sao mateus", "são mateus", "colatina", "aracruz", "sooretama"],
+  "Sul do ES": ["cachoeiro", "itapemirim", "marataizes", "marataízes", "anchieta"]
 };
 
 function getDriveAuth() {
@@ -66,33 +66,36 @@ function gerarTermoBusca(texto) {
 
 function detectarTurno(texto) {
   const t = normalizarTexto(texto);
-
   if (t.includes("noite") || t.includes("noturno") || t.includes("madrugada")) return "noite";
   if (t.includes("dia") || t.includes("manha") || t.includes("manhã") || t.includes("tarde") || t.includes("comercial")) return "dia";
   if (t.includes("tanto faz") || t.includes("qualquer") || t.includes("indiferente") || t.includes("disponibilidade total")) return "tanto faz";
-
   return "";
 }
 
 function detectarExperiencia(texto) {
   const t = normalizarTexto(texto);
-
   if (t.includes("sem experiencia") || t.includes("sem experiência") || t.includes("primeiro emprego") || t.includes("nao tenho") || t.includes("não tenho")) return "sem experiencia";
   if (t.includes("com experiencia") || t.includes("com experiência") || t.includes("tenho experiencia") || t.includes("tenho experiência") || t.includes("ja trabalhei") || t.includes("já trabalhei")) return "com experiencia";
   if (t.includes("tanto faz") || t.includes("qualquer") || t.includes("indiferente")) return "tanto faz";
+  return "";
+}
 
+function detectarEscolaridade(texto) {
+  const t = normalizarTexto(texto);
+  if (t.includes("fundamental")) return "fundamental";
+  if (t.includes("medio") || t.includes("médio") || t.includes("ensino medio") || t.includes("ensino médio")) return "medio";
+  if (t.includes("tecnico") || t.includes("técnico")) return "tecnico";
+  if (t.includes("superior cursando") || t.includes("faculdade cursando")) return "superior cursando";
+  if (t.includes("superior completo") || t.includes("faculdade completa") || t.includes("formado")) return "superior completo";
+  if (t.includes("tanto faz") || t.includes("qualquer") || t.includes("indiferente")) return "tanto faz";
   return "";
 }
 
 function identificarRegiao(cidade) {
   const c = normalizarTexto(cidade);
-
   for (const [regiao, cidades] of Object.entries(REGIOES)) {
-    if (cidades.some(nome => c.includes(normalizarTexto(nome)) || normalizarTexto(nome).includes(c))) {
-      return regiao;
-    }
+    if (cidades.some(nome => c.includes(normalizarTexto(nome)) || normalizarTexto(nome).includes(c))) return regiao;
   }
-
   return "";
 }
 
@@ -106,7 +109,6 @@ function calcularDistanciaRegiao(cidadeCandidato, cidadeVaga) {
   const regiaoVaga = identificarRegiao(cidadeVaga);
 
   if (regiaoCand && regiaoVaga && regiaoCand === regiaoVaga) return 1;
-
   if (regiaoCand && regiaoVaga && regiaoCand !== regiaoVaga) return 2;
 
   return 3;
@@ -119,8 +121,8 @@ function ordenarVagasPorRegiao(vagas, cidadeCandidato = "") {
 
     if (distanciaA !== distanciaB) return distanciaA - distanciaB;
 
-    const dataA = new Date(a.data || a.criado_em || a.createdAt || a.data_abertura || 0).getTime();
-    const dataB = new Date(b.data || b.criado_em || b.createdAt || b.data_abertura || 0).getTime();
+    const dataA = new Date(a.data || 0).getTime();
+    const dataB = new Date(b.data || 0).getTime();
 
     return dataB - dataA;
   });
@@ -159,7 +161,6 @@ async function salvarCandidato(telefone, dados) {
 async function buscarVagasCompativeis(area, filtros = {}) {
   try {
     const termo = gerarTermoBusca(area);
-    console.log("BUSCANDO VAGAS:", termo, filtros);
 
     const params = new URLSearchParams();
     params.append("acao", "vagas");
@@ -167,14 +168,12 @@ async function buscarVagasCompativeis(area, filtros = {}) {
 
     if (filtros.turno) params.append("turno", filtros.turno);
     if (filtros.experiencia) params.append("experiencia", filtros.experiencia);
+    if (filtros.escolaridade) params.append("escolaridade", filtros.escolaridade);
 
     const url = `${APPS_SCRIPT_URL}?${params.toString()}`;
     const res = await axios.get(url);
 
-    console.log("RETORNO APPS SCRIPT:", JSON.stringify(res.data));
-
     if (!res.data || !res.data.ok) return [];
-
     return res.data.vagas || [];
   } catch (e) {
     console.error("Erro ao buscar vagas:", e.message);
@@ -183,19 +182,20 @@ async function buscarVagasCompativeis(area, filtros = {}) {
 }
 
 function formatarVagasParaLia(vagas, offset = 0) {
-  return vagas
-    .map((v, i) => {
-      const numero = offset + i + 1;
-      const linhas = [`*${numero}. ${v.cargo}* — ${v.empresa || "Empresa confidencial"}, ${v.cidade || "Local não informado"}`];
+  return vagas.map((v, i) => {
+    const numero = offset + i + 1;
+    const linhas = [`*${numero}. ${v.cargo}* — ${v.empresa || "Empresa confidencial"}, ${v.cidade || "Local não informado"}`];
 
-      if (v.salario) linhas.push(`💰 Salário: ${v.salario}`);
-      if (v.turno) linhas.push(`🕐 Horário/Escala: ${v.turno}`);
-      if (v.beneficios) linhas.push(`🎁 Benefícios: ${v.beneficios}`);
-      if (v.requisitos) linhas.push(`📋 Requisitos: ${v.requisitos}`);
+    if (v.salario) linhas.push(`💰 Salário: ${v.salario}`);
+    if (v.turno) linhas.push(`🕐 Horário/Escala: ${v.turno}`);
+    if (v.beneficios) linhas.push(`🎁 Benefícios: ${v.beneficios}`);
+    if (v.genero) linhas.push(`👥 Gênero: ${v.genero}`);
+    if (v.experiencia) linhas.push(`⭐ Experiência: ${v.experiencia}`);
+    if (v.escolaridade) linhas.push(`🎓 Escolaridade: ${v.escolaridade}`);
+    if (v.requisitos) linhas.push(`📋 Requisitos: ${v.requisitos}`);
 
-      return linhas.join("\n");
-    })
-    .join("\n\n");
+    return linhas.join("\n");
+  }).join("\n\n");
 }
 
 async function enviarListaDeVagas(from, vagas, mensagemInicial) {
@@ -225,6 +225,10 @@ function formatarVagaDetalhada(vaga) {
   if (vaga.salario) linhas.push(`💰 Salário: ${vaga.salario}`);
   if (vaga.turno) linhas.push(`🕐 Horário/Escala: ${vaga.turno}`);
   if (vaga.beneficios) linhas.push(`🎁 Benefícios: ${vaga.beneficios}`);
+  if (vaga.genero) linhas.push(`👥 Gênero: ${vaga.genero}`);
+  if (vaga.faixaEtaria) linhas.push(`🎂 Faixa etária: ${vaga.faixaEtaria}`);
+  if (vaga.experiencia) linhas.push(`⭐ Experiência mínima: ${vaga.experiencia}`);
+  if (vaga.escolaridade) linhas.push(`🎓 Escolaridade: ${vaga.escolaridade}`);
   if (vaga.requisitos) linhas.push(`📋 Requisitos: ${vaga.requisitos}`);
   if (vaga.descricao) linhas.push(`📝 Atividades: ${vaga.descricao}`);
 
@@ -237,19 +241,10 @@ function detectarInteresseVaga(texto, totalVagas) {
   const semInteresse = ["nenhuma", "nao", "não", "nenhum", "outra", "outras", "outro", "nada", "nao gostei", "não gostei"];
   if (semInteresse.some(p => t.includes(p))) return { interesse: false };
 
-  const numeros = {
-    "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
-    "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
-    "11": 11, "12": 12, "13": 13, "14": 14, "15": 15,
-    "um": 1, "dois": 2, "tres": 3, "três": 3, "quatro": 4,
-    "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9, "dez": 10,
-    "primeira": 1, "segunda": 2, "terceira": 3, "quarta": 4, "quinta": 5,
-  };
-
-  for (const [chave, num] of Object.entries(numeros)) {
-    if (t.includes(chave) && num <= totalVagas) {
-      return { interesse: true, numero: num };
-    }
+  const matchNumero = t.match(/\d+/);
+  if (matchNumero) {
+    const num = parseInt(matchNumero[0], 10);
+    if (num >= 1 && num <= totalVagas) return { interesse: true, numero: num };
   }
 
   const positivos = ["sim", "quero", "tenho interesse", "gostei", "legal", "essa", "me interessa"];
@@ -260,19 +255,17 @@ function detectarInteresseVaga(texto, totalVagas) {
 
 function calcularScore(dados) {
   let score = 40;
-
   if (dados.nome && dados.nome.length > 2) score += 10;
   if (dados.cidade) score += 10;
   if (dados.area) score += 15;
   if (dados.curriculo === "Sim") score += 25;
-
   return Math.min(score, 100);
 }
 
 async function extrairDadosDaConversa(historico) {
   try {
     const prompt = `Analise esta conversa e extraia os dados do candidato em JSON.
-Retorne APENAS o JSON, sem texto adicional.
+Retorne APENAS o JSON.
 
 Campos:
 - nome
@@ -315,7 +308,6 @@ async function getWhatsAppFileUrl(mediaId) {
     const res = await axios.get(`https://graph.facebook.com/v19.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
     });
-
     return { url: res.data.url, mimeType: res.data.mime_type };
   } catch (e) {
     console.error("Erro ao buscar URL do arquivo:", e.message);
@@ -352,9 +344,7 @@ async function salvarCurriculoNoDrive(telefone, nomeCandidato, fileUrl, fileName
 
 async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive) {
   try {
-    const horario = new Date().toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    });
+    const horario = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     await sendWhatsAppMessage(
       NUMERO_THIARATAFF,
@@ -367,13 +357,11 @@ async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive
 
 async function notificarInteresseVaga(telefone, nome, vaga) {
   try {
-    const horario = new Date().toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    });
+    const horario = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     await sendWhatsAppMessage(
       NUMERO_THIARATAFF,
-      `🚨 *Candidato interessado em vaga*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n\n💼 *Vaga:* ${vaga.cargo || "Não informada"}\n🏢 *Empresa:* ${vaga.empresa || "Não informada"}\n📍 *Local:* ${vaga.cidade || "Não informado"}\n💰 *Salário:* ${vaga.salario || "Não informado"}\n🕐 *Horário/Escala:* ${vaga.turno || "Não informado"}\n\n🕐 *Horário do interesse:* ${horario}`
+      `🚨 *Candidato interessado em vaga*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n\n💼 *Vaga:* ${vaga.cargo || "Não informada"}\n🏢 *Empresa:* ${vaga.empresa || "Não informada"}\n📍 *Local:* ${vaga.cidade || "Não informado"}\n💰 *Salário:* ${vaga.salario || "Não informado"}\n🕐 *Horário/Escala:* ${vaga.turno || "Não informado"}\n🎓 *Escolaridade:* ${vaga.escolaridade || "Não informada"}\n📋 *Requisitos:* ${vaga.requisitos || "Não informado"}\n\n🕐 *Horário do interesse:* ${horario}`
     );
   } catch (e) {
     console.error("Erro ao notificar interesse em vaga:", e.message);
@@ -395,23 +383,11 @@ IDENTIDADE:
 - Seja leve, simpática e organizada.
 - Use emojis com moderação.
 
-PRIMEIRO CONTATO:
-Apresente-se apenas na primeira interação:
-"Olá! Seja muito bem-vindo(a) à Effect Pessoas & Performance 💙
-Eu sou a Lia.
-Que bom falar com você. Como posso te ajudar hoje? 😊"
-
-Nunca repita essa apresentação depois.
-
 REGRAS:
 - Faça apenas UMA pergunta por vez.
 - Nunca transforme a conversa em formulário.
-- Nunca repita perguntas já respondidas.
 - Nunca peça currículo antes de verificar vagas.
-
-VAGAS:
-Quando houver vagas, apresente as vagas compatíveis.
-Nunca invente vagas, salários ou benefícios.
+- Nunca invente vagas, salários, benefícios ou requisitos.
 `;
 
 app.get("/", (req, res) => res.send("Effect WhatsApp Bot rodando!"));
@@ -421,10 +397,7 @@ app.get("/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
-  }
-
+  if (mode === "subscribe" && token === VERIFY_TOKEN) return res.status(200).send(challenge);
   return res.sendStatus(403);
 });
 
@@ -432,13 +405,14 @@ async function apresentarVagasComFiltros(from, state) {
   let vagas = await buscarVagasCompativeis(state.areaInteresse, {
     turno: state.turnoPreferido,
     experiencia: state.experienciaPreferida,
+    escolaridade: state.escolaridadePreferida,
   });
 
   vagas = ordenarVagasPorRegiao(vagas, state.cidadePreferida);
 
   if (vagas.length > 0) {
     const regiao = identificarRegiao(state.cidadePreferida);
-    const intro = `Encontrei estas oportunidades compatíveis com o seu perfil, começando pelas opções mais próximas de ${state.cidadePreferida}${regiao ? ` / ${regiao}` : ""}:`;
+    const intro = `Encontrei estas oportunidades compatíveis, começando pelas opções mais próximas de ${state.cidadePreferida}${regiao ? ` / ${regiao}` : ""}:`;
 
     state.vagasApresentadas = true;
     state.vagasCache = vagas;
@@ -452,13 +426,15 @@ async function apresentarVagasComFiltros(from, state) {
   vagasSemFiltro = ordenarVagasPorRegiao(vagasSemFiltro, state.cidadePreferida);
 
   if (vagasSemFiltro.length > 0) {
-    const intro = `Não encontrei vagas exatamente com todos os filtros, mas encontrei estas opções próximas ao seu perfil e à sua região:`;
-
     state.vagasApresentadas = true;
     state.vagasCache = vagasSemFiltro;
     state.aguardandoInteresse = true;
 
-    await enviarListaDeVagas(from, vagasSemFiltro, intro);
+    await enviarListaDeVagas(
+      from,
+      vagasSemFiltro,
+      "Não encontrei vagas exatamente com todos os filtros, mas encontrei estas opções próximas ao seu perfil:"
+    );
     return true;
   }
 
@@ -501,16 +477,8 @@ app.post("/webhook", async (req, res) => {
 
       if (mediaId) {
         const fileInfo = await getWhatsAppFileUrl(mediaId);
-
         if (fileInfo) {
-          const uploaded = await salvarCurriculoNoDrive(
-            from,
-            dados[1],
-            fileInfo.url,
-            fileName,
-            fileInfo.mimeType || mimeType
-          );
-
+          const uploaded = await salvarCurriculoNoDrive(from, dados[1], fileInfo.url, fileName, fileInfo.mimeType || mimeType);
           if (uploaded) linkDrive = uploaded.link;
         }
       }
@@ -545,41 +513,36 @@ app.post("/webhook", async (req, res) => {
     if (state.etapaFiltro === "cidade") {
       state.cidadePreferida = text;
       state.etapaFiltro = "turno";
-
       conversationHistory[from].push({ role: "user", content: text });
 
-      await sendWhatsAppMessage(
-        from,
-        "Perfeito. Você prefere vagas de dia, à noite ou tanto faz?"
-      );
-
+      await sendWhatsAppMessage(from, "Perfeito. Você prefere vagas de dia, à noite ou tanto faz?");
       return res.sendStatus(200);
     }
 
     if (state.etapaFiltro === "turno") {
-      const turno = detectarTurno(text);
-      state.turnoPreferido = turno || "tanto faz";
+      state.turnoPreferido = detectarTurno(text) || "tanto faz";
       state.etapaFiltro = "experiencia";
-
       conversationHistory[from].push({ role: "user", content: text });
 
-      await sendWhatsAppMessage(
-        from,
-        "Entendi. E sobre experiência: você já tem experiência na área ou busca oportunidade sem experiência?"
-      );
-
+      await sendWhatsAppMessage(from, "Entendi. Você já tem experiência na área ou busca oportunidade sem experiência?");
       return res.sendStatus(200);
     }
 
     if (state.etapaFiltro === "experiencia") {
-      const experiencia = detectarExperiencia(text);
-      state.experienciaPreferida = experiencia || "tanto faz";
-      state.etapaFiltro = null;
+      state.experienciaPreferida = detectarExperiencia(text) || "tanto faz";
+      state.etapaFiltro = "escolaridade";
+      conversationHistory[from].push({ role: "user", content: text });
 
+      await sendWhatsAppMessage(from, "Qual é a sua escolaridade? Pode responder, por exemplo: fundamental, médio completo, técnico, superior cursando ou superior completo.");
+      return res.sendStatus(200);
+    }
+
+    if (state.etapaFiltro === "escolaridade") {
+      state.escolaridadePreferida = detectarEscolaridade(text) || "tanto faz";
+      state.etapaFiltro = null;
       conversationHistory[from].push({ role: "user", content: text });
 
       await apresentarVagasComFiltros(from, state);
-
       return res.sendStatus(200);
     }
 
@@ -590,11 +553,9 @@ app.post("/webhook", async (req, res) => {
 
       if (quer) {
         state.aguardandoCurriculo = true;
-
         conversationHistory[from].push({ role: "user", content: text });
 
         const msg = "Ótimo! 🎉 Para concluir sua candidatura, me envie seu currículo aqui pelo WhatsApp (PDF ou Word). 📄";
-
         conversationHistory[from].push({ role: "assistant", content: msg });
 
         await sendWhatsAppMessage(from, msg);
@@ -605,11 +566,9 @@ app.post("/webhook", async (req, res) => {
         conversationHistory[from].push({ role: "user", content: text });
 
         const msg = "Tudo bem! 😊 Fico à disposição sempre que precisar. Qualquer novidade em vagas, estaremos aqui. Tenha um ótimo dia! 💙";
-
         conversationHistory[from].push({ role: "assistant", content: msg });
 
         await sendWhatsAppMessage(from, msg);
-
         state.encerrado = true;
         return res.sendStatus(200);
       }
@@ -641,7 +600,7 @@ app.post("/webhook", async (req, res) => {
           status: "Interessado",
           cidade: state.cidadePreferida || "",
           area: state.areaInteresse || "",
-          obs: `Turno: ${state.turnoPreferido || ""} | Experiência: ${state.experienciaPreferida || ""}`,
+          obs: `Turno: ${state.turnoPreferido || ""} | Experiência: ${state.experienciaPreferida || ""} | Escolaridade: ${state.escolaridadePreferida || ""}`,
         });
 
         await notificarInteresseVaga(from, nomeCandidato, vagaEscolhida);
@@ -655,13 +614,7 @@ app.post("/webhook", async (req, res) => {
         state.vagasApresentadas = false;
         state.etapaFiltro = "cidade";
 
-        conversationHistory[from].push({ role: "user", content: text });
-
-        await sendWhatsAppMessage(
-          from,
-          "Tudo bem! 😊 Vamos tentar buscar de outra forma. Qual cidade ou região você prefere?"
-        );
-
+        await sendWhatsAppMessage(from, "Tudo bem! 😊 Vamos tentar buscar de outra forma. Qual cidade ou região você prefere?");
         return res.sendStatus(200);
       }
     }
@@ -671,14 +624,8 @@ app.post("/webhook", async (req, res) => {
       const nao = ["nao", "não", "agora nao", "agora não", "depois", "obrigado", "valeu", "tchau", "nao tenho", "não tenho"].some(p => t.includes(p));
 
       if (nao) {
-        conversationHistory[from].push({ role: "user", content: text });
-
         const msg = "Sem problema! 😊 Quando quiser, é só nos chamar. Desejo muito sucesso na sua jornada profissional! 💙";
-
-        conversationHistory[from].push({ role: "assistant", content: msg });
-
         await sendWhatsAppMessage(from, msg);
-
         state.encerrado = true;
         return res.sendStatus(200);
       }
@@ -697,53 +644,34 @@ app.post("/webhook", async (req, res) => {
       score: calcularScore(dadosExtraidos),
     });
 
-    if (!state.areaInteresse) {
-      state.areaInteresse = dadosExtraidos?.area || text;
-    }
-
-    if (!state.cidadePreferida && dadosExtraidos?.cidade) {
-      state.cidadePreferida = dadosExtraidos.cidade;
-    }
-
-    if (!state.turnoPreferido) {
-      state.turnoPreferido = detectarTurno(text);
-    }
-
-    if (!state.experienciaPreferida) {
-      state.experienciaPreferida = detectarExperiencia(text);
-    }
+    if (!state.areaInteresse) state.areaInteresse = dadosExtraidos?.area || text;
+    if (!state.cidadePreferida && dadosExtraidos?.cidade) state.cidadePreferida = dadosExtraidos.cidade;
+    if (!state.turnoPreferido) state.turnoPreferido = detectarTurno(text);
+    if (!state.experienciaPreferida) state.experienciaPreferida = detectarExperiencia(text);
+    if (!state.escolaridadePreferida) state.escolaridadePreferida = detectarEscolaridade(text);
 
     if (state.areaInteresse && !state.vagasApresentadas) {
       if (!state.cidadePreferida) {
         state.etapaFiltro = "cidade";
-
-        await sendWhatsAppMessage(
-          from,
-          "Perfeito. Para eu buscar as melhores opções, qual cidade ou região você prefere trabalhar?"
-        );
-
+        await sendWhatsAppMessage(from, "Perfeito. Para eu buscar as melhores opções, qual cidade ou região você prefere trabalhar?");
         return res.sendStatus(200);
       }
 
       if (!state.turnoPreferido) {
         state.etapaFiltro = "turno";
-
-        await sendWhatsAppMessage(
-          from,
-          "Você prefere vagas de dia, à noite ou tanto faz?"
-        );
-
+        await sendWhatsAppMessage(from, "Você prefere vagas de dia, à noite ou tanto faz?");
         return res.sendStatus(200);
       }
 
       if (!state.experienciaPreferida) {
         state.etapaFiltro = "experiencia";
+        await sendWhatsAppMessage(from, "Você já tem experiência na área ou busca uma oportunidade sem experiência?");
+        return res.sendStatus(200);
+      }
 
-        await sendWhatsAppMessage(
-          from,
-          "Você já tem experiência na área ou busca uma oportunidade sem experiência?"
-        );
-
+      if (!state.escolaridadePreferida) {
+        state.etapaFiltro = "escolaridade";
+        await sendWhatsAppMessage(from, "Qual é a sua escolaridade? Pode responder, por exemplo: fundamental, médio completo, técnico, superior cursando ou superior completo.");
         return res.sendStatus(200);
       }
 
@@ -752,12 +680,11 @@ app.post("/webhook", async (req, res) => {
     }
 
     const resposta = await askClaude(from);
-
     conversationHistory[from].push({ role: "assistant", content: resposta });
 
     await sendWhatsAppMessage(from, resposta);
-
     return res.sendStatus(200);
+
   } catch (error) {
     console.error("Erro no webhook:", error.response?.data || error.message);
     return res.sendStatus(200);
