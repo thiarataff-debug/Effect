@@ -50,45 +50,29 @@ app.post("/webhook", async (req, res) => {
 
     if (message.document) {
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
-
       const resposta = await processarCurriculo(from, message.document);
       await enviarMensagem(from, resposta);
       return;
     }
 
-    await enviarMensagem(
-      from,
-      "Recebi sua mensagem. Pode me enviar em texto ou encaminhar o currículo em PDF por aqui?"
-    );
-
+    await enviarMensagem(from, "Recebi sua mensagem. Pode me enviar em texto ou encaminhar o currículo em PDF por aqui?");
   } catch (erro) {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
 });
 
 async function processarMensagem(telefone, mensagem) {
-  if (!sessoes[telefone]) {
-    sessoes[telefone] = { historico: [] };
-  }
+  if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
 
   const sessao = sessoes[telefone];
-
-  sessao.historico.push({
-    role: "user",
-    content: mensagem
-  });
-
+  sessao.historico.push({ role: "user", content: mensagem });
   sessao.historico = sessao.historico.slice(-10);
 
   const vagas = await buscarVagas();
   const prompt = montarPromptConversa(sessao, mensagem, vagas);
-  const resposta = await chamarClaude(prompt);
+  const resposta = await chamarClaudeTexto(prompt);
 
-  sessao.historico.push({
-    role: "assistant",
-    content: resposta
-  });
-
+  sessao.historico.push({ role: "assistant", content: resposta });
   sessao.historico = sessao.historico.slice(-10);
 
   return resposta;
@@ -99,41 +83,29 @@ async function processarCurriculo(telefone, documento) {
     const textoCurriculo = await baixarELerPdf(documento.id);
 
     if (!textoCurriculo || textoCurriculo.length < 50) {
-      return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar em PDF com texto legível ou me mandar um resumo da sua experiência por aqui?";
+      return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar um PDF mais legível ou me contar sua experiência por aqui?";
     }
 
     const vagas = await buscarVagas();
     const sessao = sessoes[telefone] || { historico: [] };
+    const vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
 
-    const vagasFiltradas = filtrarVagasRelevantes(
-      vagas,
-      textoCurriculo,
-      sessao.historico
-    ).slice(0, 5);
+    const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
+    const analise = await chamarClaudeJSON(prompt);
 
-    const prompt = montarPromptAnaliseCurriculo(textoCurriculo, vagasFiltradas);
-
-    const resposta = await chamarClaude(prompt);
+    await salvarAnaliseNaPlanilha(telefone, analise);
 
     if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
 
-    sessoes[telefone].historico.push({
-      role: "user",
-      content: "[Currículo PDF recebido]"
-    });
-
-    sessoes[telefone].historico.push({
-      role: "assistant",
-      content: resposta
-    });
-
+    sessoes[telefone].historico.push({ role: "user", content: "[Currículo PDF recebido]" });
+    sessoes[telefone].historico.push({ role: "assistant", content: analise.mensagemCandidato });
     sessoes[telefone].historico = sessoes[telefone].historico.slice(-10);
 
-    return resposta;
+    return analise.mensagemCandidato;
 
   } catch (erro) {
     console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message));
-    return "Recebi seu currículo, mas tive dificuldade para fazer a leitura automática agora. Ele ficou registrado na conversa e podemos seguir com algumas perguntas rápidas por aqui. Qual foi sua última experiência profissional?";
+    return "Recebi seu currículo, mas tive dificuldade para concluir a análise automática agora. Podemos seguir com algumas perguntas rápidas por aqui. Qual foi sua última experiência profissional?";
   }
 }
 
@@ -141,9 +113,7 @@ async function baixarELerPdf(mediaId) {
   const mediaInfo = await axios.get(
     `https://graph.facebook.com/v20.0/${mediaId}`,
     {
-      headers: {
-        Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`
-      },
+      headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` },
       timeout: 15000
     }
   );
@@ -151,9 +121,7 @@ async function baixarELerPdf(mediaId) {
   const mediaUrl = mediaInfo.data.url;
 
   const arquivo = await axios.get(mediaUrl, {
-    headers: {
-      Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`
-    },
+    headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` },
     responseType: "arraybuffer",
     timeout: 30000
   });
@@ -166,10 +134,7 @@ async function baixarELerPdf(mediaId) {
 
 async function buscarVagas() {
   try {
-    if (!CONFIG.VAGAS_URL) {
-      console.error("Erro Vagas: VAGAS_URL ausente");
-      return [];
-    }
+    if (!CONFIG.VAGAS_URL) return [];
 
     const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
     return response.data?.vagas || [];
@@ -187,9 +152,7 @@ function normalizarTexto(texto) {
 }
 
 function filtrarVagasRelevantes(vagas, texto, historico) {
-  const textoBusca = normalizarTexto(
-    texto + " " + historico.map(h => h.content).join(" ")
-  );
+  const textoBusca = normalizarTexto(texto + " " + historico.map(h => h.content).join(" "));
 
   const vagasComScore = vagas.map(vaga => {
     const textoVaga = normalizarTexto([
@@ -203,11 +166,7 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
     ].join(" "));
 
     let score = 0;
-
-    const palavras = textoBusca
-      .split(/\s+/)
-      .filter(p => p.length >= 4)
-      .slice(0, 80);
+    const palavras = textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 80);
 
     palavras.forEach(palavra => {
       if (textoVaga.includes(palavra)) score++;
@@ -227,6 +186,7 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
 
 function resumirVagas(vagas) {
   return vagas.map(vaga => ({
+    idVaga: vaga.idVaga,
     cargo: vaga.cargo,
     cidade: vaga.cidade,
     horario: vaga.horario,
@@ -280,7 +240,7 @@ Responda somente a próxima mensagem da Lia.
 `;
 }
 
-function montarPromptAnaliseCurriculo(textoCurriculo, vagas) {
+function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
   const vagasResumidas = resumirVagas(vagas);
 
   return `
@@ -288,23 +248,67 @@ Você é a Lia, da Effect Pessoas e Performance.
 
 Analise o currículo abaixo e compare com as vagas disponíveis.
 
-REGRAS:
-- Seja cuidadosa e profissional.
-- Não prometa contratação.
-- Não diga "excelente" se faltar experiência ou requisito obrigatório.
-- Se houver aderência, diga que o perfil tem aderência inicial e seguirá para análise.
-- Se não houver aderência, diga de forma acolhedora que manteremos o cadastro para oportunidades compatíveis.
-- Responda em mensagem curta de WhatsApp.
-- Não exponha análise técnica longa para o candidato.
+Responda SOMENTE em JSON válido, sem markdown, sem explicação fora do JSON.
 
-VAGAS PARA COMPARAR:
+Use exatamente esta estrutura:
+
+{
+  "nome": "",
+  "cidade": "",
+  "areaInteresse": "",
+  "vagaInteresse": "",
+  "idVaga": "",
+  "scoreGeral": 0,
+  "scoreVaga": 0,
+  "classificacao": "",
+  "motivoMatch": "",
+  "status": "",
+  "requisitoObrigatorio": "",
+  "escolaridadeCompativel": "",
+  "experienciaCompativel": "",
+  "anosExperiencia": "",
+  "pontosFortes": "",
+  "pontosAtencao": "",
+  "analiseIA": "",
+  "transporteProprio": "",
+  "cltImediato": "",
+  "observacoes": "",
+  "mensagemCandidato": ""
+}
+
+REGRAS DE CLASSIFICAÇÃO:
+- 90 a 100: Excelente
+- 70 a 89: Bom
+- 50 a 69: Parcial
+- abaixo de 50: Baixa aderência
+- Nunca use Excelente se faltar requisito obrigatório.
+- Não prometa contratação.
+- A mensagemCandidato deve ser curta, humana e adequada para WhatsApp.
+
+VAGAS:
 ${JSON.stringify(vagasResumidas, null, 2)}
 
 CURRÍCULO:
 ${textoCurriculo}
-
-Responda ao candidato de forma humana, curta e clara.
 `;
+}
+
+async function chamarClaudeTexto(prompt) {
+  const response = await chamarClaude(prompt);
+  return response;
+}
+
+async function chamarClaudeJSON(prompt) {
+  const texto = await chamarClaude(prompt);
+
+  try {
+    return JSON.parse(texto);
+  } catch (erro) {
+    const match = texto.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+
+    throw new Error("Claude não retornou JSON válido: " + texto);
+  }
 }
 
 async function chamarClaude(prompt) {
@@ -318,14 +322,9 @@ async function chamarClaude(prompt) {
       "https://api.anthropic.com/v1/messages",
       {
         model: "claude-sonnet-4-6",
-        max_tokens: 400,
-        temperature: 0.4,
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
+        max_tokens: 700,
+        temperature: 0.2,
+        messages: [{ role: "user", content: prompt }]
       },
       {
         headers: {
@@ -351,17 +350,49 @@ async function chamarClaude(prompt) {
   }
 }
 
+async function salvarAnaliseNaPlanilha(telefone, analise) {
+  try {
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+
+    const payload = {
+      acao: "salvarAnalise",
+      telefone,
+      nome: analise.nome || "",
+      cidade: analise.cidade || "",
+      areaInteresse: analise.areaInteresse || "",
+      vagaInteresse: analise.vagaInteresse || "",
+      idVaga: analise.idVaga || "",
+      scoreGeral: analise.scoreGeral || "",
+      scoreVaga: analise.scoreVaga || "",
+      classificacao: analise.classificacao || "",
+      motivoMatch: analise.motivoMatch || "",
+      status: analise.status || "Analisado pela Lia",
+      requisitoObrigatorio: analise.requisitoObrigatorio || "",
+      escolaridadeCompativel: analise.escolaridadeCompativel || "",
+      experienciaCompativel: analise.experienciaCompativel || "",
+      anosExperiencia: analise.anosExperiencia || "",
+      pontosFortes: analise.pontosFortes || "",
+      pontosAtencao: analise.pontosAtencao || "",
+      analiseIA: analise.analiseIA || "",
+      transporteProprio: analise.transporteProprio || "",
+      cltImediato: analise.cltImediato || "",
+      observacoes: analise.observacoes || ""
+    };
+
+    const response = await axios.post(urlBase, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 20000
+    });
+
+    console.log("Análise salva:", JSON.stringify(response.data));
+  } catch (erro) {
+    console.error("Erro ao salvar análise:", JSON.stringify(erro.response?.data || erro.message));
+  }
+}
+
 async function enviarMensagem(to, body) {
   try {
-    if (!CONFIG.META_ACCESS_TOKEN) {
-      console.error("Erro Meta: META_ACCESS_TOKEN ausente");
-      return;
-    }
-
-    if (!CONFIG.PHONE_NUMBER_ID) {
-      console.error("Erro Meta: PHONE_NUMBER_ID ausente");
-      return;
-    }
+    if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) return;
 
     await axios.post(
       `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
@@ -388,5 +419,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - currículo PDF ativo`);
+  console.log(`Lia rodando na porta ${PORT} - análise salva na planilha`);
 });
