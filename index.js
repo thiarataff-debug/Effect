@@ -52,7 +52,6 @@ app.post("/webhook", async (req, res) => {
 
     const resposta = await processarMensagem(from, text);
     await enviarMensagem(from, resposta);
-
   } catch (erro) {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
@@ -60,9 +59,7 @@ app.post("/webhook", async (req, res) => {
 
 async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) {
-    sessoes[telefone] = {
-      historico: []
-    };
+    sessoes[telefone] = { historico: [] };
   }
 
   const sessao = sessoes[telefone];
@@ -187,7 +184,7 @@ async function chamarClaude(prompt) {
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
       {
-        model: "claude-sonnet-4-6",
+        model: "claude-3-5-haiku-latest",
         max_tokens: 700,
         temperature: 0.4,
         messages: [
@@ -251,5 +248,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - modelo Claude 3.7`);
+  console.log(`Lia rodando na porta ${PORT} - modelo Haiku`);
 });
