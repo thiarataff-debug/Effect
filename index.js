@@ -1,139 +1,231 @@
-const SHEET_ID = "1Bqrwjjy0JwAVouppOg-LGCENrYrTsQCYrqntCBf9mSk";
+const express = require("express");
+const axios = require("axios");
 
-function doGet(e) {
-  const acao = e.parameter.acao;
+const app = express();
+app.use(express.json({ limit: "20mb" }));
 
-  if (acao === "vagas") {
-    return buscarVagas(e);
+const PORT = process.env.PORT || 3000;
+
+const CONFIG = {
+  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
+  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
+  PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
+  VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
+  VAGAS_URL: process.env.VAGAS_URL
+};
+
+const sessoes = {};
+
+app.get("/", (req, res) => {
+  res.send("Lia Effect rodando com Meta WhatsApp ✅");
+});
+
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === CONFIG.VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
   }
 
-  if (acao === "candidato") {
-    return buscarCandidato(e);
+  return res.sendStatus(403);
+});
+
+app.post("/webhook", async (req, res) => {
+  res.sendStatus(200);
+
+  try {
+    const entry = req.body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const message = value?.messages?.[0];
+
+    if (!message) return;
+
+    const from = message.from;
+    const text = message.text?.body || "";
+
+    if (!text) {
+      await enviarMensagem(from, "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?");
+      return;
+    }
+
+    const resposta = await processarMensagem(from, text);
+    await enviarMensagem(from, resposta);
+
+  } catch (erro) {
+    console.error("Erro no webhook:", erro.response?.data || erro.message);
   }
+});
 
-  return jsonResponse({
-    sucesso: false,
-    erro: "Ação inválida. Use ?acao=vagas ou ?acao=candidato"
-  });
-}
-
-function buscarVagas(e) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("VAGAS");
-
-  if (!sheet) {
-    return jsonResponse({
-      sucesso: false,
-      erro: "Aba VAGAS não encontrada"
-    });
-  }
-
-  const dados = sheet.getDataRange().getValues();
-  const cabecalho = dados[0];
-
-  const vagas = [];
-
-  for (let i = 1; i < dados.length; i++) {
-    const linha = dados[i];
-
-    const vaga = {
-      idVaga: getValor(cabecalho, linha, "ID Vaga"),
-      cliente: getValor(cabecalho, linha, "Cliente"),
-      cargo: getValor(cabecalho, linha, "Cargo"),
-      area: getValor(cabecalho, linha, "Área/Setor"),
-      cidade: getValor(cabecalho, linha, "Cidade/Bairro"),
-      horario: getValor(cabecalho, linha, "Escala/Horário"),
-      salario: getValor(cabecalho, linha, "Salário Base"),
-      beneficios: getValor(cabecalho, linha, "Benefícios"),
-      genero: getValor(cabecalho, linha, "Gênero"),
-      faixaEtaria: getValor(cabecalho, linha, "Faixa Etária"),
-      experienciaMinima: getValor(cabecalho, linha, "Exp. Mínima"),
-      perfilResumido: getValor(cabecalho, linha, "Perfil Resumido"),
-      palavrasChave: getValor(cabecalho, linha, "Palavras-chave"),
-      status: getValor(cabecalho, linha, "Status"),
-      observacoes: getValor(cabecalho, linha, "Observações"),
-
-      requisitoObrigatorio: getValor(cabecalho, linha, "Requisito Obrigatório"),
-      aceitaSemExperiencia: getValor(cabecalho, linha, "Aceita Sem Experiência"),
-      exigeFimDeSemana: getValor(cabecalho, linha, "Exige Fim de Semana"),
-      exigeTransporteProprio: getValor(cabecalho, linha, "Exige Transporte Próprio"),
-      exigeCltImediato: getValor(cabecalho, linha, "Exige CLT Imediato")
+async function processarMensagem(telefone, mensagem) {
+  if (!sessoes[telefone]) {
+    sessoes[telefone] = {
+      nome: "",
+      historico: [],
+      etapa: "inicio"
     };
-
-    if (vaga.cargo && vaga.status.toString().toLowerCase() !== "inativa") {
-      vagas.push(vaga);
-    }
   }
 
-  return jsonResponse({
-    sucesso: true,
-    total: vagas.length,
-    vagas: vagas
-  });
+  const sessao = sessoes[telefone];
+  sessao.historico.push({ role: "user", content: mensagem });
+
+  const vagas = await buscarVagas();
+
+  const prompt = montarPrompt(sessao, mensagem, vagas);
+
+  const resposta = await chamarClaude(prompt);
+
+  sessao.historico.push({ role: "assistant", content: resposta });
+
+  return resposta;
 }
 
-function buscarCandidato(e) {
-  const telefone = e.parameter.telefone;
+async function buscarVagas() {
+  try {
+    if (!CONFIG.VAGAS_URL) return [];
 
-  if (!telefone) {
-    return jsonResponse({
-      sucesso: false,
-      erro: "Telefone não informado"
-    });
+    const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
+    return response.data?.vagas || [];
+  } catch (erro) {
+    console.error("Erro ao buscar vagas:", erro.message);
+    return [];
   }
+}
 
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("Candidatos");
+function montarPrompt(sessao, mensagemAtual, vagas) {
+  const vagasResumidas = vagas.map(vaga => ({
+    idVaga: vaga.idVaga,
+    cargo: vaga.cargo,
+    area: vaga.area,
+    cliente: vaga.cliente,
+    cidade: vaga.cidade,
+    salario: vaga.salario,
+    horario: vaga.horario,
+    beneficios: vaga.beneficios,
+    escolaridade: vaga.escolaridade,
+    experienciaMinima: vaga.experienciaMinima,
+    requisitosDaVaga: vaga.requisitosDaVaga,
+    requisitoObrigatorio: vaga.requisitoObrigatorio,
+    aceitaSemExperiencia: vaga.aceitaSemExperiencia,
+    exigeFimDeSemana: vaga.exigeFimDeSemana,
+    exigeTransporteProprio: vaga.exigeTransporteProprio,
+    exigeCltImediato: vaga.exigeCltImediato,
+    perfilResumido: vaga.perfilResumido,
+    palavrasChave: vaga.palavrasChave,
+    status: vaga.status
+  }));
 
-  if (!sheet) {
-    return jsonResponse({
-      sucesso: false,
-      erro: "Aba Candidatos não encontrada"
-    });
+  return `
+Você é a Lia, da Effect Pessoas e Performance.
+
+PERSONALIDADE:
+- Humana, acolhedora, organizada, profissional e leve.
+- Nunca diga que é robô, IA, chatbot ou assistente virtual.
+- Nunca use menu numérico.
+- Nunca faça várias perguntas na mesma mensagem.
+- Faça somente uma pergunta por vez.
+- Não repita "Eu sou a Lia" se a conversa já começou.
+- Seja natural, como uma pessoa de RH conversando pelo WhatsApp.
+
+ABERTURA:
+Se for o primeiro contato, responda:
+"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
+
+CANDIDATOS:
+Conduza aos poucos e colete:
+1. Nome
+2. Cidade/bairro
+3. Área ou vaga de interesse
+4. Experiência
+5. Escolaridade
+6. Disponibilidade de horário
+7. Se possui currículo
+
+EMPRESAS:
+Se a pessoa parecer cliente/empresa, pergunte primeiro qual necessidade de contratação ou gestão de pessoas ela tem.
+
+VAGAS DISPONÍVEIS:
+${JSON.stringify(vagasResumidas, null, 2)}
+
+REGRAS DE MATCH:
+- Nunca diga que uma pessoa é excelente para uma vaga se ela não tiver experiência ou requisito obrigatório compatível.
+- Se a vaga exigir requisito obrigatório e o candidato não tiver, classifique como "sem aderência" ou "match parcial", nunca excelente.
+- Se a vaga aceitar sem experiência, pode considerar perfil iniciante.
+- Considere cidade, área, experiência, escolaridade, disponibilidade e requisitos.
+- Quando encontrar vaga compatível, explique de forma simples.
+- Não prometa contratação.
+- Use frases como: "Seu perfil pode ter aderência inicial com essa oportunidade" ou "Vou sinalizar seu interesse para análise da equipe."
+
+HISTÓRICO DA CONVERSA:
+${sessao.historico.map(h => `${h.role}: ${h.content}`).join("\n")}
+
+MENSAGEM ATUAL:
+${mensagemAtual}
+
+Responda somente a próxima mensagem da Lia para o WhatsApp.
+`;
+}
+
+async function chamarClaude(prompt) {
+  try {
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      {
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 700,
+        temperature: 0.4,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      },
+      {
+        headers: {
+          "x-api-key": CONFIG.CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json"
+        },
+        timeout: 30000
+      }
+    );
+
+    return response.data?.content?.[0]?.text || "Tive uma instabilidade aqui. Pode me mandar novamente?";
+  } catch (erro) {
+    console.error("Erro Claude:", erro.response?.data || erro.message);
+    return "Tive uma instabilidade aqui. Pode me mandar novamente?";
   }
+}
 
-  const dados = sheet.getDataRange().getValues();
-  const cabecalho = dados[0];
-
-  for (let i = 1; i < dados.length; i++) {
-    const linha = dados[i];
-    const telefoneLinha = getValor(cabecalho, linha, "Telefone");
-
-    if (normalizarTelefone(telefoneLinha) === normalizarTelefone(telefone)) {
-      return jsonResponse({
-        sucesso: true,
-        encontrado: true,
-        candidato: montarObjeto(cabecalho, linha)
-      });
-    }
+async function enviarMensagem(to, body) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: {
+          preview_url: false,
+          body
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 15000
+      }
+    );
+  } catch (erro) {
+    console.error("Erro ao enviar WhatsApp:", erro.response?.data || erro.message);
   }
-
-  return jsonResponse({
-    sucesso: true,
-    encontrado: false
-  });
 }
 
-function getValor(cabecalho, linha, nomeColuna) {
-  const index = cabecalho.indexOf(nomeColuna);
-  if (index === -1) return "";
-  return linha[index] || "";
-}
-
-function montarObjeto(cabecalho, linha) {
-  const obj = {};
-  cabecalho.forEach((coluna, index) => {
-    obj[coluna] = linha[index] || "";
-  });
-  return obj;
-}
-
-function normalizarTelefone(valor) {
-  return String(valor || "").replace(/\D/g, "");
-}
-
-function jsonResponse(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+app.listen(PORT, () => {
+  console.log(`Lia rodando na porta ${PORT}`);
+});
