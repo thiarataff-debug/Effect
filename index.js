@@ -66,6 +66,29 @@ async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
 
   const sessao = sessoes[telefone];
+
+  if (sessao.aguardandoConfirmacaoInteresse && ehConfirmacaoInteresse(mensagem)) {
+    await confirmarInteresseNaPlanilha(telefone, sessao.ultimaAnalise);
+    await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
+
+    sessao.aguardandoConfirmacaoInteresse = false;
+
+    sessao.historico.push({ role: "user", content: mensagem });
+    sessao.historico.push({
+      role: "assistant",
+      content: "Interesse confirmado e registrado."
+    });
+    sessao.historico = sessao.historico.slice(-10);
+
+    return `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊
+
+Já registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.
+
+Caso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.
+
+Obrigada pelo interesse e boa sorte! 💙`;
+  }
+
   sessao.historico.push({ role: "user", content: mensagem });
   sessao.historico = sessao.historico.slice(-10);
 
@@ -98,6 +121,9 @@ async function processarCurriculo(telefone, documento) {
     await enviarAlertaThiara(analise, telefone);
 
     if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
+
+    sessoes[telefone].aguardandoConfirmacaoInteresse = true;
+    sessoes[telefone].ultimaAnalise = analise;
 
     sessoes[telefone].historico.push({ role: "user", content: "[Currículo PDF recebido e analisado]" });
     sessoes[telefone].historico.push({ role: "assistant", content: analise.mensagemCandidato });
@@ -226,6 +252,7 @@ REGRAS:
 - Prefira frases como: "Prazer em falar com você, [nome].", "Perfeito, [nome]." ou "Obrigada pelas informações, [nome]."
 - Responda curto, como WhatsApp.
 - Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
+- Se o candidato acabou de confirmar interesse em uma vaga, não volte a perguntar dados básicos.
 
 ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
@@ -291,9 +318,39 @@ REGRAS DE CLASSIFICAÇÃO:
 - abaixo de 50: Reprovado
 - Nunca use Excelente se faltar requisito obrigatório.
 - Não prometa contratação.
-- A mensagemCandidato deve ser curta, humana e adequada para WhatsApp.
-- A mensagemCandidato NÃO deve elogiar o nome da pessoa.
-- Não use frases como "que nome lindo", "amei seu nome" ou semelhantes.
+
+FORMATO DA mensagemCandidato:
+A mensagemCandidato deve seguir este modelo, com quebras de linha:
+
+😊 Olá, {NOME}!
+
+Analisei seu currículo e encontrei uma oportunidade que pode fazer sentido para sua experiência profissional.
+
+📍 {CARGO}
+📍 {CIDADE}
+
+Seu histórico com:
+
+• {PONTO FORTE 1}
+• {PONTO FORTE 2}
+• {PONTO FORTE 3}
+
+apresentou compatibilidade com o perfil que estamos buscando.
+
+Você teria interesse em participar deste processo seletivo?
+
+Fico à disposição. 💙
+
+REGRAS DA mensagemCandidato:
+- Não mostrar score.
+- Não mostrar classificação.
+- Não falar em IA ou análise automática.
+- Não elogiar o nome.
+- Não usar "que nome lindo", "amei seu nome" ou semelhantes.
+- Não usar textos longos.
+- Sempre quebrar em parágrafos.
+- Sempre utilizar marcadores com "•" nos pontos fortes.
+- Não prometer contratação.
 
 VAGAS:
 ${JSON.stringify(vagasResumidas, null, 2)}
@@ -399,6 +456,45 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
   }
 }
 
+async function confirmarInteresseNaPlanilha(telefone, analise) {
+  try {
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+
+    const payload = {
+      acao: "confirmarInteresse",
+      telefone,
+      vagaInteresse: analise?.vagaInteresse || "",
+      idVaga: analise?.idVaga || ""
+    };
+
+    const response = await axios.post(urlBase, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 20000
+    });
+
+    console.log("Interesse confirmado:", JSON.stringify(response.data));
+  } catch (erro) {
+    console.error("Erro ao confirmar interesse:", JSON.stringify(erro.response?.data || erro.message));
+  }
+}
+
+function ehConfirmacaoInteresse(mensagem) {
+  const texto = normalizarTexto(mensagem);
+
+  return [
+    "sim",
+    "tenho interesse",
+    "quero",
+    "quero participar",
+    "aceito",
+    "tenho sim",
+    "pode ser",
+    "tenho disponibilidade",
+    "tenho",
+    "ok"
+  ].some(palavra => texto === palavra || texto.includes(palavra));
+}
+
 async function enviarAlertaThiara(analise, telefone) {
   try {
     const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
@@ -408,36 +504,71 @@ async function enviarAlertaThiara(analise, telefone) {
       return;
     }
 
-    const texto = `🎯 Candidato com alta aderência
+    const texto = `🚨 NOVO MATCH IDENTIFICADO
 
-👤 Nome:
-${analise.nome || "Não identificado"}
+👤 ${analise.nome || "Não identificado"}
 
 📌 Vaga:
 ${analise.vagaInteresse || "Não identificada"}
 
-📊 Score:
-${analise.scoreVaga || analise.scoreGeral || "Não informado"}
-
-⭐ Classificação:
-${analise.classificacao || "Não informada"}
-
 📍 Cidade:
 ${analise.cidade || "Não informada"}
 
-📝 Motivo:
-${analise.motivoMatch || "Não informado"}
+⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}
+🏅 Classificação: ${analise.classificacao || "Não informada"}
 
-📱 WhatsApp do candidato:
-+${telefone}
+💼 Pontos fortes:
+${formatarLista(analise.pontosFortes)}
 
-💙 Análise gerada automaticamente pela Lia.`;
+📱 WhatsApp:
++${telefone}`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
     console.log("Alerta enviado para Thiara");
   } catch (erro) {
     console.error("Erro ao enviar alerta para Thiara:", JSON.stringify(erro.response?.data || erro.message));
   }
+}
+
+async function enviarAlertaInteresseThiara(analise, telefone) {
+  try {
+    const texto = `✅ CANDIDATO CONFIRMOU INTERESSE
+
+👤 ${analise?.nome || "Não identificado"}
+
+📌 Vaga:
+${analise?.vagaInteresse || "Não identificada"}
+
+📍 Cidade:
+${analise?.cidade || "Não informada"}
+
+⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}
+🏅 Classificação: ${analise?.classificacao || "Não informada"}
+
+📱 WhatsApp:
++${telefone}
+
+✅ O candidato confirmou interesse na oportunidade.`;
+
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
+    console.log("Alerta de interesse enviado para Thiara");
+  } catch (erro) {
+    console.error("Erro ao enviar alerta de interesse:", JSON.stringify(erro.response?.data || erro.message));
+  }
+}
+
+function formatarLista(texto) {
+  if (!texto) return "Não informado";
+
+  const partes = String(texto)
+    .split(/;|,|\n/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+  if (partes.length === 0) return texto;
+
+  return partes.map(p => `• ${p}`).join("\n");
 }
 
 async function enviarMensagem(to, body) {
@@ -469,5 +600,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - sem elogio ao nome`);
+  console.log(`Lia rodando na porta ${PORT} - mensagem formatada e interesse ativo`);
 });
