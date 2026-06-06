@@ -22,11 +22,10 @@ function getGoogleAuth() {
 
   return new google.auth.GoogleAuth({
     credentials,
-    scopes: [
-      "https://www.googleapis.com/auth/spreadsheets"
-    ],
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 }
+
 function getDriveAuth() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
@@ -173,7 +172,7 @@ async function buscarCandidato(telefone) {
 
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Candidatos!A:K",
+      range: "Candidatos",
     });
 
     const rows = res.data.values || [];
@@ -224,7 +223,7 @@ async function salvarCandidato(telefone, dados) {
     } else {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: "Candidatos!A:K",
+        range: "Candidatos",
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values: [[
@@ -255,7 +254,7 @@ async function buscarVagasCompativeis(area) {
 
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Vagas!A:L",
+      range: "Vagas",
     });
 
     const rows = res.data.values || [];
@@ -362,18 +361,11 @@ Retorne APENAS o JSON, sem texto adicional, sem markdown.
 Campos:
 - nome: nome completo ou null
 - cidade: cidade ou estado ou null
-- area: área ou cargo de interesse. Exemplos: "cozinha", "cozinheiro", "auxiliar de cozinha", "garçom", "salão", "logística", "limpeza", "RH", "administrativo". Não limite às opções.
+- area: área ou cargo de interesse.
 - curriculo: "Sim", "Não" ou null
 - pediu_humano: true ou false
 - vaga_interesse: cargo exato da vaga escolhida ou null
 - obs: observação em até 10 palavras ou null
-
-Regras:
-- Se a pessoa pedir vaga de cozinha, cozinheiro, chapeiro, auxiliar de cozinha ou ajudante de cozinha, area deve ser relacionada a cozinha.
-- Se a pessoa pedir garçom, atendimento ou salão, area deve ser relacionada a salão/atendimento.
-- Se a pessoa pedir logística ou estoque, area deve ser relacionada a logística.
-- Se a pessoa pedir limpeza ou serviços gerais, area deve ser relacionada a limpeza/serviços gerais.
-- Preserve o máximo possível o termo que a pessoa usou.
 
 Conversa:
 ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`).join("\n")}`;
@@ -399,114 +391,6 @@ ${historico.map(m => `${m.role === "user" ? "Candidato" : "Lia"}: ${m.content}`)
   } catch (e) {
     console.error("Erro ao extrair dados:", e.message);
     return {};
-  }
-}
-
-async function enviarRetornosNegativos() {
-  try {
-    const auth = getGoogleAuth();
-    const sheets = google.sheets({ version: "v4", auth });
-
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: "Candidatos!A:K",
-    });
-
-    const rows = res.data.values || [];
-    const hoje = new Date();
-    const ontem = new Date(hoje);
-    ontem.setDate(ontem.getDate() - 1);
-    const ontemStr = ontem.toLocaleDateString("pt-BR");
-
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-
-      const telefone = row[0] || "";
-      const nome = row[1] || "";
-      const status = normalizarTexto(row[6]);
-      const ultimaInteracao = row[8] || "";
-      const vagaInteresse = row[10] || "";
-      const retornoEnviado = (row[9] || "").includes("Retorno enviado");
-
-      if (status === "descartado" && ultimaInteracao === ontemStr && !retornoEnviado && telefone) {
-        const nomePrimeiro = nome.split(" ")[0] || "candidato(a)";
-
-        const mensagem = vagaInteresse
-          ? `Olá, ${nomePrimeiro}! 😊\n\nPassando para te dar um retorno sobre o processo seletivo para a vaga de *${vagaInteresse}* na Effect Pessoas & Performance.\n\nApós análise cuidadosa do seu perfil, desta vez não seguiremos com sua candidatura para essa oportunidade específica.\n\nSeu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\nObrigada pela confiança na Effect!\n*Equipe Effect Pessoas & Performance*`
-          : `Olá, ${nomePrimeiro}! 😊\n\nPassando para te dar um retorno sobre o seu cadastro na Effect Pessoas & Performance.\n\nApós análise cuidadosa do seu perfil, no momento não temos uma oportunidade compatível com seu histórico.\n\nSeu cadastro permanece em nosso banco de talentos e entraremos em contato assim que surgir uma vaga compatível com seu perfil 💙\n\nObrigada pela confiança na Effect!\n*Equipe Effect Pessoas & Performance*`;
-
-        await sendWhatsAppMessage(telefone, mensagem);
-
-        const obsAtual = row[9] || "";
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID,
-          range: `Candidatos!J${i + 1}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: {
-            values: [[`${obsAtual} | Retorno enviado: ${hoje.toLocaleDateString("pt-BR")}`]],
-          },
-        });
-
-        await new Promise(r => setTimeout(r, 2000));
-      }
-    }
-
-    console.log("Verificação de retornos negativos concluída.");
-  } catch (e) {
-    console.error("Erro ao enviar retornos negativos:", e.message);
-  }
-}
-
-function agendarRetornos() {
-  const agora = new Date();
-  const proximaNove = new Date();
-
-  proximaNove.setHours(12, 0, 0, 0);
-
-  if (agora >= proximaNove) {
-    proximaNove.setDate(proximaNove.getDate() + 1);
-  }
-
-  const msAteNove = proximaNove - agora;
-
-  setTimeout(() => {
-    enviarRetornosNegativos();
-    setInterval(enviarRetornosNegativos, 24 * 60 * 60 * 1000);
-  }, msAteNove);
-
-  console.log(`Retornos agendados para ${proximaNove.toLocaleString("pt-BR")}`);
-}
-
-agendarRetornos();
-
-async function notificarAtendimentoHumano(telefone, nome, area, cidade) {
-  try {
-    const horario = new Date().toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    });
-
-    await sendWhatsAppMessage(
-      NUMERO_THIARATAFF,
-      `🔔 *Atendimento humano solicitado*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n📍 *Cidade:* ${cidade || "Não informada"}\n💼 *Área:* ${area || "Não informada"}\n🕐 *Horário:* ${horario}\n\n_Responda diretamente para esse número no WhatsApp._`
-    );
-  } catch (e) {
-    console.error("Erro ao notificar atendimento:", e.message);
-  }
-}
-
-async function notificarCurriculoRecebido(telefone, nome, nomeArquivo, linkDrive) {
-  try {
-    const horario = new Date().toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    });
-
-    await sendWhatsAppMessage(
-      NUMERO_THIARATAFF,
-      `📄 *Currículo recebido*\n\n👤 *Candidato:* ${nome || "Não informado"}\n📱 *WhatsApp:* +${telefone}\n📁 *Arquivo:* ${nomeArquivo}\n🕐 *Horário:* ${horario}\n${linkDrive ? `🔗 *Drive:* ${linkDrive}` : ""}`
-    );
-  } catch (e) {
-    console.error("Erro ao notificar currículo:", e.message);
   }
 }
 
@@ -549,58 +433,11 @@ Que bom falar com você. Como posso te ajudar hoje? 😊"
 
 Nunca repita essa apresentação depois.
 
-CONDUÇÃO:
-- Faça apenas UMA pergunta por vez.
-- Nunca faça interrogatório.
-- Nunca transforme a conversa em formulário.
-- Nunca repita perguntas já respondidas.
-- Leia todo o contexto antes de responder.
-- Demonstre interesse genuíno pelo candidato.
-
 VAGAS — REGRA PRIORITÁRIA:
 - Sempre que houver [VAGAS_ENCONTRADAS], apresente TODAS as vagas imediatamente.
-- Esta regra tem prioridade sobre qualquer outra instrução.
-- Nunca peça currículo, experiência, escolaridade ou disponibilidade antes de mostrar as vagas encontradas.
-- Nunca diga que não há vaga se existir [VAGAS_ENCONTRADAS] no contexto.
+- Nunca peça currículo antes de mostrar as vagas encontradas.
+- Nunca diga que não há vaga se existir [VAGAS_ENCONTRADAS].
 - Use exatamente as informações recebidas em [VAGAS_ENCONTRADAS].
-- Se existir [NENHUMA_VAGA_ENCONTRADA], somente então solicite currículo para banco de talentos.
-
-QUANDO HOUVER VAGAS:
-"Ótima notícia! 😊
-
-Encontrei estas oportunidades para você:
-
-[VAGAS_ENCONTRADAS]
-
-Alguma delas chamou sua atenção?"
-
-QUANDO NÃO HOUVER VAGAS:
-"Registrei seu interesse. No momento não temos vagas abertas compatíveis, mas você ficará em nosso banco de talentos 💙
-Consegue me enviar seu currículo?"
-
-CURRÍCULO:
-- Solicite currículo somente depois de apresentar as vagas ou depois de confirmar que não há vaga compatível.
-- Se a pessoa enviar currículo, confirme recebimento com acolhimento.
-
-EMPRESAS:
-Se a pessoa for empresa:
-- Descubra a necessidade primeiro.
-- Entenda o contexto.
-- Depois apresente os serviços da Effect.
-
-ATENDIMENTO HUMANO:
-Se a pessoa solicitar falar com alguém:
-"Claro! 😊
-Vou encaminhar sua solicitação para nossa equipe e em breve alguém fará contato."
-
-THIARA:
-Se identificar que está falando com Thiara:
-- Seja mais direta.
-- Considere Thiara administradora da Effect.
-- Não trate Thiara como candidata.
-
-OBJETIVO:
-Seu objetivo é fazer com que cada pessoa se sinta acolhida, compreendida e bem atendida, conduzindo a conversa de forma natural até uma oportunidade ou atendimento adequado.
 `;
 
 app.get("/", (req, res) => {
@@ -635,68 +472,7 @@ app.post("/webhook", async (req, res) => {
     const isDocument = message.type === "document";
     const isImage = message.type === "image";
 
-    if (!text && !isDocument && !isImage) {
-      await sendWhatsAppMessage(
-        from,
-        "Recebi sua mensagem. No momento consigo responder melhor mensagens em texto."
-      );
-
-      return res.sendStatus(200);
-    }
-
     let userInput = text;
-
-    if (isDocument || isImage) {
-      const mediaId = message.document?.id || message.image?.id;
-      const fileName = message.document?.filename || "curriculo";
-      const mimeType =
-        message.document?.mime_type ||
-        message.image?.mime_type ||
-        "application/octet-stream";
-
-      userInput = `O candidato enviou o currículo (arquivo: ${fileName}). Confirme o recebimento de forma acolhedora e informe que a equipe irá analisar e entrar em contato em breve.`;
-
-      const existente = await buscarCandidato(from);
-      const dadosAtuais = existente?.dados || [];
-
-      const score = calcularScore({
-        nome: dadosAtuais[1],
-        cidade: dadosAtuais[2],
-        area: dadosAtuais[3],
-        curriculo: "Sim",
-      });
-
-      let linkDrive = null;
-
-      if (mediaId) {
-        const fileInfo = await getWhatsAppFileUrl(mediaId);
-
-        if (fileInfo) {
-          const uploaded = await salvarCurriculoNoDrive(
-            from,
-            dadosAtuais[1],
-            fileInfo.url,
-            fileName,
-            fileInfo.mimeType || mimeType
-          );
-
-          if (uploaded) linkDrive = uploaded.link;
-        }
-      }
-
-      await salvarCandidato(from, {
-        nome: dadosAtuais[1],
-        cidade: dadosAtuais[2],
-        area: dadosAtuais[3],
-        curriculo: "Sim",
-        score,
-        status: "Currículo recebido",
-        obs: linkDrive ? `Drive: ${linkDrive}` : `Arquivo: ${fileName}`,
-        vaga_interesse: dadosAtuais[10] || "",
-      });
-
-      await notificarCurriculoRecebido(from, dadosAtuais[1], fileName, linkDrive);
-    }
 
     if (!conversationHistory[from]) {
       conversationHistory[from] = [];
@@ -720,20 +496,6 @@ app.post("/webhook", async (req, res) => {
         ...dadosExtraidos,
         score: calcularScore(dadosExtraidos),
       });
-
-      if (
-        dadosExtraidos.pediu_humano === true &&
-        !atendimentoHumanoNotificado[from]
-      ) {
-        atendimentoHumanoNotificado[from] = true;
-
-        await notificarAtendimentoHumano(
-          from,
-          dadosExtraidos.nome,
-          dadosExtraidos.area,
-          dadosExtraidos.cidade
-        );
-      }
     }
 
     const areaParaBuscar = dadosExtraidos?.area || text;
