@@ -176,7 +176,7 @@ const termos = areaCandidate
 
 const textoVaga = `${cargoVaga} ${areaVaga}`;
 
-if (status === "aberta" && areaCandidate && termos.some(t => textoVaga.includes(t))) {
+if (status.includes("abert") && areaCandidate && termos.some(t => textoVaga.includes(t))) {
         vagas.push({
           id: row[0], cargo: row[1], area: row[2], empresa: row[3],
           cidade: row[4], salario: row[5], turno: row[8],
