@@ -220,6 +220,10 @@ REGRAS:
 - Faça somente uma pergunta por vez.
 - Não repita "Eu sou a Lia" se a conversa já começou.
 - Seja humana, acolhedora, organizada, profissional e leve.
+- Seja simpática, mas sem exageros.
+- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.
+- Use o nome do candidato de forma natural e profissional.
+- Prefira frases como: "Prazer em falar com você, [nome].", "Perfeito, [nome]." ou "Obrigada pelas informações, [nome]."
 - Responda curto, como WhatsApp.
 - Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
 
@@ -288,6 +292,8 @@ REGRAS DE CLASSIFICAÇÃO:
 - Nunca use Excelente se faltar requisito obrigatório.
 - Não prometa contratação.
 - A mensagemCandidato deve ser curta, humana e adequada para WhatsApp.
+- A mensagemCandidato NÃO deve elogiar o nome da pessoa.
+- Não use frases como "que nome lindo", "amei seu nome" ou semelhantes.
 
 VAGAS:
 ${JSON.stringify(vagasResumidas, null, 2)}
@@ -463,5 +469,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - alerta Thiara ativo`);
+  console.log(`Lia rodando na porta ${PORT} - sem elogio ao nome`);
 });
