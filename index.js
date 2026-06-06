@@ -1,5 +1,6 @@
 const express = require("express");
 const axios = require("axios");
+const pdfParse = require("pdf-parse");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -40,15 +41,25 @@ app.post("/webhook", async (req, res) => {
     if (!message) return;
 
     const from = message.from;
-    const text = message.text?.body || "";
 
-    if (!text) {
-      await enviarMensagem(from, "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?");
+    if (message.text?.body) {
+      const resposta = await processarMensagem(from, message.text.body);
+      await enviarMensagem(from, resposta);
       return;
     }
 
-    const resposta = await processarMensagem(from, text);
-    await enviarMensagem(from, resposta);
+    if (message.document) {
+      await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
+
+      const resposta = await processarCurriculo(from, message.document);
+      await enviarMensagem(from, resposta);
+      return;
+    }
+
+    await enviarMensagem(
+      from,
+      "Recebi sua mensagem. Pode me enviar em texto ou encaminhar o currículo em PDF por aqui?"
+    );
 
   } catch (erro) {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
@@ -67,11 +78,10 @@ async function processarMensagem(telefone, mensagem) {
     content: mensagem
   });
 
-  // Mantém só as últimas 10 mensagens para não estourar limite de tokens
   sessao.historico = sessao.historico.slice(-10);
 
   const vagas = await buscarVagas();
-  const prompt = montarPrompt(sessao, mensagem, vagas);
+  const prompt = montarPromptConversa(sessao, mensagem, vagas);
   const resposta = await chamarClaude(prompt);
 
   sessao.historico.push({
@@ -82,6 +92,76 @@ async function processarMensagem(telefone, mensagem) {
   sessao.historico = sessao.historico.slice(-10);
 
   return resposta;
+}
+
+async function processarCurriculo(telefone, documento) {
+  try {
+    const textoCurriculo = await baixarELerPdf(documento.id);
+
+    if (!textoCurriculo || textoCurriculo.length < 50) {
+      return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar em PDF com texto legível ou me mandar um resumo da sua experiência por aqui?";
+    }
+
+    const vagas = await buscarVagas();
+    const sessao = sessoes[telefone] || { historico: [] };
+
+    const vagasFiltradas = filtrarVagasRelevantes(
+      vagas,
+      textoCurriculo,
+      sessao.historico
+    ).slice(0, 5);
+
+    const prompt = montarPromptAnaliseCurriculo(textoCurriculo, vagasFiltradas);
+
+    const resposta = await chamarClaude(prompt);
+
+    if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
+
+    sessoes[telefone].historico.push({
+      role: "user",
+      content: "[Currículo PDF recebido]"
+    });
+
+    sessoes[telefone].historico.push({
+      role: "assistant",
+      content: resposta
+    });
+
+    sessoes[telefone].historico = sessoes[telefone].historico.slice(-10);
+
+    return resposta;
+
+  } catch (erro) {
+    console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message));
+    return "Recebi seu currículo, mas tive dificuldade para fazer a leitura automática agora. Ele ficou registrado na conversa e podemos seguir com algumas perguntas rápidas por aqui. Qual foi sua última experiência profissional?";
+  }
+}
+
+async function baixarELerPdf(mediaId) {
+  const mediaInfo = await axios.get(
+    `https://graph.facebook.com/v20.0/${mediaId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`
+      },
+      timeout: 15000
+    }
+  );
+
+  const mediaUrl = mediaInfo.data.url;
+
+  const arquivo = await axios.get(mediaUrl, {
+    headers: {
+      Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`
+    },
+    responseType: "arraybuffer",
+    timeout: 30000
+  });
+
+  const buffer = Buffer.from(arquivo.data);
+  const pdfData = await pdfParse(buffer);
+
+  return String(pdfData.text || "").slice(0, 12000);
 }
 
 async function buscarVagas() {
@@ -106,9 +186,9 @@ function normalizarTexto(texto) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function filtrarVagasRelevantes(vagas, mensagemAtual, historico) {
+function filtrarVagasRelevantes(vagas, texto, historico) {
   const textoBusca = normalizarTexto(
-    mensagemAtual + " " + historico.map(h => h.content).join(" ")
+    texto + " " + historico.map(h => h.content).join(" ")
   );
 
   const vagasComScore = vagas.map(vaga => {
@@ -124,7 +204,10 @@ function filtrarVagasRelevantes(vagas, mensagemAtual, historico) {
 
     let score = 0;
 
-    const palavras = textoBusca.split(/\s+/).filter(p => p.length >= 4);
+    const palavras = textoBusca
+      .split(/\s+/)
+      .filter(p => p.length >= 4)
+      .slice(0, 80);
 
     palavras.forEach(palavra => {
       if (textoVaga.includes(palavra)) score++;
@@ -142,10 +225,8 @@ function filtrarVagasRelevantes(vagas, mensagemAtual, historico) {
   return filtradas.length > 0 ? filtradas : vagas.slice(0, 8);
 }
 
-function montarPrompt(sessao, mensagemAtual, vagas) {
-  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagemAtual, sessao.historico);
-
-  const vagasResumidas = vagasFiltradas.map(vaga => ({
+function resumirVagas(vagas) {
+  return vagas.map(vaga => ({
     cargo: vaga.cargo,
     cidade: vaga.cidade,
     horario: vaga.horario,
@@ -157,6 +238,11 @@ function montarPrompt(sessao, mensagemAtual, vagas) {
     perfilResumido: vaga.perfilResumido,
     palavrasChave: vaga.palavrasChave
   }));
+}
+
+function montarPromptConversa(sessao, mensagemAtual, vagas) {
+  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagemAtual, sessao.historico);
+  const vagasResumidas = resumirVagas(vagasFiltradas);
 
   const historicoCurto = sessao.historico
     .slice(-8)
@@ -178,19 +264,11 @@ ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
 "Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
 
-COLETA DE CANDIDATO:
-Colete aos poucos:
-Nome, cidade/bairro, área ou vaga de interesse, experiência, escolaridade, disponibilidade e currículo.
+COLETA:
+Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
 
 VAGAS RELEVANTES:
 ${JSON.stringify(vagasResumidas, null, 2)}
-
-MATCH:
-- Nunca classifique como excelente se faltar experiência ou requisito obrigatório.
-- Se a vaga exigir requisito obrigatório e a pessoa não tiver, diga que precisa avaliar melhor.
-- Se a vaga aceitar sem experiência, pode considerar perfil iniciante.
-- Não prometa contratação.
-- Use: "seu perfil pode ter aderência inicial" ou "vou sinalizar seu interesse para análise da equipe."
 
 HISTÓRICO RECENTE:
 ${historicoCurto}
@@ -199,6 +277,33 @@ MENSAGEM ATUAL:
 ${mensagemAtual}
 
 Responda somente a próxima mensagem da Lia.
+`;
+}
+
+function montarPromptAnaliseCurriculo(textoCurriculo, vagas) {
+  const vagasResumidas = resumirVagas(vagas);
+
+  return `
+Você é a Lia, da Effect Pessoas e Performance.
+
+Analise o currículo abaixo e compare com as vagas disponíveis.
+
+REGRAS:
+- Seja cuidadosa e profissional.
+- Não prometa contratação.
+- Não diga "excelente" se faltar experiência ou requisito obrigatório.
+- Se houver aderência, diga que o perfil tem aderência inicial e seguirá para análise.
+- Se não houver aderência, diga de forma acolhedora que manteremos o cadastro para oportunidades compatíveis.
+- Responda em mensagem curta de WhatsApp.
+- Não exponha análise técnica longa para o candidato.
+
+VAGAS PARA COMPARAR:
+${JSON.stringify(vagasResumidas, null, 2)}
+
+CURRÍCULO:
+${textoCurriculo}
+
+Responda ao candidato de forma humana, curta e clara.
 `;
 }
 
@@ -283,5 +388,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - versão otimizada sem estouro de tokens`);
+  console.log(`Lia rodando na porta ${PORT} - currículo PDF ativo`);
 });
