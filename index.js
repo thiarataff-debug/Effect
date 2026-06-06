@@ -322,7 +322,7 @@ async function chamarClaude(prompt) {
       "https://api.anthropic.com/v1/messages",
       {
         model: "claude-sonnet-4-6",
-        max_tokens: 700,
+        max_tokens: 1800,
         temperature: 0.2,
         messages: [{ role: "user", content: prompt }]
       },
