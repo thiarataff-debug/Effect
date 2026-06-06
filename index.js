@@ -27,6 +27,13 @@ const REGIOES = {
 const conversationHistory = {};
 const conversationState = {};
 
+function resetarConversa(from) {
+  delete conversationState[from];
+  delete conversationHistory[from];
+  conversationState[from] = {};
+  conversationHistory[from] = [];
+}
+
 function normalizarTexto(texto) {
   return (texto || "")
     .toString()
@@ -400,9 +407,14 @@ app.post("/webhook", async (req, res) => {
     const text = message.text?.body || "";
     const isDocument = message.type === "document";
     const isImage = message.type === "image";
+    const textoNormalizado = normalizarTexto(text);
 
     if (!conversationHistory[from]) conversationHistory[from] = [];
     if (!conversationState[from]) conversationState[from] = {};
+
+    if (["oi", "ola", "olá", "bom dia", "boa tarde", "boa noite"].includes(textoNormalizado)) {
+      resetarConversa(from);
+    }
 
     const state = conversationState[from];
 
@@ -453,8 +465,7 @@ app.post("/webhook", async (req, res) => {
         "Perfeito, recebi seu currículo com sucesso! 💙\n\nSeu currículo ficou registrado para avaliação. Caso seu perfil atenda aos requisitos da vaga, entraremos em contato para os próximos passos."
       );
 
-      delete conversationState[from];
-      delete conversationHistory[from];
+      resetarConversa(from);
 
       return res.sendStatus(200);
     }
@@ -516,6 +527,14 @@ app.post("/webhook", async (req, res) => {
       }
     }
 
+    const mensagensEncerramento = ["obrigado", "obrigada", "obg", "valeu", "tchau", "até"];
+
+    if (mensagensEncerramento.some(p => textoNormalizado === p || textoNormalizado.includes(p))) {
+      await sendWhatsAppMessage(from, "Por nada! 😊 Fico à disposição. 💙");
+      resetarConversa(from);
+      return res.sendStatus(200);
+    }
+
     const dadosExtraidos = await extrairDadosDaConversa(conversationHistory[from]);
 
     if (dadosExtraidos?.nome) state.nome = dadosExtraidos.nome;
@@ -526,14 +545,6 @@ app.post("/webhook", async (req, res) => {
       ...dadosExtraidos,
       score: calcularScore(dadosExtraidos),
     });
-
-    const textoNormalizado = normalizarTexto(text);
-
-    const mensagensEncerramento = ["obrigado", "obrigada", "obg", "valeu", "tchau", "até"];
-    if (mensagensEncerramento.some(p => textoNormalizado === p || textoNormalizado.includes(p))) {
-      await sendWhatsAppMessage(from, "Por nada! 😊 Fico à disposição. 💙");
-      return res.sendStatus(200);
-    }
 
     if (!state.areaInteresse) {
       state.areaInteresse = dadosExtraidos?.area || text;
