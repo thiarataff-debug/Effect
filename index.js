@@ -12,7 +12,8 @@ const CONFIG = {
   META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
   VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
-  VAGAS_URL: process.env.VAGAS_URL
+  VAGAS_URL: process.env.VAGAS_URL,
+  THIARA_WHATSAPP: "5527997925288"
 };
 
 const sessoes = {};
@@ -94,10 +95,11 @@ async function processarCurriculo(telefone, documento) {
     const analise = await chamarClaudeJSON(prompt);
 
     await salvarAnaliseNaPlanilha(telefone, analise);
+    await enviarAlertaThiara(analise, telefone);
 
     if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
 
-    sessoes[telefone].historico.push({ role: "user", content: "[Currículo PDF recebido]" });
+    sessoes[telefone].historico.push({ role: "user", content: "[Currículo PDF recebido e analisado]" });
     sessoes[telefone].historico.push({ role: "assistant", content: analise.mensagemCandidato });
     sessoes[telefone].historico = sessoes[telefone].historico.slice(-10);
 
@@ -219,6 +221,7 @@ REGRAS:
 - Não repita "Eu sou a Lia" se a conversa já começou.
 - Seja humana, acolhedora, organizada, profissional e leve.
 - Responda curto, como WhatsApp.
+- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
 
 ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
@@ -226,6 +229,7 @@ Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
 
 COLETA:
 Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
+Se o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.
 
 VAGAS RELEVANTES:
 ${JSON.stringify(vagasResumidas, null, 2)}
@@ -279,8 +283,8 @@ Use exatamente esta estrutura:
 REGRAS DE CLASSIFICAÇÃO:
 - 90 a 100: Excelente
 - 70 a 89: Bom
-- 50 a 69: Parcial
-- abaixo de 50: Baixa aderência
+- 50 a 69: Regular
+- abaixo de 50: Reprovado
 - Nunca use Excelente se faltar requisito obrigatório.
 - Não prometa contratação.
 - A mensagemCandidato deve ser curta, humana e adequada para WhatsApp.
@@ -294,8 +298,7 @@ ${textoCurriculo}
 }
 
 async function chamarClaudeTexto(prompt) {
-  const response = await chamarClaude(prompt);
-  return response;
+  return await chamarClaude(prompt);
 }
 
 async function chamarClaudeJSON(prompt) {
@@ -390,6 +393,47 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
   }
 }
 
+async function enviarAlertaThiara(analise, telefone) {
+  try {
+    const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
+    const classificacao = String(analise.classificacao || "").toLowerCase();
+
+    if (score < 80 && !classificacao.includes("excelente")) {
+      return;
+    }
+
+    const texto = `🎯 Candidato com alta aderência
+
+👤 Nome:
+${analise.nome || "Não identificado"}
+
+📌 Vaga:
+${analise.vagaInteresse || "Não identificada"}
+
+📊 Score:
+${analise.scoreVaga || analise.scoreGeral || "Não informado"}
+
+⭐ Classificação:
+${analise.classificacao || "Não informada"}
+
+📍 Cidade:
+${analise.cidade || "Não informada"}
+
+📝 Motivo:
+${analise.motivoMatch || "Não informado"}
+
+📱 WhatsApp do candidato:
++${telefone}
+
+💙 Análise gerada automaticamente pela Lia.`;
+
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
+    console.log("Alerta enviado para Thiara");
+  } catch (erro) {
+    console.error("Erro ao enviar alerta para Thiara:", JSON.stringify(erro.response?.data || erro.message));
+  }
+}
+
 async function enviarMensagem(to, body) {
   try {
     if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) return;
@@ -419,5 +463,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - análise salva na planilha`);
+  console.log(`Lia rodando na porta ${PORT} - alerta Thiara ativo`);
 });
