@@ -255,14 +255,20 @@ async function buscarVagasCompativeis(area) {
     });
 
     const rows = res.data.values || [];
+
+    console.log("========== TESTE VAGAS ==========");
+    console.log("AREA RECEBIDA:", area);
+    console.log("PRIMEIRA LINHA:", JSON.stringify(rows[1]));
+    console.log("SEGUNDA LINHA:", JSON.stringify(rows[2]));
+    console.log("TOTAL LINHAS:", rows.length);
+    console.log("=================================");
+
     const vagas = [];
     const areaCandidate = normalizarTexto(area);
     const termos = gerarTermosBusca(areaCandidate);
 
-    console.log("BUSCA VAGAS - área recebida:", area);
     console.log("BUSCA VAGAS - área normalizada:", areaCandidate);
     console.log("BUSCA VAGAS - termos:", termos);
-    console.log("BUSCA VAGAS - total linhas:", rows.length);
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -279,6 +285,17 @@ async function buscarVagasCompativeis(area) {
         termos.some(t => textoVaga.includes(t)) ||
         textoVaga.includes(areaCandidate) ||
         areaCandidate.includes(areaVaga);
+
+      console.log("VAGA LIDA:", {
+        linha: i + 1,
+        cargo: row[1],
+        area: row[2],
+        cidade: row[4],
+        status: row[6],
+        textoVaga,
+        vagaAberta,
+        bateArea,
+      });
 
       if (vagaAberta && bateArea) {
         vagas.push({
@@ -300,6 +317,7 @@ async function buscarVagasCompativeis(area) {
     }
 
     console.log("BUSCA VAGAS - encontradas:", vagas.length);
+    console.log("BUSCA VAGAS - vagas:", JSON.stringify(vagas));
     return vagas;
   } catch (e) {
     console.error("Erro ao buscar vagas:", e.message);
