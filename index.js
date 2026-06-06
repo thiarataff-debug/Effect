@@ -11,7 +11,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || "11212191877743079";
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "effect_webhook_2024";
 
-const SHEET_ID = "1aZTIZSMa_s1szwpqAV-hmCbq3rIdV1P6";
+const SHEET_ID = "1Bqrwjjy0JwAVouppOg-LGCENYrTsCQYrqntCBf9mSk";
 const DRIVE_FOLDER_ID = "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH";
 const NUMERO_THIARATAFF = "5527997925288";
 
