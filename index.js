@@ -503,7 +503,7 @@ app.post("/webhook", async (req, res) => {
 
       await sendWhatsAppMessage(
         from,
-        "Perfeito, recebi seu currículo com sucesso! 💙 Nossa equipe vai analisar seu perfil e entraremos em contato quando surgir uma oportunidade compatível."
+        "Perfeito, recebi seu currículo com sucesso! 💙 Nossa equipe vai analisar seu perfil e entraremos em contato para prosseguirmos caso atenda aos requisitos da vaga."
       );
 
       state.encerrado = true;
