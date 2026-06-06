@@ -17,12 +17,16 @@ const NUMERO_THIARATAFF = "5527997925288";
 
 function getGoogleAuth() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+
+  console.log("SERVICE ACCOUNT:", credentials.client_email);
+
   return new google.auth.GoogleAuth({
     credentials,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    scopes: [
+      "https://www.googleapis.com/auth/spreadsheets"
+    ],
   });
 }
-
 function getDriveAuth() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
