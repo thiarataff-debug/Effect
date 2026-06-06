@@ -43,42 +43,61 @@ app.post("/webhook", async (req, res) => {
     const text = message.text?.body || "";
 
     if (!text) {
-      await enviarMensagem(from, "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?");
+      await enviarMensagem(
+        from,
+        "Recebi sua mensagem, mas por enquanto consigo analisar melhor mensagens em texto. Pode me escrever por aqui?"
+      );
       return;
     }
 
     const resposta = await processarMensagem(from, text);
     await enviarMensagem(from, resposta);
+
   } catch (erro) {
-    console.error("Erro no webhook:", erro.response?.data || erro.message);
+    console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
 });
 
 async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) {
-    sessoes[telefone] = { historico: [] };
+    sessoes[telefone] = {
+      historico: []
+    };
   }
 
   const sessao = sessoes[telefone];
-  sessao.historico.push({ role: "user", content: mensagem });
+
+  sessao.historico.push({
+    role: "user",
+    content: mensagem
+  });
 
   const vagas = await buscarVagas();
   const prompt = montarPrompt(sessao, mensagem, vagas);
   const resposta = await chamarClaude(prompt);
 
-  sessao.historico.push({ role: "assistant", content: resposta });
+  sessao.historico.push({
+    role: "assistant",
+    content: resposta
+  });
 
   return resposta;
 }
 
 async function buscarVagas() {
   try {
-    if (!CONFIG.VAGAS_URL) return [];
+    if (!CONFIG.VAGAS_URL) {
+      console.error("Erro Vagas: VAGAS_URL ausente");
+      return [];
+    }
 
-    const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
+    const response = await axios.get(CONFIG.VAGAS_URL, {
+      timeout: 15000
+    });
+
     return response.data?.vagas || [];
   } catch (erro) {
-    console.error("Erro ao buscar vagas:", erro.response?.data || erro.message);
+    console.error("Erro ao buscar vagas:", JSON.stringify(erro.response?.data || erro.message));
     return [];
   }
 }
@@ -93,6 +112,8 @@ function montarPrompt(sessao, mensagemAtual, vagas) {
     salario: vaga.salario,
     horario: vaga.horario,
     beneficios: vaga.beneficios,
+    genero: vaga.genero,
+    faixaEtaria: vaga.faixaEtaria,
     escolaridade: vaga.escolaridade,
     experienciaMinima: vaga.experienciaMinima,
     requisitosDaVaga: vaga.requisitosDaVaga,
@@ -116,9 +137,10 @@ REGRAS FIXAS:
 - Faça somente uma pergunta por vez.
 - Não repita "Eu sou a Lia" se a conversa já começou.
 - Seja humana, acolhedora, organizada, profissional e leve.
+- Responda como mensagem de WhatsApp, curta e natural.
 
 ABERTURA:
-Se for o primeiro contato, responda exatamente:
+Se for o primeiro contato e a pessoa ainda não informou o nome, responda exatamente:
 "Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
 
 CANDIDATOS:
@@ -165,10 +187,15 @@ async function chamarClaude(prompt) {
     const response = await axios.post(
       "https://api.anthropic.com/v1/messages",
       {
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 700,
         temperature: 0.4,
-        messages: [{ role: "user", content: prompt }]
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
       },
       {
         headers: {
@@ -191,6 +218,11 @@ async function enviarMensagem(to, body) {
   try {
     if (!CONFIG.META_ACCESS_TOKEN) {
       console.error("Erro Meta: META_ACCESS_TOKEN ausente");
+      return;
+    }
+
+    if (!CONFIG.PHONE_NUMBER_ID) {
+      console.error("Erro Meta: PHONE_NUMBER_ID ausente");
       return;
     }
 
