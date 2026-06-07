@@ -19,7 +19,7 @@ const CONFIG = {
 const sessoes = {};
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando com Meta WhatsApp ✅");
+  res.send("Lia Effect rodando com ATS final ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -74,10 +74,7 @@ async function processarMensagem(telefone, mensagem) {
     sessao.aguardandoConfirmacaoInteresse = false;
 
     sessao.historico.push({ role: "user", content: mensagem });
-    sessao.historico.push({
-      role: "assistant",
-      content: "Interesse confirmado e registrado."
-    });
+    sessao.historico.push({ role: "assistant", content: "Interesse confirmado e registrado." });
     sessao.historico = sessao.historico.slice(-10);
 
     return `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊
@@ -114,8 +111,11 @@ async function processarCurriculo(telefone, documento) {
     const sessao = sessoes[telefone] || { historico: [] };
     const vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
 
-    const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
+    const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas, telefone);
     const analise = await chamarClaudeJSON(prompt);
+
+    analise.prioridadeEffect = calcularPrioridadeEffect(analise);
+    analise.proximaAcao = calcularProximaAcao(analise);
 
     await salvarAnaliseNaPlanilha(telefone, analise);
     await enviarAlertaThiara(analise, telefone);
@@ -146,9 +146,7 @@ async function baixarELerPdf(mediaId) {
     }
   );
 
-  const mediaUrl = mediaInfo.data.url;
-
-  const arquivo = await axios.get(mediaUrl, {
+  const arquivo = await axios.get(mediaInfo.data.url, {
     headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` },
     responseType: "arraybuffer",
     timeout: 30000
@@ -163,7 +161,6 @@ async function baixarELerPdf(mediaId) {
 async function buscarVagas() {
   try {
     if (!CONFIG.VAGAS_URL) return [];
-
     const response = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
     return response.data?.vagas || [];
   } catch (erro) {
@@ -190,7 +187,8 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
       vaga.perfilResumido,
       vaga.palavrasChave,
       vaga.requisitosDaVaga,
-      vaga.requisitoObrigatorio
+      vaga.requisitoObrigatorio,
+      vaga.aceitaSemExperiencia
     ].join(" "));
 
     let score = 0;
@@ -199,6 +197,8 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
     palavras.forEach(palavra => {
       if (textoVaga.includes(palavra)) score++;
     });
+
+    if (normalizarTexto(vaga.aceitaSemExperiencia).includes("sim")) score += 1;
 
     return { vaga, score };
   });
@@ -223,6 +223,9 @@ function resumirVagas(vagas) {
     experienciaMinima: vaga.experienciaMinima,
     requisitoObrigatorio: vaga.requisitoObrigatorio,
     aceitaSemExperiencia: vaga.aceitaSemExperiencia,
+    exigeFimDeSemana: vaga.exigeFimDeSemana,
+    exigeTransporteProprio: vaga.exigeTransporteProprio,
+    exigeCltImediato: vaga.exigeCltImediato,
     perfilResumido: vaga.perfilResumido,
     palavrasChave: vaga.palavrasChave
   }));
@@ -249,10 +252,11 @@ REGRAS:
 - Seja simpática, mas sem exageros.
 - NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.
 - Use o nome do candidato de forma natural e profissional.
-- Prefira frases como: "Prazer em falar com você, [nome].", "Perfeito, [nome]." ou "Obrigada pelas informações, [nome]."
 - Responda curto, como WhatsApp.
 - Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
-- Se o candidato acabou de confirmar interesse em uma vaga, não volte a perguntar dados básicos.
+- Se já apresentou uma vaga na conversa, NÃO repita todos os detalhes da mesma vaga.
+- Se o candidato pedir detalhes, complemente apenas o que falta.
+- Faça uma pergunta por vez.
 
 ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
@@ -261,6 +265,14 @@ Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
 COLETA:
 Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
 Se o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.
+
+ORDEM IDEAL:
+1. Interesse na vaga.
+2. Experiência ou potencial.
+3. Requisito obrigatório.
+4. Escolaridade.
+5. Disponibilidade de horário.
+6. Próximo passo.
 
 VAGAS RELEVANTES:
 ${JSON.stringify(vagasResumidas, null, 2)}
@@ -275,7 +287,7 @@ Responda somente a próxima mensagem da Lia.
 `;
 }
 
-function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
+function montarPromptAnaliseEstruturada(textoCurriculo, vagas, telefone) {
   const vagasResumidas = resumirVagas(vagas);
 
   return `
@@ -311,46 +323,66 @@ Use exatamente esta estrutura:
   "mensagemCandidato": ""
 }
 
-REGRAS DE CLASSIFICAÇÃO:
+DADOS OFICIAIS:
+- Telefone do WhatsApp: ${telefone}
+
+REGRAS IMPORTANTES:
+- Use o currículo para identificar nome, cidade, experiência, escolaridade e competências.
+- Se o nome do currículo for diferente do nome usado na conversa, mantenha o nome do currículo, pois o arquivo pode ser de outra pessoa.
+- Nunca invente cidade, transporte próprio ou CLT imediato.
+- Se o currículo não informar transporte próprio, retorne "Não informado".
+- Se o currículo não informar disponibilidade para CLT imediato, retorne "Não informado".
+- Se a vaga aceita sem experiência, não reprove apenas por falta de experiência.
+- Se a vaga exige experiência e o candidato não possui, classifique no máximo como Regular.
+- Nunca use Excelente se faltar requisito obrigatório.
+- Não prometa contratação.
+
+REGRAS DE MATCH:
+- Primeiro tente match direto por experiência.
+- Depois tente match por área semelhante.
+- Depois tente vaga que aceita sem experiência.
+- Para candidatos iniciantes, avalie escolaridade, cidade, comunicação, cursos, estabilidade e potencial.
+- Só use Banco de Talentos se não houver nenhuma vaga ativa com aderência mínima.
+
+CLASSIFICAÇÃO:
 - 90 a 100: Excelente
 - 70 a 89: Bom
 - 50 a 69: Regular
 - abaixo de 50: Reprovado
-- Nunca use Excelente se faltar requisito obrigatório.
-- Não prometa contratação.
+
+STATUS:
+- Se scoreVaga >= 70: "Aprovado para triagem"
+- Se scoreVaga entre 50 e 69: "Banco de Talentos"
+- Se scoreVaga abaixo de 50: "Reprovado"
 
 FORMATO DA mensagemCandidato:
-A mensagemCandidato deve seguir este modelo, com quebras de linha:
+- Não mostrar score.
+- Não mostrar classificação.
+- Não falar em IA.
+- Não elogiar o nome.
+- Não usar textos longos.
+- Sempre quebrar em parágrafos.
+- Sempre utilizar marcadores com "•".
+- Não prometer contratação.
+
+Modelo:
 
 😊 Olá, {NOME}!
 
-Analisei seu currículo e encontrei uma oportunidade que pode fazer sentido para sua experiência profissional.
+Analisei seu currículo e identifiquei uma oportunidade que pode fazer sentido para o seu perfil.
 
-📍 {CARGO}
-📍 {CIDADE}
+📍 Vaga: {CARGO}
+📍 Local: {CIDADE}
 
-Seu histórico com:
+Seu histórico apresenta pontos importantes:
 
 • {PONTO FORTE 1}
 • {PONTO FORTE 2}
 • {PONTO FORTE 3}
 
-apresentou compatibilidade com o perfil que estamos buscando.
-
 Você teria interesse em participar deste processo seletivo?
 
 Fico à disposição. 💙
-
-REGRAS DA mensagemCandidato:
-- Não mostrar score.
-- Não mostrar classificação.
-- Não falar em IA ou análise automática.
-- Não elogiar o nome.
-- Não usar "que nome lindo", "amei seu nome" ou semelhantes.
-- Não usar textos longos.
-- Sempre quebrar em parágrafos.
-- Sempre utilizar marcadores com "•" nos pontos fortes.
-- Não prometer contratação.
 
 VAGAS:
 ${JSON.stringify(vagasResumidas, null, 2)}
@@ -372,7 +404,6 @@ async function chamarClaudeJSON(prompt) {
   } catch (erro) {
     const match = texto.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
-
     throw new Error("Claude não retornou JSON válido: " + texto);
   }
 }
@@ -416,6 +447,31 @@ async function chamarClaude(prompt) {
   }
 }
 
+function calcularPrioridadeEffect(analise) {
+  const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
+  const classificacao = normalizarTexto(analise.classificacao);
+
+  if (score >= 85 || classificacao.includes("excelente")) return "Alta";
+  if (score >= 70 || classificacao.includes("bom")) return "Média";
+  return "Baixa";
+}
+
+function calcularProximaAcao(analise) {
+  const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
+  const classificacao = normalizarTexto(analise.classificacao);
+  const status = normalizarTexto(analise.status);
+
+  if (status.includes("reprov") || classificacao.includes("reprov")) {
+    return "Banco de talentos";
+  }
+
+  if (score >= 70 || classificacao.includes("bom") || classificacao.includes("excelente")) {
+    return "Aguardar retorno";
+  }
+
+  return "Avaliar manualmente";
+}
+
 async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
@@ -431,6 +487,8 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
       scoreGeral: analise.scoreGeral || "",
       scoreVaga: analise.scoreVaga || "",
       classificacao: analise.classificacao || "",
+      prioridadeEffect: analise.prioridadeEffect || "",
+      proximaAcao: analise.proximaAcao || "",
       motivoMatch: analise.motivoMatch || "",
       status: analise.status || "Analisado pela Lia",
       requisitoObrigatorio: analise.requisitoObrigatorio || "",
@@ -464,7 +522,8 @@ async function confirmarInteresseNaPlanilha(telefone, analise) {
       acao: "confirmarInteresse",
       telefone,
       vagaInteresse: analise?.vagaInteresse || "",
-      idVaga: analise?.idVaga || ""
+      idVaga: analise?.idVaga || "",
+      proximaAcao: "Agendar entrevista"
     };
 
     const response = await axios.post(urlBase, payload, {
@@ -490,7 +549,6 @@ function ehConfirmacaoInteresse(mensagem) {
     "tenho sim",
     "pode ser",
     "tenho disponibilidade",
-    "tenho",
     "ok"
   ].some(palavra => texto === palavra || texto.includes(palavra));
 }
@@ -498,11 +556,9 @@ function ehConfirmacaoInteresse(mensagem) {
 async function enviarAlertaThiara(analise, telefone) {
   try {
     const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
-    const classificacao = String(analise.classificacao || "").toLowerCase();
+    const classificacao = normalizarTexto(analise.classificacao);
 
-    if (score < 80 && !classificacao.includes("excelente")) {
-      return;
-    }
+    if (score < 80 && !classificacao.includes("excelente")) return;
 
     const texto = `🚨 NOVO MATCH IDENTIFICADO
 
@@ -516,6 +572,7 @@ ${analise.cidade || "Não informada"}
 
 ⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}
 🏅 Classificação: ${analise.classificacao || "Não informada"}
+🔥 Prioridade Effect: ${analise.prioridadeEffect || "Não informada"}
 
 💼 Pontos fortes:
 ${formatarLista(analise.pontosFortes)}
@@ -524,7 +581,6 @@ ${formatarLista(analise.pontosFortes)}
 +${telefone}`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-    console.log("Alerta enviado para Thiara");
   } catch (erro) {
     console.error("Erro ao enviar alerta para Thiara:", JSON.stringify(erro.response?.data || erro.message));
   }
@@ -544,14 +600,14 @@ ${analise?.cidade || "Não informada"}
 
 ⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}
 🏅 Classificação: ${analise?.classificacao || "Não informada"}
+🔥 Prioridade Effect: ${analise?.prioridadeEffect || "Não informada"}
 
 📱 WhatsApp:
 +${telefone}
 
-✅ O candidato confirmou interesse na oportunidade.`;
+✅ Próxima ação sugerida: Agendar entrevista.`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-    console.log("Alerta de interesse enviado para Thiara");
   } catch (erro) {
     console.error("Erro ao enviar alerta de interesse:", JSON.stringify(erro.response?.data || erro.message));
   }
@@ -566,9 +622,7 @@ function formatarLista(texto) {
     .filter(Boolean)
     .slice(0, 5);
 
-  if (partes.length === 0) return texto;
-
-  return partes.map(p => `• ${p}`).join("\n");
+  return partes.length ? partes.map(p => `• ${p}`).join("\n") : texto;
 }
 
 async function enviarMensagem(to, body) {
@@ -600,5 +654,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - mensagem formatada e interesse ativo`);
+  console.log(`Lia rodando na porta ${PORT} - ATS final com prioridade e próxima ação`);
 });
