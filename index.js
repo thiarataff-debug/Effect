@@ -17,9 +17,10 @@ const CONFIG = {
 };
 
 const sessoes = {};
+const mensagensProcessadas = new Set();
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando com Meta WhatsApp ✅");
+  res.send("Lia Effect rodando com travas anti-mensagem duplicada ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -39,7 +40,24 @@ app.post("/webhook", async (req, res) => {
 
   try {
     const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
     if (!message) return;
+
+    if (message.id && mensagensProcessadas.has(message.id)) {
+      return;
+    }
+
+    if (message.id) {
+      mensagensProcessadas.add(message.id);
+
+      if (mensagensProcessadas.size > 1000) {
+        mensagensProcessadas.clear();
+      }
+    }
+
+    if (!message.text?.body && !message.document) {
+      return;
+    }
 
     const from = message.from;
 
@@ -56,7 +74,6 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    await enviarMensagem(from, "Recebi sua mensagem. Pode me enviar em texto ou encaminhar o currículo em PDF por aqui?");
   } catch (erro) {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
@@ -391,8 +408,6 @@ Os principais pontos observados foram:
 • {PONTO FORTE 2}
 • {PONTO FORTE 3}
 
-apresentou compatibilidade com o perfil que estamos buscando.
-
 Você teria interesse em participar deste processo seletivo?
 
 Fico à disposição. 💙
@@ -656,5 +671,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - sem reiniciar candidato cadastrado`);
+  console.log(`Lia rodando na porta ${PORT} - travas anti-mensagem duplicada`);
 });
