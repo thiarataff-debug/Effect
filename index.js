@@ -81,9 +81,11 @@ async function processarMensagem(telefone, mensagem) {
 
       return `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊
 
-Seu currículo já está cadastrado conosco.
+Seu currículo já está cadastrado em nosso Banco de Talentos.
 
-Como posso ajudar?`;
+Quando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙
+
+Caso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
     }
   }
 
@@ -378,12 +380,12 @@ A mensagemCandidato deve seguir este modelo, com quebras de linha:
 
 😊 Olá, {NOME}!
 
-Analisei seu currículo e encontrei uma oportunidade que pode fazer sentido para sua experiência profissional.
+Analisei seu currículo e identifiquei uma oportunidade que possui compatibilidade com sua experiência profissional.
 
 📍 {CARGO}
 📍 {CIDADE}
 
-Seu histórico com:
+Os principais pontos observados foram:
 
 • {PONTO FORTE 1}
 • {PONTO FORTE 2}
