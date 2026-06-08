@@ -29,6 +29,13 @@ function limparTelefone(telefone) {
   return String(telefone || "").replace(/\D/g, "");
 }
 
+function normalizarTexto(texto) {
+  return String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function garantirSessao(telefoneOriginal) {
   const telefone = limparTelefone(telefoneOriginal);
 
@@ -37,7 +44,8 @@ function garantirSessao(telefoneOriginal) {
       historico: [],
       nome: null,
       modo: "automatico",
-      pausado: false
+      pausado: false,
+      motivoPausa: ""
     };
   }
 
@@ -58,6 +66,250 @@ function estaEmManual(telefoneOriginal) {
     sessao.pausado === true ||
     sessao.modo === "manual"
   );
+}
+
+// ============================================================
+// TRAVAS / MODO SUPERVISOR
+// ============================================================
+
+const TRAVAS = {
+  humano: [
+    "quero falar com alguém", "quero falar com alguem", "quero falar com uma pessoa",
+    "atendente", "humano", "recrutador", "responsável pela vaga", "responsavel pela vaga",
+    "pessoa de verdade", "alguém da effect", "alguem da effect"
+  ],
+  irritacao: [
+    "não entendeu", "nao entendeu", "isso está errado", "isso esta errado",
+    "péssimo atendimento", "pessimo atendimento", "ridículo", "ridiculo",
+    "reclamação", "reclamacao", "processo", "advogado", "procon",
+    "não quero falar com robo", "nao quero falar com robo", "isso não ajuda", "isso nao ajuda"
+  ],
+  dadosSensiveis: [
+    "cpf", "rg", "cnh", "pis", "ctps", "conta bancária", "conta bancaria",
+    "pix", "cartão", "cartao", "dados bancários", "dados bancarios",
+    "nome da mãe", "nome da mae", "nome do pai", "data de nascimento"
+  ],
+  juridico: [
+    "fgts", "férias", "ferias", "13º", "13°", "décimo terceiro", "decimo terceiro",
+    "rescisão", "rescisao", "processo trabalhista", "direitos trabalhistas",
+    "justa causa", "advogado trabalhista"
+  ],
+  empresa: [
+    "preciso contratar", "quero contratar", "quero divulgar vaga",
+    "procuro recrutamento", "minha empresa", "sou empresa", "contratar funcionário",
+    "contratar funcionario", "tenho uma vaga", "serviço de recrutamento", "servico de recrutamento"
+  ],
+  baixaConfianca: [
+    "não encontrei", "nao encontrei", "não consegui localizar", "nao consegui localizar",
+    "não tenho certeza", "nao tenho certeza", "talvez", "provavelmente",
+    "tive uma instabilidade", "pode me mandar novamente", "não consegui entender", "nao consegui entender"
+  ],
+  salario: [
+    "salário", "salario", "quanto ganha", "remuneração", "remuneracao",
+    "benefícios", "beneficios", "vale transporte", "vale alimentação", "vale alimentacao",
+    "ticket", "vr", "va"
+  ],
+  vagaNaoEncontrada: [
+    "vaga do instagram", "vaga que vi", "vi uma vaga", "anúncio", "anuncio",
+    "vaga de marketing", "vaga de rh", "vaga administrativa", "postagem", "publicação", "publicacao"
+  ]
+};
+
+function contemAlguma(texto, lista) {
+  const t = normalizarTexto(texto);
+  return lista.some(p => t.includes(normalizarTexto(p)));
+}
+
+function detectarMenorIdade(texto) {
+  const t = normalizarTexto(texto);
+  return /\b(14|15|16|17)\s*anos\b/.test(t);
+}
+
+function ultimasPerguntasRepetidas(sessao) {
+  const falasLia = (sessao.historico || [])
+    .filter(h => h.role === "assistant")
+    .map(h => normalizarTexto(h.content || ""))
+    .filter(Boolean)
+    .slice(-3);
+
+  if (falasLia.length < 2) return false;
+
+  const ultima = falasLia[falasLia.length - 1];
+  const anterior = falasLia[falasLia.length - 2];
+
+  if (!ultima || !anterior) return false;
+
+  return ultima === anterior || ultima.includes(anterior) || anterior.includes(ultima);
+}
+
+function conversaSemAvanco(sessao) {
+  const historico = sessao.historico || [];
+  if (historico.length < 12) return false;
+
+  const texto = normalizarTexto(historico.map(h => h.content || "").join(" "));
+
+  const temNome = !!sessao.nome || texto.includes("meu nome") || texto.includes("sou ");
+  const temCidade =
+    texto.includes("vitoria") ||
+    texto.includes("vitória") ||
+    texto.includes("vila velha") ||
+    texto.includes("serra") ||
+    texto.includes("cariacica") ||
+    texto.includes("linhares") ||
+    texto.includes("guarapari");
+
+  const temVaga = texto.includes("vaga") || texto.includes("cargo") || texto.includes("oportunidade") || texto.includes("trabalho");
+
+  return !(temNome && temCidade && temVaga);
+}
+
+async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, respostaSegura = null) {
+  const telefone = limparTelefone(telefoneOriginal);
+  const sessao = garantirSessao(telefone);
+
+  atendimentosManuais.add(telefone);
+  sessao.modo = "manual";
+  sessao.pausado = true;
+  sessao.motivoPausa = motivo;
+
+  const alerta = `🚨 INTERVENÇÃO NECESSÁRIA — LIA PAUSADA
+
+📱 Candidato:
++${telefone}
+
+⚠️ Motivo:
+${motivo}
+
+💬 Última mensagem:
+${ultimaMensagem || "Não informada"}
+
+✅ A conversa foi colocada em modo MANUAL.`;
+
+  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
+
+  if (respostaSegura) {
+    await enviarMensagem(telefone, respostaSegura);
+    sessao.historico.push({ role: "assistant", content: respostaSegura });
+    sessao.historico = sessao.historico.slice(-20);
+    await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
+  }
+
+  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+  return true;
+}
+
+async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
+  const telefone = limparTelefone(telefoneOriginal);
+  const sessao = garantirSessao(telefone);
+  const texto = mensagem || "";
+
+  if (contemAlguma(texto, TRAVAS.humano)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato pediu atendimento humano",
+      texto,
+      "Vou te encaminhar para a equipe da Effect para continuarem seu atendimento com mais segurança. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.irritacao)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato demonstrou irritação, reclamação ou risco de conflito",
+      texto,
+      "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar diretamente, tudo bem?"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve dados sensíveis/documentos pessoais",
+      texto,
+      "Essa etapa será conduzida diretamente pela equipe da Effect, para manter seus dados seguros. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.juridico)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve dúvida trabalhista/jurídica",
+      texto,
+      "Vou encaminhar essa dúvida para a equipe da Effect verificar com cuidado antes de te responder."
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.empresa)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível cliente/empresa querendo contratar",
+      texto,
+      "Que bom falar com você. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento. 💙"
+    );
+  }
+
+  if (detectarMenorIdade(texto)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível candidato menor de idade",
+      texto,
+      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você."
+    );
+  }
+
+  if (ultimasPerguntasRepetidas(sessao)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível repetição/loop de pergunta detectado",
+      texto,
+      "Vou confirmar essas informações com a equipe da Effect para te orientar melhor. 💙"
+    );
+  }
+
+  if (conversaSemAvanco(sessao)) {
+    return await pausarPorTrava(
+      telefone,
+      "Conversa longa sem avanço suficiente",
+      texto,
+      "Vou encaminhar seu atendimento para a equipe da Effect continuar com você de forma mais assertiva. 💙"
+    );
+  }
+
+  return false;
+}
+
+async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOriginal) {
+  const telefone = limparTelefone(telefoneOriginal);
+  const texto = resposta || "";
+
+  if (contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    return await pausarPorTrava(
+      telefone,
+      "Resposta da Lia indicou baixa confiança/instabilidade",
+      mensagemOriginal,
+      "Vou confirmar essa informação com a equipe da Effect para te responder com mais segurança. 💙"
+    );
+  }
+
+  if (contemAlguma(mensagemOriginal, TRAVAS.salario) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato perguntou salário/benefícios e a Lia não tinha informação segura",
+      mensagemOriginal,
+      "Vou confirmar essa informação com a equipe da Effect para te responder corretamente. 💙"
+    );
+  }
+
+  if (contemAlguma(mensagemOriginal, TRAVAS.vagaNaoEncontrada) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível vaga não encontrada ou informação divergente",
+      mensagemOriginal,
+      "Vou confirmar essa oportunidade com a equipe da Effect e retorno para você com segurança. 💙"
+    );
+  }
+
+  return false;
 }
 
 // ============================================================
@@ -112,6 +364,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
       historico: historico || [],
       modo: sessoes[telefone]?.modo || "automatico",
       pausado: sessoes[telefone]?.pausado || false,
+      motivoPausa: sessoes[telefone]?.motivoPausa || "",
       timestamp: new Date().toISOString()
     });
 
@@ -148,7 +401,8 @@ async function carregarSessoesDoSheets() {
           : [],
         nome: sessao.nome || null,
         modo,
-        pausado: modo === "manual" || sessao.pausado === true
+        pausado: modo === "manual" || sessao.pausado === true,
+        motivoPausa: sessao.motivoPausa || ""
       };
 
       if (sessoes[tel].pausado) {
@@ -197,7 +451,7 @@ const VAGA_DIARIA_LINHARES = {
 // ============================================================
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando — trava manual reforçada ✅");
+  res.send("Lia Effect rodando — modo supervisor ativo ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -245,6 +499,9 @@ app.post("/webhook", async (req, res) => {
         await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
         return;
       }
+
+      const travou = await aplicarTravasEntrada(from, texto);
+      if (travou) return;
 
       const resposta = await processarMensagem(from, texto);
 
@@ -294,13 +551,11 @@ app.post("/webhook", async (req, res) => {
 function ehCandidataDiaria(sessao) {
   if (!sessao || !sessao.historico) return false;
 
-  const texto = sessao.historico
-    .map(h => h.content || "")
-    .join(" ")
-    .toLowerCase();
+  const texto = normalizarTexto(
+    sessao.historico.map(h => h.content || "").join(" ")
+  );
 
   return (
-    texto.includes("diária") ||
     texto.includes("diaria") ||
     texto.includes("linhares") ||
     texto.includes("shell") ||
@@ -363,6 +618,7 @@ app.get("/inbox/sessoes", (req, res) => {
         nome: sessao.nome || null,
         modo: sessao.modo || "automatico",
         pausado: sessao.pausado === true || atendimentosManuais.has(telefone),
+        motivoPausa: sessao.motivoPausa || "",
         aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false,
         ultimaAnalise: sessao.ultimaAnalise || null
       };
@@ -401,10 +657,12 @@ app.post("/inbox/pausar", async (req, res) => {
       atendimentosManuais.add(telefone);
       sessao.modo = "manual";
       sessao.pausado = true;
+      sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox";
     } else {
       atendimentosManuais.delete(telefone);
       sessao.modo = "automatico";
       sessao.pausado = false;
+      sessao.motivoPausa = "";
     }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -418,7 +676,8 @@ app.post("/inbox/pausar", async (req, res) => {
       ok: true,
       telefone,
       modo: sessao.modo,
-      pausado: sessao.pausado
+      pausado: sessao.pausado,
+      motivoPausa: sessao.motivoPausa || ""
     });
   } catch (erro) {
     console.error("Erro /inbox/pausar:", erro.message);
@@ -448,10 +707,12 @@ app.post("/inbox/modo", async (req, res) => {
       atendimentosManuais.add(telefone);
       sessao.modo = "manual";
       sessao.pausado = true;
+      sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox";
     } else {
       atendimentosManuais.delete(telefone);
       sessao.modo = "automatico";
       sessao.pausado = false;
+      sessao.motivoPausa = "";
     }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -460,7 +721,8 @@ app.post("/inbox/modo", async (req, res) => {
       ok: true,
       telefone,
       modo: sessao.modo,
-      pausado: sessao.pausado
+      pausado: sessao.pausado,
+      motivoPausa: sessao.motivoPausa || ""
     });
   } catch (erro) {
     return res.json({ ok: false, erro: erro.message });
@@ -488,6 +750,7 @@ app.post("/inbox/enviar", async (req, res) => {
     atendimentosManuais.add(telefone);
     sessao.modo = "manual";
     sessao.pausado = true;
+    sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
 
     await enviarMensagem(telefone, mensagem);
 
@@ -601,6 +864,9 @@ Obrigada pelo interesse e boa sorte! 💙`;
   const prompt = montarPromptConversa(sessao, mensagem, vagas);
   const resposta = await chamarClaudeTexto(prompt);
 
+  const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
+  if (respostaTravada) return null;
+
   sessao.historico.push({ role: "assistant", content: resposta });
   sessao.historico = sessao.historico.slice(-20);
 
@@ -701,13 +967,6 @@ async function buscarVagas() {
   } catch (e) {
     return [VAGA_DIARIA_LINHARES];
   }
-}
-
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function primeiroNome(nome) {
@@ -831,6 +1090,7 @@ REGRAS GERAIS:
 - Use o nome do candidato de forma natural e profissional.
 - Responda curto, como WhatsApp.
 - Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
+- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
 
 ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
@@ -1063,7 +1323,11 @@ async function enviarAlertaThiara(analise, telefone) {
 
     if (score < 80 && !classificacao.includes("excelente")) return;
 
-    const texto = `🚨 NOVO MATCH IDENTIFICADO
+    const destaque = score >= 90 || classificacao.includes("excelente")
+      ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO"
+      : "🚨 NOVO MATCH IDENTIFICADO";
+
+    const texto = `${destaque}
 
 👤 ${analise.nome || "Não identificado"}
 
@@ -1153,5 +1417,5 @@ async function enviarMensagem(toOriginal, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} — trava manual reforçada ✅`);
+  console.log(`Lia rodando na porta ${PORT} — modo supervisor ativo ✅`);
 });
