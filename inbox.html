@@ -5,349 +5,221 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lia Inbox — Effect</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--navy:#1a2a4a;--navy2:#2a2a2b;--white:#fff;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--accent:#7b8e6e}
+  body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--navy2);height:100vh;display:flex;flex-direction:column}
 
-  :root {
-    --navy: #1a2a4a;
-    --navy2: #2a2a2b;
-    --white: #ffffff;
-    --bg: #f5f7fa;
-    --muted: #a1a1aa;
-    --green: #8ed1b2;
-    --blue: #1fa5ff;
-    --pink: #f4afa1;
-    --accent: #7b8e6e;
-  }
+  #login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:100}
+  #login-screen.hidden{display:none}
+  .login-box{background:#fff;border-radius:16px;padding:48px 40px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .login-box .logo{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px}
+  .login-box .sub{font-size:12px;color:var(--muted);margin-bottom:32px}
+  .login-box input{width:100%;padding:12px 16px;border:2px solid var(--bg);border-radius:10px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;margin-bottom:16px;transition:border .2s}
+  .login-box input:focus{border-color:var(--blue)}
+  .login-box button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s}
+  .login-box button:hover{background:var(--blue)}
+  .login-error{color:var(--pink);font-size:12px;margin-top:12px;display:none}
 
-  body {
-    font-family: 'Montserrat', sans-serif;
-    background: var(--bg);
-    color: var(--navy2);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+  header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.15);flex-shrink:0}
+  .header-brand{font-weight:700;font-size:15px}
+  .header-brand span{color:var(--green)}
+  .header-right{display:flex;align-items:center;gap:12px}
+  .stat-chip{background:rgba(255,255,255,.1);border-radius:8px;padding:3px 9px;font-size:11px;color:#fff}
+  .stat-chip span{font-weight:700;color:var(--green)}
+  .stat-chip span.warn{color:var(--pink)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-  /* LOGIN */
-  #login-screen {
-    position: fixed; inset: 0;
-    background: var(--navy);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100;
-  }
-  #login-screen.hidden { display: none; }
-
-  .login-box {
-    background: var(--white);
-    border-radius: 16px;
-    padding: 48px 40px;
-    width: 340px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  }
-  .login-box .logo {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 4px;
-  }
-  .login-box .sub {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 32px;
-  }
-  .login-box input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 2px solid var(--bg);
-    border-radius: 10px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    outline: none;
-    margin-bottom: 16px;
-    transition: border 0.2s;
-  }
-  .login-box input:focus { border-color: var(--blue); }
-  .login-box button {
-    width: 100%;
-    padding: 12px;
-    background: var(--navy);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .login-box button:hover { background: var(--blue); }
-  .login-error { color: var(--pink); font-size: 12px; margin-top: 12px; display: none; }
-
-  /* HEADER */
-  header {
-    background: var(--navy);
-    color: white;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-    flex-shrink: 0;
-  }
-  .header-brand { font-weight: 700; font-size: 16px; }
-  .header-brand span { color: var(--green); }
-  .header-status {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; color: var(--muted);
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  /* LAYOUT */
-  .app { display: flex; flex: 1; overflow: hidden; }
+  .app{display:flex;flex:1;overflow:hidden}
 
   /* SIDEBAR */
-  .sidebar {
-    width: 300px;
-    background: white;
-    border-right: 1px solid #e5e7eb;
-    display: flex; flex-direction: column;
-    flex-shrink: 0;
-  }
-  .sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid #e5e7eb;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .badge {
-    background: var(--blue);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .conversations { flex: 1; overflow-y: auto; }
-  .conv-item {
-    padding: 14px 16px;
-    border-bottom: 1px solid #f3f4f6;
-    cursor: pointer;
-    transition: background 0.15s;
-    display: flex; gap: 12px; align-items: flex-start;
-  }
-  .conv-item:hover { background: var(--bg); }
-  .conv-item.active { background: #eff6ff; border-left: 3px solid var(--blue); }
-  .avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--navy);
-    color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 14px;
-    flex-shrink: 0;
-  }
-  .conv-info { flex: 1; min-width: 0; }
-  .conv-name { font-weight: 600; font-size: 13px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .conv-preview { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .conv-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .conv-time { font-size: 10px; color: var(--muted); }
-  .unread { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .sidebar{width:270px;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;flex-shrink:0}
+  .sidebar-header{padding:10px 14px;border-bottom:1px solid #e5e7eb}
+  .sidebar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .sidebar-title{font-weight:700;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .badge{background:var(--blue);color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:700}
+  .sidebar-filters{display:flex;flex-direction:column;gap:6px}
+  .search-box,.filter-select{width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;transition:border .2s;background:#fff}
+  .search-box:focus,.filter-select:focus{border-color:var(--blue)}
 
-  .refresh-btn {
-    margin: 12px 16px;
-    padding: 10px;
-    background: var(--bg);
-    border: none;
-    border-radius: 8px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--navy2);
-    cursor: pointer;
-    width: calc(100% - 32px);
-    transition: background 0.2s;
-  }
-  .refresh-btn:hover { background: #e2e8f0; }
+  /* STATUS CHIPS */
+  .status-chips{display:flex;gap:4px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid #e5e7eb}
+  .status-chip{padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .2s}
+  .status-chip.active{border-color:var(--navy)}
+  .chip-all{background:#e0e7ff;color:#3730a3}
+  .chip-interessado{background:#dcfce7;color:#16a34a}
+  .chip-analisado{background:#fef9c3;color:#92400e}
+  .chip-reprovado{background:#fee2e2;color:#dc2626}
 
-  /* CHAT AREA */
-  .chat-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    overflow: hidden;
-  }
+  .conversations{flex:1;overflow-y:auto}
+  .conv-item{padding:9px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .15s;display:flex;gap:9px;align-items:flex-start;position:relative}
+  .conv-item:hover{background:var(--bg)}
+  .conv-item.active{background:#eff6ff;border-left:3px solid var(--blue)}
+  .conv-item.pausado{opacity:.6}
+  .conv-item.excelente-item{border-left:3px solid #f59e0b;background:#fffbeb}
+  .conv-item.bom-item{border-left:3px solid var(--green)}
+  .conv-item.reprovado-item{opacity:.5}
 
-  .chat-empty {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
-    color: var(--muted);
-  }
-  .chat-empty-icon { font-size: 48px; }
-  .chat-empty-text { font-size: 14px; }
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+  .avatar-excelente{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .avatar-pausado{background:var(--muted)}
 
-  .chat-header {
-    background: white;
-    padding: 16px 24px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex; align-items: center; gap: 12px;
-    flex-shrink: 0;
-  }
-  .chat-header-info { flex: 1; }
-  .chat-header-name { font-weight: 700; font-size: 15px; }
-  .chat-header-phone { font-size: 12px; color: var(--muted); }
+  .conv-info{flex:1;min-width:0}
+  .conv-name-row{display:flex;align-items:center;gap:4px;margin-bottom:1px}
+  .conv-name{font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .prio-tag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;flex-shrink:0}
+  .prio-alta{background:#fee2e2;color:#dc2626}
+  .prio-media{background:#fef9c3;color:#92400e}
+  .prio-baixa{background:#f0f0f0;color:var(--muted)}
+  .conv-vaga{font-size:10px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+  .conv-preview{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .conv-score{font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px}
+  .score-alto{background:#dcfce7;color:#16a34a}
+  .score-medio{background:#fef9c3;color:#ca8a04}
+  .score-baixo{background:#fee2e2;color:#dc2626}
+  .conv-time{font-size:9px;color:var(--muted)}
+  .mini-badge{font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700}
+  .badge-pausado{background:var(--muted);color:#fff}
+  .badge-aguardando{background:var(--pink);color:#fff}
+  .badge-excelente{background:#f59e0b;color:#fff}
+  .badge-contatos{background:#e0e7ff;color:#3730a3}
 
-  .mode-toggle {
-    display: flex; gap: 8px; align-items: center;
-  }
-  .mode-label { font-size: 11px; color: var(--muted); }
-  .toggle-wrap { display: flex; gap: 4px; }
-  .mode-btn {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: none;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .mode-btn.lia { background: var(--bg); color: var(--muted); }
-  .mode-btn.lia.active { background: var(--green); color: white; }
-  .mode-btn.manual { background: var(--bg); color: var(--muted); }
-  .mode-btn.manual.active { background: var(--pink); color: white; }
+  .refresh-btn{margin:8px 14px;padding:7px;background:var(--bg);border:none;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--navy2);cursor:pointer;width:calc(100% - 28px);transition:background .2s}
+  .refresh-btn:hover{background:#e2e8f0}
 
-  .messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+  /* CHAT */
+  .chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+  .chat-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)}
 
-  .msg {
-    max-width: 70%;
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 13px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  .msg.candidato {
-    align-self: flex-start;
-    background: white;
-    border-bottom-left-radius: 3px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  }
-  .msg.lia {
-    align-self: flex-end;
-    background: var(--navy);
-    color: white;
-    border-bottom-right-radius: 3px;
-  }
-  .msg.manual {
-    align-self: flex-end;
-    background: var(--pink);
-    color: white;
-    border-bottom-right-radius: 3px;
-  }
-  .msg-role {
-    font-size: 10px;
-    margin-bottom: 4px;
-    font-weight: 600;
-    opacity: 0.6;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+  .chat-header{background:#fff;padding:10px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+  .chat-header-info{flex:1;min-width:120px}
+  .chat-header-name{font-weight:700;font-size:13px}
+  .chat-header-sub{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .pausado-pill{background:#fee2e2;color:#dc2626;border-radius:10px;padding:1px 7px;font-size:9px;font-weight:700}
+  .chat-header-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 
-  .input-area {
-    background: white;
-    padding: 16px 24px;
-    border-top: 1px solid #e5e7eb;
-    display: flex; gap: 12px; align-items: flex-end;
-    flex-shrink: 0;
-  }
-  .input-area textarea {
-    flex: 1;
-    padding: 12px 16px;
-    border: 2px solid var(--bg);
-    border-radius: 12px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 13px;
-    resize: none;
-    outline: none;
-    max-height: 120px;
-    min-height: 44px;
-    transition: border 0.2s;
-    line-height: 1.5;
-  }
-  .input-area textarea:focus { border-color: var(--blue); }
-  .send-btn {
-    padding: 12px 20px;
-    background: var(--navy);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-  .send-btn:hover { background: var(--blue); }
-  .send-btn:disabled { background: var(--muted); cursor: not-allowed; }
+  .action-btn{padding:5px 10px;border-radius:7px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .btn-convocar{background:var(--green);color:var(--navy)}
+  .btn-reprovar{background:#fee2e2;color:#dc2626}
+  .btn-pausar{background:#fef9c3;color:#92400e}
+  .btn-pausar.pausado{background:#fee2e2;color:#dc2626}
+  .btn-pdf{background:#e0e7ff;color:#3730a3}
+  .btn-copiar{background:var(--bg);color:var(--navy2)}
+  .btn-prio{background:var(--bg);color:var(--navy2)}
 
-  .manual-warning {
-    background: #fff8f0;
-    border: 1px solid var(--pink);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 11px;
-    color: #b45309;
-    margin: 0 24px 8px;
-    display: none;
-  }
-  .manual-warning.show { display: block; }
+  .mode-toggle{display:flex;gap:4px;align-items:center}
+  .mode-label{font-size:10px;color:var(--muted)}
+  .mode-btn{padding:4px 9px;border-radius:6px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s}
+  .mode-btn.lia{background:var(--bg);color:var(--muted)}
+  .mode-btn.lia.active{background:var(--green);color:#fff}
+  .mode-btn.manual{background:var(--bg);color:var(--muted)}
+  .mode-btn.manual.active{background:var(--pink);color:#fff}
 
-  .toast {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    background: var(--navy2);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    z-index: 200;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: var(--green); color: var(--navy); }
-  .toast.error { background: var(--pink); color: white; }
+  /* QUICK REPLIES */
+  .quick-replies{padding:6px 16px;display:flex;gap:6px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #f3f4f6;flex-shrink:0}
+  .qr-btn{padding:4px 10px;background:var(--bg);border:1.5px solid #e5e7eb;border-radius:12px;font-family:'Montserrat',sans-serif;font-size:10px;cursor:pointer;transition:all .2s;color:var(--navy2)}
+  .qr-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
 
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  .chat-main{display:flex;flex:1;overflow:hidden}
+  .messages{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:7px}
+  .msg{max-width:68%;padding:8px 12px;border-radius:11px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+  .msg.candidato{align-self:flex-start;background:#fff;border-bottom-left-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .msg.lia{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:3px}
+  .msg.manual{align-self:flex-end;background:var(--pink);color:#fff;border-bottom-right-radius:3px}
+  .msg-role{font-size:9px;margin-bottom:2px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.5px}
+  .msg-system{align-self:center;background:#f3f4f6;color:var(--muted);font-size:10px;padding:4px 12px;border-radius:10px;font-style:italic}
+
+  /* PAINEL CANDIDATO */
+  .candidate-panel{width:220px;background:#fff;border-left:1px solid #e5e7eb;overflow-y:auto;flex-shrink:0}
+  .panel-section{padding:10px 12px;border-bottom:1px solid #f3f4f6}
+  .panel-title{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+  .panel-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:6px}
+  .panel-label{font-size:10px;color:var(--muted);flex-shrink:0}
+  .panel-value{font-size:10px;font-weight:600;text-align:right}
+  .score-pill{padding:2px 7px;border-radius:9px;font-size:10px;font-weight:700}
+  .ranking-item{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f9f9f9;font-size:10px}
+  .ranking-pos{font-weight:700;color:var(--muted);width:16px}
+  .ranking-nome{flex:1;font-weight:600}
+  .ranking-score{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px}
+
+  .obs-textarea{width:100%;padding:6px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:10px;resize:none;outline:none;min-height:60px;transition:border .2s}
+  .obs-textarea:focus{border-color:var(--blue)}
+  .obs-save-btn{margin-top:4px;width:100%;padding:5px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
+  .obs-save-btn:hover{background:var(--blue)}
+
+  /* LOG AÇÕES */
+  .log-item{font-size:10px;color:var(--muted);padding:3px 0;border-bottom:1px solid #f9f9f9;display:flex;gap:4px}
+  .log-icon{flex-shrink:0}
+
+  /* SLA */
+  .sla-bar{height:3px;border-radius:2px;margin-top:4px;transition:width .3s}
+  .sla-ok{background:var(--green)}
+  .sla-warn{background:#f59e0b}
+  .sla-danger{background:#dc2626}
+
+  /* MODAIS */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center}
+  .modal-overlay.hidden{display:none}
+  .modal{background:#fff;border-radius:16px;padding:24px;width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+  .modal-title{font-weight:700;font-size:14px;margin-bottom:3px}
+  .modal-sub{font-size:11px;color:var(--muted);margin-bottom:16px}
+  .modal label{font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px}
+  .modal input,.modal textarea,.modal select{width:100%;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;margin-bottom:10px;transition:border .2s}
+  .modal input:focus,.modal textarea:focus{border-color:var(--blue)}
+  .modal textarea{resize:none;min-height:65px}
+  .modal-preview{background:var(--bg);border-radius:7px;padding:10px;font-size:11px;line-height:1.6;white-space:pre-wrap;margin-bottom:10px;max-height:130px;overflow-y:auto}
+  .modal-btns{display:flex;gap:7px;justify-content:flex-end}
+  .modal-btns button{padding:8px 16px;border-radius:7px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
+  .btn-cancel{background:var(--bg);color:var(--muted)}
+  .btn-send{background:var(--navy);color:#fff}
+  .btn-send:hover{background:var(--blue)}
+  .btn-danger{background:#dc2626;color:#fff}
+  .btn-danger:hover{background:#b91c1c}
+
+  /* WARNINGS */
+  .warning-bar{padding:6px 16px;font-size:10px;display:none;flex-shrink:0}
+  .warning-bar.show{display:block}
+  .warning-manual{background:#fff8f0;border-bottom:1px solid var(--pink);color:#b45309}
+  .warning-pausado{background:#fee2e2;border-bottom:1px solid #fca5a5;color:#dc2626}
+
+  .input-area{background:#fff;padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+  .input-area textarea{flex:1;padding:8px 12px;border:2px solid var(--bg);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:11px;resize:none;outline:none;max-height:90px;min-height:36px;transition:border .2s;line-height:1.5}
+  .input-area textarea:focus{border-color:var(--blue)}
+  .send-btn{padding:8px 14px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;transition:background .2s;white-space:nowrap}
+  .send-btn:hover{background:var(--blue)}
+  .send-btn:disabled{background:var(--muted);cursor:not-allowed}
+
+  .toast{position:fixed;bottom:18px;right:18px;background:var(--navy2);color:#fff;padding:9px 16px;border-radius:9px;font-size:11px;font-weight:600;z-index:200;opacity:0;transform:translateY(10px);transition:all .3s}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:var(--green);color:var(--navy)}
+  .toast.error{background:var(--pink);color:#fff}
+
+  .notif-banner{position:fixed;top:14px;right:14px;background:var(--navy);color:#fff;padding:11px 16px;border-radius:11px;font-size:11px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.2);display:none;cursor:pointer;max-width:270px}
+  .notif-banner.show{display:block;animation:slideIn .3s ease}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+  .notif-name{font-weight:700;margin-bottom:2px}
+  .notif-msg{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* DASHBOARD */
+  .dashboard-modal{width:560px}
+  .dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  .dash-card{background:var(--bg);border-radius:10px;padding:12px;text-align:center}
+  .dash-num{font-size:24px;font-weight:700;color:var(--navy)}
+  .dash-label{font-size:10px;color:var(--muted);margin-top:2px}
+  .vaga-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:11px}
+  .vaga-nome{flex:1;font-weight:600}
+  .vaga-stat{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700}
+
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <div class="logo">Effect <span style="color:#1fa5ff">Pessoas</span></div>
@@ -358,66 +230,216 @@
   </div>
 </div>
 
-<!-- HEADER -->
+<div class="notif-banner" id="notif-banner" onclick="fecharNotif()">
+  <div class="notif-name" id="notif-name"></div>
+  <div class="notif-msg" id="notif-msg"></div>
+</div>
+
+<!-- MODAL CONVOCAR -->
+<div class="modal-overlay hidden" id="modal-convocar">
+  <div class="modal">
+    <div class="modal-title">📅 Convocar para Entrevista</div>
+    <div class="modal-sub" id="modal-conv-nome">—</div>
+    <label>Data e horário</label>
+    <input type="text" id="conv-data" placeholder="Ex: segunda, 09/06, às 14h">
+    <label>Local ou link</label>
+    <input type="text" id="conv-local" placeholder="Ex: Rua X, 123 ou link Meet">
+    <label>Observação (opcional)</label>
+    <textarea id="conv-obs" placeholder="Trazer documentos..."></textarea>
+    <label>Pré-visualização</label>
+    <div class="modal-preview" id="conv-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modal-convocar')">Cancelar</button>
+      <button class="btn-send" onclick="enviarConvocacao()">Enviar via Lia</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REPROVAR -->
+<div class="modal-overlay hidden" id="modal-reprovar">
+  <div class="modal">
+    <div class="modal-title">❌ Reprovar Candidato</div>
+    <div class="modal-sub" id="modal-repr-nome">—</div>
+    <label>Mensagem de agradecimento</label>
+    <textarea id="repr-msg" style="min-height:130px"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modal-reprovar')">Cancelar</button>
+      <button class="btn-danger" onclick="enviarReprovacao()">Enviar e Reprovar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRIORIDADE -->
+<div class="modal-overlay hidden" id="modal-prio">
+  <div class="modal" style="width:300px">
+    <div class="modal-title">🏷️ Definir Prioridade</div>
+    <div class="modal-sub" id="modal-prio-nome">—</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <button onclick="setPrioridade('alta')" style="padding:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;cursor:pointer;font-size:12px">🔴 Alta</button>
+      <button onclick="setPrioridade('media')" style="padding:10px;background:#fef9c3;color:#92400e;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;cursor:pointer;font-size:12px">🟡 Média</button>
+      <button onclick="setPrioridade('baixa')" style="padding:10px;background:#f0f0f0;color:var(--muted);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;cursor:pointer;font-size:12px">⚪ Baixa</button>
+      <button onclick="setPrioridade(null)" style="padding:10px;background:var(--bg);color:var(--muted);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:600;cursor:pointer;font-size:11px">Remover prioridade</button>
+    </div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="fecharModal('modal-prio')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL DASHBOARD -->
+<div class="modal-overlay hidden" id="modal-dashboard">
+  <div class="modal dashboard-modal">
+    <div class="modal-title">📊 Dashboard por Vaga</div>
+    <div class="modal-sub">Visão geral do pipeline atual</div>
+    <div class="dash-grid" id="dash-grid"></div>
+    <div id="dash-vagas"></div>
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn-cancel" onclick="fecharModal('modal-dashboard')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="header-brand">Effect <span>Lia</span> Inbox</div>
-  <div class="header-status">
-    <div class="dot"></div>
-    Bot ativo
+  <div class="header-right">
+    <div class="stat-chip">Total: <span id="stat-total">0</span></div>
+    <div class="stat-chip">Aguardando: <span class="warn" id="stat-aguardando">0</span></div>
+    <div class="stat-chip">Pausadas: <span id="stat-pausadas">0</span></div>
+    <button onclick="abrirDashboard()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📊 Dashboard</button>
+    <button onclick="abrirBuscaGlobal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">🔍 Busca</button>
+    <button onclick="abrirHorarioPico()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📈 Pico</button>
+    <button onclick="gerarRelatorioSemanal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📋 Relatório</button>
+    <button onclick="abrirBoasVindas()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">👋 Boas-vindas</button>
+    <button onclick="toggleArquivados()" id="btn-arquivados" style="background:rgba(255,255,255,.1);border:none;color:var(--muted);border-radius:7px;padding:4px 10px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📦 Arquivo</button>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><div class="dot"></div>Bot ativo</div>
   </div>
 </header>
 
-<!-- APP -->
 <div class="app">
-
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-header">
-      Conversas
-      <span class="badge" id="total-badge">0</span>
+      <div class="sidebar-top">
+        <span class="sidebar-title">Conversas</span>
+        <span class="badge" id="total-badge">0</span>
+      </div>
+      <div class="sidebar-filters">
+        <input class="search-box" id="search-input" placeholder="🔍 Nome ou telefone..." oninput="renderizarLista()">
+        <select class="filter-select" id="filter-vaga" onchange="renderizarLista()">
+          <option value="">Todas as vagas</option>
+        </select>
+      </div>
+    </div>
+    <div class="status-chips">
+      <span class="status-chip chip-all active" onclick="setFiltroStatus('')" id="chip-all">Todos</span>
+      <span class="status-chip chip-interessado" onclick="setFiltroStatus('Interessado')" id="chip-interessado">Interessado</span>
+      <span class="status-chip chip-analisado" onclick="setFiltroStatus('Analisado')" id="chip-analisado">Analisado</span>
+      <span class="status-chip chip-reprovado" onclick="setFiltroStatus('Reprovado')" id="chip-reprovado">Reprovado</span>
     </div>
     <div class="conversations" id="conv-list"></div>
-    <button class="refresh-btn" onclick="carregarSessoes()">⟳ Atualizar conversas</button>
+    <button class="refresh-btn" onclick="carregarSessoes()">⟳ Atualizar</button>
   </div>
 
-  <!-- CHAT -->
-  <div class="chat-area" id="chat-area">
+  <div class="chat-area">
     <div class="chat-empty" id="chat-empty">
-      <div class="chat-empty-icon">💬</div>
-      <div class="chat-empty-text">Selecione uma conversa</div>
+      <div style="font-size:48px">💬</div>
+      <div style="font-size:12px;color:var(--muted)">Selecione uma conversa</div>
     </div>
 
-    <div id="chat-active" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+    <div id="chat-active" style="display:none;flex-direction:column;flex:1;overflow:hidden">
       <div class="chat-header">
         <div class="avatar" id="chat-avatar">?</div>
         <div class="chat-header-info">
           <div class="chat-header-name" id="chat-name">—</div>
-          <div class="chat-header-phone" id="chat-phone">—</div>
+          <div class="chat-header-sub">
+            <span id="chat-phone">—</span>
+            <span id="chat-contatos" style="color:var(--blue)"></span>
+            <span class="pausado-pill" id="pausado-pill" style="display:none">⏸ PAUSADA</span>
+          </div>
         </div>
-        <div class="mode-toggle">
-          <span class="mode-label">Modo:</span>
-          <div class="toggle-wrap">
+        <div class="chat-header-actions">
+          <button class="action-btn btn-convocar" onclick="abrirModalConvocar()">📅 Convocar</button>
+          <button class="action-btn btn-reprovar" onclick="abrirModalReprovar()">❌ Reprovar</button>
+          <button class="action-btn btn-pausar" id="btn-pausar" onclick="togglePausar()">⏸ Pausar</button>
+          <button class="action-btn btn-pdf" onclick="exportarPDF()">📄 PDF</button>
+          <button class="action-btn btn-copiar" onclick="copiarNumero()">📋 Copiar nº</button>
+          <button class="action-btn btn-prio" onclick="abrirModalPrio()">🏷️ Prioridade</button>
+          <button class="action-btn" style="background:#e0ffe8;color:#16a34a" onclick="abrirModalEncaminhar()">📤 Encaminhar</button>
+          <button class="action-btn" style="background:#f0f0f0;color:var(--navy2)" onclick="reenviarUltima()">🔁 Reenviar</button>
+          <button class="action-btn" style="background:#fef9c3;color:#92400e" onclick="document.getElementById('modal-followup').classList.remove('hidden')">⏰ Follow-up</button>
+          <button class="action-btn" style="background:#f3f4f6;color:var(--muted)" onclick="arquivarConversa()">📦 Arquivar</button>
+          <div class="mode-toggle">
+            <span class="mode-label">Modo:</span>
             <button class="mode-btn lia active" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
             <button class="mode-btn manual" id="btn-manual" onclick="setModo('manual')">✍️ Manual</button>
           </div>
         </div>
       </div>
 
-      <div class="manual-warning" id="manual-warning">
-        ✍️ Modo manual ativo — você está respondendo como Lia. O candidato não saberá.
+      <div class="warning-bar warning-manual" id="manual-warning">✍️ Modo manual — você responde como Lia.</div>
+      <div class="warning-bar warning-pausado" id="pausado-warning">⏸ Lia pausada nesta conversa.</div>
+
+      <div class="quick-replies">
+        <span style="font-size:10px;color:var(--muted);align-self:center">Rápidas:</span>
+        <button class="qr-btn" onclick="usarResposta('Aguarde um momento, vou verificar para você! 😊')">Aguarde</button>
+        <button class="qr-btn" onclick="usarResposta('Olá! Tudo bem? Posso te ajudar com alguma dúvida sobre o processo seletivo? 💙')">Olá</button>
+        <button class="qr-btn" onclick="usarResposta('Perfeito! Vou registrar sua disponibilidade.')">Registrar</button>
+        <button class="qr-btn" onclick="usarResposta('Obrigada pelo retorno! Entraremos em contato em breve. 💙')">Obrigada</button>
+        <button class="qr-btn" onclick="usarResposta('Pode enviar seu currículo em PDF por aqui mesmo! 📎')">Currículo</button>
+        <button class="qr-btn" onclick="usarResposta('Temos uma oportunidade que pode ser do seu interesse. Posso te contar mais?')">Oportunidade</button>
       </div>
 
-      <div class="messages" id="messages"></div>
+      <div class="chat-main">
+        <div class="messages" id="messages"></div>
+        <div class="candidate-panel">
+          <div class="panel-section">
+            <div class="panel-title">📋 Candidato</div>
+            <div class="panel-row"><span class="panel-label">Vaga</span><span class="panel-value" id="p-vaga">—</span></div>
+            <div class="panel-row"><span class="panel-label">Cidade</span><span class="panel-value" id="p-cidade">—</span></div>
+            <div class="panel-row"><span class="panel-label">Score</span><span class="panel-value" id="p-score">—</span></div>
+            <div class="panel-row"><span class="panel-label">Classificação</span><span class="panel-value" id="p-class">—</span></div>
+            <div class="panel-row"><span class="panel-label">Experiência</span><span class="panel-value" id="p-exp">—</span></div>
+            <div class="panel-row"><span class="panel-label">Status</span><span class="panel-value" id="p-status">—</span></div>
+            <div class="panel-row"><span class="panel-label">SLA</span><span class="panel-value" id="p-sla">—</span></div>
+            <div class="sla-bar" id="sla-bar"></div>
+            <div style="margin-top:8px">
+              <div class="panel-title">💰 Salário Pretendido</div>
+              <div style="display:flex;gap:4px">
+                <input id="salario-input" placeholder="Ex: 2500" style="flex:1;padding:5px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:10px;outline:none">
+                <button onclick="salvarSalario()" style="padding:5px 8px;background:var(--green);color:var(--navy);border:none;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer">✓</button>
+              </div>
+              <div id="p-salario" style="font-size:10px;color:var(--navy2);margin-top:4px;font-weight:600"></div>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-title">💪 Pontos Fortes</div>
+            <div id="p-fortes" style="font-size:10px;line-height:1.7">—</div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-title">⚠️ Atenção</div>
+            <div id="p-atencao" style="font-size:10px;line-height:1.7">—</div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-title">🏆 Ranking na Vaga</div>
+            <div id="p-ranking" style="font-size:10px">—</div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-title">📋 Log de Ações</div>
+            <div id="p-log" style="max-height:80px;overflow-y:auto">—</div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-title">📝 Observações</div>
+            <textarea class="obs-textarea" id="obs-textarea" placeholder="Anote algo..."></textarea>
+            <button class="obs-save-btn" onclick="salvarObs()">Salvar</button>
+          </div>
+        </div>
+      </div>
 
       <div class="input-area">
-        <textarea id="msg-input" placeholder="Digite sua mensagem..." rows="1"
+        <textarea id="msg-input" placeholder="Digite ou use as respostas rápidas acima..." rows="1"
           oninput="autoResize(this)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"></textarea>
         <button class="send-btn" id="send-btn" onclick="enviar()">Enviar</button>
       </div>
     </div>
   </div>
-
 </div>
 
 <div class="toast" id="toast"></div>
@@ -429,189 +451,970 @@ const API_BASE = window.location.origin;
 let sessaoAtual = null;
 let modoAtual = 'lia';
 let dadosSessoes = {};
+let ultimasMensagens = {};
+let filtroStatus = '';
+let pausadas = {};
+let prioridades = {};
+let logs = {};
+let contatosCount = {};
 
-// LOGIN
+try { pausadas = JSON.parse(localStorage.getItem('lia_pausadas')||'{}'); } catch(e){}
+try { prioridades = JSON.parse(localStorage.getItem('lia_prioridades')||'{}'); } catch(e){}
+try { logs = JSON.parse(localStorage.getItem('lia_logs')||'{}'); } catch(e){}
+try { contatosCount = JSON.parse(localStorage.getItem('lia_contatos')||'{}'); } catch(e){}
+
+function salvarLocal() {
+  localStorage.setItem('lia_pausadas', JSON.stringify(pausadas));
+  localStorage.setItem('lia_prioridades', JSON.stringify(prioridades));
+  localStorage.setItem('lia_logs', JSON.stringify(logs));
+  localStorage.setItem('lia_contatos', JSON.stringify(contatosCount));
+}
+
+function addLog(tel, icon, texto) {
+  if (!logs[tel]) logs[tel] = [];
+  logs[tel].unshift({ icon, texto, hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) });
+  logs[tel] = logs[tel].slice(0, 20);
+  salvarLocal();
+}
+
 function entrar() {
   const v = document.getElementById('senha-input').value;
   if (v === SENHA) {
     document.getElementById('login-screen').classList.add('hidden');
     carregarSessoes();
-    setInterval(carregarSessoes, 15000);
+    setInterval(carregarSessoes, 10000);
   } else {
     document.getElementById('login-error').style.display = 'block';
   }
 }
 
-// CARREGAR SESSÕES
+function tocarSom() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.setValueAtTime(600, ctx.currentTime+0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime+0.4);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.4);
+  } catch(e){}
+}
+
+function mostrarNotifBanner(nome, msg) {
+  document.getElementById('notif-name').textContent = `💬 ${nome}`;
+  document.getElementById('notif-msg').textContent = msg;
+  const b = document.getElementById('notif-banner');
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 5000);
+}
+function fecharNotif() { document.getElementById('notif-banner').classList.remove('show'); }
+
 async function carregarSessoes() {
   try {
     const r = await fetch(`${API_BASE}/inbox/sessoes`);
     const data = await r.json();
-    dadosSessoes = data.sessoes || {};
+    const novas = data.sessoes || {};
+
+    Object.entries(novas).forEach(([tel, sessao]) => {
+      const hist = sessao.historico || [];
+      const ultima = hist[hist.length-1];
+      if (!ultima) return;
+      const chave = `${tel}-${hist.length}`;
+      if (ultimasMensagens[tel] !== chave && ultima.role === 'user') {
+        if (ultimasMensagens[tel]) {
+          tocarSom();
+          mostrarNotifBanner(sessao.nome||formatarTel(tel), ultima.content.slice(0,60));
+          contatosCount[tel] = (contatosCount[tel]||0) + 1;
+          salvarLocal();
+        }
+        ultimasMensagens[tel] = chave;
+      }
+    });
+
+    dadosSessoes = novas;
+    atualizarFiltroVagas();
     renderizarLista();
-  } catch(e) {
-    console.error(e);
-  }
+    if (sessaoAtual && dadosSessoes[sessaoAtual]) {
+      renderizarMensagens(dadosSessoes[sessaoAtual].historico||[]);
+    }
+  } catch(e) { console.error(e); }
+}
+
+function atualizarFiltroVagas() {
+  const sel = document.getElementById('filter-vaga');
+  const atual = sel.value;
+  const vagas = new Set();
+  Object.values(dadosSessoes).forEach(s => {
+    const v = (s.ultimaAnalise||{}).vagaInteresse;
+    if (v) vagas.add(v);
+  });
+  sel.innerHTML = '<option value="">Todas as vagas</option>';
+  vagas.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v.slice(0,30);
+    if (v === atual) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function setFiltroStatus(s) {
+  filtroStatus = s;
+  document.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
+  const id = s ? `chip-${s.toLowerCase()}` : 'chip-all';
+  document.getElementById(id)?.classList.add('active');
+  renderizarLista();
+}
+
+function getScoreClass(s) {
+  const n = Number(s);
+  if (n >= 80) return 'score-alto';
+  if (n >= 60) return 'score-medio';
+  return 'score-baixo';
+}
+
+function getTempoMin(hist) {
+  const u = [...hist].reverse().find(h => h.role==='user');
+  if (!u?.horario) return null;
+  try {
+    const [dp, tp] = u.horario.split(', ');
+    const [d,m,y] = dp.split('/');
+    return (Date.now() - new Date(`${y}-${m}-${d}T${tp}`).getTime()) / 60000;
+  } catch(e) { return null; }
 }
 
 function renderizarLista() {
+  const busca = document.getElementById('search-input').value.toLowerCase();
+  const filtroVaga = document.getElementById('filter-vaga').value;
   const lista = document.getElementById('conv-list');
-  const total = Object.keys(dadosSessoes).length;
-  document.getElementById('total-badge').textContent = total;
+  const entries = Object.entries(dadosSessoes);
 
-  if (total === 0) {
-    lista.innerHTML = '<div style="padding:24px;text-align:center;color:#a1a1aa;font-size:13px;">Nenhuma conversa ativa</div>';
-    return;
-  }
+  document.getElementById('total-badge').textContent = entries.length;
+  document.getElementById('stat-total').textContent = entries.length;
+
+  let aguardando = 0, pausadasN = 0;
 
   lista.innerHTML = '';
-  Object.entries(dadosSessoes).forEach(([tel, sessao]) => {
-    const hist = sessao.historico || [];
-    const ultimaMsg = hist[hist.length - 1];
-    const nome = sessao.nome || extrairNome(hist) || formatarTel(tel);
-    const inicial = nome.charAt(0).toUpperCase();
-    const preview = ultimaMsg ? ultimaMsg.content.slice(0, 50) : 'Sem mensagens';
+  entries.forEach(([tel, sessao]) => {
+    const hist = sessao.historico||[];
+    const ultima = hist[hist.length-1];
+    const nome = sessao.nome||extrairNome(hist)||formatarTel(tel);
+    const a = sessao.ultimaAnalise||{};
+    const score = a.scoreVaga||a.scoreGeral||'';
+    const vaga = a.vagaInteresse||'';
+    const status = a.status||'';
+    const cls = a.classificacao||'';
+    const isPausado = !!pausadas[tel];
+    const prio = prioridades[tel];
+    const contatos = contatosCount[tel]||0;
+
+    if (busca && !nome.toLowerCase().includes(busca) && !tel.includes(busca)) return;
+    if (filtroVaga && vaga !== filtroVaga) return;
+    if (filtroStatus && !status.toLowerCase().includes(filtroStatus.toLowerCase())) return;
+    // Filtro arquivados
+    const isArquivado = !!arquivados[tel];
+    if (!mostrandoArquivados && isArquivado) return;
+    if (mostrandoArquivados && !isArquivado) return;
+
+    const tempo = getTempoMin(hist);
+    const isAguardando = tempo!==null && tempo>120 && ultima?.role==='user' && !isPausado;
+    if (isAguardando) aguardando++;
+    if (isPausado) pausadasN++;
+
+    let itemClass = 'conv-item';
+    if (sessaoAtual===tel) itemClass += ' active';
+    if (isPausado) itemClass += ' pausado';
+    else if (cls==='Excelente') itemClass += ' excelente-item';
+    else if (cls==='Bom') itemClass += ' bom-item';
+    else if (cls==='Reprovado') itemClass += ' reprovado-item';
+
+    const prioHTML = prio ? `<span class="prio-tag prio-${prio}">${prio==='alta'?'🔴 Alta':prio==='media'?'🟡 Média':'⚪ Baixa'}</span>` : '';
+    const scoreHTML = score ? `<span class="conv-score ${getScoreClass(score)}">${score}</span>` : '';
+    const badges = [
+      isPausado ? '<span class="mini-badge badge-pausado">⏸</span>' : '',
+      isAguardando ? '<span class="mini-badge badge-aguardando">+2h</span>' : '',
+      cls==='Excelente' ? '<span class="mini-badge badge-excelente">⭐</span>' : '',
+      contatos>0 ? `<span class="mini-badge badge-contatos">${contatos}x</span>` : ''
+    ].join('');
 
     const div = document.createElement('div');
-    div.className = 'conv-item' + (sessaoAtual === tel ? ' active' : '');
+    div.className = itemClass;
     div.innerHTML = `
-      <div class="avatar">${inicial}</div>
+      <div class="avatar ${cls==='Excelente'?'avatar-excelente':''} ${isPausado?'avatar-pausado':''}">${nome.charAt(0).toUpperCase()}</div>
       <div class="conv-info">
-        <div class="conv-name">${nome}</div>
-        <div class="conv-preview">${preview}</div>
+        <div class="conv-name-row"><span class="conv-name">${nome}</span>${prioHTML}</div>
+        ${vaga?`<div class="conv-vaga">📌 ${vaga.slice(0,28)}</div>`:''}
+        <div class="conv-preview">${ultima?ultima.content.slice(0,45):'Sem mensagens'}</div>
       </div>
-      <div class="conv-meta">
-        <div class="conv-time">${hist.length} msgs</div>
-      </div>
+      <div class="conv-meta">${scoreHTML}${badges}<div class="conv-time">${hist.length}msg</div></div>
     `;
     div.onclick = () => abrirConversa(tel, nome, sessao);
     lista.appendChild(div);
   });
+
+  if (!lista.children.length) lista.innerHTML = '<div style="padding:20px;text-align:center;color:#a1a1aa;font-size:11px;">Nenhuma conversa encontrada</div>';
+  document.getElementById('stat-aguardando').textContent = aguardando;
+  document.getElementById('stat-pausadas').textContent = pausadasN;
 }
 
 function extrairNome(hist) {
   for (const h of hist) {
-    if (h.role === 'assistant' && h.content.includes('Prazer')) {
-      const match = h.content.match(/Prazer[^,]*,\s*(\w+)/i);
-      if (match) return match[1];
+    if (h.role==='assistant') {
+      const m = h.content.match(/Prazer[^,]*,\s*(\w+)/i);
+      if (m) return m[1];
     }
   }
   return null;
 }
 
 function formatarTel(tel) {
-  if (tel.length >= 11) return `(${tel.slice(2,4)}) ${tel.slice(4,9)}-${tel.slice(9)}`;
+  if (tel.length>=11) return `(${tel.slice(2,4)}) ${tel.slice(4,9)}-${tel.slice(9)}`;
   return tel;
 }
 
-// ABRIR CONVERSA
 function abrirConversa(tel, nome, sessao) {
   sessaoAtual = tel;
   document.getElementById('chat-empty').style.display = 'none';
-  const chatActive = document.getElementById('chat-active');
-  chatActive.style.display = 'flex';
-
-  const inicial = nome.charAt(0).toUpperCase();
-  document.getElementById('chat-avatar').textContent = inicial;
+  document.getElementById('chat-active').style.display = 'flex';
+  document.getElementById('chat-avatar').textContent = nome.charAt(0).toUpperCase();
   document.getElementById('chat-name').textContent = nome;
   document.getElementById('chat-phone').textContent = `+${tel}`;
-
-  renderizarMensagens(sessao.historico || []);
+  const c = contatosCount[tel]||0;
+  document.getElementById('chat-contatos').textContent = c>0 ? `• ${c} contato${c>1?'s':''}` : '';
+  atualizarEstadoPausa();
+  renderizarMensagens(sessao.historico||[]);
+  atualizarPainel(sessao);
+  atualizarSLA(sessao.historico||[]);
+  atualizarRanking(sessao);
+  renderizarLog(tel);
   renderizarLista();
-
   document.getElementById('msg-input').focus();
+}
+
+function atualizarEstadoPausa() {
+  const p = !!pausadas[sessaoAtual];
+  document.getElementById('btn-pausar').textContent = p ? '▶ Retomar' : '⏸ Pausar';
+  document.getElementById('btn-pausar').classList.toggle('pausado', p);
+  document.getElementById('pausado-pill').style.display = p ? 'inline-block' : 'none';
+  document.getElementById('pausado-warning').classList.toggle('show', p);
+}
+
+function togglePausar() {
+  if (!sessaoAtual) return;
+  pausadas[sessaoAtual] = !pausadas[sessaoAtual];
+  salvarLocal();
+  const p = pausadas[sessaoAtual];
+  addLog(sessaoAtual, p?'⏸':'▶', p?'Lia pausada':'Lia retomada');
+  atualizarEstadoPausa();
+  renderizarLista();
+  renderizarLog(sessaoAtual);
+  mostrarToast(p?'⏸ Lia pausada':'▶ Lia retomada', p?'error':'success');
+  fetch(`${API_BASE}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,pausado:p})}).catch(()=>{});
+}
+
+function atualizarPainel(sessao) {
+  const a = sessao.ultimaAnalise||{};
+  document.getElementById('p-vaga').textContent = a.vagaInteresse||'—';
+  document.getElementById('p-cidade').textContent = a.cidade||'—';
+  document.getElementById('p-exp').textContent = a.anosExperiencia?`${a.anosExperiencia} anos`:'—';
+  document.getElementById('p-status').textContent = a.status||'—';
+  const score = a.scoreVaga||a.scoreGeral||'';
+  document.getElementById('p-score').innerHTML = score?`<span class="score-pill ${getScoreClass(score)}">${score}</span>`:'—';
+  const cls = a.classificacao||'';
+  const clsEl = document.getElementById('p-class');
+  clsEl.textContent = cls||'—';
+  clsEl.style.color = cls==='Excelente'?'#16a34a':cls==='Bom'?'#ca8a04':cls==='Reprovado'?'#dc2626':'';
+  document.getElementById('p-fortes').innerHTML = fmtLista(a.pontosFortes,'•')||'—';
+  document.getElementById('p-atencao').innerHTML = fmtLista(a.pontosAtencao,'⚠')||'—';
+  document.getElementById('obs-textarea').value = a.observacoes||'';
+}
+
+function atualizarSLA(hist) {
+  const tempo = getTempoMin(hist);
+  const ultima = hist[hist.length-1];
+  const slaEl = document.getElementById('p-sla');
+  const barEl = document.getElementById('sla-bar');
+  if (tempo===null || ultima?.role!=='user') {
+    slaEl.textContent = '—'; barEl.style.width='0'; return;
+  }
+  const h = Math.floor(tempo/60), m = Math.round(tempo%60);
+  slaEl.textContent = h>0?`${h}h ${m}min`:`${m}min`;
+  const pct = Math.min((tempo/120)*100,100);
+  barEl.style.width = pct+'%';
+  barEl.className = 'sla-bar ' + (tempo<60?'sla-ok':tempo<120?'sla-warn':'sla-danger');
+}
+
+function atualizarRanking(sessaoAtual_) {
+  const vagaAtual = (sessaoAtual_?.ultimaAnalise||{}).vagaInteresse;
+  const rankEl = document.getElementById('p-ranking');
+  if (!vagaAtual) { rankEl.textContent = '—'; return; }
+  const candidatosDaVaga = Object.entries(dadosSessoes)
+    .filter(([,s]) => (s.ultimaAnalise||{}).vagaInteresse === vagaAtual)
+    .map(([tel,s]) => ({ tel, nome: s.nome||formatarTel(tel), score: Number((s.ultimaAnalise||{}).scoreVaga||(s.ultimaAnalise||{}).scoreGeral||0) }))
+    .sort((a,b) => b.score-a.score);
+  rankEl.innerHTML = candidatosDaVaga.slice(0,5).map((c,i) => {
+    const isCurrent = c.tel === sessaoAtual;
+    return `<div class="ranking-item" style="${isCurrent?'background:#eff6ff;border-radius:4px;padding:4px':''}" >
+      <span class="ranking-pos">${i+1}º</span>
+      <span class="ranking-nome" style="${isCurrent?'color:var(--blue)':''}">${c.nome.split(' ')[0]}${isCurrent?' ◀':''}</span>
+      <span class="ranking-score ${getScoreClass(c.score)}">${c.score||'—'}</span>
+    </div>`;
+  }).join('') || '—';
+}
+
+function renderizarLog(tel) {
+  const logEl = document.getElementById('p-log');
+  const itens = logs[tel]||[];
+  if (!itens.length) { logEl.textContent = '—'; return; }
+  logEl.innerHTML = itens.map(l => `<div class="log-item"><span class="log-icon">${l.icon}</span><span>${l.texto}</span><span style="margin-left:auto;font-size:9px">${l.hora}</span></div>`).join('');
 }
 
 function renderizarMensagens(historico) {
   const div = document.getElementById('messages');
   div.innerHTML = '';
-
   historico.forEach(msg => {
     const el = document.createElement('div');
-    const isUser = msg.role === 'user';
-    el.className = `msg ${isUser ? 'candidato' : 'lia'}`;
-
-    const roleLabel = document.createElement('div');
-    roleLabel.className = 'msg-role';
-    roleLabel.textContent = isUser ? 'Candidato' : 'Lia';
-    el.appendChild(roleLabel);
-
-    const texto = document.createElement('span');
-    texto.textContent = msg.content;
-    el.appendChild(texto);
-
+    if (msg.role==='system') { el.className='msg-system'; el.textContent=msg.content; }
+    else {
+      el.className = `msg ${msg.role==='user'?'candidato':'lia'}`;
+      const lbl = document.createElement('div');
+      lbl.className='msg-role'; lbl.textContent=msg.role==='user'?'Candidato':'Lia';
+      el.appendChild(lbl);
+      const txt = document.createElement('span');
+      txt.textContent=msg.content; el.appendChild(txt);
+    }
     div.appendChild(el);
   });
-
   div.scrollTop = div.scrollHeight;
 }
 
-// MODO
 function setModo(modo) {
   modoAtual = modo;
-  document.getElementById('btn-lia').classList.toggle('active', modo === 'lia');
-  document.getElementById('btn-manual').classList.toggle('active', modo === 'manual');
-  const warn = document.getElementById('manual-warning');
-  warn.classList.toggle('show', modo === 'manual');
-  document.getElementById('msg-input').placeholder = modo === 'lia'
-    ? 'A Lia responde automaticamente. Clique em Enviar para forçar uma resposta.'
+  document.getElementById('btn-lia').classList.toggle('active', modo==='lia');
+  document.getElementById('btn-manual').classList.toggle('active', modo==='manual');
+  document.getElementById('manual-warning').classList.toggle('show', modo==='manual');
+  document.getElementById('msg-input').placeholder = modo==='lia'
+    ? 'A Lia responde automaticamente. Enter para forçar.'
     : 'Digite sua mensagem (você responde como Lia)...';
 }
 
-// ENVIAR
+function usarResposta(texto) {
+  document.getElementById('msg-input').value = texto;
+  setModo('manual');
+  autoResize(document.getElementById('msg-input'));
+  document.getElementById('msg-input').focus();
+}
+
 async function enviar() {
   if (!sessaoAtual) return;
-
   const input = document.getElementById('msg-input');
   const texto = input.value.trim();
   if (!texto) return;
-
   const btn = document.getElementById('send-btn');
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
+  btn.disabled=true; btn.textContent='...';
   try {
-    const r = await fetch(`${API_BASE}/inbox/enviar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        telefone: sessaoAtual,
-        mensagem: texto,
-        modo: modoAtual
-      })
-    });
+    const r = await fetch(`${API_BASE}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:texto,modo:modoAtual})});
     const data = await r.json();
-
     if (data.ok) {
-      input.value = '';
-      input.style.height = 'auto';
-      mostrarToast('Mensagem enviada!', 'success');
+      input.value=''; input.style.height='auto';
+      mostrarToast('Enviada!','success');
       await carregarSessoes();
-      if (dadosSessoes[sessaoAtual]) {
-        renderizarMensagens(dadosSessoes[sessaoAtual].historico || []);
-      }
-    } else {
-      mostrarToast('Erro ao enviar: ' + (data.erro || 'Tente novamente'), 'error');
-    }
-  } catch(e) {
-    mostrarToast('Erro de conexão', 'error');
-  }
+    } else mostrarToast('Erro: '+(data.erro||'?'),'error');
+  } catch(e) { mostrarToast('Erro de conexão','error'); }
+  btn.disabled=false; btn.textContent='Enviar';
+}
 
-  btn.disabled = false;
-  btn.textContent = 'Enviar';
+async function salvarObs() {
+  if (!sessaoAtual) return;
+  const obs = document.getElementById('obs-textarea').value;
+  try {
+    await fetch(`${API_BASE}/inbox/observacao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,observacao:obs})});
+    addLog(sessaoAtual,'📝','Observação salva');
+    renderizarLog(sessaoAtual);
+    mostrarToast('Observação salva!','success');
+  } catch(e) { mostrarToast('Erro','error'); }
+}
+
+function copiarNumero() {
+  if (!sessaoAtual) return;
+  navigator.clipboard.writeText('+'+sessaoAtual).then(()=>mostrarToast('Número copiado!','success'));
+}
+
+// PRIORIDADE
+function abrirModalPrio() {
+  if (!sessaoAtual) return;
+  const s = dadosSessoes[sessaoAtual]||{};
+  document.getElementById('modal-prio-nome').textContent = s.nome||formatarTel(sessaoAtual);
+  document.getElementById('modal-prio').classList.remove('hidden');
+}
+
+function setPrioridade(p) {
+  if (!sessaoAtual) return;
+  if (p) prioridades[sessaoAtual]=p;
+  else delete prioridades[sessaoAtual];
+  salvarLocal();
+  addLog(sessaoAtual,'🏷️',`Prioridade: ${p||'removida'}`);
+  renderizarLista();
+  renderizarLog(sessaoAtual);
+  fecharModal('modal-prio');
+  mostrarToast('Prioridade definida!','success');
+}
+
+// EXPORT PDF
+function exportarPDF() {
+  if (!sessaoAtual) return;
+  const sessao = dadosSessoes[sessaoAtual]||{};
+  const nome = sessao.nome||formatarTel(sessaoAtual);
+  const hist = sessao.historico||[];
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.text(`Conversa — ${nome}`, 14, 20);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text(`Telefone: +${sessaoAtual}`, 14, 28);
+  doc.text(`Exportado em: ${new Date().toLocaleString('pt-BR')}`, 14, 34);
+  let y = 44;
+  hist.forEach(msg => {
+    const role = msg.role==='user'?'Candidato':'Lia';
+    const linhas = doc.splitTextToSize(`[${role}] ${msg.content}`, 180);
+    if (y+linhas.length*6 > 280) { doc.addPage(); y=20; }
+    doc.setFont('helvetica', msg.role==='user'?'normal':'bold');
+    doc.text(linhas, 14, y);
+    y += linhas.length*6 + 3;
+  });
+  doc.save(`conversa_${nome.replace(/\s/g,'_')}.pdf`);
+  addLog(sessaoAtual,'📄','Conversa exportada em PDF');
+  renderizarLog(sessaoAtual);
+}
+
+// DASHBOARD
+function abrirDashboard() {
+  const vagas = {};
+  Object.values(dadosSessoes).forEach(s => {
+    const a = s.ultimaAnalise||{};
+    const v = a.vagaInteresse;
+    if (!v) return;
+    if (!vagas[v]) vagas[v] = {total:0,scores:[],aprovados:0,reprovados:0};
+    vagas[v].total++;
+    const sc = Number(a.scoreVaga||a.scoreGeral||0);
+    if (sc>0) vagas[v].scores.push(sc);
+    if ((a.classificacao||'').includes('Excelente')||(a.classificacao||'').includes('Bom')) vagas[v].aprovados++;
+    if ((a.status||'').toLowerCase().includes('reprovado')) vagas[v].reprovados++;
+  });
+
+  const total = Object.keys(dadosSessoes).length;
+  const excelentes = Object.values(dadosSessoes).filter(s=>(s.ultimaAnalise||{}).classificacao==='Excelente').length;
+  const interessados = Object.values(dadosSessoes).filter(s=>(s.ultimaAnalise||{}).status==='Interessado').length;
+
+  document.getElementById('dash-grid').innerHTML = `
+    <div class="dash-card"><div class="dash-num">${total}</div><div class="dash-label">Total Candidatos</div></div>
+    <div class="dash-card"><div class="dash-num" style="color:#f59e0b">${excelentes}</div><div class="dash-label">Excelentes ⭐</div></div>
+    <div class="dash-card"><div class="dash-num" style="color:#16a34a">${interessados}</div><div class="dash-label">Interessados ✅</div></div>
+  `;
+
+  document.getElementById('dash-vagas').innerHTML = Object.entries(vagas).map(([v,d]) => {
+    const media = d.scores.length ? Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length) : 0;
+    return `<div class="vaga-row">
+      <span class="vaga-nome">${v.slice(0,35)}</span>
+      <span class="vaga-stat ${getScoreClass(media)}">${d.total} cand.</span>
+      <span class="vaga-stat score-alto">Score: ${media||'—'}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">Nenhuma vaga com candidatos ainda</div>';
+
+  document.getElementById('modal-dashboard').classList.remove('hidden');
+}
+
+// MODAIS CONVOCAR E REPROVAR
+function abrirModalConvocar() {
+  if (!sessaoAtual) return;
+  const s = dadosSessoes[sessaoAtual]||{};
+  const nome = s.nome||formatarTel(sessaoAtual);
+  document.getElementById('modal-conv-nome').textContent = `Candidato: ${nome}`;
+  document.getElementById('modal-convocar').classList.remove('hidden');
+  atualizarPreviewConvocar();
+  ['conv-data','conv-local','conv-obs'].forEach(id=>document.getElementById(id).addEventListener('input',atualizarPreviewConvocar));
+}
+
+function atualizarPreviewConvocar() {
+  const s = dadosSessoes[sessaoAtual]||{};
+  const nome = s.nome||'';
+  const data = document.getElementById('conv-data').value||'[data/horário]';
+  const local = document.getElementById('conv-local').value||'[local/link]';
+  const obs = document.getElementById('conv-obs').value;
+  const vaga = (s.ultimaAnalise||{}).vagaInteresse||'[vaga]';
+  let msg = `Olá${nome?', '+nome.split(' ')[0]:''}! 😊\n\nPassando para informar que seu perfil foi selecionado para a próxima etapa do processo seletivo para a vaga de ${vaga}.\n\n📅 Data: ${data}\n📍 Local: ${local}`;
+  if (obs) msg += `\n\n📋 ${obs}`;
+  msg += `\n\nPor favor, confirme sua presença respondendo esta mensagem. Qualquer dúvida, estou à disposição! 💙`;
+  document.getElementById('conv-preview').textContent = msg;
+}
+
+async function enviarConvocacao() {
+  const msg = document.getElementById('conv-preview').textContent;
+  if (!msg||!sessaoAtual) return;
+  const r = await fetch(`${API_BASE}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:msg,modo:'manual'})});
+  const data = await r.json();
+  if (data.ok) {
+    fecharModal('modal-convocar');
+    addLog(sessaoAtual,'📅','Convocado para entrevista');
+    renderizarLog(sessaoAtual);
+    mostrarToast('Convocação enviada!','success');
+    await carregarSessoes();
+  } else mostrarToast('Erro ao enviar','error');
+}
+
+function abrirModalReprovar() {
+  if (!sessaoAtual) return;
+  const s = dadosSessoes[sessaoAtual]||{};
+  const nome = s.nome||formatarTel(sessaoAtual);
+  document.getElementById('modal-repr-nome').textContent = `Candidato: ${nome}`;
+  const vaga = (s.ultimaAnalise||{}).vagaInteresse||'a vaga';
+  document.getElementById('repr-msg').value = `Olá${nome?', '+nome.split(' ')[0]:''}! 😊\n\nAgradecemos muito o seu interesse e o tempo dedicado ao nosso processo seletivo para ${vaga}.\n\nApós análise cuidadosa do seu perfil, optamos por seguir com outros candidatos neste momento.\n\nSeu currículo ficará em nosso Banco de Talentos e entraremos em contato quando surgir uma oportunidade compatível.\n\nMuito obrigada e sucesso na sua jornada! 💙`;
+  document.getElementById('modal-reprovar').classList.remove('hidden');
+}
+
+async function enviarReprovacao() {
+  const msg = document.getElementById('repr-msg').value.trim();
+  if (!msg||!sessaoAtual) return;
+  const r = await fetch(`${API_BASE}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:msg,modo:'manual'})});
+  const data = await r.json();
+  if (data.ok) {
+    fecharModal('modal-reprovar');
+    addLog(sessaoAtual,'❌','Candidato reprovado');
+    renderizarLog(sessaoAtual);
+    mostrarToast('Candidato reprovado e notificado.','success');
+    await carregarSessoes();
+  } else mostrarToast('Erro ao enviar','error');
+}
+
+function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function fmtLista(texto, prefix) {
+  if (!texto) return '';
+  return texto.split(/;|,|\n/).filter(Boolean).map(p=>`${prefix} ${p.trim()}`).join('<br>');
 }
 
 function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,90)+'px';
 }
 
 function mostrarToast(msg, tipo) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast show ${tipo}`;
-  setTimeout(() => t.className = 'toast', 2500);
+  t.textContent=msg; t.className=`toast show ${tipo}`;
+  setTimeout(()=>t.className='toast',2500);
+}
+
+// ============================================================
+// 1. REENVIAR ÚLTIMA MENSAGEM DA LIA
+// ============================================================
+async function reenviarUltima() {
+  if (!sessaoAtual) return;
+  const hist = (dadosSessoes[sessaoAtual]||{}).historico||[];
+  const ultima = [...hist].reverse().find(h=>h.role==='assistant');
+  if (!ultima) { mostrarToast('Nenhuma mensagem da Lia para reenviar','error'); return; }
+  const r = await fetch(`${API_BASE}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:ultima.content,modo:'manual'})});
+  const data = await r.json();
+  if (data.ok) { addLog(sessaoAtual,'🔁','Última mensagem reenviada'); renderizarLog(sessaoAtual); mostrarToast('Mensagem reenviada!','success'); await carregarSessoes(); }
+  else mostrarToast('Erro ao reenviar','error');
+}
+
+// ============================================================
+// 2. BUSCA GLOBAL NAS MENSAGENS
+// ============================================================
+function abrirBuscaGlobal() {
+  document.getElementById('modal-busca').classList.remove('hidden');
+  document.getElementById('busca-input').focus();
+}
+
+function executarBuscaGlobal() {
+  const termo = document.getElementById('busca-input').value.toLowerCase().trim();
+  const res = document.getElementById('busca-resultados');
+  if (!termo) { res.innerHTML='<div style="color:var(--muted);font-size:11px">Digite um termo para buscar</div>'; return; }
+  let html = '';
+  let count = 0;
+  Object.entries(dadosSessoes).forEach(([tel, sessao]) => {
+    const nome = sessao.nome||formatarTel(tel);
+    (sessao.historico||[]).forEach(msg => {
+      if (msg.content.toLowerCase().includes(termo)) {
+        const idx = msg.content.toLowerCase().indexOf(termo);
+        const trecho = msg.content.slice(Math.max(0,idx-30), idx+termo.length+50);
+        const highlighted = trecho.replace(new RegExp(termo,'gi'), m=>`<mark style="background:#fef9c3">${m}</mark>`);
+        html += `<div style="padding:8px;border-bottom:1px solid #f3f4f6;cursor:pointer" onclick="fecharModal('modal-busca');abrirConversa('${tel}','${nome}',dadosSessoes['${tel}'])">
+          <div style="font-size:10px;font-weight:700;color:var(--navy)">${nome} <span style="color:var(--muted);font-weight:400">${msg.role==='user'?'(candidato)':'(Lia)'}</span></div>
+          <div style="font-size:11px;margin-top:2px">...${highlighted}...</div>
+        </div>`;
+        count++;
+      }
+    });
+  });
+  res.innerHTML = count ? `<div style="font-size:10px;color:var(--muted);margin-bottom:8px">${count} resultado(s)</div>${html}` : '<div style="color:var(--muted);font-size:11px">Nenhum resultado encontrado</div>';
+}
+
+// ============================================================
+// 3. SALÁRIO PRETENDIDO
+// ============================================================
+function salvarSalario() {
+  if (!sessaoAtual) return;
+  const sal = document.getElementById('salario-input').value.trim();
+  if (!sal) return;
+  if (!dadosSessoes[sessaoAtual]) return;
+  if (!dadosSessoes[sessaoAtual].ultimaAnalise) dadosSessoes[sessaoAtual].ultimaAnalise = {};
+  dadosSessoes[sessaoAtual].ultimaAnalise.salarioPretendido = sal;
+  document.getElementById('p-salario').textContent = `R$ ${sal}`;
+  document.getElementById('salario-input').value = '';
+  addLog(sessaoAtual,'💰',`Salário: R$ ${sal}`);
+  renderizarLog(sessaoAtual);
+  mostrarToast('Salário registrado!','success');
+}
+
+// ============================================================
+// 4. FOLLOW-UP AGENDADO
+// ============================================================
+let followUps = {};
+try { followUps = JSON.parse(localStorage.getItem('lia_followups')||'{}'); } catch(e){}
+
+function agendarFollowUp() {
+  if (!sessaoAtual) return;
+  const horas = parseInt(document.getElementById('followup-horas').value)||2;
+  const msg = document.getElementById('followup-msg').value || 'Olá! Passando para verificar se você ainda tem interesse na vaga. Podemos continuar? 😊';
+  const disparo = Date.now() + horas*3600000;
+  followUps[sessaoAtual] = { disparo, msg, nome: (dadosSessoes[sessaoAtual]||{}).nome||'' };
+  localStorage.setItem('lia_followups', JSON.stringify(followUps));
+  addLog(sessaoAtual,'⏰',`Follow-up agendado para ${horas}h`);
+  renderizarLog(sessaoAtual);
+  fecharModal('modal-followup');
+  mostrarToast(`Follow-up agendado para ${horas}h!`,'success');
+}
+
+async function verificarFollowUps() {
+  const agora = Date.now();
+  for (const [tel, fu] of Object.entries(followUps)) {
+    if (fu.disparo <= agora) {
+      delete followUps[tel];
+      localStorage.setItem('lia_followups', JSON.stringify(followUps));
+      try {
+        await fetch(`${API_BASE}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,mensagem:fu.msg,modo:'manual'})});
+        tocarSom();
+        mostrarToast(`Follow-up enviado para ${fu.nome||tel}!`,'success');
+        addLog(tel,'⏰','Follow-up enviado automaticamente');
+        await carregarSessoes();
+      } catch(e){}
+    }
+  }
+}
+setInterval(verificarFollowUps, 60000);
+
+// ============================================================
+// 5. ENCAMINHAR PARA CLIENTE
+// ============================================================
+function abrirModalEncaminhar() {
+  if (!sessaoAtual) return;
+  const s = dadosSessoes[sessaoAtual]||{};
+  const a = s.ultimaAnalise||{};
+  const nome = s.nome||formatarTel(sessaoAtual);
+  const resumo = `*Candidato para ${a.vagaInteresse||'vaga'}*\n\n👤 *Nome:* ${nome}\n📍 *Cidade:* ${a.cidade||'—'}\n💼 *Experiência:* ${a.anosExperiencia||'—'} anos\n⭐ *Score:* ${a.scoreVaga||a.scoreGeral||'—'}\n🏅 *Classificação:* ${a.classificacao||'—'}\n\n💪 *Pontos fortes:*\n${(a.pontosFortes||'—').split(/;|,|\n/).filter(Boolean).map(p=>`• ${p.trim()}`).join('\n')}\n\n📱 *WhatsApp:* +${sessaoAtual}`;
+  document.getElementById('encaminhar-texto').value = resumo;
+  document.getElementById('modal-encaminhar').classList.remove('hidden');
+}
+
+function copiarEncaminhar() {
+  const texto = document.getElementById('encaminhar-texto').value;
+  navigator.clipboard.writeText(texto).then(()=>mostrarToast('Resumo copiado! Cole no WhatsApp do cliente.','success'));
+}
+
+// ============================================================
+// 6. HORÁRIO DE PICO
+// ============================================================
+function abrirHorarioPico() {
+  const horas = new Array(24).fill(0);
+  Object.values(dadosSessoes).forEach(s => {
+    (s.historico||[]).forEach(msg => {
+      if (msg.role==='user' && msg.horario) {
+        try {
+          const h = parseInt(msg.horario.split(', ')[1]?.split(':')[0]);
+          if (!isNaN(h)) horas[h]++;
+        } catch(e){}
+      }
+    });
+  });
+  const max = Math.max(...horas, 1);
+  const pico = horas.indexOf(max);
+  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Baseado nas mensagens recebidas de candidatos</div>`;
+  html += `<div style="display:flex;align-items:flex-end;gap:3px;height:80px;margin-bottom:8px">`;
+  horas.forEach((v,h) => {
+    const pct = Math.round((v/max)*100);
+    const cor = h===pico?'var(--blue)':pct>50?'var(--green)':'#e5e7eb';
+    html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div style="width:100%;background:${cor};height:${Math.max(pct*.7,2)}px;border-radius:2px 2px 0 0" title="${v} msgs"></div>
+    </div>`;
+  });
+  html += `</div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)">`;
+  [0,6,12,18,23].forEach(h=>{ html+=`<span>${h}h</span>`; });
+  html += `</div>`;
+  if (max>0) html += `<div style="margin-top:12px;background:#eff6ff;border-radius:8px;padding:10px;font-size:12px">⏰ Horário de pico: <strong>${pico}h–${pico+1}h</strong> (${max} mensagens)</div>`;
+  else html += `<div style="margin-top:12px;color:var(--muted);font-size:11px;text-align:center">Ainda sem dados suficientes</div>`;
+  document.getElementById('pico-content').innerHTML = html;
+  document.getElementById('modal-pico').classList.remove('hidden');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') ['modal-convocar','modal-reprovar','modal-prio','modal-dashboard','modal-busca','modal-followup','modal-encaminhar','modal-pico','modal-boas-vindas'].forEach(id=>fecharModal(id));
+});
+
+// ============================================================
+// 1. ARQUIVAR CONVERSA
+// ============================================================
+let arquivados = {};
+try { arquivados = JSON.parse(localStorage.getItem('lia_arquivados')||'{}'); } catch(e){}
+let mostrandoArquivados = false;
+
+function arquivarConversa() {
+  if (!sessaoAtual) return;
+  arquivados[sessaoAtual] = true;
+  localStorage.setItem('lia_arquivados', JSON.stringify(arquivados));
+  addLog(sessaoAtual,'📦','Conversa arquivada');
+  mostrarToast('Conversa arquivada!','success');
+  sessaoAtual = null;
+  document.getElementById('chat-empty').style.display='flex';
+  document.getElementById('chat-active').style.display='none';
+  renderizarLista();
+}
+
+function toggleArquivados() {
+  mostrandoArquivados = !mostrandoArquivados;
+  const btn = document.getElementById('btn-arquivados');
+  btn.style.color = mostrandoArquivados ? '#fff' : 'var(--muted)';
+  btn.style.background = mostrandoArquivados ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.1)';
+  btn.textContent = mostrandoArquivados ? '📦 Ativos' : '📦 Arquivo';
+  renderizarLista();
+}
+
+// Sobrescrever renderizarLista para filtrar arquivados
+const _renderizarListaOriginal = renderizarLista;
+
+// ============================================================
+// 2. ALERTA WHATSAPP CANDIDATO EXCELENTE
+// ============================================================
+const alertasExcelentesEnviados = new Set();
+try { JSON.parse(localStorage.getItem('lia_alertas')||'[]').forEach(a=>alertasExcelentesEnviados.add(a)); } catch(e){}
+
+async function verificarExcelentes(sessoes) {
+  for (const [tel, sessao] of Object.entries(sessoes)) {
+    const cls = (sessao.ultimaAnalise||{}).classificacao||'';
+    if (cls==='Excelente' && !alertasExcelentesEnviados.has(tel)) {
+      alertasExcelentesEnviados.add(tel);
+      localStorage.setItem('lia_alertas', JSON.stringify([...alertasExcelentesEnviados]));
+      // Já notifica via toast + som — o alerta WhatsApp é enviado pelo index.js (enviarAlertaThiara)
+      tocarSom(); tocarSom();
+      mostrarToast(`⭐ EXCELENTE: ${sessao.nome||formatarTel(tel)}`, 'success');
+    }
+  }
+}
+
+// ============================================================
+// 3. RELATÓRIO SEMANAL EM PDF
+// ============================================================
+function gerarRelatorioSemanal() {
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  const agora = new Date();
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('Effect Pessoas & Performance', 14, 18);
+  doc.setFontSize(11);
+  doc.setFont('helvetica','normal');
+  doc.text(`Relatório Semanal de Candidatos — ${agora.toLocaleDateString('pt-BR')}`, 14, 26);
+
+  // Resumo
+  const total = Object.keys(dadosSessoes).length;
+  const excelentes = Object.values(dadosSessoes).filter(s=>(s.ultimaAnalise||{}).classificacao==='Excelente').length;
+  const interessados = Object.values(dadosSessoes).filter(s=>(s.ultimaAnalise||{}).status==='Interessado').length;
+  const reprovados = Object.values(dadosSessoes).filter(s=>(s.ultimaAnalise||{}).status?.toLowerCase().includes('reprovado')).length;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.text('Resumo Geral', 14, 36);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.text(`• Total de candidatos: ${total}`, 14, 44);
+  doc.text(`• Classificados como Excelente: ${excelentes}`, 14, 50);
+  doc.text(`• Interessados na vaga: ${interessados}`, 14, 56);
+  doc.text(`• Reprovados: ${reprovados}`, 14, 62);
+
+  // Por vaga
+  const vagas = {};
+  Object.values(dadosSessoes).forEach(s => {
+    const v = (s.ultimaAnalise||{}).vagaInteresse;
+    if (!v) return;
+    if (!vagas[v]) vagas[v] = [];
+    vagas[v].push(s);
+  });
+
+  let y = 74;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.text('Candidatos por Vaga', 14, y);
+  y += 8;
+
+  Object.entries(vagas).forEach(([vaga, cands]) => {
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text(`${vaga} (${cands.length} candidatos)`, 14, y);
+    y += 6;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    cands.forEach(s => {
+      if (y > 275) { doc.addPage(); y = 20; }
+      const a = s.ultimaAnalise||{};
+      const linha = `  • ${s.nome||'—'} | Score: ${a.scoreVaga||a.scoreGeral||'—'} | ${a.classificacao||'—'} | ${a.status||'—'}`;
+      doc.text(linha, 14, y);
+      y += 5;
+    });
+    y += 4;
+  });
+
+  doc.save(`relatorio_effect_${agora.toISOString().slice(0,10)}.pdf`);
+  mostrarToast('Relatório gerado!','success');
+}
+
+// ============================================================
+// 4. CONTADOR VAGAS x CANDIDATOS NO DASHBOARD (patch)
+// ============================================================
+// Já incorporado no abrirDashboard existente — enriquecido abaixo
+const _abrirDashboardOriginal = abrirDashboard;
+function abrirDashboard() {
+  _abrirDashboardOriginal();
+  // Adicionar contagem de vagas abertas vs candidatos
+  const vagas = {};
+  Object.values(dadosSessoes).forEach(s => {
+    const v = (s.ultimaAnalise||{}).vagaInteresse;
+    if (v) vagas[v] = (vagas[v]||0)+1;
+  });
+  const totalVagas = Object.keys(vagas).length;
+  const grid = document.getElementById('dash-grid');
+  if (grid) {
+    grid.innerHTML += `<div class="dash-card"><div class="dash-num" style="color:var(--blue)">${totalVagas}</div><div class="dash-label">Vagas com Candidatos</div></div>`;
+  }
+}
+
+// ============================================================
+// 5. BOAS-VINDAS PERSONALIZADAS POR VAGA
+// ============================================================
+let boasVindas = {};
+try { boasVindas = JSON.parse(localStorage.getItem('lia_boasvindas')||'{}'); } catch(e){}
+
+function abrirBoasVindas() {
+  document.getElementById('modal-boas-vindas').classList.remove('hidden');
+  renderizarBoasVindas();
+}
+
+function renderizarBoasVindas() {
+  const vagas = new Set(Object.values(dadosSessoes).map(s=>(s.ultimaAnalise||{}).vagaInteresse).filter(Boolean));
+  const container = document.getElementById('bv-lista');
+  if (!vagas.size) { container.innerHTML = '<div style="color:var(--muted);font-size:11px">Nenhuma vaga ativa ainda</div>'; return; }
+  container.innerHTML = [...vagas].map(v => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px">📌 ${v}</div>
+      <textarea style="width:100%;padding:7px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:10px;resize:none;outline:none;min-height:55px" 
+        id="bv-${v.replace(/\s/g,'_')}" placeholder="Mensagem de boas-vindas para candidatos desta vaga...">${boasVindas[v]||''}</textarea>
+    </div>
+  `).join('');
+}
+
+function salvarBoasVindas() {
+  const vagas = new Set(Object.values(dadosSessoes).map(s=>(s.ultimaAnalise||{}).vagaInteresse).filter(Boolean));
+  vagas.forEach(v => {
+    const el = document.getElementById(`bv-${v.replace(/\s/g,'_')}`);
+    if (el) boasVindas[v] = el.value;
+  });
+  localStorage.setItem('lia_boasvindas', JSON.stringify(boasVindas));
+  fecharModal('modal-boas-vindas');
+  mostrarToast('Boas-vindas salvas!','success');
+}
+
+// Patch no carregarSessoes para verificar excelentes
+const _carregarOriginal = carregarSessoes;
+async function carregarSessoes() {
+  await _carregarOriginal();
+  verificarExcelentes(dadosSessoes);
+  // Filtrar arquivados na lista
+  const lista = document.getElementById('conv-list');
+  if (!mostrandoArquivados) {
+    Array.from(lista.children).forEach(item => {
+      // itens arquivados são identificados pelo tel no onclick
+    });
+  }
 }
 </script>
+
+<!-- MODAIS EXTRAS -->
+<!-- BUSCA GLOBAL -->
+<div class="modal-overlay hidden" id="modal-busca">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">🔍 Busca Global nas Conversas</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="busca-input" placeholder="Digite uma palavra-chave..." style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none" oninput="executarBuscaGlobal()" onkeydown="if(event.key==='Enter')executarBuscaGlobal()">
+    </div>
+    <div id="busca-resultados" style="max-height:300px;overflow-y:auto;font-size:11px;color:var(--muted)">Digite um termo para buscar</div>
+    <div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="fecharModal('modal-busca')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- FOLLOW-UP -->
+<div class="modal-overlay hidden" id="modal-followup">
+  <div class="modal" style="width:380px">
+    <div class="modal-title">⏰ Agendar Follow-up</div>
+    <div class="modal-sub">Mensagem automática se candidato não responder</div>
+    <label>Enviar após quantas horas sem resposta?</label>
+    <input type="number" id="followup-horas" value="2" min="1" max="72" style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;margin-bottom:10px">
+    <label>Mensagem</label>
+    <textarea id="followup-msg" style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;min-height:80px;resize:none;margin-bottom:10px">Olá! Passando para verificar se você ainda tem interesse na vaga. Podemos continuar? 😊</textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modal-followup')">Cancelar</button>
+      <button class="btn-send" onclick="agendarFollowUp()">Agendar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENCAMINHAR PARA CLIENTE -->
+<div class="modal-overlay hidden" id="modal-encaminhar">
+  <div class="modal" style="width:440px">
+    <div class="modal-title">📤 Encaminhar para Cliente</div>
+    <div class="modal-sub">Resumo do candidato para copiar e enviar via WhatsApp</div>
+    <textarea id="encaminhar-texto" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;min-height:200px;resize:none;margin-bottom:10px"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal('modal-encaminhar')">Fechar</button>
+      <button class="btn-send" onclick="copiarEncaminhar()">📋 Copiar resumo</button>
+    </div>
+  </div>
+</div>
+
+<!-- HORÁRIO DE PICO -->
+<div class="modal-overlay hidden" id="modal-pico">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">📈 Horário de Pico</div>
+    <div id="pico-content"></div>
+    <div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="fecharModal('modal-pico')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- BOAS-VINDAS POR VAGA -->
+<div class="modal-overlay hidden" id="modal-boas-vindas">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">👋 Boas-vindas por Vaga</div>
+    <div class="modal-sub">Mensagem personalizada que a Lia envia ao iniciar conversa de cada vaga</div>
+    <div id="bv-lista" style="max-height:320px;overflow-y:auto"></div>
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn-cancel" onclick="fecharModal('modal-boas-vindas')">Cancelar</button>
+      <button class="btn-send" onclick="salvarBoasVindas()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
