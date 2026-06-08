@@ -19,12 +19,19 @@ const CONFIG = {
 
 const sessoes = {};
 const mensagensProcessadas = new Set();
+const atendimentosManuais = new Set();
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function garantirSessao(telefone) {
+function limparTelefone(telefone) {
+  return String(telefone || "").replace(/\D/g, "");
+}
+
+function garantirSessao(telefoneOriginal) {
+  const telefone = limparTelefone(telefoneOriginal);
+
   if (!sessoes[telefone]) {
     sessoes[telefone] = {
       historico: [],
@@ -34,25 +41,31 @@ function garantirSessao(telefone) {
     };
   }
 
-  if (!sessoes[telefone].modo) {
-    sessoes[telefone].modo = sessoes[telefone].pausado ? "manual" : "automatico";
+  if (atendimentosManuais.has(telefone)) {
+    sessoes[telefone].modo = "manual";
+    sessoes[telefone].pausado = true;
   }
-
-  sessoes[telefone].pausado = sessoes[telefone].modo === "manual";
 
   return sessoes[telefone];
 }
 
-function estaEmManual(telefone) {
+function estaEmManual(telefoneOriginal) {
+  const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
-  return sessao.modo === "manual" || sessao.pausado === true;
+
+  return (
+    atendimentosManuais.has(telefone) ||
+    sessao.pausado === true ||
+    sessao.modo === "manual"
+  );
 }
 
 // ============================================================
-// HELPERS SHEETS
+// SHEETS
 // ============================================================
 
-async function salvarMensagemSheets(telefone, role, mensagem, nome) {
+async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome) {
+  const telefone = limparTelefone(telefoneOriginal);
   const MAX_TENTATIVAS = 3;
 
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
@@ -84,7 +97,9 @@ async function salvarMensagemSheets(telefone, role, mensagem, nome) {
   }
 }
 
-async function salvarConversaCompletaSheets(telefone, historico, nome) {
+async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
+  const telefone = limparTelefone(telefoneOriginal);
+
   try {
     if (!CONFIG.VAGAS_URL) return;
 
@@ -96,7 +111,7 @@ async function salvarConversaCompletaSheets(telefone, historico, nome) {
       nome: nome || "",
       historico: historico || [],
       modo: sessoes[telefone]?.modo || "automatico",
-      pausado: sessoes[telefone]?.modo === "manual",
+      pausado: sessoes[telefone]?.pausado || false,
       timestamp: new Date().toISOString()
     });
 
@@ -122,16 +137,22 @@ async function carregarSessoesDoSheets() {
 
     if (!data.sucesso || !data.sessoes) return;
 
-    Object.entries(data.sessoes).forEach(([tel, sessao]) => {
-      if (!sessoes[tel]) {
-        sessoes[tel] = {
-          historico: Array.isArray(sessao.historico)
-            ? sessao.historico.map(h => ({ role: h.role, content: h.content }))
-            : [],
-          nome: sessao.nome || null,
-          modo: sessao.modo || (sessao.pausado ? "manual" : "automatico"),
-          pausado: sessao.modo === "manual" || sessao.pausado === true
-        };
+    Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
+      const tel = limparTelefone(telOriginal);
+
+      const modo = sessao.modo || (sessao.pausado ? "manual" : "automatico");
+
+      sessoes[tel] = {
+        historico: Array.isArray(sessao.historico)
+          ? sessao.historico.map(h => ({ role: h.role, content: h.content }))
+          : [],
+        nome: sessao.nome || null,
+        modo,
+        pausado: modo === "manual" || sessao.pausado === true
+      };
+
+      if (sessoes[tel].pausado) {
+        atendimentosManuais.add(tel);
       }
     });
 
@@ -152,7 +173,7 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 // ============================================================
-// VAGA FIXA LINHARES
+// VAGA FIXA
 // ============================================================
 
 const VAGA_DIARIA_LINHARES = {
@@ -176,7 +197,7 @@ const VAGA_DIARIA_LINHARES = {
 // ============================================================
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando — trava manual/automático ativa ✅");
+  res.send("Lia Effect rodando — trava manual reforçada ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -208,7 +229,7 @@ app.post("/webhook", async (req, res) => {
 
     if (!message.text?.body && !message.document) return;
 
-    const from = message.from;
+    const from = limparTelefone(message.from);
     const sessaoAtual = garantirSessao(from);
 
     if (message.text?.body) {
@@ -220,7 +241,7 @@ app.post("/webhook", async (req, res) => {
       await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "");
 
       if (estaEmManual(from)) {
-        console.log(`Modo manual ativo para ${from}. Lia NÃO respondeu.`);
+        console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from);
         await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
         return;
       }
@@ -243,7 +264,7 @@ app.post("/webhook", async (req, res) => {
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
 
       if (estaEmManual(from)) {
-        console.log(`Modo manual ativo para ${from}. Currículo não processado pela Lia.`);
+        console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from);
         await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
         return;
       }
@@ -258,7 +279,10 @@ app.post("/webhook", async (req, res) => {
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
 
       const resposta = await processarCurriculo(from, message.document);
-      await enviarMensagem(from, resposta);
+
+      if (resposta) {
+        await enviarMensagem(from, resposta);
+      }
 
       return;
     }
@@ -331,13 +355,14 @@ app.get("/inbox/sessoes", (req, res) => {
     const dados = {};
 
     Object.entries(sessoes).forEach(([tel, sessao]) => {
-      garantirSessao(tel);
+      const telefone = limparTelefone(tel);
+      garantirSessao(telefone);
 
-      dados[tel] = {
+      dados[telefone] = {
         historico: sessao.historico || [],
         nome: sessao.nome || null,
         modo: sessao.modo || "automatico",
-        pausado: sessao.modo === "manual",
+        pausado: sessao.pausado === true || atendimentosManuais.has(telefone),
         aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false,
         ultimaAnalise: sessao.ultimaAnalise || null
       };
@@ -351,7 +376,20 @@ app.get("/inbox/sessoes", (req, res) => {
 
 app.post("/inbox/pausar", async (req, res) => {
   try {
-    const { telefone, pausado, modo } = req.body;
+    const telefone = limparTelefone(
+      req.body.telefone ||
+      req.body.phone ||
+      req.body.from ||
+      req.body.numero ||
+      req.body.whatsapp
+    );
+
+    const devePausar =
+      req.body.pausado === true ||
+      req.body.manual === true ||
+      req.body.modo === "manual" ||
+      req.body.mode === "manual" ||
+      req.body.status === "manual";
 
     if (!telefone) {
       return res.json({ ok: false, erro: "Telefone não informado" });
@@ -359,19 +397,24 @@ app.post("/inbox/pausar", async (req, res) => {
 
     const sessao = garantirSessao(telefone);
 
-    if (modo) {
-      sessao.modo = modo === "manual" ? "manual" : "automatico";
+    if (devePausar) {
+      atendimentosManuais.add(telefone);
+      sessao.modo = "manual";
+      sessao.pausado = true;
     } else {
-      sessao.modo = pausado === true ? "manual" : "automatico";
+      atendimentosManuais.delete(telefone);
+      sessao.modo = "automatico";
+      sessao.pausado = false;
     }
-
-    sessao.pausado = sessao.modo === "manual";
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
 
-    console.log(`Lia ${sessao.modo === "manual" ? "PAUSADA/MANUAL" : "REATIVADA/AUTOMÁTICA"} para ${telefone}`);
+    console.log("STATUS MANUAL ALTERADO:", telefone, {
+      modo: sessao.modo,
+      pausado: sessao.pausado
+    });
 
-    res.json({
+    return res.json({
       ok: true,
       telefone,
       modo: sessao.modo,
@@ -379,13 +422,21 @@ app.post("/inbox/pausar", async (req, res) => {
     });
   } catch (erro) {
     console.error("Erro /inbox/pausar:", erro.message);
-    res.json({ ok: false, erro: erro.message });
+    return res.json({ ok: false, erro: erro.message });
   }
 });
 
 app.post("/inbox/modo", async (req, res) => {
   try {
-    const { telefone, modo } = req.body;
+    const telefone = limparTelefone(
+      req.body.telefone ||
+      req.body.phone ||
+      req.body.from ||
+      req.body.numero ||
+      req.body.whatsapp
+    );
+
+    const modo = req.body.modo || req.body.mode;
 
     if (!telefone) {
       return res.json({ ok: false, erro: "Telefone não informado" });
@@ -393,25 +444,40 @@ app.post("/inbox/modo", async (req, res) => {
 
     const sessao = garantirSessao(telefone);
 
-    sessao.modo = modo === "manual" ? "manual" : "automatico";
-    sessao.pausado = sessao.modo === "manual";
+    if (modo === "manual") {
+      atendimentosManuais.add(telefone);
+      sessao.modo = "manual";
+      sessao.pausado = true;
+    } else {
+      atendimentosManuais.delete(telefone);
+      sessao.modo = "automatico";
+      sessao.pausado = false;
+    }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
 
-    res.json({
+    return res.json({
       ok: true,
       telefone,
       modo: sessao.modo,
       pausado: sessao.pausado
     });
   } catch (erro) {
-    res.json({ ok: false, erro: erro.message });
+    return res.json({ ok: false, erro: erro.message });
   }
 });
 
 app.post("/inbox/enviar", async (req, res) => {
   try {
-    const { telefone, mensagem, modo } = req.body;
+    const telefone = limparTelefone(
+      req.body.telefone ||
+      req.body.phone ||
+      req.body.from ||
+      req.body.numero ||
+      req.body.whatsapp
+    );
+
+    const mensagem = req.body.mensagem || req.body.message || req.body.texto || req.body.text;
 
     if (!telefone || !mensagem) {
       return res.json({ ok: false, erro: "Dados incompletos" });
@@ -419,10 +485,9 @@ app.post("/inbox/enviar", async (req, res) => {
 
     const sessao = garantirSessao(telefone);
 
-    if (modo === "manual") {
-      sessao.modo = "manual";
-      sessao.pausado = true;
-    }
+    atendimentosManuais.add(telefone);
+    sessao.modo = "manual";
+    sessao.pausado = true;
 
     await enviarMensagem(telefone, mensagem);
 
@@ -434,8 +499,9 @@ app.post("/inbox/enviar", async (req, res) => {
 
     return res.json({
       ok: true,
-      modo: sessao.modo,
-      pausado: sessao.pausado
+      telefone,
+      modo: "manual",
+      pausado: true
     });
   } catch (erro) {
     console.error("Erro inbox/enviar:", erro.message);
@@ -444,7 +510,8 @@ app.post("/inbox/enviar", async (req, res) => {
 });
 
 app.post("/inbox/observacao", async (req, res) => {
-  const { telefone, observacao } = req.body;
+  const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
+  const observacao = req.body.observacao || req.body.note || "";
 
   if (!telefone) return res.json({ ok: false });
 
@@ -456,7 +523,7 @@ app.post("/inbox/observacao", async (req, res) => {
         acao: "salvarMensagem",
         telefone,
         role: "observacao",
-        mensagem: observacao || "",
+        mensagem: observacao,
         nome: sessoes[telefone]?.nome || ""
       }, {
         headers: { "Content-Type": "application/json" },
@@ -474,11 +541,12 @@ app.post("/inbox/observacao", async (req, res) => {
 // PROCESSAMENTO
 // ============================================================
 
-async function processarMensagem(telefone, mensagem) {
+async function processarMensagem(telefoneOriginal, mensagem) {
+  const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
 
   if (estaEmManual(telefone)) {
-    console.log(`Bloqueio interno: ${telefone} está em manual. Claude não será chamado.`);
+    console.log("BLOQUEIO INTERNO — CLAUDE NÃO CHAMADO:", telefone);
     return null;
   }
 
@@ -542,10 +610,12 @@ Obrigada pelo interesse e boa sorte! 💙`;
   return resposta;
 }
 
-async function processarCurriculo(telefone, documento) {
+async function processarCurriculo(telefoneOriginal, documento) {
+  const telefone = limparTelefone(telefoneOriginal);
+
   try {
     if (estaEmManual(telefone)) {
-      console.log(`Currículo recebido, mas ${telefone} está em manual. Lia não analisou.`);
+      console.log("CURRÍCULO BLOQUEADO — ATENDIMENTO MANUAL:", telefone);
       return null;
     }
 
@@ -1056,7 +1126,9 @@ function formatarLista(texto) {
   return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
 }
 
-async function enviarMensagem(to, body) {
+async function enviarMensagem(toOriginal, body) {
+  const to = limparTelefone(toOriginal);
+
   try {
     if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) return;
 
@@ -1081,5 +1153,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} — modo manual/automático corrigido ✅`);
+  console.log(`Lia rodando na porta ${PORT} — trava manual reforçada ✅`);
 });
