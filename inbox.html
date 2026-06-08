@@ -29,7 +29,6 @@
     flex-direction: column;
   }
 
-  /* LOGIN */
   #login-screen {
     position: fixed; inset: 0;
     background: var(--navy);
@@ -66,7 +65,6 @@
     font-size: 14px;
     outline: none;
     margin-bottom: 16px;
-    transition: border 0.2s;
   }
   .login-box input:focus { border-color: var(--blue); }
   .login-box button {
@@ -80,12 +78,10 @@
     font-weight: 700;
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.2s;
   }
   .login-box button:hover { background: var(--blue); }
   .login-error { color: var(--pink); font-size: 12px; margin-top: 12px; display: none; }
 
-  /* HEADER */
   header {
     background: var(--navy);
     color: white;
@@ -105,10 +101,8 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  /* LAYOUT */
   .app { display: flex; flex: 1; overflow: hidden; }
 
-  /* SIDEBAR */
   .sidebar {
     width: 300px;
     background: white;
@@ -139,7 +133,6 @@
     padding: 14px 16px;
     border-bottom: 1px solid #f3f4f6;
     cursor: pointer;
-    transition: background 0.15s;
     display: flex; gap: 12px; align-items: flex-start;
   }
   .conv-item:hover { background: var(--bg); }
@@ -157,7 +150,15 @@
   .conv-preview { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .conv-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
   .conv-time { font-size: 10px; color: var(--muted); }
-  .unread { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .mode-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .mode-pill.manual { background: var(--pink); color: white; }
+  .mode-pill.lia { background: var(--green); color: var(--navy); }
 
   .refresh-btn {
     margin: 12px 16px;
@@ -171,11 +172,8 @@
     color: var(--navy2);
     cursor: pointer;
     width: calc(100% - 32px);
-    transition: background 0.2s;
   }
-  .refresh-btn:hover { background: #e2e8f0; }
 
-  /* CHAT AREA */
   .chat-area {
     flex: 1;
     display: flex;
@@ -207,9 +205,7 @@
   .chat-header-name { font-weight: 700; font-size: 15px; }
   .chat-header-phone { font-size: 12px; color: var(--muted); }
 
-  .mode-toggle {
-    display: flex; gap: 8px; align-items: center;
-  }
+  .mode-toggle { display: flex; gap: 8px; align-items: center; }
   .mode-label { font-size: 11px; color: var(--muted); }
   .toggle-wrap { display: flex; gap: 4px; }
   .mode-btn {
@@ -220,7 +216,6 @@
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
   }
   .mode-btn.lia { background: var(--bg); color: var(--muted); }
   .mode-btn.lia.active { background: var(--green); color: white; }
@@ -257,12 +252,6 @@
     color: white;
     border-bottom-right-radius: 3px;
   }
-  .msg.manual {
-    align-self: flex-end;
-    background: var(--pink);
-    color: white;
-    border-bottom-right-radius: 3px;
-  }
   .msg-role {
     font-size: 10px;
     margin-bottom: 4px;
@@ -290,7 +279,6 @@
     outline: none;
     max-height: 120px;
     min-height: 44px;
-    transition: border 0.2s;
     line-height: 1.5;
   }
   .input-area textarea:focus { border-color: var(--blue); }
@@ -304,7 +292,6 @@
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.2s;
     white-space: nowrap;
   }
   .send-btn:hover { background: var(--blue); }
@@ -347,7 +334,6 @@
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <div class="logo">Effect <span style="color:#1fa5ff">Pessoas</span></div>
@@ -358,7 +344,6 @@
   </div>
 </div>
 
-<!-- HEADER -->
 <header>
   <div class="header-brand">Effect <span>Lia</span> Inbox</div>
   <div class="header-status">
@@ -367,10 +352,8 @@
   </div>
 </header>
 
-<!-- APP -->
 <div class="app">
 
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-header">
       Conversas
@@ -380,7 +363,6 @@
     <button class="refresh-btn" onclick="carregarSessoes()">⟳ Atualizar conversas</button>
   </div>
 
-  <!-- CHAT -->
   <div class="chat-area" id="chat-area">
     <div class="chat-empty" id="chat-empty">
       <div class="chat-empty-icon">💬</div>
@@ -430,9 +412,13 @@ let sessaoAtual = null;
 let modoAtual = 'lia';
 let dadosSessoes = {};
 
-// LOGIN
+function limparTelefone(tel) {
+  return String(tel || '').replace(/\D/g, '');
+}
+
 function entrar() {
   const v = document.getElementById('senha-input').value;
+
   if (v === SENHA) {
     document.getElementById('login-screen').classList.add('hidden');
     carregarSessoes();
@@ -442,16 +428,26 @@ function entrar() {
   }
 }
 
-// CARREGAR SESSÕES
 async function carregarSessoes() {
   try {
     const r = await fetch(`${API_BASE}/inbox/sessoes`);
     const data = await r.json();
+
     dadosSessoes = data.sessoes || {};
+
     renderizarLista();
+
+    if (sessaoAtual && dadosSessoes[sessaoAtual]) {
+      renderizarMensagens(dadosSessoes[sessaoAtual].historico || []);
+      aplicarModoVisual(estaManual(dadosSessoes[sessaoAtual]) ? 'manual' : 'lia');
+    }
   } catch(e) {
     console.error(e);
   }
+}
+
+function estaManual(sessao) {
+  return sessao?.pausado === true || sessao?.modo === 'manual';
 }
 
 function renderizarLista() {
@@ -465,12 +461,15 @@ function renderizarLista() {
   }
 
   lista.innerHTML = '';
-  Object.entries(dadosSessoes).forEach(([tel, sessao]) => {
+
+  Object.entries(dadosSessoes).forEach(([telOriginal, sessao]) => {
+    const tel = limparTelefone(telOriginal);
     const hist = sessao.historico || [];
     const ultimaMsg = hist[hist.length - 1];
     const nome = sessao.nome || extrairNome(hist) || formatarTel(tel);
     const inicial = nome.charAt(0).toUpperCase();
-    const preview = ultimaMsg ? ultimaMsg.content.slice(0, 50) : 'Sem mensagens';
+    const preview = ultimaMsg ? String(ultimaMsg.content || '').slice(0, 50) : 'Sem mensagens';
+    const manual = estaManual(sessao);
 
     const div = document.createElement('div');
     div.className = 'conv-item' + (sessaoAtual === tel ? ' active' : '');
@@ -482,6 +481,7 @@ function renderizarLista() {
       </div>
       <div class="conv-meta">
         <div class="conv-time">${hist.length} msgs</div>
+        <div class="mode-pill ${manual ? 'manual' : 'lia'}">${manual ? 'Manual' : 'Lia'}</div>
       </div>
     `;
     div.onclick = () => abrirConversa(tel, nome, sessao);
@@ -491,8 +491,8 @@ function renderizarLista() {
 
 function extrairNome(hist) {
   for (const h of hist) {
-    if (h.role === 'assistant' && h.content.includes('Prazer')) {
-      const match = h.content.match(/Prazer[^,]*,\s*(\w+)/i);
+    if (h.role === 'assistant' && String(h.content || '').includes('Prazer')) {
+      const match = String(h.content || '').match(/Prazer[^,]*,\s*(\w+)/i);
       if (match) return match[1];
     }
   }
@@ -500,13 +500,14 @@ function extrairNome(hist) {
 }
 
 function formatarTel(tel) {
+  tel = limparTelefone(tel);
   if (tel.length >= 11) return `(${tel.slice(2,4)}) ${tel.slice(4,9)}-${tel.slice(9)}`;
   return tel;
 }
 
-// ABRIR CONVERSA
 function abrirConversa(tel, nome, sessao) {
-  sessaoAtual = tel;
+  sessaoAtual = limparTelefone(tel);
+
   document.getElementById('chat-empty').style.display = 'none';
   const chatActive = document.getElementById('chat-active');
   chatActive.style.display = 'flex';
@@ -514,9 +515,10 @@ function abrirConversa(tel, nome, sessao) {
   const inicial = nome.charAt(0).toUpperCase();
   document.getElementById('chat-avatar').textContent = inicial;
   document.getElementById('chat-name').textContent = nome;
-  document.getElementById('chat-phone').textContent = `+${tel}`;
+  document.getElementById('chat-phone').textContent = `+${sessaoAtual}`;
 
   renderizarMensagens(sessao.historico || []);
+  aplicarModoVisual(estaManual(sessao) ? 'manual' : 'lia');
   renderizarLista();
 
   document.getElementById('msg-input').focus();
@@ -529,6 +531,7 @@ function renderizarMensagens(historico) {
   historico.forEach(msg => {
     const el = document.createElement('div');
     const isUser = msg.role === 'user';
+
     el.className = `msg ${isUser ? 'candidato' : 'lia'}`;
 
     const roleLabel = document.createElement('div');
@@ -537,7 +540,7 @@ function renderizarMensagens(historico) {
     el.appendChild(roleLabel);
 
     const texto = document.createElement('span');
-    texto.textContent = msg.content;
+    texto.textContent = msg.content || '';
     el.appendChild(texto);
 
     div.appendChild(el);
@@ -546,24 +549,73 @@ function renderizarMensagens(historico) {
   div.scrollTop = div.scrollHeight;
 }
 
-// MODO
-function setModo(modo) {
+function aplicarModoVisual(modo) {
   modoAtual = modo;
+
   document.getElementById('btn-lia').classList.toggle('active', modo === 'lia');
   document.getElementById('btn-manual').classList.toggle('active', modo === 'manual');
+
   const warn = document.getElementById('manual-warning');
   warn.classList.toggle('show', modo === 'manual');
+
   document.getElementById('msg-input').placeholder = modo === 'lia'
-    ? 'A Lia responde automaticamente. Clique em Enviar para forçar uma resposta.'
+    ? 'A Lia responde automaticamente.'
     : 'Digite sua mensagem (você responde como Lia)...';
 }
 
-// ENVIAR
+async function setModo(modo) {
+  if (!sessaoAtual) {
+    mostrarToast('Selecione uma conversa primeiro.', 'error');
+    return;
+  }
+
+  aplicarModoVisual(modo);
+
+  try {
+    const r = await fetch(`${API_BASE}/inbox/pausar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telefone: sessaoAtual,
+        pausado: modo === 'manual',
+        modo: modo === 'manual' ? 'manual' : 'automatico'
+      })
+    });
+
+    const data = await r.json();
+
+    if (data.ok) {
+      if (!dadosSessoes[sessaoAtual]) dadosSessoes[sessaoAtual] = { historico: [] };
+
+      dadosSessoes[sessaoAtual].pausado = modo === 'manual';
+      dadosSessoes[sessaoAtual].modo = modo === 'manual' ? 'manual' : 'automatico';
+
+      renderizarLista();
+
+      mostrarToast(
+        modo === 'manual'
+          ? 'Modo manual ativado. Lia pausada.'
+          : 'Bot reativado. Lia voltou a responder.',
+        'success'
+      );
+
+      await carregarSessoes();
+    } else {
+      mostrarToast('Erro ao alterar modo: ' + (data.erro || ''), 'error');
+      await carregarSessoes();
+    }
+  } catch (e) {
+    mostrarToast('Erro de conexão ao alterar modo.', 'error');
+    await carregarSessoes();
+  }
+}
+
 async function enviar() {
   if (!sessaoAtual) return;
 
   const input = document.getElementById('msg-input');
   const texto = input.value.trim();
+
   if (!texto) return;
 
   const btn = document.getElementById('send-btn');
@@ -580,13 +632,16 @@ async function enviar() {
         modo: modoAtual
       })
     });
+
     const data = await r.json();
 
     if (data.ok) {
       input.value = '';
       input.style.height = 'auto';
       mostrarToast('Mensagem enviada!', 'success');
+
       await carregarSessoes();
+
       if (dadosSessoes[sessaoAtual]) {
         renderizarMensagens(dadosSessoes[sessaoAtual].historico || []);
       }
