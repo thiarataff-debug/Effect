@@ -140,7 +140,8 @@ app.get("/sheets/candidatos", async (req, res) => {
 app.get("/sheets/vagas", async (req, res) => {
   try {
     if (!CONFIG.VAGAS_URL) return res.json({ vagas: [] });
-    const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const r = await axios.get(`${urlBase}?acao=vagas`, { timeout: 15000 });
     res.json(r.data);
   } catch (e) {
     res.json({ vagas: [], erro: e.message });
