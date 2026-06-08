@@ -119,6 +119,35 @@ app.post("/webhook", async (req, res) => {
 });
 
 // ============================================================
+// ROTAS DO VISUALIZADOR DE SHEETS
+// ============================================================
+
+app.get("/sheets", (req, res) => {
+  res.sendFile(path.join(__dirname, "inbox-sheets.html"));
+});
+
+app.get("/sheets/candidatos", async (req, res) => {
+  try {
+    if (!CONFIG.VAGAS_URL) return res.json({ candidatos: [] });
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
+    res.json(r.data);
+  } catch (e) {
+    res.json({ candidatos: [], erro: e.message });
+  }
+});
+
+app.get("/sheets/vagas", async (req, res) => {
+  try {
+    if (!CONFIG.VAGAS_URL) return res.json({ vagas: [] });
+    const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
+    res.json(r.data);
+  } catch (e) {
+    res.json({ vagas: [], erro: e.message });
+  }
+});
+
+// ============================================================
 // ROTAS DO INBOX
 // ============================================================
 
