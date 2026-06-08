@@ -28,13 +28,18 @@ async function salvarMensagemSheets(telefone, role, mensagem, nome) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, {
+    const payload = JSON.stringify({
       acao: "salvarMensagem",
       telefone,
       role,
       mensagem,
       nome: nome || ""
-    }, { headers: { "Content-Type": "application/json" }, timeout: 10000 });
+    });
+    await axios.post(urlBase, payload, {
+      headers: { "Content-Type": "text/plain" },
+      timeout: 10000,
+      maxRedirects: 5
+    });
   } catch (e) {
     console.error("Erro salvarMensagemSheets:", e.message);
   }
@@ -45,7 +50,7 @@ async function carregarSessoesDoSheets() {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
     const url = `${urlBase}?acao=conversas`;
-    const r = await axios.get(url, { timeout: 15000 });
+    const r = await axios.get(url, { timeout: 15000, maxRedirects: 5 });
     const data = r.data;
     if (!data.sucesso || !data.sessoes) return;
 
