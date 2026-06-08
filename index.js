@@ -98,7 +98,7 @@ app.post("/webhook", async (req, res) => {
 
     if (message.text?.body) {
       const resposta = await processarMensagem(from, message.text.body);
-      await enviarMensagem(from, resposta);
+      if (resposta) await enviarMensagem(from, resposta);
       return;
     }
 
@@ -161,6 +161,32 @@ app.post("/inbox/enviar", async (req, res) => {
   }
 });
 
+// Rota pausar Lia
+app.post("/inbox/pausar", (req, res) => {
+  const { telefone, pausado } = req.body;
+  if (!telefone) return res.json({ ok: false });
+  if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
+  sessoes[telefone].pausado = !!pausado;
+  res.json({ ok: true, pausado: sessoes[telefone].pausado });
+});
+
+// Rota salvar observação
+app.post("/inbox/observacao", async (req, res) => {
+  const { telefone, observacao } = req.body;
+  if (!telefone) return res.json({ ok: false });
+  try {
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    await axios.post(urlBase, {
+      acao: "salvarMensagem",
+      telefone,
+      role: "observacao",
+      mensagem: observacao || "",
+      nome: sessoes[telefone]?.nome || ""
+    }, { headers: { "Content-Type": "application/json" }, timeout: 10000 });
+  } catch(e) { console.error("Erro salvar obs:", e.message); }
+  res.json({ ok: true });
+});
+
 // ============================================================
 // PROCESSAMENTO
 // ============================================================
@@ -171,6 +197,13 @@ async function processarMensagem(telefone, mensagem) {
 
   // Salvar mensagem do candidato no Sheets
   await salvarMensagemSheets(telefone, "user", mensagem, sessao.nome);
+
+  // Se Lia estiver pausada nesta conversa, não responde automaticamente
+  if (sessao.pausado) {
+    sessao.historico.push({ role: "user", content: mensagem });
+    sessao.historico = sessao.historico.slice(-20);
+    return null;
+  }
 
   if (ehSaudacaoSimples(mensagem) && sessao.historico.length === 0) {
     const candidatoExistente = await buscarCandidatoNaPlanilha(telefone);
