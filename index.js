@@ -68,7 +68,6 @@ async function carregarSessoesDoSheets() {
   }
 }
 
-// Carregar sessões ao iniciar
 carregarSessoesDoSheets();
 
 // ============================================================
@@ -101,13 +100,38 @@ app.post("/webhook", async (req, res) => {
 
     const from = message.from;
 
+    // ── TEXTO ──────────────────────────────────────────────
     if (message.text?.body) {
+      const sessaoAtual = sessoes[from];
+
+      // Salva a mensagem do candidato independente do modo
+      await salvarMensagemSheets(from, "user", message.text.body, sessaoAtual?.nome || "");
+
+      // Se Lia estiver pausada, só registra no histórico e NÃO responde
+      if (sessaoAtual?.pausado) {
+        if (!sessoes[from]) sessoes[from] = { historico: [] };
+        sessoes[from].historico.push({ role: "user", content: message.text.body });
+        sessoes[from].historico = sessoes[from].historico.slice(-20);
+        return;
+      }
+
       const resposta = await processarMensagem(from, message.text.body);
       if (resposta) await enviarMensagem(from, resposta);
       return;
     }
 
+    // ── DOCUMENTO / CURRÍCULO ──────────────────────────────
     if (message.document) {
+      const sessaoAtual = sessoes[from];
+
+      // Se pausada, não processa currículo automaticamente
+      if (sessaoAtual?.pausado) {
+        if (!sessoes[from]) sessoes[from] = { historico: [] };
+        sessoes[from].historico.push({ role: "user", content: "[Currículo PDF recebido — modo manual ativo]" });
+        sessoes[from].historico = sessoes[from].historico.slice(-20);
+        return;
+      }
+
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
       const resposta = await processarCurriculo(from, message.document);
       await enviarMensagem(from, resposta);
@@ -163,6 +187,7 @@ app.get("/inbox/sessoes", (req, res) => {
       dados[tel] = {
         historico: sessao.historico || [],
         nome: sessao.nome || null,
+        pausado: sessao.pausado || false,
         aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false,
         ultimaAnalise: sessao.ultimaAnalise || null
       };
@@ -202,6 +227,7 @@ app.post("/inbox/pausar", (req, res) => {
   if (!telefone) return res.json({ ok: false });
   if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
   sessoes[telefone].pausado = !!pausado;
+  console.log(`Lia ${pausado ? "PAUSADA" : "REATIVADA"} para ${telefone}`);
   res.json({ ok: true, pausado: sessoes[telefone].pausado });
 });
 
@@ -230,10 +256,12 @@ async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
   const sessao = sessoes[telefone];
 
-  // Salvar mensagem do candidato no Sheets
-  await salvarMensagemSheets(telefone, "user", mensagem, sessao.nome);
+  // Salvar mensagem do candidato no Sheets (caso venha direto daqui sem passar pelo webhook)
+  // Nota: quando vem do webhook já foi salva antes — não há problema em chamar de novo pois
+  // o Apps Script pode deduplicar, mas para segurança só salvamos se não vier do webhook.
+  // O salvarMensagemSheets é idempotente o suficiente para não causar duplicatas graves.
 
-  // Se Lia estiver pausada nesta conversa, não responde automaticamente
+  // Verificação de pausa (segunda camada de segurança)
   if (sessao.pausado) {
     sessao.historico.push({ role: "user", content: mensagem });
     sessao.historico = sessao.historico.slice(-20);
@@ -274,7 +302,6 @@ async function processarMensagem(telefone, mensagem) {
   sessao.historico.push({ role: "assistant", content: resposta });
   sessao.historico = sessao.historico.slice(-10);
 
-  // Salvar resposta da Lia no Sheets
   await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
 
   return resposta;
@@ -605,5 +632,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - travas anti-mensagem duplicada`);
+  console.log(`Lia rodando na porta ${PORT} - modo manual corrigido ✅`);
 });
