@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const pdfParse = require("pdf-parse");
+const path = require("path");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -18,6 +19,10 @@ const CONFIG = {
 
 const sessoes = {};
 const mensagensProcessadas = new Set();
+
+// ============================================================
+// ROTAS PRINCIPAIS
+// ============================================================
 
 app.get("/", (req, res) => {
   res.send("Lia Effect rodando com travas anti-mensagem duplicada ✅");
@@ -78,6 +83,76 @@ app.post("/webhook", async (req, res) => {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
 });
+
+// ============================================================
+// ROTAS DO INBOX
+// ============================================================
+
+app.get("/inbox", (req, res) => {
+  res.sendFile(path.join(__dirname, "inbox.html"));
+});
+
+app.get("/inbox/sessoes", (req, res) => {
+  try {
+    const dados = {};
+
+    Object.entries(sessoes).forEach(([tel, sessao]) => {
+      let nome = null;
+      const hist = sessao.historico || [];
+      for (const msg of hist) {
+        if (msg.role === "user" && msg.content.length < 40 && msg.content.match(/^[A-Za-zÀ-ú\s]+$/)) {
+          nome = msg.content.trim().split(" ")[0];
+          break;
+        }
+      }
+
+      dados[tel] = {
+        historico: hist,
+        nome: nome,
+        aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false,
+        ultimaAnalise: sessao.ultimaAnalise || null
+      };
+    });
+
+    res.json({ sessoes: dados, total: Object.keys(dados).length });
+  } catch (erro) {
+    res.json({ sessoes: {}, total: 0 });
+  }
+});
+
+app.post("/inbox/enviar", async (req, res) => {
+  try {
+    const { telefone, mensagem, modo } = req.body;
+
+    if (!telefone || !mensagem) {
+      return res.json({ ok: false, erro: "Dados incompletos" });
+    }
+
+    if (modo === "manual") {
+      await enviarMensagem(telefone, mensagem);
+
+      if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
+      sessoes[telefone].historico.push({ role: "assistant", content: mensagem });
+      sessoes[telefone].historico = sessoes[telefone].historico.slice(-20);
+
+      return res.json({ ok: true, modo: "manual" });
+
+    } else {
+      const resposta = await processarMensagem(telefone, mensagem);
+      await enviarMensagem(telefone, resposta);
+
+      return res.json({ ok: true, modo: "lia", resposta });
+    }
+
+  } catch (erro) {
+    console.error("Erro inbox/enviar:", erro.message);
+    res.json({ ok: false, erro: erro.message });
+  }
+});
+
+// ============================================================
+// FUNÇÕES DE PROCESSAMENTO
+// ============================================================
 
 async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
