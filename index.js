@@ -21,28 +21,60 @@ const sessoes = {};
 const mensagensProcessadas = new Set();
 
 // ============================================================
-// HELPERS SHEETS
+// HELPERS SHEETS — SALVAR COM RETRY
 // ============================================================
 
 async function salvarMensagemSheets(telefone, role, mensagem, nome) {
+  const MAX_TENTATIVAS = 3;
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    try {
+      if (!CONFIG.VAGAS_URL) return;
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      const payload = JSON.stringify({
+        acao: "salvarMensagem",
+        telefone,
+        role,
+        mensagem,
+        nome: nome || "",
+        timestamp: new Date().toISOString()
+      });
+      await axios.post(urlBase, payload, {
+        headers: { "Content-Type": "text/plain" },
+        timeout: 15000,
+        maxRedirects: 5
+      });
+      return; // sucesso
+    } catch (e) {
+      console.error(`Erro salvarMensagemSheets (tentativa ${tentativa}/${MAX_TENTATIVAS}):`, e.message);
+      if (tentativa < MAX_TENTATIVAS) await sleep(2000 * tentativa);
+    }
+  }
+}
+
+async function salvarConversaCompletaSheets(telefone, historico, nome) {
+  // Salva todo o histórico de uma vez para garantir que nada se perca
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
     const payload = JSON.stringify({
-      acao: "salvarMensagem",
+      acao: "salvarConversaCompleta",
       telefone,
-      role,
-      mensagem,
-      nome: nome || ""
+      nome: nome || "",
+      historico: historico || [],
+      timestamp: new Date().toISOString()
     });
     await axios.post(urlBase, payload, {
       headers: { "Content-Type": "text/plain" },
-      timeout: 10000,
+      timeout: 20000,
       maxRedirects: 5
     });
   } catch (e) {
-    console.error("Erro salvarMensagemSheets:", e.message);
+    console.error("Erro salvarConversaCompletaSheets:", e.message);
   }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function carregarSessoesDoSheets() {
@@ -70,12 +102,41 @@ async function carregarSessoesDoSheets() {
 
 carregarSessoesDoSheets();
 
+// Salvar todas as sessões ativas no Sheets a cada 5 minutos
+setInterval(async () => {
+  for (const [telefone, sessao] of Object.entries(sessoes)) {
+    if (sessao.historico && sessao.historico.length > 0) {
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// ============================================================
+// VAGA FIXA — DIÁRIA LINHARES (não depende do Sheets)
+// ============================================================
+
+const VAGA_DIARIA_LINHARES = {
+  idVaga: "LIN-DIA-01",
+  cargo: "Auxiliar de Serviços Gerais (Diária)",
+  area: "Serviços Gerais / Limpeza",
+  cidade: "Linhares/ES — Bairro Shell",
+  salario: "R$ 250,00 por dia (incluso passagem e alimentação)",
+  escala: "Diária — entrevistas previstas para quarta-feira",
+  escolaridade: "Ensino Fundamental",
+  experienciaMinima: "Sem experiência obrigatória",
+  aceitaSemExperiencia: "Sim",
+  perfilResumido: "Auxiliar de serviços gerais para trabalho de limpeza em Linhares, bairro Shell. Diária de R$ 250,00 com passagem e alimentação inclusos.",
+  palavrasChave: "limpeza, serviços gerais, diária, linhares, faxina, auxiliar",
+  requisitoObrigatorio: "Disponibilidade para trabalho em Linhares/ES, bairro Shell",
+  observacoes: "Não exige currículo. Perguntar apenas se tem experiência em limpeza."
+};
+
 // ============================================================
 // ROTAS PRINCIPAIS
 // ============================================================
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando com travas anti-mensagem duplicada ✅");
+  res.send("Lia Effect rodando — modo manual corrigido + vaga diária Linhares ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -102,16 +163,18 @@ app.post("/webhook", async (req, res) => {
 
     // ── TEXTO ──────────────────────────────────────────────
     if (message.text?.body) {
+      if (!sessoes[from]) sessoes[from] = { historico: [] };
       const sessaoAtual = sessoes[from];
 
-      // Salva a mensagem do candidato independente do modo
+      // Salva mensagem do candidato imediatamente com retry
       await salvarMensagemSheets(from, "user", message.text.body, sessaoAtual?.nome || "");
 
-      // Se Lia estiver pausada, só registra no histórico e NÃO responde
+      // Se Lia pausada — só registra, NÃO responde
       if (sessaoAtual?.pausado) {
-        if (!sessoes[from]) sessoes[from] = { historico: [] };
-        sessoes[from].historico.push({ role: "user", content: message.text.body });
-        sessoes[from].historico = sessoes[from].historico.slice(-20);
+        sessaoAtual.historico.push({ role: "user", content: message.text.body });
+        sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+        // Salva conversa completa atualizada
+        await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
         return;
       }
 
@@ -122,13 +185,22 @@ app.post("/webhook", async (req, res) => {
 
     // ── DOCUMENTO / CURRÍCULO ──────────────────────────────
     if (message.document) {
+      if (!sessoes[from]) sessoes[from] = { historico: [] };
       const sessaoAtual = sessoes[from];
 
-      // Se pausada, não processa currículo automaticamente
+      // Se pausada, não processa
       if (sessaoAtual?.pausado) {
-        if (!sessoes[from]) sessoes[from] = { historico: [] };
-        sessoes[from].historico.push({ role: "user", content: "[Currículo PDF recebido — modo manual ativo]" });
-        sessoes[from].historico = sessoes[from].historico.slice(-20);
+        sessaoAtual.historico.push({ role: "user", content: "[Currículo PDF recebido — modo manual ativo]" });
+        sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+        await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
+        return;
+      }
+
+      // Se for candidata de diária, não processa currículo
+      if (ehCandidataDiaria(sessaoAtual)) {
+        const msg = "Obrigada! Para essa vaga não é necessário enviar currículo. Já tenho suas informações. Em breve entraremos em contato sobre a entrevista. 💙";
+        await enviarMensagem(from, msg);
+        await salvarMensagemSheets(from, "assistant", msg, sessaoAtual.nome);
         return;
       }
 
@@ -141,6 +213,12 @@ app.post("/webhook", async (req, res) => {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
 });
+
+function ehCandidataDiaria(sessao) {
+  if (!sessao || !sessao.historico) return false;
+  const texto = sessao.historico.map(h => h.content || "").join(" ").toLowerCase();
+  return texto.includes("diária") || texto.includes("linhares") || texto.includes("shell") || texto.includes("lin-dia");
+}
 
 // ============================================================
 // ROTAS DO VISUALIZADOR DE SHEETS
@@ -209,6 +287,7 @@ app.post("/inbox/enviar", async (req, res) => {
       sessoes[telefone].historico.push({ role: "assistant", content: mensagem });
       sessoes[telefone].historico = sessoes[telefone].historico.slice(-20);
       await salvarMensagemSheets(telefone, "assistant", mensagem, sessoes[telefone].nome);
+      await salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, sessoes[telefone].nome);
       return res.json({ ok: true, modo: "manual" });
     } else {
       const resposta = await processarMensagem(telefone, mensagem);
@@ -221,7 +300,6 @@ app.post("/inbox/enviar", async (req, res) => {
   }
 });
 
-// Rota pausar Lia
 app.post("/inbox/pausar", (req, res) => {
   const { telefone, pausado } = req.body;
   if (!telefone) return res.json({ ok: false });
@@ -231,7 +309,6 @@ app.post("/inbox/pausar", (req, res) => {
   res.json({ ok: true, pausado: sessoes[telefone].pausado });
 });
 
-// Rota salvar observação
 app.post("/inbox/observacao", async (req, res) => {
   const { telefone, observacao } = req.body;
   if (!telefone) return res.json({ ok: false });
@@ -256,12 +333,7 @@ async function processarMensagem(telefone, mensagem) {
   if (!sessoes[telefone]) sessoes[telefone] = { historico: [] };
   const sessao = sessoes[telefone];
 
-  // Salvar mensagem do candidato no Sheets (caso venha direto daqui sem passar pelo webhook)
-  // Nota: quando vem do webhook já foi salva antes — não há problema em chamar de novo pois
-  // o Apps Script pode deduplicar, mas para segurança só salvamos se não vier do webhook.
-  // O salvarMensagemSheets é idempotente o suficiente para não causar duplicatas graves.
-
-  // Verificação de pausa (segunda camada de segurança)
+  // Segunda camada de segurança para modo manual
   if (sessao.pausado) {
     sessao.historico.push({ role: "user", content: mensagem });
     sessao.historico = sessao.historico.slice(-20);
@@ -276,6 +348,7 @@ async function processarMensagem(telefone, mensagem) {
       sessao.historico.push({ role: "assistant", content: "Candidato já cadastrado." });
       const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
       await salvarMensagemSheets(telefone, "assistant", resposta, nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
       return resposta;
     }
   }
@@ -289,6 +362,7 @@ async function processarMensagem(telefone, mensagem) {
     sessao.historico = sessao.historico.slice(-10);
     const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
     await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
     return resposta;
   }
 
@@ -302,7 +376,9 @@ async function processarMensagem(telefone, mensagem) {
   sessao.historico.push({ role: "assistant", content: resposta });
   sessao.historico = sessao.historico.slice(-10);
 
+  // Salva mensagem E conversa completa
   await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
+  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
 
   return resposta;
 }
@@ -334,6 +410,7 @@ async function processarCurriculo(telefone, documento) {
 
     await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
     await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
+    await salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, analise.nome);
 
     return analise.mensagemCandidato;
   } catch (erro) {
@@ -365,10 +442,16 @@ async function buscarCandidatoNaPlanilha(telefone) {
 
 async function buscarVagas() {
   try {
-    if (!CONFIG.VAGAS_URL) return [];
-    const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
-    return r.data?.vagas || [];
-  } catch (e) { return []; }
+    const vagasSheets = [];
+    if (CONFIG.VAGAS_URL) {
+      const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
+      if (r.data?.vagas) vagasSheets.push(...r.data.vagas);
+    }
+    // Sempre inclui a vaga de diária de Linhares
+    return [VAGA_DIARIA_LINHARES, ...vagasSheets];
+  } catch (e) {
+    return [VAGA_DIARIA_LINHARES];
+  }
 }
 
 function normalizarTexto(texto) {
@@ -401,7 +484,8 @@ function resumirVagas(vagas) {
     idVaga: vaga.idVaga, cargo: vaga.cargo, cidade: vaga.cidade, horario: vaga.horario,
     beneficios: vaga.beneficios, escolaridade: vaga.escolaridade, experienciaMinima: vaga.experienciaMinima,
     requisitoObrigatorio: vaga.requisitoObrigatorio, aceitaSemExperiencia: vaga.aceitaSemExperiencia,
-    perfilResumido: vaga.perfilResumido, palavrasChave: vaga.palavrasChave
+    perfilResumido: vaga.perfilResumido, palavrasChave: vaga.palavrasChave,
+    observacoes: vaga.observacoes
   }));
 }
 
@@ -410,10 +494,26 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
   const vagasResumidas = resumirVagas(vagasFiltradas);
   const historicoCurto = sessao.historico.slice(-8).map(h => `${h.role}: ${h.content}`).join("\n");
 
+  // Detecta se é conversa sobre vaga de diária
+  const textoConversa = (mensagemAtual + " " + historicoCurto).toLowerCase();
+  const ehDiaria = textoConversa.includes("diária") || textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("lin-dia") || textoConversa.includes("serviços gerais") || textoConversa.includes("limpeza");
+
+  const instrucaoCurriculo = ehDiaria
+    ? `REGRA ESPECIAL — VAGA DE DIÁRIA:
+- Esta é uma vaga de diária (trabalho por dia), NÃO peça currículo.
+- Pergunte APENAS se a candidata tem experiência com limpeza/serviços gerais.
+- Colete: nome, cidade/bairro, experiência com limpeza (sim/não), disponibilidade para quarta-feira.
+- Informe: R$ 250,00 por dia, incluso passagem e alimentação, em Linhares/ES bairro Shell.
+- Entrevistas previstas para quarta-feira.
+- Após coletar as informações, diga que vai passar o contato para a equipe e que retornarão em breve.`
+    : `COLETA PADRÃO:
+Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
+Se o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
+
   return `
 Você é a Lia, da Effect Pessoas e Performance.
 
-REGRAS:
+REGRAS GERAIS:
 - Nunca diga que é robô, IA, chatbot ou assistente virtual.
 - Nunca use menu numérico.
 - Faça somente uma pergunta por vez.
@@ -425,17 +525,14 @@ REGRAS:
 - Prefira frases como: "Prazer em falar com você, [nome].", "Perfeito, [nome]." ou "Obrigada pelas informações, [nome]."
 - Responda curto, como WhatsApp.
 - Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.
-- Se o candidato acabou de confirmar interesse em uma vaga, não volte a perguntar dados básicos.
 
 ABERTURA:
 Se for o primeiro contato e a pessoa ainda não informou o nome, responda:
 "Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"
 
-COLETA:
-Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
-Se o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.
+${instrucaoCurriculo}
 
-VAGAS RELEVANTES:
+VAGAS DISPONÍVEIS:
 ${JSON.stringify(vagasResumidas, null, 2)}
 
 HISTÓRICO RECENTE:
@@ -632,5 +729,5 @@ async function enviarMensagem(to, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} - modo manual corrigido ✅`);
+  console.log(`Lia rodando na porta ${PORT} — modo manual corrigido + vaga diária Linhares + save sheets reforçado ✅`);
 });
