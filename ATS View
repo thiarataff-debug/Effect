@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effect — ATS Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--white:#fff;--border:#e5e7eb}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* LOGIN */
+#login{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:200}
+#login.hidden{display:none}
+.lbox{background:#fff;border-radius:16px;padding:48px 40px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.llogo{font-size:22px;font-weight:800;color:var(--navy);margin-bottom:4px}.llogo span{color:var(--green)}
+.lsub{font-size:12px;color:var(--muted);margin-bottom:28px}
+.lbox input{width:100%;padding:12px 16px;border:2px solid var(--bg);border-radius:10px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;margin-bottom:14px}
+.lbox input:focus{border-color:var(--blue)}
+.lbox button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+.lbox button:hover{background:var(--blue)}
+.lerr{color:var(--pink);font-size:12px;margin-top:10px;display:none}
+
+/* HEADER */
+header{background:var(--navy);color:#fff;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hlogo{font-weight:800;font-size:15px}.hlogo span{color:var(--green)}
+.htabs{display:flex;gap:3px}
+.htab{padding:7px 14px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);transition:all .15s;white-space:nowrap}
+.htab.active{background:var(--blue);color:#fff}
+.htab:hover:not(.active){background:rgba(255,255,255,.15);color:#fff}
+.hright{display:flex;align-items:center;gap:8px}
+.upd{font-size:10px;color:var(--muted)}
+.rbtn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:6px 12px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer}
+.rbtn:hover{background:rgba(255,255,255,.22)}
+
+/* CONTENT */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.page{flex:1;overflow-y:auto;padding:20px 24px;display:none}
+.page.active{display:block}
+
+/* STATS BAR */
+.sbar{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.scard{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);border-left:4px solid var(--border)}
+.scard.blue{border-left-color:var(--blue)}.scard.green{border-left-color:var(--green)}.scard.yellow{border-left-color:#f59e0b}.scard.red{border-left-color:var(--pink)}.scard.navy{border-left-color:var(--navy)}
+.snum{font-size:26px;font-weight:800;color:var(--navy);line-height:1}
+.slabel{font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+
+/* FILTER BAR */
+.fbar{background:#fff;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.fi{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;min-width:180px}
+.fi:focus{border-color:var(--blue)}
+.fc{padding:4px 11px;border-radius:16px;border:1.5px solid var(--border);font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:#fff;transition:all .15s}
+.fc:hover{border-color:var(--navy)}
+.fc.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* BADGES / CHIPS */
+.chip{padding:2px 7px;border-radius:8px;font-size:9px;font-weight:700;display:inline-block}
+.cg{background:#dcfce7;color:#16a34a}.cb{background:#dbeafe;color:#1d4ed8}.cy{background:#fef9c3;color:#a16207}.cr{background:#fee2e2;color:#dc2626}.cn{background:#e8edf5;color:var(--navy)}.cm{background:#f3f4f6;color:var(--muted)}.cp{background:#fde8e4;color:#b04a38}
+
+/* CANDIDATOS CARDS */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:13px}
+.ccard{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1.5px solid var(--border);display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.ccard:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.09)}
+.ctop{padding:13px 15px 10px;display:flex;align-items:flex-start;gap:9px;border-bottom:1px solid #f3f4f6}
+.ctop.excelente{background:linear-gradient(135deg,#fff8e7,#fff 60%);border-left:4px solid #f59e0b}
+.ctop.bom{background:linear-gradient(135deg,#edfaf4,#fff 60%);border-left:4px solid var(--green)}
+.ctop.regular{background:linear-gradient(135deg,#fffde7,#fff 60%);border-left:4px solid #facc15}
+.ctop.reprovado{background:linear-gradient(135deg,#fff0f0,#fff 60%);border-left:4px solid var(--pink);opacity:.75}
+.ctop.default{background:#fff;border-left:4px solid var(--border)}
+.cav{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0}
+.cav.excelente{background:#f59e0b}.cav.bom{background:var(--green);color:var(--navy)}.cav.regular{background:#facc15;color:var(--navy)}.cav.reprovado{background:var(--pink)}.cav.default{background:var(--navy)}
+.chi{flex:1;min-width:0}
+.cname{font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
+.csub{font-size:9px;color:var(--muted);display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.sc{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0}
+.sa{background:#dcfce7;color:#15803d}.sm{background:#fef9c3;color:#a16207}.sb{background:#fee2e2;color:#dc2626}.sz{background:#f3f4f6;color:var(--muted)}
+.cbody{padding:10px 14px;flex:1;display:flex;flex-direction:column;gap:7px}
+.vtag{display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#1d4ed8;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cchips{display:flex;flex-wrap:wrap;gap:3px}
+.pf{font-size:10px;color:#555;line-height:1.5;background:#f8fafc;border-radius:5px;padding:5px 8px;border-left:3px solid var(--green)}
+.cfoot{padding:7px 14px;border-top:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;background:#fafbfc}
+.cdate{font-size:9px;color:var(--muted)}
+.cacts{display:flex;gap:4px}
+.abtn{padding:3px 8px;border-radius:5px;border:none;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;cursor:pointer}
+.abtn.wa{background:#25D366;color:#fff}
+.abtn.st{background:#e8edf5;color:var(--navy)}
+.abtn.st:hover{background:var(--navy);color:#fff}
+.clsbdg{padding:2px 6px;border-radius:7px;font-size:9px;font-weight:700}
+.clse{background:#fef3c7;color:#92400e}.clsb{background:#dcfce7;color:#16a34a}.clsr{background:#fef9c3;color:#a16207}.clsrp{background:#fee2e2;color:#dc2626}.clsd{background:#f3f4f6;color:var(--muted)}
+
+/* VAGAS CARDS */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.vcard{background:#fff;border-radius:11px;padding:15px;box-shadow:0 1px 4px rgba(0,0,0,.05);border-left:4px solid var(--blue);display:flex;flex-direction:column;gap:8px}
+.vcard.enc{border-left-color:var(--muted);opacity:.65}
+.vtit{font-weight:700;font-size:13px;color:var(--navy)}
+.vcli{font-size:10px;color:var(--blue);font-weight:600}
+.vrows{display:flex;flex-direction:column;gap:3px}
+.vrow{display:flex;gap:5px;font-size:10.5px;color:#555;align-items:flex-start}
+.vico{flex-shrink:0;color:var(--muted);width:13px;text-align:center}
+.vfoot{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+
+/* CONVERSAS */
+.conv-table{background:#fff;border-radius:11px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.conv-table table{width:100%;border-collapse:collapse;font-size:11px}
+.conv-table thead th{background:var(--navy);color:#fff;padding:9px 12px;text-align:left;font-weight:700;font-size:10px;white-space:nowrap}
+.conv-table tbody td{padding:8px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.conv-table tbody tr:hover td{background:#f8fafc}
+.conv-table tbody tr:last-child td{border-bottom:none}
+.role-user{background:#eff6ff;color:#1d4ed8;padding:2px 6px;border-radius:5px;font-size:9px;font-weight:700}
+.role-lia{background:#e8edf5;color:var(--navy);padding:2px 6px;border-radius:5px;font-size:9px;font-weight:700}
+.msg-cell{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.dbox{background:#fff;border-radius:11px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.dbox.full{grid-column:1/-1}
+.dbox-title{font-weight:700;font-size:11px;color:var(--navy);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;padding-bottom:7px;border-bottom:2px solid var(--blue)}
+.brow{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:10px}
+.blabel{width:130px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btrack{flex:1;background:#f3f4f6;border-radius:3px;height:12px;overflow:hidden}
+.bfill{height:100%;border-radius:3px;transition:width .5s}
+.bval{width:26px;text-align:right;font-weight:700;color:var(--navy)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.kpi{background:#f8fafc;border-radius:8px;padding:12px;text-align:center}
+.knum{font-size:22px;font-weight:800;color:var(--navy);line-height:1}
+.klabel{font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+
+/* INDICADORES */
+.ind-table{background:#fff;border-radius:11px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:16px}
+.ind-table table{width:100%;border-collapse:collapse;font-size:11px}
+.ind-table thead th{background:var(--navy);color:#fff;padding:9px 14px;text-align:left;font-weight:700;font-size:10px}
+.ind-table tbody td{padding:10px 14px;border-bottom:1px solid #f3f4f6}
+.ind-table tbody tr:last-child td{border-bottom:none}
+.ind-table tbody tr:hover td{background:#f8fafc}
+.ind-val{font-weight:700;color:var(--navy)}
+.ind-meta{font-size:9px;color:var(--muted)}
+.pct-bar{display:flex;align-items:center;gap:6px}
+.pct-track{flex:1;background:#f3f4f6;border-radius:3px;height:8px;overflow:hidden}
+.pct-fill{height:100%;border-radius:3px}
+
+/* FUNIL */
+.funil-wrap{display:flex;flex-direction:column;gap:6px;max-width:600px;margin-bottom:16px}
+.funil-et{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:8px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.funil-icon{font-size:18px;width:28px;text-align:center;flex-shrink:0}
+.funil-info{flex:1}
+.funil-name{font-weight:700;font-size:12px;color:var(--navy)}
+.funil-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.funil-num{font-weight:800;font-size:18px;color:var(--navy);flex-shrink:0}
+.funil-pct{font-size:10px;color:var(--muted);width:35px;text-align:right;flex-shrink:0}
+.funil-bar-wrap{flex:1;max-width:120px}
+.funil-bar-track{background:#f3f4f6;border-radius:3px;height:6px;overflow:hidden}
+.funil-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+
+/* CONSOLIDADO */
+.cons-table{background:#fff;border-radius:11px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.cons-table table{width:100%;border-collapse:collapse;font-size:11px}
+.cons-table thead th{background:var(--navy);color:#fff;padding:9px 12px;text-align:left;font-weight:700;font-size:10px;white-space:nowrap}
+.cons-table tbody td{padding:8px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.cons-table tbody tr:hover td{background:#f8fafc}
+.cons-table tbody tr:last-child td{border-bottom:none}
+.status-badge{padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700}
+.st-np{background:#dcfce7;color:#16a34a}.st-at{background:#fef9c3;color:#a16207}.st-at2{background:#fee2e2;color:#dc2626}.st-cr{background:#fde8e4;color:#b04a38}
+
+/* RELATÓRIO CLIENTE */
+.rel-header{background:var(--navy);color:#fff;border-radius:11px;padding:20px 24px;margin-bottom:16px}
+.rel-title{font-size:18px;font-weight:800;margin-bottom:4px}
+.rel-sub{font-size:12px;color:rgba(255,255,255,.6)}
+.rel-meta{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap}
+.rel-meta-item{display:flex;flex-direction:column;gap:2px}
+.rel-meta-label{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+.rel-meta-val{font-size:12px;font-weight:700}
+.rel-section{background:#fff;border-radius:11px;padding:18px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.rel-section-title{font-weight:700;font-size:12px;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--green);text-transform:uppercase;letter-spacing:.5px}
+.shortlist-card{display:flex;align-items:center;gap:12px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:8px}
+.sl-num{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;flex-shrink:0}
+.sl-info{flex:1}
+.sl-name{font-weight:700;font-size:12px}
+.sl-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.sl-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.edit-mode .editable{background:#fffbeb;border:1px dashed #f59e0b;border-radius:4px;padding:2px 4px;cursor:text;outline:none}
+.edit-mode .editable:focus{border-color:var(--blue);background:#eff6ff}
+.edit-btn{padding:5px 12px;border-radius:7px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.edit-btn.on{background:#fef3c7;color:#92400e}.edit-btn.save{background:var(--green);color:var(--navy)}
+
+/* MODAL STATUS */
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;display:none;align-items:center;justify-content:center}
+.moverlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-weight:700;font-size:15px;color:var(--navy);margin-bottom:14px}
+.modal select,.modal textarea{width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;margin-bottom:10px}
+.modal select:focus,.modal textarea:focus{border-color:var(--blue)}
+.modal textarea{resize:none;min-height:70px}
+.mbtns{display:flex;gap:7px;justify-content:flex-end}
+.mcancel{padding:8px 16px;border-radius:7px;border:2px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)}
+.msave{padding:8px 16px;border-radius:7px;border:none;background:var(--navy);color:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer}
+.msave:hover{background:var(--blue)}
+
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:12px;gap:8px}
+.spinner{width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:12px}
+
+.toast{position:fixed;bottom:18px;right:18px;background:#2a2a2b;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:600;z-index:300;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green);color:var(--navy)}.toast.error{background:var(--pink);color:#fff}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lbox">
+    <div class="llogo">Effect <span>Pessoas</span></div>
+    <div class="lsub">ATS Viewer — Acesso restrito</div>
+    <input type="password" id="pwd" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')entrar()">
+    <button onclick="entrar()">Entrar</button>
+    <div class="lerr" id="lerr">Senha incorreta.</div>
+  </div>
+</div>
+
+<header>
+  <div class="hlogo">Effect <span>ATS</span></div>
+  <div class="htabs">
+    <button class="htab active" onclick="irPara('dashboard',this)">📊 Dashboard</button>
+    <button class="htab" onclick="irPara('candidatos',this)">👥 Candidatos</button>
+    <button class="htab" onclick="irPara('vagas',this)">📋 Vagas</button>
+    <button class="htab" onclick="irPara('conversas',this)">💬 Conversas</button>
+    <button class="htab" onclick="irPara('indicadores',this)">📈 Indicadores</button>
+    <button class="htab" onclick="irPara('funil',this)">🔽 Funil por Vaga</button>
+    <button class="htab" onclick="irPara('consolidado',this)">🏢 Consolidado</button>
+    <button class="htab" onclick="irPara('relatorio',this)">📄 Relatório Cliente</button>
+  </div>
+  <div class="hright">
+    <span class="upd" id="upd"></span>
+    <button class="rbtn" onclick="carregarTudo()">⟳</button>
+  </div>
+</header>
+
+<div class="content">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="sbar" id="db-stats"></div>
+    <div class="dash-grid" id="db-charts"></div>
+  </div>
+
+  <!-- CANDIDATOS -->
+  <div class="page" id="page-candidatos">
+    <div class="fbar">
+      <input class="fi" placeholder="🔍 Nome, telefone ou vaga..." oninput="filtrarC(this.value)">
+      <button class="fc on" onclick="setFC(this,'')">Todos</button>
+      <button class="fc" onclick="setFC(this,'Excelente')">⭐ Excelente</button>
+      <button class="fc" onclick="setFC(this,'Bom')">✅ Bom</button>
+      <button class="fc" onclick="setFC(this,'Regular')">Regular</button>
+      <button class="fc" onclick="setFC(this,'Reprovado')">Reprovado</button>
+      <button class="fc" id="fc-int" onclick="toggleInt()">✓ Interessados</button>
+    </div>
+    <div class="cgrid" id="cand-grid"></div>
+  </div>
+
+  <!-- VAGAS -->
+  <div class="page" id="page-vagas">
+    <div class="fbar">
+      <input class="fi" placeholder="🔍 Cargo, cliente ou cidade..." oninput="filtrarV(this.value)">
+      <button class="fc on" onclick="setFV(this,'todas')">Todas</button>
+      <button class="fc" onclick="setFV(this,'ativas')">🟢 Abertas</button>
+      <button class="fc" onclick="setFV(this,'encerradas')">Encerradas</button>
+    </div>
+    <div class="vgrid" id="vagas-grid"></div>
+  </div>
+
+  <!-- CONVERSAS -->
+  <div class="page" id="page-conversas">
+    <div class="fbar">
+      <input class="fi" placeholder="🔍 Nome, telefone ou mensagem..." oninput="filtrarConv(this.value)">
+      <button class="fc on" onclick="setFConv(this,'todas')">Todas</button>
+      <button class="fc" onclick="setFConv(this,'user')">👤 Candidato</button>
+      <button class="fc" onclick="setFConv(this,'assistant')">🤖 Lia</button>
+      <button class="fc" onclick="setFConv(this,'manual')">✍️ Manual</button>
+    </div>
+    <div class="conv-table" id="conv-wrap"></div>
+  </div>
+
+  <!-- INDICADORES -->
+  <div class="page" id="page-indicadores">
+    <div id="ind-content"></div>
+  </div>
+
+  <!-- FUNIL POR VAGA -->
+  <div class="page" id="page-funil">
+    <div class="fbar">
+      <select class="fi" id="funil-select" onchange="renderFunil()" style="min-width:240px">
+        <option value="">Selecione uma vaga...</option>
+      </select>
+    </div>
+    <div id="funil-content"></div>
+  </div>
+
+  <!-- CONSOLIDADO -->
+  <div class="page" id="page-consolidado">
+    <div class="fbar">
+      <input class="fi" placeholder="🔍 Filtrar por cliente ou cargo..." oninput="filtrarCons(this.value)">
+      <button class="fc on" onclick="setFCons(this,'todos')">Todos</button>
+      <button class="fc" onclick="setFCons(this,'atencao')">⚠️ Atenção</button>
+      <button class="fc" onclick="setFCons(this,'atrasada')">🔴 Atrasada</button>
+      <button class="fc" onclick="setFCons(this,'critica')">🚨 Crítica</button>
+    </div>
+    <div class="sbar" id="cons-stats" style="margin-bottom:16px"></div>
+    <div class="cons-table" id="cons-table"></div>
+  </div>
+
+  <!-- RELATÓRIO CLIENTE -->
+  <div class="page" id="page-relatorio">
+    <div class="fbar" style="margin-bottom:16px">
+      <select class="fi" id="rel-select" onchange="renderRelatorio()" style="min-width:240px">
+        <option value="">Selecione um cliente / vaga...</option>
+      </select>
+      <button class="edit-btn on" id="edit-btn" onclick="toggleEdit()">✏️ Modo edição</button>
+      <button class="edit-btn save" id="save-btn" style="display:none" onclick="salvarEdicao()">💾 Salvar versão</button>
+    </div>
+    <div id="rel-content"></div>
+  </div>
+
+</div>
+
+<!-- MODAL STATUS -->
+<div class="moverlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Atualizar candidato</h3>
+    <select id="modal-status">
+      <option value="">Manter status atual</option>
+      <option>Interessado</option>
+      <option>Analisado pela Lia</option>
+      <option>Em processo</option>
+      <option>Entrevista agendada</option>
+      <option>Aprovado</option>
+      <option>Reprovado</option>
+    </select>
+    <textarea id="modal-obs" placeholder="Adicionar observação (opcional)..."></textarea>
+    <div class="mbtns">
+      <button class="mcancel" onclick="fecharModal()">Cancelar</button>
+      <button class="msave" onclick="salvarStatus()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SENHA = "effect2026";
+const API = window.location.origin;
+
+let candidatos=[], vagas=[], sessoes={}, convRows=[];
+let fClass='', fInt=false, fVaga='todas', fConvTab='todas', fConvBusca='';
+let fCandBusca='', fVagaBusca='', fConsBusca='', fConsTab='todos';
+let modalTel=null, editMode=false;
+let relData={}, funilData={};
+
+function entrar(){
+  if(document.getElementById('pwd').value===SENHA){
+    document.getElementById('login').classList.add('hidden');
+    carregarTudo();
+    setInterval(carregarTudo,30000);
+  } else {
+    document.getElementById('lerr').style.display='block';
+  }
+}
+
+function irPara(pg,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.htab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`page-${pg}`).classList.add('active');
+  if(el) el.classList.add('active');
+  renderPagina(pg);
+}
+
+function renderPagina(pg){
+  if(pg==='dashboard') renderDashboard();
+  else if(pg==='candidatos') renderCandidatos();
+  else if(pg==='vagas') renderVagas();
+  else if(pg==='conversas') renderConversas();
+  else if(pg==='indicadores') renderIndicadores();
+  else if(pg==='funil') renderFunil();
+  else if(pg==='consolidado') renderConsolidado();
+  else if(pg==='relatorio') renderRelatorio();
+}
+
+async function carregarTudo(){
+  try{
+    const [rC,rV,rS] = await Promise.all([
+      fetch(`${API}/sheets/candidatos`).then(r=>r.json()).catch(()=>({candidatos:[]})),
+      fetch(`${API}/sheets/vagas`).then(r=>r.json()).catch(()=>({vagas:[]})),
+      fetch(`${API}/inbox/sessoes`).then(r=>r.json()).catch(()=>({sessoes:{}}))
+    ]);
+    candidatos = rC.candidatos||[];
+    vagas = rV.vagas||[];
+    sessoes = rS.sessoes||{};
+    // Achatar conversas em linhas
+    convRows=[];
+    Object.entries(sessoes).forEach(([tel,s])=>{
+      (s.historico||[]).forEach(msg=>{
+        convRows.push({tel,nome:s.nome||tel,role:msg.role||'',mensagem:msg.content||'',horario:msg.timestamp||'',modo:s.modo||'automatico',pausado:s.pausado});
+      });
+    });
+    document.getElementById('upd').textContent=`Atualizado: ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+    const pg = document.querySelector('.page.active')?.id?.replace('page-','');
+    if(pg) renderPagina(pg);
+    popularSelects();
+  } catch(e){console.error(e)}
+}
+
+function popularSelects(){
+  const sel = document.getElementById('funil-select');
+  const selR = document.getElementById('rel-select');
+  const vagasAtivas = vagas.filter(v=>v.cargo);
+  sel.innerHTML = '<option value="">Selecione uma vaga...</option>' + vagasAtivas.map(v=>`<option value="${v.idVaga||v.cargo}">${v.cargo} — ${v.cliente||''}</option>`).join('');
+  selR.innerHTML = '<option value="">Selecione um cliente / vaga...</option>' + vagasAtivas.map(v=>`<option value="${v.idVaga||v.cargo}">${v.cliente||''} — ${v.cargo}</option>`).join('');
+}
+
+// ── DASHBOARD ──
+function renderDashboard(){
+  const total=candidatos.length;
+  const exc=candidatos.filter(c=>c['Classificação']==='Excelente').length;
+  const bons=candidatos.filter(c=>c['Classificação']==='Bom').length;
+  const reg=candidatos.filter(c=>c['Classificação']==='Regular').length;
+  const rep=candidatos.filter(c=>c['Classificação']==='Reprovado').length;
+  const int=candidatos.filter(c=>c['Status']==='Interessado').length;
+  const cur=candidatos.filter(c=>c['Currículo']==='Sim').length;
+  const va=vagas.filter(v=>!['inativa','fechada','cancelada','encerrada'].includes((v.status||'').toLowerCase())).length;
+  const conv=Object.keys(sessoes).length;
+  const scores=candidatos.map(c=>Number(c['Score Geral']||0)).filter(s=>s>0);
+  const scoreMed=scores.length?Math.round(scores.reduce((a,b)=>a+b)/scores.length):0;
+
+  document.getElementById('db-stats').innerHTML=`
+    <div class="scard blue"><div class="snum">${total}</div><div class="slabel">Candidatos</div></div>
+    <div class="scard yellow"><div class="snum" style="color:#f59e0b">${exc}</div><div class="slabel">Excelentes</div></div>
+    <div class="scard green"><div class="snum" style="color:#16a34a">${int}</div><div class="slabel">Interessados</div></div>
+    <div class="scard navy"><div class="snum">${cur}</div><div class="slabel">Com Currículo</div></div>
+    <div class="scard"><div class="snum">${va}</div><div class="slabel">Vagas Ativas</div></div>
+    <div class="scard blue"><div class="snum" style="color:var(--blue)">${conv}</div><div class="slabel">Conversas Lia</div></div>
+    <div class="scard"><div class="snum">${scoreMed||'—'}</div><div class="slabel">Score Médio</div></div>
+    <div class="scard red"><div class="snum" style="color:#dc2626">${rep}</div><div class="slabel">Reprovados</div></div>
+  `;
+
+  const pV={};candidatos.forEach(c=>{const v=c['Vaga de Interesse']||'Sem vaga';if(!pV[v])pV[v]=0;pV[v]++;});
+  const vR=Object.entries(pV).sort((a,b)=>b[1]-a[1]);const mxV=Math.max(...vR.map(x=>x[1]),1);
+  const pC={};candidatos.forEach(c=>{const ci=(c['Cidade / Estado']||'N/A').split('/')[0].trim();pC[ci]=(pC[ci]||0)+1;});
+  const cR=Object.entries(pC).sort((a,b)=>b[1]-a[1]).slice(0,8);const mxC=Math.max(...cR.map(x=>x[1]),1);
+
+  document.getElementById('db-charts').innerHTML=`
+    <div class="dbox full">
+      <div class="dbox-title">Classificação Geral</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[['Excelente','#f59e0b',exc],['Bom','#8ed1b2',bons],['Regular','#facc15',reg],['Reprovado','#f4afa1',rep]].map(([l,c,n])=>`
+        <div style="flex:1;min-width:100px;background:#f8fafc;border-radius:9px;padding:13px;text-align:center;border-top:3px solid ${c}">
+          <div style="font-size:22px;font-weight:800;color:var(--navy)">${n}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase">${l}</div>
+          <div style="font-size:10px;font-weight:700;color:${c};margin-top:3px">${total?Math.round(n/total*100):0}%</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="dbox">
+      <div class="dbox-title">Candidatos por Vaga</div>
+      ${vR.map(([v,n])=>{const p=Math.round(n/mxV*100);return`<div class="brow"><div class="blabel" title="${v}">${v.slice(0,20)}</div><div class="btrack"><div class="bfill" style="width:${p}%;background:var(--blue)"></div></div><div class="bval">${n}</div></div>`;}).join('')||'<div class="empty">Sem dados</div>'}
+    </div>
+    <div class="dbox">
+      <div class="dbox-title">Candidatos por Cidade</div>
+      ${cR.map(([c,n])=>{const p=Math.round(n/mxC*100);return`<div class="brow"><div class="blabel">${c}</div><div class="btrack"><div class="bfill" style="width:${p}%;background:var(--green)"></div></div><div class="bval">${n}</div></div>`;}).join('')||'<div class="empty">Sem dados</div>'}
+    </div>
+  `;
+}
+
+// ── CANDIDATOS ──
+function renderCandidatos(){
+  const filtered=candidatos.filter(c=>{
+    const b=fCandBusca.toLowerCase();
+    return(!b||(c['Nome']||'').toLowerCase().includes(b)||(c['Telefone']||'').includes(b)||(c['Vaga de Interesse']||'').toLowerCase().includes(b))
+      &&(!fClass||c['Classificação']===fClass)
+      &&(!fInt||c['Status']==='Interessado');
+  });
+  const g=document.getElementById('cand-grid');
+  if(!filtered.length){g.innerHTML='<div class="empty">Nenhum candidato encontrado.</div>';return}
+  g.innerHTML=filtered.map(c=>{
+    const cls=(c['Classificação']||'').toLowerCase();
+    const score=Number(c['Score Geral']||c['Score da Vaga']||0);
+    const nome=c['Nome']||'—';
+    const tel=(c['Telefone']||'').replace(/\D/g,'');
+    const ck=['excelente','bom','regular','reprovado'].includes(cls)?cls:'default';
+    const sk=score>=80?'sa':score>=60?'sm':score>0?'sb':'sz';
+    const sbdg=`cls${ck==='excelente'?'e':ck==='bom'?'b':ck==='regular'?'r':ck==='reprovado'?'rp':'d'}`;
+    const st=(()=>{const s=(c['Status']||'').toLowerCase();if(s.includes('interessado'))return`<span class="chip cg">✓ Interessado</span>`;if(s.includes('analisado'))return`<span class="chip cb">🤖 Lia</span>`;if(s.includes('reprovado'))return`<span class="chip cr">✗ Reprovado</span>`;return c['Status']?`<span class="chip cm">${c['Status']}</span>`:''})();
+    const chips=[];
+    if(c['Transporte Próprio']==='Sim')chips.push(`<span class="chip cn">🚗</span>`);
+    if(c['CLT Imediato']==='Sim')chips.push(`<span class="chip cn">📄 CLT</span>`);
+    if(c['Currículo']==='Sim')chips.push(`<span class="chip cg">📎</span>`);
+    return`<div class="ccard">
+      <div class="ctop ${ck}">
+        <div class="cav ${ck}">${nome.charAt(0).toUpperCase()}</div>
+        <div class="chi">
+          <div class="cname">${nome}</div>
+          <div class="csub">${c['Cidade / Estado']?`<span>📍${c['Cidade / Estado']}</span>`:''}<span class="clsbdg ${sbdg}">${c['Classificação']||'—'}</span></div>
+        </div>
+        <div class="sc ${sk}">${score||'—'}</div>
+      </div>
+      <div class="cbody">
+        ${c['Vaga de Interesse']?`<div class="vtag">💼 ${c['Vaga de Interesse']}</div>`:''}
+        <div class="cchips">${st}${chips.join('')}</div>
+        ${c['Pontos Fortes']?`<div class="pf">💡 ${c['Pontos Fortes'].slice(0,100)}${c['Pontos Fortes'].length>100?'…':''}</div>`:''}
+        ${c['Pontos de Atenção']?`<div style="font-size:9px;color:#888">⚠️ ${c['Pontos de Atenção'].slice(0,80)}</div>`:''}
+      </div>
+      <div class="cfoot">
+        <span class="cdate">${c['Criado em']||''}</span>
+        <div class="cacts">
+          <button class="abtn st" onclick="abrirModal('${tel}','${nome.replace(/'/g,"\\'")}')">✏️</button>
+          ${tel?`<button class="abtn wa" onclick="window.open('https://wa.me/${tel}','_blank')">💬</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function filtrarC(v){fCandBusca=v;renderCandidatos()}
+function setFC(el,v){fClass=v;document.querySelectorAll('#page-candidatos .fc').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderCandidatos()}
+function toggleInt(){fInt=!fInt;document.getElementById('fc-int').classList.toggle('on',fInt);renderCandidatos()}
+
+// ── VAGAS ──
+function renderVagas(){
+  const b=fVagaBusca.toLowerCase();
+  const filtered=vagas.filter(v=>{
+    const enc=['inativa','fechada','cancelada','encerrada'].includes((v.status||'').toLowerCase());
+    if(fVaga==='ativas'&&enc)return false;
+    if(fVaga==='encerradas'&&!enc)return false;
+    return!b||(v.cargo||'').toLowerCase().includes(b)||(v.cliente||'').toLowerCase().includes(b)||(v.cidade||'').toLowerCase().includes(b);
+  });
+  const g=document.getElementById('vagas-grid');
+  if(!filtered.length){g.innerHTML='<div class="empty">Nenhuma vaga encontrada.</div>';return}
+  g.innerHTML=filtered.map(v=>{
+    const enc=['inativa','fechada','cancelada','encerrada'].includes((v.status||'').toLowerCase());
+    return`<div class="vcard ${enc?'enc':''}">
+      <div><div class="vtit">${v.cargo||'—'}</div><div class="vcli">${v.cliente||'—'}</div></div>
+      <div class="vrows">
+        ${v.cidade?`<div class="vrow"><span class="vico">📍</span>${v.cidade}</div>`:''}
+        ${v.salario?`<div class="vrow"><span class="vico">💰</span>${v.salario}</div>`:''}
+        ${v.horario?`<div class="vrow"><span class="vico">🕐</span>${v.horario}</div>`:''}
+        ${v.experienciaMinima?`<div class="vrow"><span class="vico">💼</span>${v.experienciaMinima}</div>`:''}
+        ${v.escolaridade?`<div class="vrow"><span class="vico">🎓</span>${v.escolaridade}</div>`:''}
+        ${v.requisitoObrigatorio?`<div class="vrow"><span class="vico">⚠️</span><strong>${v.requisitoObrigatorio}</strong></div>`:''}
+      </div>
+      <div class="vfoot">
+        <span class="chip ${enc?'cr':'cg'}">${v.status||'Aberta'}</span>
+        ${v.aceitaSemExperiencia==='Sim'?'<span class="chip cb">Sem exp.</span>':''}
+        ${v.exigeFimDeSemana==='Sim'?'<span class="chip cy">Fim de semana</span>':''}
+        ${v.idVaga?`<span class="chip cm">#${v.idVaga}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function filtrarV(v){fVagaBusca=v;renderVagas()}
+function setFV(el,v){fVaga=v;document.querySelectorAll('#page-vagas .fc').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderVagas()}
+
+// ── CONVERSAS ──
+function renderConversas(){
+  const filtered=convRows.filter(r=>{
+    const b=fConvBusca.toLowerCase();
+    const matchB=!b||(r.nome||'').toLowerCase().includes(b)||(r.tel||'').includes(b)||(r.mensagem||'').toLowerCase().includes(b);
+    const matchT=fConvTab==='todas'||(fConvTab==='user'&&r.role==='user')||(fConvTab==='assistant'&&r.role==='assistant')||(fConvTab==='manual'&&r.modo==='manual');
+    return matchB&&matchT;
+  });
+  const w=document.getElementById('conv-wrap');
+  if(!filtered.length){w.innerHTML='<div class="empty">Nenhuma conversa encontrada.</div>';return}
+  w.innerHTML=`<table>
+    <thead><tr><th>Telefone</th><th>Nome</th><th>Role</th><th>Mensagem</th><th>Horário</th><th>Modo</th></tr></thead>
+    <tbody>${filtered.slice(0,200).map(r=>`<tr>
+      <td>${r.tel?`<a href="https://wa.me/${r.tel}" target="_blank" style="color:var(--blue);text-decoration:none">+${r.tel}</a>`:''}</td>
+      <td style="font-weight:600">${r.nome||'—'}</td>
+      <td><span class="${r.role==='user'?'role-user':'role-lia'}">${r.role==='user'?'Candidato':'🤖 Lia'}</span></td>
+      <td class="msg-cell" title="${(r.mensagem||'').replace(/"/g,'&quot;')}">${r.mensagem||'—'}</td>
+      <td style="white-space:nowrap;font-size:10px;color:var(--muted)">${r.horario||'—'}</td>
+      <td><span class="chip ${r.modo==='manual'?'cp':'cn'}">${r.modo==='manual'?'✍️ Manual':'🤖 Auto'}</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+function filtrarConv(v){fConvBusca=v;renderConversas()}
+function setFConv(el,v){fConvTab=v;document.querySelectorAll('#page-conversas .fc').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderConversas()}
+
+// ── INDICADORES ──
+function renderIndicadores(){
+  const total=candidatos.length;
+  const comCurr=candidatos.filter(c=>c['Currículo']==='Sim').length;
+  const interessados=candidatos.filter(c=>c['Status']==='Interessado').length;
+  const contratados=candidatos.filter(c=>(c['Status']||'').toLowerCase().includes('contratado')).length;
+  const scores=candidatos.map(c=>Number(c['Score Geral']||0)).filter(s=>s>0);
+  const scoreMed=scores.length?Math.round(scores.reduce((a,b)=>a+b)/scores.length):0;
+  const vagasAtivas=vagas.filter(v=>!['inativa','fechada','cancelada','encerrada'].includes((v.status||'').toLowerCase())).length;
+  const taxaCurr=total?Math.round(comCurr/total*100):0;
+  const taxaInt=total?Math.round(interessados/total*100):0;
+  const taxaCont=total?Math.round(contratados/total*100):0;
+
+  const indicadores=[
+    {label:'Total de candidatos cadastrados',formula:'COUNTA',valor:total,meta:'—',pct:null,cor:'var(--blue)'},
+    {label:'Taxa de envio de currículo (%)',formula:'Sim / Total × 100',valor:taxaCurr+'%',meta:'75%',pct:taxaCurr,cor:'var(--green)'},
+    {label:'Taxa de comparecimento (%)',formula:'Interessados / Convocados',valor:taxaInt+'%',meta:'60%',pct:taxaInt,cor:'#f59e0b'},
+    {label:'Taxa de contratação (%)',formula:'Contratados / Total',valor:taxaCont+'%',meta:'11%',pct:taxaCont,cor:'#1a2a4a'},
+    {label:'Score médio dos candidatos',formula:'AVERAGE Score',valor:scoreMed,meta:'75',pct:scoreMed,cor:'#8b5cf6'},
+    {label:'Nº shows reprovados',formula:'Status Não Compareceu',valor:candidatos.filter(c=>(c['Status']||'').toLowerCase().includes('não compareceu')).length,meta:'< 19',pct:null,cor:null},
+    {label:'Vagas abertas',formula:'Status Vagas Abertas',valor:vagasAtivas,meta:'—',pct:null,cor:null},
+  ];
+
+  document.getElementById('ind-content').innerHTML=`
+    <div class="ind-table">
+      <table>
+        <thead><tr><th>Indicador</th><th>Fórmula / Base</th><th>Valor Atual</th><th>Meta</th><th>Progresso</th></tr></thead>
+        <tbody>${indicadores.map(i=>`<tr>
+          <td style="font-weight:600">${i.label}</td>
+          <td style="color:var(--muted);font-size:10px">${i.formula}</td>
+          <td><span class="ind-val">${i.valor}</span></td>
+          <td><span class="ind-meta">${i.meta}</span></td>
+          <td>${i.pct!==null?`<div class="pct-bar"><div class="pct-track"><div class="pct-fill" style="width:${Math.min(i.pct,100)}%;background:${i.cor||'var(--blue)'}"></div></div><span style="font-size:9px;color:var(--muted);margin-left:4px">${i.pct}%</span></div>`:'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+      ${indicadores.filter(i=>i.pct!==null).map(i=>`
+        <div class="scard" style="border-left-color:${i.cor||'var(--blue)'}">
+          <div class="snum" style="color:${i.cor||'var(--navy)'}">${i.valor}</div>
+          <div class="slabel">${i.label.split(' ').slice(0,3).join(' ')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── FUNIL POR VAGA ──
+function renderFunil(){
+  const sel=document.getElementById('funil-select').value;
+  const div=document.getElementById('funil-content');
+  if(!sel){div.innerHTML='<div class="empty">Selecione uma vaga para ver o funil.</div>';return}
+  const vaga=vagas.find(v=>(v.idVaga||v.cargo)===sel);
+  if(!vaga){div.innerHTML='<div class="empty">Vaga não encontrada.</div>';return}
+
+  const candVaga=candidatos.filter(c=>(c['Vaga de Interesse']||'').toLowerCase().includes((vaga.cargo||'').toLowerCase()));
+  const total=candVaga.length;
+  const etapas=[
+    {nome:'Candidatos mapeados',icon:'📥',n:total,cor:'#1fa5ff'},
+    {nome:'Triagem pela Lia',icon:'🤖',n:candVaga.filter(c=>c['Status']&&c['Status']!=='').length,cor:'#8b5cf6'},
+    {nome:'Triagem qualitativa',icon:'🔍',n:candVaga.filter(c=>['Excelente','Bom'].includes(c['Classificação'])).length,cor:'#f59e0b'},
+    {nome:'Entrevista Effect',icon:'🎯',n:candVaga.filter(c=>['Interessado','Em processo','Entrevista agendada'].includes(c['Status'])).length,cor:'#8ed1b2'},
+    {nome:'Shortlist enviado',icon:'📋',n:candVaga.filter(c=>['Aprovado','Contratado'].includes(c['Status'])).length,cor:'#16a34a'},
+    {nome:'Contratado',icon:'✅',n:candVaga.filter(c=>(c['Status']||'').toLowerCase().includes('contratado')).length,cor:'#15803d'},
+  ];
+
+  const maxN=Math.max(...etapas.map(e=>e.n),1);
+  div.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="dbox">
+        <div class="dbox-title">${vaga.cargo} — ${vaga.cliente||''}</div>
+        <div class="vrows" style="gap:6px">
+          ${vaga.cidade?`<div class="vrow"><span class="vico">📍</span>${vaga.cidade}</div>`:''}
+          ${vaga.salario?`<div class="vrow"><span class="vico">💰</span>${vaga.salario}</div>`:''}
+          ${vaga.horario?`<div class="vrow"><span class="vico">🕐</span>${vaga.horario}</div>`:''}
+          ${vaga.dataAbertura?`<div class="vrow"><span class="vico">📅</span>Aberta em: ${vaga.dataAbertura}</div>`:''}
+        </div>
+      </div>
+      <div class="dbox">
+        <div class="dbox-title">KPIs da Vaga</div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="knum">${total}</div><div class="klabel">Total</div></div>
+          <div class="kpi"><div class="knum" style="color:#f59e0b">${etapas[2].n}</div><div class="klabel">Qualificados</div></div>
+          <div class="kpi"><div class="knum" style="color:#16a34a">${etapas[4].n}</div><div class="klabel">Shortlist</div></div>
+          <div class="kpi"><div class="knum" style="color:#15803d">${etapas[5].n}</div><div class="klabel">Contratado</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="dbox">
+      <div class="dbox-title">Funil de Recrutamento</div>
+      <div class="funil-wrap">
+        ${etapas.map((e,i)=>{
+          const pct=total?Math.round(e.n/total*100):0;
+          const barPct=Math.round(e.n/maxN*100);
+          return`<div class="funil-et">
+            <div class="funil-icon">${e.icon}</div>
+            <div class="funil-info">
+              <div class="funil-name">${e.nome}</div>
+              <div class="funil-sub">Etapa ${i+1} do processo</div>
+            </div>
+            <div class="funil-bar-wrap">
+              <div class="funil-bar-track"><div class="funil-bar-fill" style="width:${barPct}%;background:${e.cor}"></div></div>
+            </div>
+            <div class="funil-pct">${pct}%</div>
+            <div class="funil-num">${e.n}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    ${candVaga.length?`
+    <div class="dbox" style="margin-top:14px">
+      <div class="dbox-title">Candidatos desta vaga</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+        ${candVaga.map(c=>{
+          const score=Number(c['Score Geral']||0);
+          const sk=score>=80?'sa':score>=60?'sm':score>0?'sb':'sz';
+          return`<div style="background:#f8fafc;border-radius:8px;padding:10px;display:flex;align-items:center;gap:9px">
+            <div class="cav default" style="width:32px;height:32px;font-size:12px">${(c['Nome']||'?').charAt(0)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c['Nome']||'—'}</div>
+              <div style="font-size:9px;color:var(--muted)">${c['Status']||'—'}</div>
+            </div>
+            <div class="sc ${sk}" style="width:30px;height:30px;font-size:10px">${score||'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`:''}
+  `;
+}
+
+// ── CONSOLIDADO ──
+function renderConsolidado(){
+  const vagasAtivas=vagas.filter(v=>!['inativa','fechada','cancelada','encerrada'].includes((v.status||'').toLowerCase()));
+  const b=fConsBusca.toLowerCase();
+
+  const rows=vagasAtivas.filter(v=>{
+    const matchB=!b||(v.cliente||'').toLowerCase().includes(b)||(v.cargo||'').toLowerCase().includes(b);
+    return matchB;
+  }).map(v=>{
+    const candV=candidatos.filter(c=>(c['Vaga de Interesse']||'').toLowerCase().includes((v.cargo||'').toLowerCase()));
+    const total=candV.length;
+    const em=candV.filter(c=>['Interessado','Em processo','Entrevista agendada'].includes(c['Status'])).length;
+    const sh=candV.filter(c=>['Aprovado'].includes(c['Status'])).length;
+    const ct=candV.filter(c=>(c['Status']||'').toLowerCase().includes('contratado')).length;
+    const scores=candV.map(c=>Number(c['Score Geral']||0)).filter(s=>s>0);
+    const sm=scores.length?Math.round(scores.reduce((a,b)=>a+b)/scores.length):0;
+    const pct=total?Math.round(ct/total*100):0;
+    // Status prazo simplificado
+    const stPrazo=sm>=70?'np':sm>=50?'at':sm>=30?'at2':'cr';
+    const stLabel=sm>=70?'No prazo':sm>=50?'Atenção':sm>=30?'Atrasada':'Crítica';
+    return{v,total,em,sh,ct,sm,pct,stPrazo,stLabel};
+  });
+
+  const filtrados=rows.filter(r=>{
+    if(fConsTab==='atencao')return r.stPrazo==='at';
+    if(fConsTab==='atrasada')return r.stPrazo==='at2';
+    if(fConsTab==='critica')return r.stPrazo==='cr';
+    return true;
+  });
+
+  document.getElementById('cons-stats').innerHTML=`
+    <div class="scard blue"><div class="snum">${rows.length}</div><div class="slabel">Vagas Ativas</div></div>
+    <div class="scard"><div class="snum">${rows.reduce((a,r)=>a+r.total,0)}</div><div class="slabel">Total Candidatos</div></div>
+    <div class="scard green"><div class="snum">${rows.reduce((a,r)=>a+r.sh,0)}</div><div class="slabel">Shortlist Enviado</div></div>
+    <div class="scard yellow"><div class="snum">${rows.reduce((a,r)=>a+r.ct,0)}</div><div class="slabel">Contratados</div></div>
+    <div class="scard red"><div class="snum">${rows.filter(r=>r.stPrazo==='cr'||r.stPrazo==='at2').length}</div><div class="slabel">Atenção / Crítica</div></div>
+  `;
+
+  document.getElementById('cons-table').innerHTML=filtrados.length?`<table>
+    <thead><tr>
+      <th>Cliente</th><th>Cargo</th><th>Cidade</th><th>Abertura</th>
+      <th>Total Cand.</th><th>Em Triagem</th><th>Shortlist</th><th>Contratados</th>
+      <th>% Conv.</th><th>Score Médio</th><th>Status</th>
+    </tr></thead>
+    <tbody>${filtrados.map(r=>`<tr>
+      <td style="font-weight:700">${r.v.cliente||'—'}</td>
+      <td>${r.v.cargo||'—'}</td>
+      <td>${r.v.cidade||'—'}</td>
+      <td style="white-space:nowrap;font-size:10px">${r.v.dataAbertura||'—'}</td>
+      <td style="text-align:center;font-weight:700">${r.total}</td>
+      <td style="text-align:center">${r.em}</td>
+      <td style="text-align:center">${r.sh}</td>
+      <td style="text-align:center;font-weight:700;color:#16a34a">${r.ct}</td>
+      <td style="text-align:center">${r.pct}%</td>
+      <td style="text-align:center">${r.sm||'—'}</td>
+      <td><span class="status-badge ${r.stPrazo==='np'?'st-np':r.stPrazo==='at'?'st-at':r.stPrazo==='at2'?'st-at2':'st-cr'}">${r.stLabel}</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`:'<div class="empty">Nenhuma vaga encontrada.</div>';
+}
+function filtrarCons(v){fConsBusca=v;renderConsolidado()}
+function setFCons(el,v){fConsTab=v;document.querySelectorAll('#page-consolidado .fc').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderConsolidado()}
+
+// ── RELATÓRIO CLIENTE ──
+function renderRelatorio(){
+  const sel=document.getElementById('rel-select').value;
+  const div=document.getElementById('rel-content');
+  if(!sel){div.innerHTML='<div class="empty">Selecione um cliente para gerar o relatório.</div>';return}
+  const vaga=vagas.find(v=>(v.idVaga||v.cargo)===sel);
+  if(!vaga){div.innerHTML='<div class="empty">Vaga não encontrada.</div>';return}
+  const candV=candidatos.filter(c=>(c['Vaga de Interesse']||'').toLowerCase().includes((vaga.cargo||'').toLowerCase()));
+  const shortlist=candV.filter(c=>['Excelente','Bom'].includes(c['Classificação'])).slice(0,3);
+  const total=candV.length;
+  const hoje=new Date().toLocaleDateString('pt-BR');
+
+  // Guardar dados para edição
+  relData={vaga,candV,shortlist,total,hoje};
+
+  const etapasFunil=[
+    {n:'Candidatos mapeados',v:total},
+    {n:'Triados pelo Effect',v:candV.filter(c=>c['Status']&&c['Status']!=='').length},
+    {n:'Apresentados ao cliente',v:shortlist.length},
+    {n:'Entrevistados pelo cliente',v:shortlist.filter(c=>['Aprovado','Contratado'].includes(c['Status'])).length},
+    {n:'Proposta enviada',v:candV.filter(c=>(c['Status']||'').toLowerCase().includes('proposta')).length},
+    {n:'Contratado',v:candV.filter(c=>(c['Status']||'').toLowerCase().includes('contratado')).length},
+  ];
+
+  div.innerHTML=`
+    <div class="rel-header">
+      <div class="rel-title">Effect Pessoas & Performance</div>
+      <div class="rel-sub">Relatório de Acompanhamento — Processo Seletivo</div>
+      <div class="rel-meta">
+        <div class="rel-meta-item"><span class="rel-meta-label">Cliente</span><span class="rel-meta-val editable" contenteditable="false">${vaga.cliente||'—'}</span></div>
+        <div class="rel-meta-item"><span class="rel-meta-label">Cargo</span><span class="rel-meta-val editable" contenteditable="false">${vaga.cargo||'—'}</span></div>
+        <div class="rel-meta-item"><span class="rel-meta-label">Abertura</span><span class="rel-meta-val editable" contenteditable="false">${vaga.dataAbertura||'—'}</span></div>
+        <div class="rel-meta-item"><span class="rel-meta-label">Responsável</span><span class="rel-meta-val editable" contenteditable="false">Thiara — Effect</span></div>
+        <div class="rel-meta-item"><span class="rel-meta-label">Data do relatório</span><span class="rel-meta-val">${hoje}</span></div>
+      </div>
+    </div>
+
+    <div class="rel-section">
+      <div class="rel-section-title">Resumo do Funil</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        ${etapasFunil.map(e=>`<div style="flex:1;min-width:100px;background:#f8fafc;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--navy)">${e.v}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px">${e.n}</div>
+          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-top:2px">${total?Math.round(e.v/total*100):0}%</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="rel-section">
+      <div class="rel-section-title">Shortlist — Candidatos Apresentados</div>
+      ${shortlist.length?shortlist.map((c,i)=>{
+        const score=Number(c['Score Geral']||0);
+        const sk=score>=80?'sa':score>=60?'sm':score>0?'sb':'sz';
+        return`<div class="shortlist-card">
+          <div class="sl-num">${i+1}</div>
+          <div class="sl-info">
+            <div class="sl-name editable" contenteditable="false">${c['Nome']||'—'}</div>
+            <div class="sl-sub editable" contenteditable="false">${c['Cidade / Estado']||''} ${c['Anos de Experiência']?'· '+c['Anos de Experiência']+' anos':''}</div>
+            <div class="sl-chips">
+              ${c['Classificação']?`<span class="chip ${c['Classificação']==='Excelente'?'cy':c['Classificação']==='Bom'?'cg':'cm'}">${c['Classificação']}</span>`:''}
+              ${c['Pontos Fortes']?`<span class="chip cn editable" contenteditable="false">${c['Pontos Fortes'].slice(0,60)}</span>`:''}
+              ${c['Status']?`<span class="chip cb">${c['Status']}</span>`:''}
+            </div>
+          </div>
+          <div class="sc ${sk}" style="width:36px;height:36px;font-size:12px">${score||'—'}</div>
+        </div>`;
+      }).join(''):'<div class="empty" style="padding:20px">Nenhum candidato no shortlist ainda.</div>'}
+    </div>
+
+    <div class="rel-section">
+      <div class="rel-section-title">Linha do Tempo do Processo</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#f3f4f6">
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--muted)">Data</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--muted)">Marco</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--muted)">Status</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--muted)">Dias desde abertura</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f3f4f6"><td class="editable" contenteditable="false" style="padding:8px 12px">${vaga.dataAbertura||hoje}</td><td style="padding:8px 12px;font-weight:600">Abertura da vaga</td><td style="padding:8px 12px"><span class="chip cg">Concluído</span></td><td style="padding:8px 12px" class="editable" contenteditable="false">0</td></tr>
+          <tr style="border-bottom:1px solid #f3f4f6"><td class="editable" contenteditable="false" style="padding:8px 12px">${hoje}</td><td style="padding:8px 12px;font-weight:600">Triagem inicial</td><td style="padding:8px 12px"><span class="chip ${total>0?'cg':'cy'}">${total>0?'Em andamento':'Aguardando'}</span></td><td class="editable" contenteditable="false" style="padding:8px 12px">—</td></tr>
+          <tr style="border-bottom:1px solid #f3f4f6"><td class="editable" contenteditable="false" style="padding:8px 12px">—</td><td style="padding:8px 12px;font-weight:600">Envio do shortlist</td><td style="padding:8px 12px"><span class="chip cm">Pendente</span></td><td class="editable" contenteditable="false" style="padding:8px 12px">—</td></tr>
+          <tr><td class="editable" contenteditable="false" style="padding:8px 12px">—</td><td style="padding:8px 12px;font-weight:600">Contratação</td><td style="padding:8px 12px"><span class="chip cm">Pendente</span></td><td class="editable" contenteditable="false" style="padding:8px 12px">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="text-align:center;padding:16px;color:var(--muted);font-size:11px">
+      Effect Pessoas & Performance · (27) 99792-5288 · effect.recrutamento@gmail.com
+    </div>
+  `;
+}
+
+function toggleEdit(){
+  editMode=!editMode;
+  const div=document.getElementById('rel-content');
+  const btn=document.getElementById('edit-btn');
+  const saveBtn=document.getElementById('save-btn');
+  if(editMode){
+    div.classList.add('edit-mode');
+    div.querySelectorAll('.editable').forEach(el=>el.setAttribute('contenteditable','true'));
+    btn.textContent='✏️ Editando...';
+    btn.style.background='#fef3c7';
+    saveBtn.style.display='inline-block';
+    toast('Modo edição ativo — clique nos campos para editar','success');
+  } else {
+    div.classList.remove('edit-mode');
+    div.querySelectorAll('.editable').forEach(el=>el.setAttribute('contenteditable','false'));
+    btn.textContent='✏️ Modo edição';
+    btn.style.background='';
+    saveBtn.style.display='none';
+  }
+}
+
+function salvarEdicao(){
+  toast('Versão salva! Você pode imprimir ou exportar.','success');
+  window.print();
+  toggleEdit();
+}
+
+// ── MODAL STATUS ──
+function abrirModal(tel,nome){
+  modalTel=tel;
+  document.getElementById('modal-title').textContent=`Atualizar: ${nome}`;
+  document.getElementById('modal-status').value='';
+  document.getElementById('modal-obs').value='';
+  document.getElementById('modal').classList.add('show');
+}
+function fecharModal(){document.getElementById('modal').classList.remove('show');modalTel=null}
+async function salvarStatus(){
+  if(!modalTel)return;
+  const status=document.getElementById('modal-status').value;
+  const obs=document.getElementById('modal-obs').value;
+  if(!status&&!obs){fecharModal();return}
+  try{
+    await fetch(`${API}/sheets/candidatos/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:modalTel,status,observacao:obs})});
+    toast('Candidato atualizado!','success');
+    await carregarTudo();
+  }catch(e){toast('Erro de conexão','error')}
+  fecharModal();
+}
+
+function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500)}
+</script>
+</body>
+</html>
