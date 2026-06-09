@@ -163,6 +163,7 @@ footer strong{color:var(--green)}
     <a href="#processo">Nosso processo</a>
     <a href="#diferenciais">Diferenciais</a>
     <a href="#formulario">Solicitar vaga</a>
+    <a href="#agenda-gestor">Minha Agenda</a>
     <a href="#dashboard">Acompanhar</a>
   </div>
 </nav>
@@ -614,6 +615,159 @@ footer strong{color:var(--green)}
     </div>
   </div>
 </section>
+
+
+<!-- AGENDA DO GESTOR -->
+<section id="agenda-gestor" style="background:var(--bg);padding:72px 40px">
+  <div style="max-width:880px;margin:0 auto">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--green);margin-bottom:8px">Disponibilidade</div>
+    <h2 style="font-size:clamp(22px,3vw,34px);font-weight:800;color:var(--navy);margin-bottom:10px;line-height:1.2">Seus horários disponíveis</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:36px">Marque os horários em que você está disponível para entrevistas. Nossa equipe agendará automaticamente com os candidatos.</p>
+
+    <!-- NAVEGAÇÃO DE SEMANA -->
+    <div style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <button onclick="navSemana(-1)" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer">‹ Anterior</button>
+      <span id="semana-label" style="font-weight:700;font-size:14px;color:var(--navy)"></span>
+      <button onclick="navSemana(1)" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer">Próxima ›</button>
+    </div>
+
+    <!-- GRADE DE HORÁRIOS -->
+    <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px">
+      <div id="grade-dias" style="display:grid;grid-template-columns:80px repeat(5,1fr);border-bottom:2px solid #f3f4f6"></div>
+      <div id="grade-horarios"></div>
+    </div>
+
+    <!-- LEGENDA E SALVAR -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">
+          <div style="width:16px;height:16px;border-radius:4px;background:#f3f4f6;border:1.5px solid #e5e7eb"></div> Indisponível
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">
+          <div style="width:16px;height:16px;border-radius:4px;background:#dcfce7;border:1.5px solid #8ed1b2"></div> Disponível
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">
+          <div style="width:16px;height:16px;border-radius:4px;background:#dbeafe;border:1.5px solid #1fa5ff"></div> Agendado
+        </div>
+      </div>
+      <button onclick="salvarDisponibilidade()" style="padding:12px 28px;background:var(--green);color:var(--navy);border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:13px;cursor:pointer">✓ Salvar disponibilidade</button>
+    </div>
+
+    <!-- RESUMO -->
+    <div id="resumo-disp" style="margin-top:16px;background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:none">
+      <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px">📋 Slots disponíveis esta semana</div>
+      <div id="resumo-lista" style="font-size:12px;color:#555;line-height:1.8"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+// ── AGENDA DO GESTOR ──
+const HORARIOS = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00'];
+const DIAS_SEMANA = ['Seg','Ter','Qua','Qui','Sex'];
+let semanaOffset = 0;
+let disponibilidade = JSON.parse(localStorage.getItem('effect_disp_gestor')||'{}');
+
+function getDatasSemana(offset){
+  const hoje = new Date();
+  const diaSemana = hoje.getDay();
+  const segundaFeira = new Date(hoje);
+  segundaFeira.setDate(hoje.getDate() - (diaSemana===0?6:diaSemana-1) + offset*7);
+  return Array.from({length:5}, (_,i) => {
+    const d = new Date(segundaFeira);
+    d.setDate(segundaFeira.getDate()+i);
+    return d;
+  });
+}
+
+function dataStr(d){ return d.toISOString().split('T')[0]; }
+function formatData(d){ return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }
+
+function renderGrade(){
+  const datas = getDatasSemana(semanaOffset);
+  const primeira = datas[0], ultima = datas[4];
+  document.getElementById('semana-label').textContent =
+    `${formatData(primeira)} — ${formatData(ultima)}`;
+
+  // Header dias
+  const gradeDias = document.getElementById('grade-dias');
+  gradeDias.innerHTML = '<div style="padding:10px;font-size:10px;font-weight:700;color:var(--muted)"></div>' +
+    datas.map((d,i) => `<div style="padding:10px 6px;text-align:center;font-size:11px;font-weight:700;color:var(--navy)">
+      <div>${DIAS_SEMANA[i]}</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:400">${formatData(d)}</div>
+    </div>`).join('');
+
+  // Linhas de horário
+  const gradeHor = document.getElementById('grade-horarios');
+  gradeHor.innerHTML = HORARIOS.map(hora => `
+    <div style="display:grid;grid-template-columns:80px repeat(5,1fr);border-bottom:1px solid #f9fafb">
+      <div style="padding:10px 8px;font-size:10px;font-weight:700;color:var(--muted);display:flex;align-items:center">${hora}</div>
+      ${datas.map(d => {
+        const key = `${dataStr(d)}_${hora}`;
+        const status = disponibilidade[key] || 'livre';
+        const bg = status==='disponivel'?'#dcfce7':status==='agendado'?'#dbeafe':'#f9fafb';
+        const border = status==='disponivel'?'#8ed1b2':status==='agendado'?'#1fa5ff':'#e5e7eb';
+        const icon = status==='disponivel'?'✓':status==='agendado'?'📅':'';
+        const cursor = status==='agendado'?'default':'pointer';
+        return `<div onclick="${status!=='agendado'?`toggleSlot('${key}')`:''}()" 
+          id="slot-${key.replace(/[:\-]/g,'_')}"
+          style="margin:3px;border-radius:7px;border:1.5px solid ${border};background:${bg};cursor:${cursor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${status==='disponivel'?'#16a34a':status==='agendado'?'#1d4ed8':'var(--muted)'};min-height:36px;transition:all .15s"
+          onmouseover="if('${status}'!=='agendado')this.style.background='${status==='disponivel'?'#bbf7d0':'#f3f4f6}'"
+          onmouseout="this.style.background='${bg}'"
+        >${icon}</div>`;
+      }).join('')}
+    </div>`).join('');
+
+  atualizarResumo();
+}
+
+function toggleSlot(key){
+  const status = disponibilidade[key] || 'livre';
+  disponibilidade[key] = status==='disponivel' ? 'livre' : 'disponivel';
+  renderGrade();
+}
+
+function navSemana(dir){ semanaOffset+=dir; renderGrade(); }
+
+function salvarDisponibilidade(){
+  localStorage.setItem('effect_disp_gestor', JSON.stringify(disponibilidade));
+  // Enviar para o backend
+  const slots = Object.entries(disponibilidade)
+    .filter(([k,v])=>v==='disponivel')
+    .map(([k])=>k);
+  fetch(window.location.origin+'/cliente/disponibilidade', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({slots, empresa: document.getElementById('empresa_nome')?.value || 'Cliente'})
+  }).catch(()=>{});
+  mostrarToast('✓ Disponibilidade salva! Nossa equipe receberá seus horários.','success');
+  atualizarResumo();
+}
+
+function atualizarResumo(){
+  const slots = Object.entries(disponibilidade).filter(([k,v])=>v==='disponivel');
+  const resumo = document.getElementById('resumo-disp');
+  const lista = document.getElementById('resumo-lista');
+  if(!slots.length){ resumo.style.display='none'; return; }
+  resumo.style.display='block';
+  const agrupado = {};
+  slots.forEach(([key])=>{
+    const [data,hora] = key.split('_');
+    if(!agrupado[data]) agrupado[data]=[];
+    agrupado[data].push(hora);
+  });
+  lista.innerHTML = Object.entries(agrupado).sort().map(([data,horas])=>{
+    const d = new Date(data+'T12:00:00');
+    return `<div><strong>${d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</strong>: ${horas.sort().join(', ')}</div>`;
+  }).join('');
+}
+
+// Inicializar agenda
+document.addEventListener('DOMContentLoaded', function(){
+  if(document.getElementById('grade-dias')) renderGrade();
+});
+setTimeout(renderGrade, 100);
+</script>
 
 <footer>
   <strong>Effect Pessoas & Performance</strong> · Vitória/ES · (27) 99792-5288 · effect.recrutamento@gmail.com<br>
