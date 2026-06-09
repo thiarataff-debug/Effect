@@ -304,6 +304,10 @@ app.get("/cliente", (req, res) => {
   res.sendFile(path.join(__dirname, "cliente.html"));
 });
 
+app.get("/meu-app", (req, res) => {
+  res.sendFile(path.join(__dirname, "meu-app.html"));
+});
+
 app.get("/cliente/:id", (req, res) => {
   res.sendFile(path.join(__dirname, "cliente.html"));
 });
@@ -740,6 +744,33 @@ async function enviarMensagem(toOriginal, body) {
 
 
 // ============================================================
+
+// ROTA — DISPONIBILIDADE DO GESTOR
+app.post("/cliente/disponibilidade", async (req, res) => {
+  try {
+    const { slots, empresa } = req.body;
+    if (!slots || !slots.length) return res.json({ ok: false });
+
+    const msg = `📅 DISPONIBILIDADE DE AGENDA RECEBIDA
+
+🏢 Empresa: ${empresa || 'Cliente'}
+
+Horários disponíveis para entrevistas:
+${slots.sort().map(s => {
+  const [data, hora] = s.split('_');
+  const d = new Date(data + 'T12:00:00');
+  return `• ${d.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})} às ${hora}`;
+}).join('\n')}
+
+Agende pelo painel: /painel → 📅 Agenda`;
+
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
 // ROTA — TRANSIÇÃO LIA → LAURA
 // ============================================================
 
