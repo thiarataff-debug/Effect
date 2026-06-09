@@ -36,6 +36,15 @@ function normalizarTexto(texto) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function campo(vaga, nomes, padrao = "") {
+  for (const nome of nomes) {
+    if (vaga && vaga[nome] !== undefined && vaga[nome] !== null && String(vaga[nome]).trim() !== "") {
+      return vaga[nome];
+    }
+  }
+  return padrao;
+}
+
 function garantirSessao(telefoneOriginal) {
   const telefone = limparTelefone(telefoneOriginal);
 
@@ -74,44 +83,221 @@ function estaEmManual(telefoneOriginal) {
 
 const TRAVAS = {
   humano: [
-    "quero falar com alguém", "quero falar com alguem", "quero falar com uma pessoa",
-    "atendente", "humano", "recrutador", "responsável pela vaga", "responsavel pela vaga",
-    "pessoa de verdade", "alguém da effect", "alguem da effect"
+    "quero falar",
+    "falar com alguém",
+    "falar com alguem",
+    "falar com uma pessoa",
+    "falar com o responsável",
+    "falar com o responsavel",
+    "falar com responsável",
+    "falar com responsavel",
+    "responsável",
+    "responsavel",
+    "quem é o responsável",
+    "quem e o responsavel",
+    "atendente",
+    "humano",
+    "recrutador",
+    "pessoa de verdade",
+    "alguém da effect",
+    "alguem da effect"
+  ],
+  entrevista: [
+    "tenho entrevista",
+    "marcaram minha entrevista",
+    "vim para entrevista",
+    "qual horario da entrevista",
+    "qual horário da entrevista",
+    "onde e a entrevista",
+    "onde é a entrevista",
+    "confirmar entrevista",
+    "marcar entrevista",
+    "agendar entrevista"
+  ],
+  retorno: [
+    "fui aprovado",
+    "fui aprovada",
+    "fui reprovado",
+    "fui reprovada",
+    "nao tive retorno",
+    "não tive retorno",
+    "cadê meu retorno",
+    "cade meu retorno",
+    "estou aguardando retorno",
+    "estou aguardando",
+    "ninguém me respondeu",
+    "ninguem me respondeu",
+    "já faz dias",
+    "ja faz dias"
+  ],
+  pcdSaude: [
+    "sou pcd",
+    "tenho laudo",
+    "deficiencia",
+    "deficiência",
+    "cota pcd",
+    "laudo medico",
+    "laudo médico",
+    "afastamento",
+    "atestado",
+    "cirurgia",
+    "gravidez",
+    "gestante",
+    "limitação",
+    "limitacao",
+    "tratamento"
+  ],
+  exFuncionario: [
+    "ja trabalhei ai",
+    "já trabalhei aí",
+    "ja trabalhei nessa empresa",
+    "já trabalhei nessa empresa",
+    "fui funcionario",
+    "fui funcionário",
+    "fui colaborador",
+    "trabalhei anteriormente",
+    "ex funcionario",
+    "ex funcionário"
+  ],
+  urgencia: [
+    "urgente",
+    "urgencia",
+    "urgência",
+    "preciso trabalhar",
+    "estou desempregado",
+    "estou desempregada",
+    "preciso muito",
+    "estou passando necessidade"
   ],
   irritacao: [
-    "não entendeu", "nao entendeu", "isso está errado", "isso esta errado",
-    "péssimo atendimento", "pessimo atendimento", "ridículo", "ridiculo",
-    "reclamação", "reclamacao", "processo", "advogado", "procon",
-    "não quero falar com robo", "nao quero falar com robo", "isso não ajuda", "isso nao ajuda"
+    "não entendeu",
+    "nao entendeu",
+    "isso está errado",
+    "isso esta errado",
+    "péssimo atendimento",
+    "pessimo atendimento",
+    "ridículo",
+    "ridiculo",
+    "reclamação",
+    "reclamacao",
+    "processo",
+    "advogado",
+    "procon",
+    "não quero falar com robo",
+    "nao quero falar com robo",
+    "isso não ajuda",
+    "isso nao ajuda"
   ],
   dadosSensiveis: [
-    "cpf", "rg", "cnh", "pis", "ctps", "conta bancária", "conta bancaria",
-    "pix", "cartão", "cartao", "dados bancários", "dados bancarios",
-    "nome da mãe", "nome da mae", "nome do pai", "data de nascimento"
+    "cpf",
+    "rg",
+    "cnh",
+    "pis",
+    "ctps",
+    "conta bancária",
+    "conta bancaria",
+    "pix",
+    "cartão",
+    "cartao",
+    "dados bancários",
+    "dados bancarios",
+    "nome da mãe",
+    "nome da mae",
+    "nome do pai",
+    "data de nascimento"
   ],
   juridico: [
-    "fgts", "férias", "ferias", "13º", "13°", "décimo terceiro", "decimo terceiro",
-    "rescisão", "rescisao", "processo trabalhista", "direitos trabalhistas",
-    "justa causa", "advogado trabalhista"
+    "fgts",
+    "férias",
+    "ferias",
+    "13º",
+    "13°",
+    "décimo terceiro",
+    "decimo terceiro",
+    "rescisão",
+    "rescisao",
+    "processo trabalhista",
+    "direitos trabalhistas",
+    "justa causa",
+    "advogado trabalhista"
   ],
   empresa: [
-    "preciso contratar", "quero contratar", "quero divulgar vaga",
-    "procuro recrutamento", "minha empresa", "sou empresa", "contratar funcionário",
-    "contratar funcionario", "tenho uma vaga", "serviço de recrutamento", "servico de recrutamento"
+    "preciso contratar",
+    "quero contratar",
+    "quero divulgar vaga",
+    "procuro recrutamento",
+    "minha empresa",
+    "sou empresa",
+    "contratar funcionário",
+    "contratar funcionario",
+    "tenho uma vaga",
+    "serviço de recrutamento",
+    "servico de recrutamento"
   ],
   baixaConfianca: [
-    "não encontrei", "nao encontrei", "não consegui localizar", "nao consegui localizar",
-    "não tenho certeza", "nao tenho certeza", "talvez", "provavelmente",
-    "tive uma instabilidade", "pode me mandar novamente", "não consegui entender", "nao consegui entender"
+    "não encontrei",
+    "nao encontrei",
+    "não consegui localizar",
+    "nao consegui localizar",
+    "não tenho certeza",
+    "nao tenho certeza",
+    "talvez",
+    "provavelmente",
+    "tive uma instabilidade",
+    "pode me mandar novamente",
+    "não consegui entender",
+    "nao consegui entender"
   ],
   salario: [
-    "salário", "salario", "quanto ganha", "remuneração", "remuneracao",
-    "benefícios", "beneficios", "vale transporte", "vale alimentação", "vale alimentacao",
-    "ticket", "vr", "va"
+    "salário",
+    "salario",
+    "quanto ganha",
+    "remuneração",
+    "remuneracao",
+    "benefícios",
+    "beneficios",
+    "vale transporte",
+    "vale alimentação",
+    "vale alimentacao",
+    "ticket",
+    "vr",
+    "va"
   ],
   vagaNaoEncontrada: [
-    "vaga do instagram", "vaga que vi", "vi uma vaga", "anúncio", "anuncio",
-    "vaga de marketing", "vaga de rh", "vaga administrativa", "postagem", "publicação", "publicacao"
+    "vaga do instagram",
+    "vaga que vi",
+    "vi uma vaga",
+    "anúncio",
+    "anuncio",
+    "vaga administrativa",
+    "postagem",
+    "publicação",
+    "publicacao"
+  ],
+  indicacao: [
+    "fulano me indicou",
+    "fui indicado",
+    "fui indicada",
+    "recebi indicação",
+    "recebi indicacao",
+    "indicação",
+    "indicacao"
+  ],
+  cargoEstrategico: [
+    "supervisor",
+    "supervisora",
+    "coordenador",
+    "coordenadora",
+    "gerente",
+    "analista senior",
+    "analista sênior",
+    "especialista",
+    "engenheiro",
+    "engenheira",
+    "liderança",
+    "lideranca",
+    "gestão de equipe",
+    "gestao de equipe"
   ]
 };
 
@@ -158,9 +344,27 @@ function conversaSemAvanco(sessao) {
     texto.includes("linhares") ||
     texto.includes("guarapari");
 
-  const temVaga = texto.includes("vaga") || texto.includes("cargo") || texto.includes("oportunidade") || texto.includes("trabalho");
+  const temVaga =
+    texto.includes("vaga") ||
+    texto.includes("cargo") ||
+    texto.includes("oportunidade") ||
+    texto.includes("trabalho");
 
   return !(temNome && temCidade && temVaga);
+}
+
+async function enviarAlertaSimplesThiara(telefoneOriginal, titulo, mensagem) {
+  const telefone = limparTelefone(telefoneOriginal);
+
+  const alerta = `${titulo}
+
+📱 Candidato:
++${telefone}
+
+💬 Mensagem:
+${mensagem || "Não informada"}`;
+
+  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
 }
 
 async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, respostaSegura = null) {
@@ -206,9 +410,54 @@ async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
   if (contemAlguma(texto, TRAVAS.humano)) {
     return await pausarPorTrava(
       telefone,
-      "Candidato pediu atendimento humano",
+      "Candidato pediu atendimento humano/responsável",
       texto,
-      "Vou te encaminhar para a equipe da Effect para continuarem seu atendimento com mais segurança. 💙"
+      "Claro. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento com você. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.entrevista)) {
+    return await pausarPorTrava(
+      telefone,
+      "Assunto relacionado à entrevista",
+      texto,
+      "Vou encaminhar sua mensagem para a equipe da Effect confirmar essa informação com segurança. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.retorno)) {
+    return await pausarPorTrava(
+      telefone,
+      "Solicitação de retorno do processo",
+      texto,
+      "Vou verificar essa informação com a equipe da Effect para te dar uma posição correta. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.pcdSaude)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve PCD, laudo, saúde ou limitação",
+      texto,
+      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.exFuncionario)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato informou que já trabalhou na empresa/cliente",
+      texto,
+      "Vou direcionar sua mensagem para a equipe da Effect avaliar seu histórico com mais cuidado. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.urgencia)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem com urgência ou vulnerabilidade profissional",
+      texto,
+      "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar com atenção. 💙"
     );
   }
 
@@ -255,6 +504,14 @@ async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
       texto,
       "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você."
     );
+  }
+
+  if (contemAlguma(texto, TRAVAS.indicacao)) {
+    await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) {
+    await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
   }
 
   if (ultimasPerguntasRepetidas(sessao)) {
@@ -427,31 +684,11 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 // ============================================================
-// VAGA FIXA
-// ============================================================
-
-const VAGA_DIARIA_LINHARES = {
-  idVaga: "LIN-DIA-01",
-  cargo: "Auxiliar de Serviços Gerais (Diária)",
-  area: "Serviços Gerais / Limpeza",
-  cidade: "Linhares/ES — Bairro Shell",
-  salario: "R$ 250,00 por dia (incluso passagem e alimentação)",
-  escala: "Diária — entrevistas previstas para quarta-feira",
-  escolaridade: "Ensino Fundamental",
-  experienciaMinima: "Sem experiência obrigatória",
-  aceitaSemExperiencia: "Sim",
-  perfilResumido: "Auxiliar de serviços gerais para trabalho de limpeza em Linhares, bairro Shell. Diária de R$ 250,00 com passagem e alimentação inclusos.",
-  palavrasChave: "limpeza, serviços gerais, diária, linhares, faxina, auxiliar",
-  requisitoObrigatorio: "Disponibilidade para trabalho em Linhares/ES, bairro Shell",
-  observacoes: "Não exige currículo. Perguntar apenas se tem experiência em limpeza."
-};
-
-// ============================================================
 // ROTAS PRINCIPAIS
 // ============================================================
 
 app.get("/", (req, res) => {
-  res.send("Lia Effect rodando — modo supervisor ativo ✅");
+  res.send("Lia Effect rodando — modo supervisor + Linhares via planilha ✅");
 });
 
 app.get("/webhook", (req, res) => {
@@ -526,13 +763,6 @@ app.post("/webhook", async (req, res) => {
         return;
       }
 
-      if (ehCandidataDiaria(sessaoAtual)) {
-        const msg = "Obrigada! Para essa vaga não é necessário enviar currículo. Já tenho suas informações. Em breve entraremos em contato sobre a entrevista. 💙";
-        await enviarMensagem(from, msg);
-        await salvarMensagemSheets(from, "assistant", msg, sessaoAtual.nome);
-        return;
-      }
-
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
 
       const resposta = await processarCurriculo(from, message.document);
@@ -547,21 +777,6 @@ app.post("/webhook", async (req, res) => {
     console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
   }
 });
-
-function ehCandidataDiaria(sessao) {
-  if (!sessao || !sessao.historico) return false;
-
-  const texto = normalizarTexto(
-    sessao.historico.map(h => h.content || "").join(" ")
-  );
-
-  return (
-    texto.includes("diaria") ||
-    texto.includes("linhares") ||
-    texto.includes("shell") ||
-    texto.includes("lin-dia")
-  );
-}
 
 // ============================================================
 // ROTAS SHEETS
@@ -666,11 +881,6 @@ app.post("/inbox/pausar", async (req, res) => {
     }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-
-    console.log("STATUS MANUAL ALTERADO:", telefone, {
-      modo: sessao.modo,
-      pausado: sessao.pausado
-    });
 
     return res.json({
       ok: true,
@@ -951,6 +1161,21 @@ async function buscarCandidatoNaPlanilha(telefone) {
   }
 }
 
+function vagaEstaAtiva(vaga) {
+  const status = normalizarTexto(campo(vaga, ["status", "Status"]));
+
+  if (!status) return true;
+
+  return ![
+    "encerrada",
+    "cancelada",
+    "inativa",
+    "suspensa",
+    "fechada",
+    "finalizada"
+  ].includes(status);
+}
+
 async function buscarVagas() {
   try {
     const vagasSheets = [];
@@ -959,13 +1184,15 @@ async function buscarVagas() {
       const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
 
       if (r.data?.vagas) {
-        vagasSheets.push(...r.data.vagas);
+        const vagasAtivas = r.data.vagas.filter(vagaEstaAtiva);
+        vagasSheets.push(...vagasAtivas);
       }
     }
 
-    return [VAGA_DIARIA_LINHARES, ...vagasSheets];
+    return vagasSheets;
   } catch (e) {
-    return [VAGA_DIARIA_LINHARES];
+    console.error("Erro buscarVagas:", e.message);
+    return [];
   }
 }
 
@@ -988,31 +1215,42 @@ function ehSaudacaoSimples(mensagem) {
   ].includes(texto);
 }
 
+function textoDaVaga(vaga) {
+  return normalizarTexto([
+    campo(vaga, ["idVaga", "ID Vaga", "ID"]),
+    campo(vaga, ["cargo", "Cargo", "CARGO"]),
+    campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
+    campo(vaga, ["cidade", "Cidade/Bairro", "Cidade", "Local"]),
+    campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
+    campo(vaga, ["palavrasChave", "Palavras-chave", "Palavras Chave"]),
+    campo(vaga, ["requisitosDaVaga", "Requisitos da Vaga", "Requisitos"]),
+    campo(vaga, ["requisitoObrigatorio", "Requisito Obrigatório", "Requisito Obrigatorio"]),
+    campo(vaga, ["observacoes", "Observações", "Observacoes"]),
+    campo(vaga, ["status", "Status"])
+  ].join(" "));
+}
+
 function filtrarVagasRelevantes(vagas, texto, historico) {
   const textoBusca = normalizarTexto(
     texto + " " + historico.map(h => h.content).join(" ")
   );
 
   const vagasComScore = vagas.map(vaga => {
-    const textoVaga = normalizarTexto([
-      vaga.cargo,
-      vaga.area,
-      vaga.cidade,
-      vaga.perfilResumido,
-      vaga.palavrasChave,
-      vaga.requisitosDaVaga,
-      vaga.requisitoObrigatorio
-    ].join(" "));
-
+    const textoVaga = textoDaVaga(vaga);
     let score = 0;
 
     textoBusca
       .split(/\s+/)
       .filter(p => p.length >= 4)
-      .slice(0, 80)
+      .slice(0, 100)
       .forEach(p => {
         if (textoVaga.includes(p)) score++;
       });
+
+    if (textoBusca.includes("linhares") && textoVaga.includes("linhares")) score += 50;
+    if (textoBusca.includes("limpeza") && textoVaga.includes("limpeza")) score += 30;
+    if (textoBusca.includes("diaria") && textoVaga.includes("diaria")) score += 30;
+    if (textoBusca.includes("servicos gerais") && textoVaga.includes("servicos gerais")) score += 30;
 
     return { vaga, score };
   });
@@ -1028,20 +1266,22 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
 
 function resumirVagas(vagas) {
   return vagas.map(vaga => ({
-    idVaga: vaga.idVaga,
-    cargo: vaga.cargo,
-    cidade: vaga.cidade,
-    horario: vaga.horario,
-    escala: vaga.escala,
-    salario: vaga.salario,
-    beneficios: vaga.beneficios,
-    escolaridade: vaga.escolaridade,
-    experienciaMinima: vaga.experienciaMinima,
-    requisitoObrigatorio: vaga.requisitoObrigatorio,
-    aceitaSemExperiencia: vaga.aceitaSemExperiencia,
-    perfilResumido: vaga.perfilResumido,
-    palavrasChave: vaga.palavrasChave,
-    observacoes: vaga.observacoes
+    idVaga: campo(vaga, ["idVaga", "ID Vaga", "ID"]),
+    cargo: campo(vaga, ["cargo", "Cargo", "CARGO"]),
+    area: campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
+    cidade: campo(vaga, ["cidade", "Cidade/Bairro", "Cidade", "Local"]),
+    horario: campo(vaga, ["horario", "Horário", "Escala/Horário", "Escala/Horario"]),
+    escala: campo(vaga, ["escala", "Escala", "Escala/Horário", "Escala/Horario"]),
+    salario: campo(vaga, ["salario", "Salário Base", "Salario Base", "Salário", "Salario"]),
+    beneficios: campo(vaga, ["beneficios", "Benefícios", "Beneficios"]),
+    escolaridade: campo(vaga, ["escolaridade", "Escolaridade"]),
+    experienciaMinima: campo(vaga, ["experienciaMinima", "Exp. Mínima", "Exp. Minima"]),
+    requisitoObrigatorio: campo(vaga, ["requisitoObrigatorio", "Requisito Obrigatório", "Requisito Obrigatorio"]),
+    aceitaSemExperiencia: campo(vaga, ["aceitaSemExperiencia", "Aceita Sem Experiência", "Aceita Sem Experiencia"]),
+    perfilResumido: campo(vaga, ["perfilResumido", "Perfil Resumido"]),
+    palavrasChave: campo(vaga, ["palavrasChave", "Palavras-chave", "Palavras Chave"]),
+    status: campo(vaga, ["status", "Status"]),
+    observacoes: campo(vaga, ["observacoes", "Observações", "Observacoes"])
   }));
 }
 
@@ -1056,22 +1296,36 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
 
   const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
 
-  const ehDiaria =
-    textoConversa.includes("diaria") ||
+  const ehLinhares =
     textoConversa.includes("linhares") ||
     textoConversa.includes("shell") ||
+    textoConversa.includes("diaria") ||
+    textoConversa.includes("diária") ||
+    textoConversa.includes("limpeza") ||
     textoConversa.includes("servicos gerais") ||
-    textoConversa.includes("limpeza");
+    textoConversa.includes("serviços gerais");
 
-  const instrucaoCurriculo = ehDiaria
-    ? `REGRA ESPECIAL — VAGA DE DIÁRIA:
-- Esta é uma vaga de diária, trabalho por dia.
-- NÃO peça currículo.
-- Pergunte APENAS se a candidata tem experiência com limpeza/serviços gerais.
-- Colete aos poucos: nome, cidade/bairro, experiência com limpeza e disponibilidade para quarta-feira.
-- Informe: R$ 250,00 por dia, incluso passagem e alimentação, em Linhares/ES bairro Shell.
-- Entrevistas previstas para quarta-feira.
-- Após coletar as informações, diga que vai passar o contato para a equipe e que retornarão em breve.`
+  const instrucaoCurriculo = ehLinhares
+    ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:
+- Colete APENAS:
+  • nome
+  • se mora em Linhares
+  • se possui experiência com limpeza ou serviços gerais
+
+- O currículo é opcional.
+- Se a pessoa tiver currículo e quiser enviar, aceite normalmente.
+- Nunca exija currículo para participar.
+- NÃO peça escolaridade.
+- NÃO peça documentos.
+- NÃO peça disponibilidade de horário.
+- NÃO pergunte escala.
+- Informe, quando fizer sentido:
+  • diária de R$ 250,00
+  • passagem inclusa
+  • alimentação inclusa
+  • local: Bairro Shell, Linhares
+
+- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
     : `COLETA PADRÃO:
 Colete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.
 Se o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
@@ -1417,5 +1671,5 @@ async function enviarMensagem(toOriginal, body) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} — modo supervisor ativo ✅`);
+  console.log(`Lia rodando na porta ${PORT} — modo supervisor + Linhares via planilha ✅`);
 });
