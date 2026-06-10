@@ -4,6 +4,9 @@
 // 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
 // 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
 // 3) Mantém manual apenas para pedido explícito de humano/responsável, dados sensíveis, saúde/PCD, jurídico, irritação/risco ou possível cliente.
+// 4) CORREÇÃO 10/06/2026 (parte 2): salvamento periódico no Sheets em paralelo e só para sessões com mudança
+//    + chamarClaude com retry/log de erro real + Lia não envia mais a mensagem genérica de "instabilidade"
+//    repetidamente ao candidato (evita spam); em vez disso alerta Thiara e tenta de novo silenciosamente.
 
 const express = require("express");
 const axios = require("axios");
@@ -236,7 +239,10 @@ const pastaPorCargoCache = {}; // { "auxiliar de servicos gerais": "folderId" }
 
 function getDriveClient() {
   if (driveClient) return driveClient;
-  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) return null;
+  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    console.error("Drive: variável GOOGLE_SERVICE_ACCOUNT_JSON ausente.");
+    return null;
+  }
   try {
     const credentials = JSON.parse(CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
     const auth = new google.auth.GoogleAuth({
@@ -323,7 +329,7 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
 
     return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
   } catch (e) {
-    console.error("Erro uploadCurriculoDrive:", e.response?.data || e.message);
+    console.error("Erro uploadCurriculoDrive:", JSON.stringify(e.response?.data || e.message));
     return null;
   }
 }
@@ -517,7 +523,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
     const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", unreadCount: Number(sessoes[telefone]?.unreadCount || 0), timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
-    await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 20000, maxRedirects: 5 });
+    await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
   }
@@ -582,11 +588,30 @@ async function carregarSessoesDoSheets() {
 
 carregarSessoesDoSheets();
 
+// Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
+// (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
+// sozinho ultrapassava o intervalo de 5min e sobrecarregava o servidor, derrubando
+// também as chamadas à API da Claude.)
+const ultimoSaveSessao = {};
+
 setInterval(async () => {
-  for (const [telefone, sessao] of Object.entries(sessoes)) {
-    if (sessao.historico && sessao.historico.length > 0) {
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    }
+  const tarefas = Object.entries(sessoes)
+    .filter(([telefone, sessao]) => {
+      if (!sessao.historico || sessao.historico.length === 0) return false;
+      const ultima = sessao.historico[sessao.historico.length - 1];
+      const assinatura = `${sessao.historico.length}|${ultima?.timestampMs || ultima?.content || ""}`;
+      if (ultimoSaveSessao[telefone] === assinatura) return false;
+      ultimoSaveSessao[telefone] = assinatura;
+      return true;
+    })
+    .map(([telefone, sessao]) =>
+      salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome)
+        .catch(e => console.error(`Erro ao salvar ${telefone} no ciclo periódico:`, e.message))
+    );
+
+  if (tarefas.length) {
+    console.log(`Salvamento periódico: ${tarefas.length} sessão(ões) com mudanças.`);
+    await Promise.allSettled(tarefas);
   }
 }, 5 * 60 * 1000);
 
@@ -953,6 +978,9 @@ app.post("/inbox/transicao", async (req, res) => {
 // PROCESSAMENTO
 // ============================================================
 
+const FALLBACK_INSTABILIDADE = "Tive uma instabilidade aqui. Pode me mandar novamente?";
+const FALLBACK_RATE_LIMIT = "Estou processando suas informações, só preciso de um instantinho. Pode me responder novamente em alguns segundos?";
+
 async function processarMensagem(telefoneOriginal, mensagem) {
   const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
@@ -985,6 +1013,18 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   const vagas = await buscarVagas();
   const prompt = montarPromptConversa(sessao, mensagem, vagas);
   const resposta = await chamarClaudeTexto(prompt);
+
+  // Se a chamada à Claude falhou (mensagem genérica de instabilidade/rate-limit),
+  // NÃO manda isso pro candidato e NÃO grava no histórico — evita o spam de
+  // "Tive uma instabilidade aqui..." em loop. Só alerta a Thiara uma vez.
+  if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
+    if (!sessao._alertaInstabilidadeEnviado || (Date.now() - sessao._alertaInstabilidadeEnviado) > 10 * 60 * 1000) {
+      sessao._alertaInstabilidadeEnviado = Date.now();
+      await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA NÃO RESPONDEU", mensagem);
+    }
+    return null;
+  }
+
   const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
   if (respostaTravada) return null;
   registrarEntradaSessao(sessao, "assistant", resposta);
@@ -1049,6 +1089,8 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
         sessao.curriculo.driveLink = driveInfo.link;
         sessao.curriculo.pasta = driveInfo.pasta;
         analise.curriculoDriveLink = driveInfo.link;
+      } else {
+        console.error(`Currículo de ${telefone}: upload pro Drive falhou ou não configurado (cargo destino: "${cargoDestino}").`);
       }
     }
 
@@ -1065,7 +1107,8 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
     await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome);
     return analise.mensagemCandidato;
   } catch (erro) {
-    console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message));
+    console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
+    await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO PROCESSAR CURRÍCULO", String(erro.message || erro));
     return "Recebi seu currículo, mas tive dificuldade para concluir a análise automática agora. Podemos seguir com algumas perguntas rápidas por aqui. Qual foi sua última experiência profissional?";
   }
 }
@@ -1182,20 +1225,40 @@ async function chamarClaudeJSON(prompt) {
   }
 }
 
-async function chamarClaude(prompt) {
+// chamarClaude agora:
+// - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
+// - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
+// - timeout maior (45s) para reduzir falsos timeouts sob carga
+async function chamarClaude(prompt, tentativa = 1) {
   try {
-    if (!CONFIG.CLAUDE_API_KEY) return "Tive uma instabilidade aqui. Pode me mandar novamente?";
+    if (!CONFIG.CLAUDE_API_KEY) {
+      console.error("chamarClaude: CLAUDE_API_KEY não configurada.");
+      return FALLBACK_INSTABILIDADE;
+    }
     const response = await axios.post("https://api.anthropic.com/v1/messages", {
       model: "claude-sonnet-4-6",
       max_tokens: 1800,
       temperature: 0.2,
       messages: [{ role: "user", content: prompt }]
-    }, { headers: { "x-api-key": CONFIG.CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, timeout: 30000 });
-    return response.data?.content?.[0]?.text || "Tive uma instabilidade aqui. Pode me mandar novamente?";
+    }, { headers: { "x-api-key": CONFIG.CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, timeout: 45000 });
+    return response.data?.content?.[0]?.text || FALLBACK_INSTABILIDADE;
   } catch (erro) {
-    const msg = JSON.stringify(erro.response?.data || erro.message);
-    if (msg.includes("rate_limit")) return "Estou processando suas informações, só preciso de um instantinho. Pode me responder novamente em alguns segundos?";
-    return "Tive uma instabilidade aqui. Pode me mandar novamente?";
+    const status = erro.response?.status;
+    const corpo = erro.response?.data;
+    console.error(`Erro chamarClaude (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+
+    const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
+    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+
+    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
+
+    // Retry único para falhas de rede/timeout (não para erros 4xx de payload/autenticação).
+    if (ehTimeoutOuRede && tentativa < 2) {
+      await sleep(1500);
+      return chamarClaude(prompt, tentativa + 1);
+    }
+
+    return FALLBACK_INSTABILIDADE;
   }
 }
 
