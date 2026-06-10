@@ -151,8 +151,8 @@
       <div class="sb-title-row">
         <span class="sb-title">💬 Conversas</span>
         <div class="sb-badges">
-          <span class="badge badge-red" id="badge-novas" style="display:none">0</span>
-          <span class="badge badge-blue" id="badge-total">0</span>
+          <span class="badge badge-red" id="badge-novas" style="display:none" title="Conversas com mensagens não lidas">0 não lidas</span>
+          <span class="badge badge-blue" id="badge-total" title="Total de conversas">0 total</span>
         </div>
       </div>
       <div class="search-box">
@@ -186,7 +186,8 @@
           <div class="chat-meta" id="ch-meta">—</div>
         </div>
         <div class="header-actions">
-          <button class="haction-btn lido" onclick="marcarLida()" title="Marcar como lida">✓✓ Lida</button>
+          <button class="haction-btn lido" onclick="marcarLida()" title="Marcar conversa toda como lida">✓✓ Lida</button>
+          <button class="haction-btn lido" onclick="marcarNaoLida()" title="Marcar como não lida novamente">🔵 Não lida</button>
         </div>
         <div class="mode-toggle">
           <button class="mbtn" id="mbtn-lia" onclick="setModo('lia')">🤖 Lia</button>
@@ -297,14 +298,14 @@ function isNova(tel, sessao){ return contarNaoLidas(tel,sessao) > 0; }
 
 // Formata horário estilo WhatsApp
 function formatarHorarioLista(ts){
-  if(!ts) return '';
+  if(!ts) return {texto:'--:--',hoje:false};
   // ts formato: "DD/MM/YYYY, HH:MM:SS" ou similar
   const partes = ts.split(',');
   const dataParte = partes[0]?.trim();
   const horaParte = partes[1]?.trim();
-  if(!dataParte) return ts;
+  if(!dataParte) return {texto:'--:--',hoje:false};
   const [d,m,y] = dataParte.split('/');
-  if(!d) return ts;
+  if(!d) return {texto:'--:--',hoje:false};
   const dataMsg = new Date(y, m-1, d);
   const hoje = new Date();
   const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
@@ -436,7 +437,21 @@ function marcarLida(){
   const hist=s?.historico||[];
   setMeta(sessaoAtual,{ultimaMsgVista:hist.length});
   renderLista();
-  toast('✓✓ Marcado como lido','success');
+  toast('✓✓ Conversa marcada como lida','success');
+}
+
+function marcarNaoLida(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  const hist=s?.historico||[];
+  // Volta para antes da última mensagem do candidato (ou 0 se não houver)
+  let novoIndex = hist.length;
+  for(let i=hist.length-1;i>=0;i--){
+    if(hist[i].role==='user'){ novoIndex = i; break; }
+  }
+  setMeta(sessaoAtual,{ultimaMsgVista:novoIndex});
+  renderLista();
+  toast('🔵 Marcada como não lida','success');
 }
 
 // QUICK REPLIES
