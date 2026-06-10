@@ -1,3 +1,9 @@
+// INDEX CONSOLIDADO — 10/06/2026
+// Ajustes principais:
+// 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
+// 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
+// 3) Mantém manual apenas para pedido explícito de humano/responsável, dados sensíveis, saúde/PCD, jurídico, irritação/risco ou possível cliente.
+
 const express = require("express");
 const axios = require("axios");
 const pdfParse = require("pdf-parse");
@@ -170,8 +176,10 @@ function normalizarSessaoParaInbox(telefone, sessao) {
 }
 
 function registrarEntradaSessao(sessao, role, content) {
-  sessao.historico.push(prepararEventoHistorico(role, content));
+  const evento = prepararEventoHistorico(role, content);
+  sessao.historico.push(evento);
   sessao.historico = sessao.historico.slice(-60);
+  return evento;
 }
 
 function marcarMensagemRecebida(sessao) {
@@ -830,19 +838,38 @@ app.post("/inbox/enviar", async (req, res) => {
     const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
     const mensagem = req.body.mensagem || req.body.message || req.body.texto || req.body.text;
     if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
+
     const sessao = garantirSessao(telefone);
+
+    // Quando a Laura envia pelo Inbox, a conversa deve ficar em manual.
     atendimentosManuais.add(telefone);
     sessao.modo = "manual";
     sessao.pausado = true;
     sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
+
+    // Primeiro envia para o WhatsApp.
     await enviarMensagem(telefone, mensagem);
-    registrarEntradaSessao(sessao, "assistant", mensagem);
+
+    // Depois grava imediatamente no histórico do servidor.
+    // Isso permite que o Inbox recarregue e já encontre a mensagem enviada.
+    const eventoSalvo = registrarEntradaSessao(sessao, "assistant", mensagem);
     marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-20);
+    sessao.historico = sessao.historico.slice(-60);
+
     await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, modo: "manual", pausado: true });
-  } catch (erro) { res.json({ ok: false, erro: erro.message }); }
+
+    return res.json({
+      ok: true,
+      telefone,
+      modo: "manual",
+      pausado: true,
+      mensagem: eventoSalvo,
+      historicoLength: sessao.historico.length
+    });
+  } catch (erro) {
+    return res.json({ ok: false, erro: erro.message });
+  }
 });
 
 app.get("/inbox/curriculo/:telefone", (req, res) => {
