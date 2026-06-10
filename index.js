@@ -342,21 +342,39 @@ function estaEmManual(telefoneOriginal) {
 // ============================================================
 
 const TRAVAS = {
-  humano: ["quero falar","falar com alguém","falar com alguem","falar com uma pessoa","falar com o responsável","falar com o responsavel","falar com responsável","falar com responsavel","responsável","responsavel","quem é o responsável","quem e o responsavel","atendente","humano","recrutador","pessoa de verdade","alguém da effect","alguem da effect"],
+  // PAUSA REAL: somente pedido explícito de humano/responsável.
+  humano: [
+    "quero falar com alguém","quero falar com alguem","quero falar com uma pessoa",
+    "quero falar com o responsável","quero falar com o responsavel",
+    "quero falar com responsável","quero falar com responsavel",
+    "quero falar com atendente","quero falar com humano","quero falar com recrutador",
+    "falar com alguém","falar com alguem","falar com uma pessoa",
+    "falar com o responsável","falar com o responsavel",
+    "falar com responsável","falar com responsavel",
+    "falar com atendente","falar com humano","falar com recrutador",
+    "não quero falar com robo","nao quero falar com robo",
+    "pessoa de verdade","alguém da effect","alguem da effect"
+  ],
+
+  // ALERTA, mas NÃO pausa automaticamente.
   entrevista: ["tenho entrevista","marcaram minha entrevista","vim para entrevista","qual horario da entrevista","qual horário da entrevista","onde e a entrevista","onde é a entrevista","confirmar entrevista","marcar entrevista","agendar entrevista"],
-  retorno: ["fui aprovado","fui aprovada","fui reprovado","fui reprovada","nao tive retorno","não tive retorno","cadê meu retorno","cade meu retorno","estou aguardando retorno","estou aguardando","ninguém me respondeu","ninguem me respondeu","já faz dias","ja faz dias"],
-  pcdSaude: ["sou pcd","tenho laudo","deficiencia","deficiência","cota pcd","laudo medico","laudo médico","afastamento","atestado","cirurgia","gravidez","gestante","limitação","limitacao","tratamento"],
+  retorno: ["fui aprovado","fui aprovada","fui reprovado","fui reprovada","nao tive retorno","não tive retorno","cadê meu retorno","cade meu retorno","estou aguardando retorno","ninguém me respondeu","ninguem me respondeu","já faz dias","ja faz dias"],
   exFuncionario: ["ja trabalhei ai","já trabalhei aí","ja trabalhei nessa empresa","já trabalhei nessa empresa","fui funcionario","fui funcionário","fui colaborador","trabalhei anteriormente","ex funcionario","ex funcionário"],
   urgencia: ["urgente","urgencia","urgência","preciso trabalhar","estou desempregado","estou desempregada","preciso muito","estou passando necessidade"],
-  irritacao: ["não entendeu","nao entendeu","isso está errado","isso esta errado","péssimo atendimento","pessimo atendimento","ridículo","ridiculo","reclamação","reclamacao","processo","advogado","procon","não quero falar com robo","nao quero falar com robo","isso não ajuda","isso nao ajuda"],
+  indicacao: ["fulano me indicou","fui indicado","fui indicada","recebi indicação","recebi indicacao","indicação","indicacao"],
+  cargoEstrategico: ["supervisor","supervisora","coordenador","coordenadora","gerente","analista senior","analista sênior","especialista","engenheiro","engenheira","liderança","lideranca","gestão de equipe","gestao de equipe"],
+
+  // PAUSA REAL: temas sensíveis/risco.
+  pcdSaude: ["sou pcd","tenho laudo","deficiencia","deficiência","cota pcd","laudo medico","laudo médico","afastamento","atestado","cirurgia","gravidez","gestante","limitação","limitacao","tratamento"],
+  irritacao: ["não entendeu","nao entendeu","isso está errado","isso esta errado","péssimo atendimento","pessimo atendimento","ridículo","ridiculo","reclamação","reclamacao","processo","advogado","procon","isso não ajuda","isso nao ajuda"],
   dadosSensiveis: ["cpf","rg","cnh","pis","ctps","conta bancária","conta bancaria","pix","cartão","cartao","dados bancários","dados bancarios","nome da mãe","nome da mae","nome do pai","data de nascimento"],
   juridico: ["fgts","férias","ferias","13º","13°","décimo terceiro","decimo terceiro","rescisão","rescisao","processo trabalhista","direitos trabalhistas","justa causa","advogado trabalhista"],
   empresa: ["preciso contratar","quero contratar","quero divulgar vaga","procuro recrutamento","minha empresa","sou empresa","contratar funcionário","contratar funcionario","tenho uma vaga","serviço de recrutamento","servico de recrutamento"],
+
+  // Não pausar por baixa confiança. Usar só para alerta.
   baixaConfianca: ["não encontrei","nao encontrei","não consegui localizar","nao consegui localizar","não tenho certeza","nao tenho certeza","talvez","provavelmente","tive uma instabilidade","pode me mandar novamente","não consegui entender","nao consegui entender"],
   salario: ["salário","salario","quanto ganha","remuneração","remuneracao","benefícios","beneficios","vale transporte","vale alimentação","vale alimentacao","ticket","vr","va"],
-  vagaNaoEncontrada: ["vaga do instagram","vaga que vi","vi uma vaga","anúncio","anuncio","vaga administrativa","postagem","publicação","publicacao"],
-  indicacao: ["fulano me indicou","fui indicado","fui indicada","recebi indicação","recebi indicacao","indicação","indicacao"],
-  cargoEstrategico: ["supervisor","supervisora","coordenador","coordenadora","gerente","analista senior","analista sênior","especialista","engenheiro","engenheira","liderança","lideranca","gestão de equipe","gestao de equipe"]
+  vagaNaoEncontrada: ["vaga do instagram","vaga que vi","vi uma vaga","anúncio","anuncio","vaga administrativa","postagem","publicação","publicacao"]
 };
 
 function contemAlguma(texto, lista) {
@@ -417,30 +435,148 @@ async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
   const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
   const texto = mensagem || "";
-  if (contemAlguma(texto, TRAVAS.humano)) return await pausarPorTrava(telefone, "Candidato pediu atendimento humano/responsável", texto, "Claro. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento com você. 💙");
-  if (contemAlguma(texto, TRAVAS.entrevista)) return await pausarPorTrava(telefone, "Assunto relacionado à entrevista", texto, "Vou encaminhar sua mensagem para a equipe da Effect confirmar essa informação com segurança. 💙");
-  if (contemAlguma(texto, TRAVAS.retorno)) return await pausarPorTrava(telefone, "Solicitação de retorno do processo", texto, "Vou verificar essa informação com a equipe da Effect para te dar uma posição correta. 💙");
-  if (contemAlguma(texto, TRAVAS.pcdSaude)) return await pausarPorTrava(telefone, "Mensagem envolve PCD, laudo, saúde ou limitação", texto, "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você. 💙");
-  if (contemAlguma(texto, TRAVAS.exFuncionario)) return await pausarPorTrava(telefone, "Candidato informou que já trabalhou na empresa/cliente", texto, "Vou direcionar sua mensagem para a equipe da Effect avaliar seu histórico com mais cuidado. 💙");
-  if (contemAlguma(texto, TRAVAS.urgencia)) return await pausarPorTrava(telefone, "Mensagem com urgência ou vulnerabilidade profissional", texto, "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar com atenção. 💙");
-  if (contemAlguma(texto, TRAVAS.irritacao)) return await pausarPorTrava(telefone, "Candidato demonstrou irritação, reclamação ou risco de conflito", texto, "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar diretamente, tudo bem?");
-  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) return await pausarPorTrava(telefone, "Mensagem envolve dados sensíveis/documentos pessoais", texto, "Essa etapa será conduzida diretamente pela equipe da Effect, para manter seus dados seguros. 💙");
-  if (contemAlguma(texto, TRAVAS.juridico)) return await pausarPorTrava(telefone, "Mensagem envolve dúvida trabalhista/jurídica", texto, "Vou encaminhar essa dúvida para a equipe da Effect verificar com cuidado antes de te responder.");
-  if (contemAlguma(texto, TRAVAS.empresa)) return await pausarPorTrava(telefone, "Possível cliente/empresa querendo contratar", texto, "Que bom falar com você. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento. 💙");
-  if (detectarMenorIdade(texto)) return await pausarPorTrava(telefone, "Possível candidato menor de idade", texto, "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você.");
-  if (contemAlguma(texto, TRAVAS.indicacao)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
-  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
-  if (ultimasPerguntasRepetidas(sessao)) return await pausarPorTrava(telefone, "Possível repetição/loop de pergunta detectado", texto, "Vou confirmar essas informações com a equipe da Effect para te orientar melhor. 💙");
-  if (conversaSemAvanco(sessao)) return await pausarPorTrava(telefone, "Conversa longa sem avanço suficiente", texto, "Vou encaminhar seu atendimento para a equipe da Effect continuar com você de forma mais assertiva. 💙");
+
+  // PAUSA REAL — pedido explícito de humano/responsável.
+  if (contemAlguma(texto, TRAVAS.humano)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato pediu atendimento humano/responsável",
+      texto,
+      "Claro. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento com você. 💙"
+    );
+  }
+
+  // PAUSA REAL — temas sensíveis/risco.
+  if (contemAlguma(texto, TRAVAS.pcdSaude)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve PCD, laudo, saúde ou limitação",
+      texto,
+      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.irritacao)) {
+    return await pausarPorTrava(
+      telefone,
+      "Candidato demonstrou irritação, reclamação ou risco de conflito",
+      texto,
+      "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar diretamente, tudo bem?"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve dados sensíveis/documentos pessoais",
+      texto,
+      "Essa etapa será conduzida diretamente pela equipe da Effect, para manter seus dados seguros. 💙"
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.juridico)) {
+    return await pausarPorTrava(
+      telefone,
+      "Mensagem envolve dúvida trabalhista/jurídica",
+      texto,
+      "Vou encaminhar essa dúvida para a equipe da Effect verificar com cuidado antes de te responder."
+    );
+  }
+
+  if (contemAlguma(texto, TRAVAS.empresa)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível cliente/empresa querendo contratar",
+      texto,
+      "Que bom falar com você. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento. 💙"
+    );
+  }
+
+  if (detectarMenorIdade(texto)) {
+    return await pausarPorTrava(
+      telefone,
+      "Possível candidato menor de idade",
+      texto,
+      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você."
+    );
+  }
+
+  // ALERTAS — não pausam a Lia.
+  if (contemAlguma(texto, TRAVAS.entrevista)) {
+    await enviarAlertaSimplesThiara(telefone, "📅 CANDIDATO FALOU SOBRE ENTREVISTA", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.retorno)) {
+    await enviarAlertaSimplesThiara(telefone, "🔁 CANDIDATO PEDIU RETORNO DO PROCESSO", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.exFuncionario)) {
+    await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO DISSE QUE JÁ TRABALHOU NA EMPRESA", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.urgencia)) {
+    await enviarAlertaSimplesThiara(telefone, "⚠️ CANDIDATO EM URGÊNCIA/VULNERABILIDADE", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.indicacao)) {
+    await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
+  }
+
+  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) {
+    await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
+  }
+
+  // Antes isso pausava quase todos os candidatos.
+  // Agora apenas alerta, sem colocar em manual.
+  if (ultimasPerguntasRepetidas(sessao)) {
+    await enviarAlertaSimplesThiara(telefone, "🔁 POSSÍVEL LOOP DE PERGUNTA DA LIA", texto);
+  }
+
+  // REMOVIDO: não pausar por "conversa longa sem avanço".
+  // Essa regra estava colocando candidatos normais em manual quando respondiam apenas "sim", "ok", etc.
+
   return false;
 }
 
 async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOriginal) {
   const telefone = limparTelefone(telefoneOriginal);
   const texto = resposta || "";
-  if (contemAlguma(texto, TRAVAS.baixaConfianca)) return await pausarPorTrava(telefone, "Resposta da Lia indicou baixa confiança/instabilidade", mensagemOriginal, "Vou confirmar essa informação com a equipe da Effect para te responder com mais segurança. 💙");
-  if (contemAlguma(mensagemOriginal, TRAVAS.salario) && contemAlguma(texto, TRAVAS.baixaConfianca)) return await pausarPorTrava(telefone, "Candidato perguntou salário/benefícios e a Lia não tinha informação segura", mensagemOriginal, "Vou confirmar essa informação com a equipe da Effect para te responder corretamente. 💙");
-  if (contemAlguma(mensagemOriginal, TRAVAS.vagaNaoEncontrada) && contemAlguma(texto, TRAVAS.baixaConfianca)) return await pausarPorTrava(telefone, "Possível vaga não encontrada ou informação divergente", mensagemOriginal, "Vou confirmar essa oportunidade com a equipe da Effect e retorno para você com segurança. 💙");
+
+  // Não pausar automaticamente por baixa confiança.
+  // A Lia pode avisar que vai confirmar, mas a conversa continua no automático.
+  if (contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    await enviarAlertaSimplesThiara(
+      telefone,
+      "⚠️ RESPOSTA DA LIA COM BAIXA CONFIANÇA",
+      `Mensagem do candidato: ${mensagemOriginal || ""}
+
+Resposta da Lia: ${resposta || ""}`
+    );
+    return false;
+  }
+
+  if (contemAlguma(mensagemOriginal, TRAVAS.salario) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    await enviarAlertaSimplesThiara(
+      telefone,
+      "💰 CANDIDATO PERGUNTOU SALÁRIO/BENEFÍCIOS",
+      `Mensagem do candidato: ${mensagemOriginal || ""}
+
+Resposta da Lia: ${resposta || ""}`
+    );
+    return false;
+  }
+
+  if (contemAlguma(mensagemOriginal, TRAVAS.vagaNaoEncontrada) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
+    await enviarAlertaSimplesThiara(
+      telefone,
+      "📌 POSSÍVEL VAGA NÃO ENCONTRADA",
+      `Mensagem do candidato: ${mensagemOriginal || ""}
+
+Resposta da Lia: ${resposta || ""}`
+    );
+    return false;
+  }
+
   return false;
 }
 
