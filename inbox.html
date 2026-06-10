@@ -638,9 +638,9 @@ function extrairHora(ts){
 }
 
 function formatarHora(ts){
-  if(!ts)return{texto:'--',hoje:false,ms:0};
+  if(!ts)return{texto:'',hoje:true,ms:Date.now()};
   const dm=tsParaDate(ts);
-  if(!dm)return{texto:'--',hoje:false,ms:0};
+  if(!dm)return{texto:'',hoje:true,ms:Date.now()};
   const ms=dm.getTime();
   const agora=new Date();
   const dHoje=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
