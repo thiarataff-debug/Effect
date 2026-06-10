@@ -616,18 +616,21 @@ function contarNaoLidas(tel,sessao){
   return c;
 }
 function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !== 'Pausado manualmente no inbox' && sessao.motivoPausa !== 'Atendimento assumido manualmente';}
-// Converte QUALQUER formato de timestamp em Date local
-// Suporta: "10/06/2026, 11:49:42" | "Wed Jun 10 2026 11:49:42 GMT-0300..." | ISO | só hora
+// Converte QUALQUER formato de timestamp em Date
 function tsParaDate(ts){
   if(!ts)return null;
   const s=String(ts).trim();
-  // 1) Formato BR: "10/06/2026, 11:49:42" ou "10/06/2026 11:49"
+  // Formato BR: "10/06/2026, 18:56:42" — trata como Brasília (UTC-3)
   const brM=s.match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2}):?(\d{2})?/);
-  if(brM) return new Date(+brM[3],+brM[2]-1,+brM[1],+brM[4],+brM[5],+(brM[6]||0));
-  // 2) Qualquer formato que o JS entende (ISO, GMT string, etc.)
+  if(brM){
+    // Constrói ISO com offset -03:00 para garantir o timestamp correto
+    const iso=`${brM[3]}-${brM[2]}-${brM[1]}T${brM[4]}:${brM[5]}:${brM[6]||'00'}-03:00`;
+    const d=new Date(iso);
+    return isNaN(d.getTime())?null:d;
+  }
+  // Qualquer outro formato (ISO, GMT string com offset, etc.)
   const d=new Date(s);
-  if(!isNaN(d.getTime())) return d;
-  return null;
+  return isNaN(d.getTime())?null:d;
 }
 
 function extrairHora(ts){
