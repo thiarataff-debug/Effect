@@ -1,3 +1,4 @@
+// VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
 // INDEX CONSOLIDADO — 10/06/2026
 // Ajustes principais:
 // 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
@@ -441,10 +442,12 @@ async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, resposta
 
 async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
   const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
   const texto = mensagem || "";
 
-  // PAUSA REAL — pedido explícito de humano/responsável.
+  // VERSÃO ENXUTA: a Lia NÃO deve jogar candidatos normais para manual.
+  // Manual automático fica restrito a pedido explícito de humano/responsável.
+  // Todo o restante no máximo gera alerta para Thiara, mas a Lia continua atendendo.
+
   if (contemAlguma(texto, TRAVAS.humano)) {
     return await pausarPorTrava(
       telefone,
@@ -454,94 +457,19 @@ async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
     );
   }
 
-  // PAUSA REAL — temas sensíveis/risco.
-  if (contemAlguma(texto, TRAVAS.pcdSaude)) {
-    return await pausarPorTrava(
-      telefone,
-      "Mensagem envolve PCD, laudo, saúde ou limitação",
-      texto,
-      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você. 💙"
-    );
-  }
-
-  if (contemAlguma(texto, TRAVAS.irritacao)) {
-    return await pausarPorTrava(
-      telefone,
-      "Candidato demonstrou irritação, reclamação ou risco de conflito",
-      texto,
-      "Entendi. Vou encaminhar sua mensagem para a equipe da Effect acompanhar diretamente, tudo bem?"
-    );
-  }
-
-  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) {
-    return await pausarPorTrava(
-      telefone,
-      "Mensagem envolve dados sensíveis/documentos pessoais",
-      texto,
-      "Essa etapa será conduzida diretamente pela equipe da Effect, para manter seus dados seguros. 💙"
-    );
-  }
-
-  if (contemAlguma(texto, TRAVAS.juridico)) {
-    return await pausarPorTrava(
-      telefone,
-      "Mensagem envolve dúvida trabalhista/jurídica",
-      texto,
-      "Vou encaminhar essa dúvida para a equipe da Effect verificar com cuidado antes de te responder."
-    );
-  }
-
-  if (contemAlguma(texto, TRAVAS.empresa)) {
-    return await pausarPorTrava(
-      telefone,
-      "Possível cliente/empresa querendo contratar",
-      texto,
-      "Que bom falar com você. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento. 💙"
-    );
-  }
-
-  if (detectarMenorIdade(texto)) {
-    return await pausarPorTrava(
-      telefone,
-      "Possível candidato menor de idade",
-      texto,
-      "Vou encaminhar suas informações para a equipe da Effect avaliar a melhor orientação para você."
-    );
-  }
-
-  // ALERTAS — não pausam a Lia.
-  if (contemAlguma(texto, TRAVAS.entrevista)) {
-    await enviarAlertaSimplesThiara(telefone, "📅 CANDIDATO FALOU SOBRE ENTREVISTA", texto);
-  }
-
-  if (contemAlguma(texto, TRAVAS.retorno)) {
-    await enviarAlertaSimplesThiara(telefone, "🔁 CANDIDATO PEDIU RETORNO DO PROCESSO", texto);
-  }
-
-  if (contemAlguma(texto, TRAVAS.exFuncionario)) {
-    await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO DISSE QUE JÁ TRABALHOU NA EMPRESA", texto);
-  }
-
-  if (contemAlguma(texto, TRAVAS.urgencia)) {
-    await enviarAlertaSimplesThiara(telefone, "⚠️ CANDIDATO EM URGÊNCIA/VULNERABILIDADE", texto);
-  }
-
-  if (contemAlguma(texto, TRAVAS.indicacao)) {
-    await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
-  }
-
-  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) {
-    await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
-  }
-
-  // Antes isso pausava quase todos os candidatos.
-  // Agora apenas alerta, sem colocar em manual.
-  if (ultimasPerguntasRepetidas(sessao)) {
-    await enviarAlertaSimplesThiara(telefone, "🔁 POSSÍVEL LOOP DE PERGUNTA DA LIA", texto);
-  }
-
-  // REMOVIDO: não pausar por "conversa longa sem avanço".
-  // Essa regra estava colocando candidatos normais em manual quando respondiam apenas "sim", "ok", etc.
+  // Alertas sem pausar a Lia.
+  if (contemAlguma(texto, TRAVAS.entrevista)) await enviarAlertaSimplesThiara(telefone, "📅 CANDIDATO FALOU SOBRE ENTREVISTA", texto);
+  if (contemAlguma(texto, TRAVAS.retorno)) await enviarAlertaSimplesThiara(telefone, "🔁 CANDIDATO PEDIU RETORNO DO PROCESSO", texto);
+  if (contemAlguma(texto, TRAVAS.exFuncionario)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO DISSE QUE JÁ TRABALHOU NA EMPRESA", texto);
+  if (contemAlguma(texto, TRAVAS.urgencia)) await enviarAlertaSimplesThiara(telefone, "⚠️ CANDIDATO EM URGÊNCIA/VULNERABILIDADE", texto);
+  if (contemAlguma(texto, TRAVAS.indicacao)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
+  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
+  if (contemAlguma(texto, TRAVAS.pcdSaude)) await enviarAlertaSimplesThiara(telefone, "♿ MENSAGEM ENVOLVE PCD/SAÚDE/LAUDO", texto);
+  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) await enviarAlertaSimplesThiara(telefone, "🔒 MENSAGEM ENVOLVE DADOS PESSOAIS", texto);
+  if (contemAlguma(texto, TRAVAS.juridico)) await enviarAlertaSimplesThiara(telefone, "⚖️ MENSAGEM ENVOLVE TEMA TRABALHISTA/JURÍDICO", texto);
+  if (contemAlguma(texto, TRAVAS.empresa)) await enviarAlertaSimplesThiara(telefone, "🏢 POSSÍVEL CLIENTE/EMPRESA", texto);
+  if (detectarMenorIdade(texto)) await enviarAlertaSimplesThiara(telefone, "🚸 POSSÍVEL CANDIDATO MENOR DE IDADE", texto);
+  if (ultimasPerguntasRepetidas(garantirSessao(telefone))) await enviarAlertaSimplesThiara(telefone, "🔁 POSSÍVEL LOOP DE PERGUNTA DA LIA", texto);
 
   return false;
 }
@@ -550,39 +478,13 @@ async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOrigina
   const telefone = limparTelefone(telefoneOriginal);
   const texto = resposta || "";
 
-  // Não pausar automaticamente por baixa confiança.
-  // A Lia pode avisar que vai confirmar, mas a conversa continua no automático.
+  // Nunca pausar por resposta de baixa confiança. Apenas alerta.
   if (contemAlguma(texto, TRAVAS.baixaConfianca)) {
     await enviarAlertaSimplesThiara(
       telefone,
       "⚠️ RESPOSTA DA LIA COM BAIXA CONFIANÇA",
-      `Mensagem do candidato: ${mensagemOriginal || ""}
-
-Resposta da Lia: ${resposta || ""}`
+      `Mensagem do candidato: ${mensagemOriginal || ""}\n\nResposta da Lia: ${resposta || ""}`
     );
-    return false;
-  }
-
-  if (contemAlguma(mensagemOriginal, TRAVAS.salario) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
-    await enviarAlertaSimplesThiara(
-      telefone,
-      "💰 CANDIDATO PERGUNTOU SALÁRIO/BENEFÍCIOS",
-      `Mensagem do candidato: ${mensagemOriginal || ""}
-
-Resposta da Lia: ${resposta || ""}`
-    );
-    return false;
-  }
-
-  if (contemAlguma(mensagemOriginal, TRAVAS.vagaNaoEncontrada) && contemAlguma(texto, TRAVAS.baixaConfianca)) {
-    await enviarAlertaSimplesThiara(
-      telefone,
-      "📌 POSSÍVEL VAGA NÃO ENCONTRADA",
-      `Mensagem do candidato: ${mensagemOriginal || ""}
-
-Resposta da Lia: ${resposta || ""}`
-    );
-    return false;
   }
 
   return false;
@@ -634,20 +536,17 @@ async function carregarSessoesDoSheets() {
       const motivoOriginal = sessao.motivoPausa || "";
       const motivoNormalizado = normalizarTexto(motivoOriginal);
 
-      // Limpa manuais antigos criados por travas que agora viraram apenas alerta.
-      const manualAntigoIndevido =
-        motivoNormalizado.includes("conversa longa sem avanco") ||
-        motivoNormalizado.includes("conversa longa sem avanço") ||
-        motivoNormalizado.includes("baixa confianca") ||
-        motivoNormalizado.includes("baixa confiança") ||
-        motivoNormalizado.includes("solicitacao de retorno") ||
-        motivoNormalizado.includes("solicitação de retorno") ||
-        motivoNormalizado.includes("assunto relacionado a entrevista") ||
-        motivoNormalizado.includes("assunto relacionado à entrevista") ||
-        motivoNormalizado.includes("possivel repeticao") ||
-        motivoNormalizado.includes("possível repetição");
+      // Limpa praticamente todos os manuais antigos criados por travas automáticas.
+      // Mantém manual somente quando foi assumido no Inbox/Laura ou pedido explícito de humano.
+      const motivoMantemManual =
+        motivoNormalizado.includes("pausado manualmente no inbox") ||
+        motivoNormalizado.includes("atendimento assumido manualmente") ||
+        motivoNormalizado.includes("candidato pediu atendimento humano") ||
+        motivoNormalizado.includes("humano/responsavel") ||
+        motivoNormalizado.includes("humano/responsável");
 
       const modoOriginal = sessao.modo || (sessao.pausado ? "manual" : "automatico");
+      const manualAntigoIndevido = modoOriginal === "manual" && !motivoMantemManual;
       const modo = manualAntigoIndevido ? "automatico" : modoOriginal;
       const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
       const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
@@ -1261,7 +1160,9 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
   const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
   const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
   const instrucaoCurriculo = ehLinhares ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.` : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
+  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
+- Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
+- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
 }
 
 function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
