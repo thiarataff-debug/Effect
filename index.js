@@ -52,6 +52,172 @@ function agora() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
+function agoraISO() {
+  return new Date().toISOString();
+}
+
+function parseDataFlexivel(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  if (typeof valor === "number") {
+    const d = new Date(valor);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const texto = String(valor).trim();
+  if (!texto) return null;
+
+  const direto = new Date(texto);
+  if (!isNaN(direto.getTime())) return direto;
+
+  // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
+  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const dia = Number(m[1]);
+    const mes = Number(m[2]) - 1;
+    let ano = Number(m[3]);
+    if (ano < 100) ano += 2000;
+    const hora = Number(m[4] || 0);
+    const minuto = Number(m[5] || 0);
+    const segundo = Number(m[6] || 0);
+    const d = new Date(ano, mes, dia, hora, minuto, segundo);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
+function formatarDataWhatsApp(valor) {
+  const date = parseDataFlexivel(valor);
+  if (!date) return "";
+
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((startToday - startDate) / 86400000);
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+  }
+  if (diffDays === 1) return "Ontem";
+  if (diffDays >= 2 && diffDays < 7) {
+    return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()];
+  }
+  return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
+
+function prepararEventoHistorico(role, content) {
+  const iso = agoraISO();
+  const ms = Date.now();
+  return { role, content, timestamp: iso, timestampISO: iso, timestampMs: ms, horario: agora(), horarioFormatado: formatarDataWhatsApp(ms) };
+}
+
+function normalizarEventoHistorico(evento) {
+  const data = parseDataFlexivel(evento?.timestampISO || evento?.timestampMs || evento?.timestamp || evento?.horario);
+  const ms = data ? data.getTime() : 0;
+  return {
+    ...(evento || {}),
+    timestamp: data ? data.toISOString() : (evento?.timestamp || ""),
+    timestampISO: data ? data.toISOString() : (evento?.timestampISO || ""),
+    timestampMs: ms,
+    horario: evento?.horario || evento?.timestamp || "",
+    horarioFormatado: formatarDataWhatsApp(ms || evento?.timestamp || evento?.horario)
+  };
+}
+
+function obterUltimaMensagem(sessao) {
+  const historico = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
+  if (!historico.length) return null;
+  return historico.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0))[historico.length - 1];
+}
+
+function calcularUnreadSessao(sessao) {
+  if (Number.isFinite(Number(sessao?.unreadCount))) return Number(sessao.unreadCount || 0);
+  const historico = Array.isArray(sessao?.historico) ? sessao.historico : [];
+  let count = 0;
+  for (let i = historico.length - 1; i >= 0; i--) {
+    if (historico[i]?.role === "user") count++;
+    else if (historico[i]?.role === "assistant") break;
+  }
+  return count;
+}
+
+function normalizarSessaoParaInbox(telefone, sessao) {
+  const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
+  historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
+
+  const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
+  const lastMessageAtMs = ultima?.timestampMs || 0;
+  const unreadCount = calcularUnreadSessao(sessao);
+
+  return {
+    historico: historicoNormalizado,
+    nome: sessao?.nome || null,
+    modo: sessao?.modo || "automatico",
+    pausado: sessao?.pausado === true || atendimentosManuais.has(telefone),
+    motivoPausa: sessao?.motivoPausa || "",
+    aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
+    ultimaAnalise: sessao?.ultimaAnalise || null,
+    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null } : null,
+    lastMessage: ultima?.content || "",
+    lastMessageRole: ultima?.role || "",
+    lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
+    lastMessageAtMs,
+    dataWhatsapp: formatarDataWhatsApp(lastMessageAtMs),
+    formattedLastMessageAt: formatarDataWhatsApp(lastMessageAtMs),
+    unreadCount
+  };
+}
+
+function registrarEntradaSessao(sessao, role, content) {
+  sessao.historico.push(prepararEventoHistorico(role, content));
+  sessao.historico = sessao.historico.slice(-60);
+}
+
+function marcarMensagemRecebida(sessao) {
+  sessao.unreadCount = Number(sessao.unreadCount || 0) + 1;
+  sessao.lastMessageAtMs = Date.now();
+}
+
+function marcarConversaRespondida(sessao) {
+  sessao.unreadCount = 0;
+  sessao.lastMessageAtMs = Date.now();
+}
+
+const AREA_SYNONYMS = {
+  rh: [
+    "rh", "recursos humanos", "gente e gestao", "gente e gestão",
+    "departamento pessoal", "dp", "recrutamento", "selecao", "seleção",
+    "r&s", "rs", "treinamento", "endomarketing", "clima", "cultura",
+    "administracao de pessoal", "administração de pessoal",
+    "analista administrativo rh", "administrativo rh", "carreira", "remuneracao", "remuneração"
+  ]
+};
+
+function contemSinonimoRH(texto = "") {
+  const clean = normalizarTexto(texto);
+  return AREA_SYNONYMS.rh.some(term => clean.includes(normalizarTexto(term)));
+}
+
+function isRHVaga(vaga) {
+  return contemSinonimoRH([
+    campo(vaga, ["cargo", "Cargo", "CARGO"]),
+    campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
+    campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
+    campo(vaga, ["palavrasChave", "Palavras-chave", "Palavras Chave"]),
+    campo(vaga, ["requisitosDaVaga", "Requisitos da Vaga", "Requisitos"]),
+    campo(vaga, ["observacoes", "Observações", "Observacoes"])
+  ].join(" "));
+}
+
+function candidatoTemPerfilRH(texto = "") {
+  return contemSinonimoRH(texto);
+}
+
+function buscarVagaRH(vagas = []) {
+  return vagas.find(v => vagaEstaAtiva(v) && isRHVaga(v));
+}
+
 // ============================================================
 // GOOGLE DRIVE — currículos organizados por pasta de cargo
 // ============================================================
@@ -239,7 +405,7 @@ async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, resposta
   await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
   if (respostaSegura) {
     await enviarMensagem(telefone, respostaSegura);
-    sessao.historico.push({ role: "assistant", content: respostaSegura, timestamp: agora() });
+    registrarEntradaSessao(sessao, "assistant", respostaSegura);
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
   }
@@ -289,7 +455,7 @@ async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome) {
     try {
       if (!CONFIG.VAGAS_URL) return;
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const payload = JSON.stringify({ acao: "salvarMensagem", telefone, role, mensagem, nome: nome || "", timestamp: agora() });
+      const payload = JSON.stringify({ acao: "salvarMensagem", telefone, role, mensagem, nome: nome || "", timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
       await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
       return;
     } catch (e) {
@@ -304,7 +470,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", timestamp: agora() });
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", unreadCount: Number(sessoes[telefone]?.unreadCount || 0), timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 20000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
@@ -321,7 +487,7 @@ async function carregarSessoesDoSheets() {
     Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
       const tel = limparTelefone(telOriginal);
       const modo = sessao.modo || (sessao.pausado ? "manual" : "automatico");
-      sessoes[tel] = { historico: Array.isArray(sessao.historico) ? sessao.historico.map(h => ({ role: h.role, content: h.content, timestamp: h.timestamp || h.horario || '' })) : [], nome: sessao.nome || null, modo, pausado: modo === "manual" || sessao.pausado === true, motivoPausa: sessao.motivoPausa || "" };
+      sessoes[tel] = { historico: Array.isArray(sessao.historico) ? sessao.historico.map(h => ({ role: h.role, content: h.content, timestamp: h.timestamp || h.horario || '', timestampISO: h.timestampISO || '', timestampMs: h.timestampMs || 0, horario: h.horario || h.timestamp || '', horarioFormatado: h.horarioFormatado || formatarDataWhatsApp(h.timestampISO || h.timestampMs || h.timestamp || h.horario) })) : [], nome: sessao.nome || null, modo, pausado: modo === "manual" || sessao.pausado === true, motivoPausa: sessao.motivoPausa || "", unreadCount: Number(sessao.unreadCount || 0) };
       if (sessoes[tel].pausado) atendimentosManuais.add(tel);
     });
     console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
@@ -368,7 +534,8 @@ app.post("/webhook", async (req, res) => {
     const sessaoAtual = garantirSessao(from);
     if (message.text?.body) {
       const texto = message.text.body;
-      sessaoAtual.historico.push({ role: "user", content: texto, timestamp: agora() });
+      registrarEntradaSessao(sessaoAtual, "user", texto);
+      marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "");
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
@@ -379,12 +546,14 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.audio) {
-      sessaoAtual.historico.push({ role: "user", content: "[Áudio recebido]", timestamp: agora() });
+      registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]");
+      marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "");
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
-      sessaoAtual.historico.push({ role: "assistant", content: respostaAudio, timestamp: agora() });
+      registrarEntradaSessao(sessaoAtual, "assistant", respostaAudio);
+      marcarConversaRespondida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "assistant", respostaAudio, sessaoAtual.nome || "");
       await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
@@ -392,7 +561,8 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.document) {
-      sessaoAtual.historico.push({ role: "user", content: "[Documento/Currículo recebido]", timestamp: agora() });
+      registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]");
+      marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
@@ -453,14 +623,44 @@ app.post("/sheets/candidatos/status", async (req, res) => {
 
 app.get("/inbox/sessoes", (req, res) => {
   try {
-    const dados = {};
-    Object.entries(sessoes).forEach(([tel, sessao]) => {
+    const lista = Object.entries(sessoes).map(([tel, sessao]) => {
       const telefone = limparTelefone(tel);
       garantirSessao(telefone);
-      dados[telefone] = { historico: sessao.historico || [], nome: sessao.nome || null, modo: sessao.modo || "automatico", pausado: sessao.pausado === true || atendimentosManuais.has(telefone), motivoPausa: sessao.motivoPausa || "", aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false, ultimaAnalise: sessao.ultimaAnalise || null, curriculo: sessao.curriculo ? { filename: sessao.curriculo.filename, recebidoEm: sessao.curriculo.recebidoEm, driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null } : null };
+      return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
+    }).sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
+
+    const dados = {};
+    lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
+
+    const totalConversas = lista.length;
+    const totalNaoLidasConversas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
+    const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
+
+    res.json({
+      sessoes: dados,
+      total: totalConversas,
+      totalConversas,
+      totalNaoLidasConversas,
+      totalMensagensNaoLidas,
+      atualizadoEm: new Date().toISOString(),
+      atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
     });
-    res.json({ sessoes: dados, total: Object.keys(dados).length });
-  } catch (erro) { res.json({ sessoes: {}, total: 0 }); }
+  } catch (erro) {
+    res.json({ sessoes: {}, total: 0, totalConversas: 0, totalNaoLidasConversas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
+  }
+});
+
+app.post("/inbox/marcar-lida", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
+    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+    const sessao = garantirSessao(telefone);
+    sessao.unreadCount = 0;
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    return res.json({ ok: true, telefone, unreadCount: 0 });
+  } catch (erro) {
+    return res.json({ ok: false, erro: erro.message });
+  }
 });
 
 app.post("/inbox/pausar", async (req, res) => {
@@ -500,7 +700,8 @@ app.post("/inbox/enviar", async (req, res) => {
     sessao.pausado = true;
     sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
     await enviarMensagem(telefone, mensagem);
-    sessao.historico.push({ role: "assistant", content: mensagem, timestamp: agora() });
+    registrarEntradaSessao(sessao, "assistant", mensagem);
+    marcarConversaRespondida(sessao);
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -615,7 +816,8 @@ app.post("/inbox/transicao", async (req, res) => {
     const msg = "Olá! 😊 A partir de agora, a Laura da nossa equipe Effect dará continuidade ao seu atendimento. Pode falar! 💙";
     await enviarMensagem(telefone, msg);
     const sessao = garantirSessao(telefone);
-    sessao.historico.push({ role: "assistant", content: msg, timestamp: agora() });
+    registrarEntradaSessao(sessao, "assistant", msg);
+    marcarConversaRespondida(sessao);
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
     res.json({ ok: true });
@@ -635,7 +837,8 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     if (candidatoExistente?.encontrado) {
       const nome = candidatoExistente.candidato?.Nome || "";
       const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
-      sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
+      registrarEntradaSessao(sessao, "assistant", resposta);
+      marcarConversaRespondida(sessao);
       sessao.historico = sessao.historico.slice(-20);
       await salvarMensagemSheets(telefone, "assistant", resposta, nome);
       await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
@@ -647,7 +850,8 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
     sessao.aguardandoConfirmacaoInteresse = false;
     const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
-    sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
+    registrarEntradaSessao(sessao, "assistant", resposta);
+      marcarConversaRespondida(sessao);
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -658,7 +862,8 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   const resposta = await chamarClaudeTexto(prompt);
   const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
   if (respostaTravada) return null;
-  sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
+  registrarEntradaSessao(sessao, "assistant", resposta);
+      marcarConversaRespondida(sessao);
   sessao.historico = sessao.historico.slice(-20);
   await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
   await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -677,9 +882,39 @@ async function processarCurriculo(telefoneOriginal, documento) {
     if (pdfBuffer) {
       sessao.curriculo = { base64: pdfBuffer.toString("base64"), filename: pdfFilename || `curriculo_${telefone}.pdf`, recebidoEm: agora() };
     }
-    const vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
+    let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
+    const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
+    if (vagaRH && !vagasFiltradas.some(v => campo(v, ["idVaga", "ID Vaga", "ID"]) === campo(vagaRH, ["idVaga", "ID Vaga", "ID"]))) {
+      vagasFiltradas = [vagaRH, ...vagasFiltradas].slice(0, 5);
+    }
     const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
     const analise = await chamarClaudeJSON(prompt);
+
+    // Correção determinística: se o currículo é de RH e existe vaga aberta de RH, não deixar a Lia dizer que não há vaga compatível.
+    if (vagaRH) {
+      const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
+      const cidadeRH = campo(vagaRH, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
+      const idRH = campo(vagaRH, ["idVaga", "ID Vaga", "ID"]);
+      const semMatch = !analise.vagaInteresse || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas") || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas");
+      if (semMatch || !isRHVaga({ cargo: analise.vagaInteresse, area: analise.areaInteresse, palavrasChave: analise.motivoMatch })) {
+        analise.vagaInteresse = cargoRH || "Analista Administrativo (RH)";
+        analise.idVaga = idRH || analise.idVaga || "";
+        analise.cidade = analise.cidade || cidadeRH || "Serra/ES";
+        analise.areaInteresse = analise.areaInteresse || "Recursos Humanos";
+        analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 75);
+        analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 75);
+        analise.classificacao = analise.classificacao || "Bom";
+        analise.motivoMatch = analise.motivoMatch || "Experiência/aderência com RH, Recursos Humanos, DP, R&S ou Gente e Gestão.";
+        analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
+
+Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perfil:
+
+📍 ${cargoRH || "Analista Administrativo (RH)"}
+📍 ${cidadeRH || "Serra/ES"}
+
+Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
+      }
+    }
 
     // Upload para o Drive na subpasta do cargo de interesse
     if (pdfBuffer) {
@@ -697,7 +932,8 @@ async function processarCurriculo(telefoneOriginal, documento) {
     sessao.aguardandoConfirmacaoInteresse = true;
     sessao.ultimaAnalise = analise;
     sessao.nome = analise.nome || sessao.nome;
-    sessao.historico.push({ role: "assistant", content: analise.mensagemCandidato, timestamp: agora() });
+    registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
+    marcarConversaRespondida(sessao);
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
     await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
@@ -764,6 +1000,7 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
     if (textoBusca.includes("limpeza") && textoVaga.includes("limpeza")) score += 30;
     if (textoBusca.includes("diaria") && textoVaga.includes("diaria")) score += 30;
     if (textoBusca.includes("servicos gerais") && textoVaga.includes("servicos gerais")) score += 30;
+    if (candidatoTemPerfilRH(textoBusca) && isRHVaga(vaga)) score += 80;
     return { vaga, score };
   });
   const filtradas = vagasComScore.filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(i => i.vaga);
