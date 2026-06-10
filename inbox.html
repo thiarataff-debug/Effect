@@ -616,51 +616,57 @@ function contarNaoLidas(tel,sessao){
   return c;
 }
 function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !== 'Pausado manualmente no inbox' && sessao.motivoPausa !== 'Atendimento assumido manualmente';}
-// Converte QUALQUER formato de timestamp em Date
-function tsParaDate(ts){
-  if(!ts)return null;
+// Converte QUALQUER formato de timestamp em milissegundos
+function tsParaMs(ts){
+  if(!ts)return 0;
   const s=String(ts).trim();
-  // Formato BR: "10/06/2026, 18:56:42" — trata como Brasília (UTC-3)
+  // Formato BR: "10/06/2026, 18:56:42" — monta ISO com offset Brasília
   const brM=s.match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2}):?(\d{2})?/);
   if(brM){
-    // Constrói ISO com offset -03:00 para garantir o timestamp correto
-    const iso=`${brM[3]}-${brM[2]}-${brM[1]}T${brM[4]}:${brM[5]}:${brM[6]||'00'}-03:00`;
-    const d=new Date(iso);
-    return isNaN(d.getTime())?null:d;
+    const d=new Date(`${brM[3]}-${brM[2]}-${brM[1]}T${brM[4]}:${brM[5]}:${brM[6]||'00'}-03:00`);
+    return isNaN(d)?0:d.getTime();
   }
-  // Qualquer outro formato (ISO, GMT string com offset, etc.)
+  // GMT string, ISO, etc.
   const d=new Date(s);
-  return isNaN(d.getTime())?null:d;
+  return isNaN(d)?0:d.getTime();
+}
+
+function tsParaDate(ts){
+  const ms=tsParaMs(ts);
+  return ms?new Date(ms):null;
 }
 
 function extrairHora(ts){
   if(!ts)return'--:--';
+  // Formato BR: pega direto sem converter
+  const brM=String(ts).match(/(\d{2}):(\d{2}):\d{2}$/)||String(ts).match(/(\d{2}):(\d{2})$/);
+  if(brM)return`${brM[1]}:${brM[2]}`;
   const d=tsParaDate(ts);
-  if(d) return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(d)return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
   return'--:--';
 }
 
 function formatarHora(ts){
   if(!ts)return{texto:'',hoje:true,ms:Date.now()};
-  const dm=tsParaDate(ts);
-  if(!dm)return{texto:'',hoje:true,ms:Date.now()};
-  const ms=dm.getTime();
-  const agora=new Date();
-  const dHoje=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
-  const dOntem=new Date(dHoje);dOntem.setDate(dHoje.getDate()-1);
-  const dSemana=new Date(dHoje);dSemana.setDate(dHoje.getDate()-6);
-  const dMsg=new Date(dm.getFullYear(),dm.getMonth(),dm.getDate());
-  const hora=dm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  if(dMsg.getTime()===dHoje.getTime()) return{texto:hora,hoje:true,ms};
-  if(dMsg.getTime()===dOntem.getTime()) return{texto:'Ontem',hoje:false,ms};
-  if(dm>=dSemana){
-    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    return{texto:dias[dm.getDay()],hoje:false,ms};
+  const ms=tsParaMs(ts);
+  if(!ms)return{texto:'',hoje:true,ms:Date.now()};
+  const dm=new Date(ms);
+  // Datas em Brasília para comparação correta
+  const fmt=(d)=>d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'});
+  const hoje=new Date();
+  const dHoje=fmt(hoje);
+  const dOntem=fmt(new Date(hoje.getTime()-86400000));
+  const dSemana=hoje.getTime()-6*86400000;
+  const dMsg=fmt(dm);
+  const hora=dm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+  if(dMsg===dHoje)return{texto:hora,hoje:true,ms};
+  if(dMsg===dOntem)return{texto:'Ontem',hoje:false,ms};
+  if(ms>=dSemana){
+    const nomeDia=dm.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'});
+    // nomeDia vem como "qua." "ter." etc — capitaliza primeira letra
+    return{texto:nomeDia.replace('.','').replace(/^\w/,c=>c.toUpperCase()),hoje:false,ms};
   }
-  const dd=String(dm.getDate()).padStart(2,'0');
-  const mm=String(dm.getMonth()+1).padStart(2,'0');
-  const aa=String(dm.getFullYear()).slice(-2);
-  return{texto:`${dd}/${mm}/${aa}`,hoje:false,ms};
+  return{texto:dm.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:'America/Sao_Paulo'}),hoje:false,ms};
 }
 function compatInfo(score){
   const s=Number(score||0);
@@ -686,11 +692,9 @@ function renderLista(){
   // Ordenação por timestamp real (numérico) — mais recente no topo igual WhatsApp
   entries.sort((a,b)=>{
     const hA=a[1].historico||[],hB=b[1].historico||[];
-    const tsA=hA[hA.length-1]?.timestamp||'';
-    const tsB=hB[hB.length-1]?.timestamp||'';
-    const dA=tsParaDate(tsA),dB=tsParaDate(tsB);
-    const nA=dA?dA.getTime():0,nB=dB?dB.getTime():0;
-    return nB-nA;
+    const msA=tsParaMs(hA[hA.length-1]?.timestamp);
+    const msB=tsParaMs(hB[hB.length-1]?.timestamp);
+    return msB-msA;
   });
 
   const all=Object.entries(todasSessoes);
