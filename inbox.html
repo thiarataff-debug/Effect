@@ -521,6 +521,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 <div class="toast" id="toast"></div>
 
 <script>
+// CORRECAO DATA LIA — versão final aplicada em 10/06/2026
 const SENHA = "effect2026";
 const API = window.location.origin;
 const NOME_MANUAL = "Laura";
@@ -561,7 +562,7 @@ function entrar(){
     document.getElementById('login').classList.add('hidden');
     carregarLocalData();
     carregarSessoes();
-    setInterval(carregarSessoes, 20000);
+    setInterval(carregarSessoes, 5000);
     iniciarTimerEntrevistas();
   } else {
     document.getElementById('lerr').style.display='block';
@@ -640,18 +641,51 @@ function contarNaoLidas(tel,sessao){
 }
 function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !== 'Pausado manualmente no inbox' && sessao.motivoPausa !== 'Atendimento assumido manualmente';}
 // Converte QUALQUER formato de timestamp em milissegundos
+function obterTimestampMsg(msg){
+  if(!msg)return'';
+  return msg.timestampISO || msg.timestamp || msg.horario || msg.horarioFormatado || msg.dataHora || msg.createdAt || '';
+}
+
 function tsParaMs(ts){
   if(!ts)return 0;
-  const s=String(ts).trim();
-  // Formato BR: "10/06/2026, 18:56:42" — monta ISO com offset Brasília
-  const brM=s.match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2}):?(\d{2})?/);
-  if(brM){
-    const d=new Date(`${brM[3]}-${brM[2]}-${brM[1]}T${brM[4]}:${brM[5]}:${brM[6]||'00'}-03:00`);
+
+  try{
+    if(typeof ts === 'number')return ts;
+
+    const s=String(ts).trim();
+    if(!s)return 0;
+
+    // timestamp em milissegundos vindo do backend/sheets
+    if(/^\d{12,}$/.test(s))return Number(s);
+
+    // timestamp em segundos
+    if(/^\d{10}$/.test(s))return Number(s)*1000;
+
+    // ISO UTC, exemplo: 2026-06-12T01:54:51.000Z
+    if(s.includes('T')){
+      const d=new Date(s);
+      return isNaN(d)?0:d.getTime();
+    }
+
+    // Formato BR: 10/06/2026, 14:52:33
+    const br=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[\s,]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(br){
+      return new Date(
+        Number(br[3]),
+        Number(br[2])-1,
+        Number(br[1]),
+        Number(br[4]),
+        Number(br[5]),
+        Number(br[6]||0)
+      ).getTime();
+    }
+
+    const d=new Date(s);
     return isNaN(d)?0:d.getTime();
+
+  }catch(e){
+    return 0;
   }
-  // GMT string, ISO, etc.
-  const d=new Date(s);
-  return isNaN(d)?0:d.getTime();
 }
 
 function tsParaDate(ts){
@@ -661,38 +695,74 @@ function tsParaDate(ts){
 
 function extrairHora(ts){
   if(!ts)return'--:--';
-  // Formato BR: pega direto sem converter
-  const brM=String(ts).match(/(\d{2}):(\d{2}):\d{2}$/)||String(ts).match(/(\d{2}):(\d{2})$/);
-  if(brM)return`${brM[1]}:${brM[2]}`;
-  const d=tsParaDate(ts);
-  if(d)return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+  const ms=tsParaMs(ts);
+  if(ms){
+    return new Date(ms).toLocaleTimeString('pt-BR',{
+      hour:'2-digit',
+      minute:'2-digit',
+      timeZone:'America/Sao_Paulo'
+    });
+  }
+
+  const br=String(ts).match(/(\d{1,2}):(\d{2})/);
+  if(br)return`${String(br[1]).padStart(2,'0')}:${br[2]}`;
+
   return'--:--';
 }
 
-// Retorna "YYYY-MM-DD" no horário de Brasília (UTC-3), sem depender de locale/timezone do navegador
-function brDateStr(ms){
-  return new Date(ms - 3*3600*1000).toISOString().slice(0,10);
+function dataBRParts(ms){
+  const parts=new Intl.DateTimeFormat('pt-BR',{
+    timeZone:'America/Sao_Paulo',
+    day:'2-digit',
+    month:'2-digit',
+    year:'numeric',
+    weekday:'short'
+  }).formatToParts(new Date(ms));
+
+  const obj={};
+  parts.forEach(p=>{obj[p.type]=p.value;});
+  return obj;
+}
+
+function dataKeyBR(ms){
+  const p=dataBRParts(ms);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+function formatarDataMensagem(ts){
+  const ms=tsParaMs(ts);
+  if(!ms)return'';
+  const p=dataBRParts(ms);
+  return `${p.day}/${p.month}/${p.year}`;
 }
 
 function formatarHora(ts){
-  if(!ts)return{texto:'',hoje:true,ms:Date.now()};
   const ms=tsParaMs(ts);
-  if(!ms)return{texto:'',hoje:true,ms:Date.now()};
+  if(!ms)return{texto:'',hoje:true,ms:0};
+
   const agora=Date.now();
-  const dHoje=brDateStr(agora);
-  const dOntem=brDateStr(agora-86400000);
-  const dMsg=brDateStr(ms);
-  const dm=new Date(ms);
-  const hora=dm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
-  if(dMsg===dHoje)return{texto:hora,hoje:true,ms};
-  if(dMsg===dOntem)return{texto:'Ontem',hoje:false,ms};
-  if(agora-ms<=6*86400000){
-    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    const diaSemana=new Date(ms-3*3600*1000).getUTCDay();
-    return{texto:dias[diaSemana],hoje:false,ms};
+  const hoje=dataKeyBR(agora);
+  const ontem=dataKeyBR(agora-86400000);
+  const msg=dataKeyBR(ms);
+
+  if(msg===hoje){
+    return{texto:extrairHora(ms),hoje:true,ms};
   }
-  const[y,m,d]=dMsg.split('-');
-  return{texto:`${d}/${m}`,hoje:false,ms};
+
+  if(msg===ontem){
+    return{texto:'Ontem',hoje:false,ms};
+  }
+
+  const diffDias=Math.floor((new Date(hoje+'T00:00:00').getTime()-new Date(msg+'T00:00:00').getTime())/86400000);
+
+  if(diffDias>=0 && diffDias<7){
+    const mapa={Sun:'Dom',Mon:'Seg',Tue:'Ter',Wed:'Qua',Thu:'Qui',Fri:'Sex',Sat:'Sáb'};
+    const wk=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'}).format(new Date(ms));
+    return{texto:mapa[wk]||formatarDataMensagem(ms),hoje:false,ms};
+  }
+
+  const p=dataBRParts(ms);
+  return{texto:`${p.day}/${p.month}`,hoje:false,ms};
 }
 function compatInfo(score){
   const s=Number(score||0);
@@ -719,8 +789,8 @@ function renderLista(){
   // Ordenação por timestamp real (numérico) — mais recente no topo igual WhatsApp
   entries.sort((a,b)=>{
     const hA=a[1].historico||[],hB=b[1].historico||[];
-    const msA=tsParaMs(hA[hA.length-1]?.timestamp);
-    const msB=tsParaMs(hB[hB.length-1]?.timestamp);
+    const msA=tsParaMs(obterTimestampMsg(hA[hA.length-1]));
+    const msB=tsParaMs(obterTimestampMsg(hB[hB.length-1]));
     return msB-msA;
   });
 
@@ -746,7 +816,7 @@ function renderLista(){
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
-    const hInfo=formatarHora(ultima?.timestamp);
+    const hInfo=formatarHora(obterTimestampMsg(ultima));
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
@@ -830,7 +900,7 @@ function renderMsgs(s){
   hist.forEach((msg,idx)=>{
     const isUser=msg.role==='user';const isObs=msg.role==='observacao';
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
-    const ts=msg.timestamp||'';const dataMsg=ts?ts.split(',')[0]:'';
+    const ts=obterTimestampMsg(msg);const dataMsg=ts?formatarDataMensagem(ts):'';
     if(dataMsg&&dataMsg!==ultimaData){
       const sep=document.createElement('div');sep.className='date-sep';sep.innerHTML=`<span>📅 ${dataMsg}</span>`;div.appendChild(sep);ultimaData=dataMsg;ultimoRole=null;
     }
@@ -880,7 +950,7 @@ function renderPainelPerfil(s){
   const compat=compatInfo(anal.scoreVaga||anal.scoreGeral);
   const st=statusMap[sessaoAtual]||'Novo contato';
   const hist=s.historico||[];
-  const primeiraMsgTs=hist[0]?.timestamp||'';
+  const primeiraMsgTs=obterTimestampMsg(hist[0])||'';
   const tel=sessaoAtual;
   // Timeline da conversa
   const timeline=gerarTimeline(s);
@@ -898,7 +968,7 @@ function renderPainelPerfil(s){
     <div class="rp-row"><span class="rp-label">Vaga</span><span class="rp-val">${anal.vagaInteresse||'—'}</span></div>
     <div class="rp-row"><span class="rp-label">Escolaridade</span><span class="rp-val">${anal.escolaridadeCompativel||'—'}</span></div>
     <div class="rp-row"><span class="rp-label">Experiência</span><span class="rp-val">${anal.anosExperiencia||'—'}</span></div>
-    <div class="rp-row"><span class="rp-label">Cadastro</span><span class="rp-val">${primeiraMsgTs?primeiraMsgTs.split(',')[0]:'—'}</span></div>
+    <div class="rp-row"><span class="rp-label">Cadastro</span><span class="rp-val">${primeiraMsgTs?formatarDataMensagem(primeiraMsgTs):'—'}</span></div>
   </div>
   `:''}
   ${compat?`
@@ -1056,17 +1126,69 @@ function renderPainelHistorico(s){
 function gerarTimeline(s){
   const hist=s.historico||[];
   const tl=[];
-  if(hist[0])tl.push({hora:hist[0].timestamp?.split(',')[1]?.trim()||'--:--',texto:'Primeiro contato',icon:'👋',cor:''});
+
+  if(hist[0]){
+    const ts=obterTimestampMsg(hist[0]);
+    tl.push({
+      hora:extrairHora(ts),
+      texto:'Primeiro contato',
+      icon:'👋',
+      cor:'',
+      ms:tsParaMs(ts)
+    });
+  }
+
   hist.forEach(h=>{
-    if(h.role==='user'&&(h.content||'').toLowerCase().includes('currículo')||
-       (h.content||'').toLowerCase().includes('curriculo')){
-      tl.push({hora:h.timestamp?.split(',')[1]?.trim()||'--:--',texto:'Currículo recebido',icon:'📄',cor:'green'});
+    const conteudo=String(h.content||'').toLowerCase();
+    const ts=obterTimestampMsg(h);
+
+    if(conteudo.includes('currículo') || conteudo.includes('curriculo') || conteudo.includes('documento')){
+      tl.push({
+        hora:extrairHora(ts),
+        texto:'Currículo recebido',
+        icon:'📄',
+        cor:'green',
+        ms:tsParaMs(ts)
+      });
+    }
+
+    if(h.role==='observacao'){
+      tl.push({
+        hora:extrairHora(ts),
+        texto:'Nota interna registrada',
+        icon:'📝',
+        cor:'yellow',
+        ms:tsParaMs(ts)
+      });
     }
   });
+
   const ents=entrevistas[sessaoAtual]||[];
-  ents.forEach(e=>{tl.push({hora:e.hora,texto:`Entrevista agendada — ${e.tipo}`,icon:'📅',cor:'green'});});
-  if(statusMap[sessaoAtual])tl.push({hora:'',texto:`Status: ${statusMap[sessaoAtual]}`,icon:'📋',cor:''});
-  return tl.slice(-8);
+  ents.forEach(e=>{
+    const ms=tsParaMs(`${e.data}T${e.hora||'00:00'}:00-03:00`);
+    tl.push({
+      hora:e.hora||'--:--',
+      texto:`Entrevista agendada — ${e.tipo}`,
+      icon:'📅',
+      cor:'green',
+      ms
+    });
+  });
+
+  if(statusMap[sessaoAtual]){
+    tl.push({
+      hora:'',
+      texto:`Status: ${statusMap[sessaoAtual]}`,
+      icon:'📋',
+      cor:'',
+      ms:Date.now()
+    });
+  }
+
+  return tl
+    .filter(item=>item.texto)
+    .sort((a,b)=>(a.ms||0)-(b.ms||0))
+    .slice(-8);
 }
 
 function formatarListaHtml(texto){
