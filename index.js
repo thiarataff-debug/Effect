@@ -45,6 +45,10 @@ function campo(vaga, nomes, padrao = "") {
   return padrao;
 }
 
+function agora() {
+  return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
 function garantirSessao(telefoneOriginal) {
   const telefone = limparTelefone(telefoneOriginal);
   if (!sessoes[telefone]) {
@@ -131,7 +135,7 @@ async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, resposta
   await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
   if (respostaSegura) {
     await enviarMensagem(telefone, respostaSegura);
-    sessao.historico.push({ role: "assistant", content: respostaSegura });
+    sessao.historico.push({ role: "assistant", content: respostaSegura, timestamp: agora() });
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
   }
@@ -181,11 +185,11 @@ async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome) {
     try {
       if (!CONFIG.VAGAS_URL) return;
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const payload = JSON.stringify({ acao: "salvarMensagem", telefone, role, mensagem, nome: nome || "", timestamp: new Date().toISOString() });
+      const payload = JSON.stringify({ acao: "salvarMensagem", telefone, role, mensagem, nome: nome || "", timestamp: agora() });
       await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
       return;
     } catch (e) {
-      console.error(`Erro salvarMensagemSheets (${tentativa}/${MAX_TENTATIVAS}):`, e.message);
+      console.error(`Erro salvarMensagemSheets (${tentativa}/3):`, e.message);
       if (tentativa < MAX_TENTATIVAS) await sleep(2000 * tentativa);
     }
   }
@@ -196,7 +200,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", timestamp: new Date().toISOString() });
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", timestamp: agora() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 20000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
@@ -260,7 +264,7 @@ app.post("/webhook", async (req, res) => {
     const sessaoAtual = garantirSessao(from);
     if (message.text?.body) {
       const texto = message.text.body;
-      sessaoAtual.historico.push({ role: "user", content: texto });
+      sessaoAtual.historico.push({ role: "user", content: texto, timestamp: agora() });
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "");
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
@@ -271,7 +275,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.document) {
-      sessaoAtual.historico.push({ role: "user", content: "[Documento/Currículo recebido]" });
+      sessaoAtual.historico.push({ role: "user", content: "[Documento/Currículo recebido]", timestamp: agora() });
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
@@ -288,29 +292,12 @@ app.post("/webhook", async (req, res) => {
 // ROTAS HTML — PÁGINAS
 // ============================================================
 
-app.get("/painel", (req, res) => {
-  res.sendFile(path.join(__dirname, "painel.html"));
-});
-
-app.get("/sheets", (req, res) => {
-  res.sendFile(path.join(__dirname, "sheets-viewer.html"));
-});
-
-app.get("/inbox", (req, res) => {
-  res.sendFile(path.join(__dirname, "inbox.html"));
-});
-
-app.get("/cliente", (req, res) => {
-  res.sendFile(path.join(__dirname, "cliente.html"));
-});
-
-app.get("/meu-app", (req, res) => {
-  res.sendFile(path.join(__dirname, "meu-app.html"));
-});
-
-app.get("/cliente/:id", (req, res) => {
-  res.sendFile(path.join(__dirname, "cliente.html"));
-});
+app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
+app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
+app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
+app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
+app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
+app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
 
 // ============================================================
 // ROTAS API — SHEETS
@@ -338,12 +325,7 @@ app.post("/sheets/candidatos/status", async (req, res) => {
   try {
     if (!CONFIG.VAGAS_URL) return res.json({ ok: false });
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, {
-      acao: "salvarAnalise",
-      telefone: req.body.telefone,
-      status: req.body.status,
-      observacoes: req.body.observacao
-    }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+    await axios.post(urlBase, { acao: "salvarAnalise", telefone: req.body.telefone, status: req.body.status, observacoes: req.body.observacao }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
     res.json({ ok: true, sucesso: true });
   } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
@@ -401,7 +383,7 @@ app.post("/inbox/enviar", async (req, res) => {
     sessao.pausado = true;
     sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
     await enviarMensagem(telefone, mensagem);
-    sessao.historico.push({ role: "assistant", content: mensagem });
+    sessao.historico.push({ role: "assistant", content: mensagem, timestamp: agora() });
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -464,25 +446,10 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
 
-    // Salvar no Sheets se VAGAS_URL disponível
     if (CONFIG.VAGAS_URL) {
       try {
         const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, {
-          acao: "salvarAnalise",
-          cargo: d.vaga_cargo,
-          cliente: d.empresa_nome,
-          cidade: d.vaga_cidade,
-          salario: d.vaga_salario,
-          horario: d.vaga_horario,
-          beneficios: d.vaga_beneficios,
-          responsabilidades: d.vaga_responsabilidades,
-          requisitos: d.vaga_requisitos,
-          escolaridade: d.perfil_escolaridade,
-          experiencia: d.perfil_experiencia,
-          contato: d.responsavel_whatsapp,
-          origem: "Portal do Cliente"
-        }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+        await axios.post(urlBase, { acao: "salvarAnalise", cargo: d.vaga_cargo, cliente: d.empresa_nome, cidade: d.vaga_cidade, salario: d.vaga_salario, horario: d.vaga_horario, beneficios: d.vaga_beneficios, responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos, escolaridade: d.perfil_escolaridade, experiencia: d.perfil_experiencia, contato: d.responsavel_whatsapp, origem: "Portal do Cliente" }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
       } catch(e) { console.error("Erro salvar vaga cliente:", e.message); }
     }
 
@@ -491,6 +458,38 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
     console.error("Erro /cliente/solicitar:", e.message);
     res.json({ ok: false, erro: e.message });
   }
+});
+
+app.post("/cliente/disponibilidade", async (req, res) => {
+  try {
+    const { slots, empresa } = req.body;
+    if (!slots || !slots.length) return res.json({ ok: false });
+    const msg = `📅 DISPONIBILIDADE DE AGENDA RECEBIDA\n\n🏢 Empresa: ${empresa || 'Cliente'}\n\nHorários disponíveis para entrevistas:\n${slots.sort().map(s => {
+      const [data, hora] = s.split('_');
+      const d = new Date(data + 'T12:00:00');
+      return `• ${d.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})} às ${hora}`;
+    }).join('\n')}\n\nAgende pelo painel: /painel → 📅 Agenda`;
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ============================================================
+// ROTA — TRANSIÇÃO LIA → LAURA
+// ============================================================
+
+app.post("/inbox/transicao", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone);
+    if (!telefone) return res.json({ ok: false });
+    const msg = "Olá! 😊 A partir de agora, a Laura da nossa equipe Effect dará continuidade ao seu atendimento. Pode falar! 💙";
+    await enviarMensagem(telefone, msg);
+    const sessao = garantirSessao(telefone);
+    sessao.historico.push({ role: "assistant", content: msg, timestamp: agora() });
+    sessao.historico = sessao.historico.slice(-20);
+    await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
 // ============================================================
@@ -506,7 +505,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     if (candidatoExistente?.encontrado) {
       const nome = candidatoExistente.candidato?.Nome || "";
       const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
-      sessao.historico.push({ role: "assistant", content: resposta });
+      sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
       sessao.historico = sessao.historico.slice(-20);
       await salvarMensagemSheets(telefone, "assistant", resposta, nome);
       await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
@@ -518,7 +517,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
     sessao.aguardandoConfirmacaoInteresse = false;
     const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
-    sessao.historico.push({ role: "assistant", content: resposta });
+    sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -529,7 +528,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   const resposta = await chamarClaudeTexto(prompt);
   const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
   if (respostaTravada) return null;
-  sessao.historico.push({ role: "assistant", content: resposta });
+  sessao.historico.push({ role: "assistant", content: resposta, timestamp: agora() });
   sessao.historico = sessao.historico.slice(-20);
   await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
   await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -552,7 +551,7 @@ async function processarCurriculo(telefoneOriginal, documento) {
     sessao.aguardandoConfirmacaoInteresse = true;
     sessao.ultimaAnalise = analise;
     sessao.nome = analise.nome || sessao.nome;
-    sessao.historico.push({ role: "assistant", content: analise.mensagemCandidato });
+    sessao.historico.push({ role: "assistant", content: analise.mensagemCandidato, timestamp: agora() });
     sessao.historico = sessao.historico.slice(-20);
     await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
     await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
@@ -741,54 +740,6 @@ async function enviarMensagem(toOriginal, body) {
     await axios.post(`https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
   } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
 }
-
-
-// ============================================================
-
-// ROTA — DISPONIBILIDADE DO GESTOR
-app.post("/cliente/disponibilidade", async (req, res) => {
-  try {
-    const { slots, empresa } = req.body;
-    if (!slots || !slots.length) return res.json({ ok: false });
-
-    const msg = `📅 DISPONIBILIDADE DE AGENDA RECEBIDA
-
-🏢 Empresa: ${empresa || 'Cliente'}
-
-Horários disponíveis para entrevistas:
-${slots.sort().map(s => {
-  const [data, hora] = s.split('_');
-  const d = new Date(data + 'T12:00:00');
-  return `• ${d.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})} às ${hora}`;
-}).join('\n')}
-
-Agende pelo painel: /painel → 📅 Agenda`;
-
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
-    res.json({ ok: true });
-  } catch (e) {
-    res.json({ ok: false, erro: e.message });
-  }
-});
-
-// ROTA — TRANSIÇÃO LIA → LAURA
-// ============================================================
-
-app.post("/inbox/transicao", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false });
-    const msg = "Olá! 😊 A partir de agora, a Laura da nossa equipe Effect dará continuidade ao seu atendimento. Pode falar! 💙";
-    await enviarMensagem(telefone, msg);
-    const sessao = garantirSessao(telefone);
-    sessao.historico.push({ role: "assistant", content: msg });
-    sessao.historico = sessao.historico.slice(-20);
-    await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
-    res.json({ ok: true });
-  } catch(e) {
-    res.json({ ok: false, erro: e.message });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`Lia rodando na porta ${PORT} — modo supervisor + Linhares via planilha ✅`);
