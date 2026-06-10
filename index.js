@@ -628,12 +628,53 @@ async function carregarSessoesDoSheets() {
     const r = await axios.get(`${urlBase}?acao=conversas`, { timeout: 15000, maxRedirects: 5 });
     const data = r.data;
     if (!data.sucesso || !data.sessoes) return;
+
     Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
       const tel = limparTelefone(telOriginal);
-      const modo = sessao.modo || (sessao.pausado ? "manual" : "automatico");
-      sessoes[tel] = { historico: Array.isArray(sessao.historico) ? sessao.historico.map(h => ({ role: h.role, content: h.content, timestamp: h.timestamp || h.horario || '', timestampISO: h.timestampISO || '', timestampMs: h.timestampMs || 0, horario: h.horario || h.timestamp || '', horarioFormatado: h.horarioFormatado || formatarDataWhatsApp(h.timestampISO || h.timestampMs || h.timestamp || h.horario) })) : [], nome: sessao.nome || null, modo, pausado: modo === "manual" || sessao.pausado === true, motivoPausa: sessao.motivoPausa || "", unreadCount: Number(sessao.unreadCount || 0) };
-      if (sessoes[tel].pausado) atendimentosManuais.add(tel);
+      const motivoOriginal = sessao.motivoPausa || "";
+      const motivoNormalizado = normalizarTexto(motivoOriginal);
+
+      // Limpa manuais antigos criados por travas que agora viraram apenas alerta.
+      const manualAntigoIndevido =
+        motivoNormalizado.includes("conversa longa sem avanco") ||
+        motivoNormalizado.includes("conversa longa sem avanço") ||
+        motivoNormalizado.includes("baixa confianca") ||
+        motivoNormalizado.includes("baixa confiança") ||
+        motivoNormalizado.includes("solicitacao de retorno") ||
+        motivoNormalizado.includes("solicitação de retorno") ||
+        motivoNormalizado.includes("assunto relacionado a entrevista") ||
+        motivoNormalizado.includes("assunto relacionado à entrevista") ||
+        motivoNormalizado.includes("possivel repeticao") ||
+        motivoNormalizado.includes("possível repetição");
+
+      const modoOriginal = sessao.modo || (sessao.pausado ? "manual" : "automatico");
+      const modo = manualAntigoIndevido ? "automatico" : modoOriginal;
+      const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
+      const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
+
+      sessoes[tel] = {
+        historico: Array.isArray(sessao.historico)
+          ? sessao.historico.map(h => ({
+              role: h.role,
+              content: h.content,
+              timestamp: h.timestamp || h.horario || '',
+              timestampISO: h.timestampISO || '',
+              timestampMs: h.timestampMs || 0,
+              horario: h.horario || h.timestamp || '',
+              horarioFormatado: h.horarioFormatado || formatarDataWhatsApp(h.timestampISO || h.timestampMs || h.timestamp || h.horario)
+            }))
+          : [],
+        nome: sessao.nome || null,
+        modo,
+        pausado,
+        motivoPausa,
+        unreadCount: Number(sessao.unreadCount || 0)
+      };
+
+      if (pausado) atendimentosManuais.add(tel);
+      else atendimentosManuais.delete(tel);
     });
+
     console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
   } catch (e) {
     console.error("Erro carregarSessoesDoSheets:", e.message);
@@ -770,6 +811,28 @@ app.get("/inbox/sessoes", (req, res) => {
     const lista = Object.entries(sessoes).map(([tel, sessao]) => {
       const telefone = limparTelefone(tel);
       garantirSessao(telefone);
+
+      // Segurança extra: se restou motivo antigo agressivo em memória, não mostrar como manual.
+      const motivoNormalizado = normalizarTexto(sessao.motivoPausa || "");
+      const manualAntigoIndevido =
+        motivoNormalizado.includes("conversa longa sem avanco") ||
+        motivoNormalizado.includes("conversa longa sem avanço") ||
+        motivoNormalizado.includes("baixa confianca") ||
+        motivoNormalizado.includes("baixa confiança") ||
+        motivoNormalizado.includes("solicitacao de retorno") ||
+        motivoNormalizado.includes("solicitação de retorno") ||
+        motivoNormalizado.includes("assunto relacionado a entrevista") ||
+        motivoNormalizado.includes("assunto relacionado à entrevista") ||
+        motivoNormalizado.includes("possivel repeticao") ||
+        motivoNormalizado.includes("possível repetição");
+
+      if (manualAntigoIndevido) {
+        atendimentosManuais.delete(telefone);
+        sessao.modo = "automatico";
+        sessao.pausado = false;
+        sessao.motivoPausa = "";
+      }
+
       return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
     }).sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
 
