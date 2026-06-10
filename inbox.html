@@ -343,6 +343,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
+    <button class="rbtn" style="background:#fca5a5;color:#7f1d1d" onclick="pausarTodas()">🚨 Pausar Todas</button>
+    <button class="rbtn" onclick="reativarTodas()">🤖 Reativar Todas</button>
   </div>
 </header>
 
@@ -1704,6 +1706,38 @@ function enviarCorrecao(){
 
 // ─── MODAL ───
 function fecharModal(id){document.getElementById(id).classList.remove('show');}
+
+// ─── PAUSAR/REATIVAR TODAS (emergência) ───
+async function pausarTodas(){
+  const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
+  if(!tels.length){toast('Nenhuma conversa em modo Lia','success');return;}
+  if(!confirm(`Pausar a Lia em TODAS as ${tels.length} conversas ativas e colocar em modo manual?`))return;
+  toast(`⏳ Pausando ${tels.length} conversas...`,'success');
+  for(const tel of tels){
+    try{
+      await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,pausado:true,modo:'manual'})});
+      if(todasSessoes[tel]){todasSessoes[tel].modo='manual';todasSessoes[tel].pausado=true;todasSessoes[tel].motivoPausa=todasSessoes[tel].motivoPausa||'Pausado manualmente no inbox';}
+    }catch(e){}
+  }
+  renderLista();
+  if(sessaoAtual)renderPainelDireito();
+  toast(`✅ ${tels.length} conversas pausadas`,'success');
+}
+async function reativarTodas(){
+  const tels=Object.entries(todasSessoes).filter(([t,s])=>s.modo==='manual'||s.pausado===true).map(([t])=>t);
+  if(!tels.length){toast('Nenhuma conversa em modo manual','success');return;}
+  if(!confirm(`Reativar a Lia em TODAS as ${tels.length} conversas em modo manual?`))return;
+  toast(`⏳ Reativando ${tels.length} conversas...`,'success');
+  for(const tel of tels){
+    try{
+      await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,pausado:false,modo:'lia'})});
+      if(todasSessoes[tel]){todasSessoes[tel].modo='automatico';todasSessoes[tel].pausado=false;todasSessoes[tel].motivoPausa='';}
+    }catch(e){}
+  }
+  renderLista();
+  if(sessaoAtual)renderPainelDireito();
+  toast(`✅ ${tels.length} conversas reativadas`,'success');
+}
 
 // ─── UTILS ───
 function filtrarLista(v){busca=v;renderLista();}
