@@ -521,6 +521,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 <div class="toast" id="toast"></div>
 
 <script>
+// VERSÃO FINAL — ordenação por última atividade + template detalhado de vaga
 // CORRECAO DATA LIA — versão final aplicada em 10/06/2026
 const SENHA = "effect2026";
 const API = window.location.origin;
@@ -781,6 +782,26 @@ function formatarHora(ts){
   const p=dataBRParts(ms);
   return{texto:`${p.day}/${p.month}`,hoje:false,ms};
 }
+
+function atividadeMsSessao(s, idxFallback=0){
+  const agora=Date.now();
+  const limiteFuturo=agora+36*60*60*1000;
+  const candidatos=[];
+  if(s){
+    candidatos.push(Number(s.lastMessageAtMs||0));
+    candidatos.push(tsParaMs(s.lastMessageAt));
+    candidatos.push(tsParaMs(s.updatedAt));
+    const hist=s.historico||[];
+    for(let i=hist.length-1;i>=Math.max(0,hist.length-5);i--){
+      candidatos.push(tsParaMs(obterTimestampMsg(hist[i])));
+    }
+  }
+  const validos=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
+  if(validos.length)return Math.max(...validos);
+  // fallback: mantém ordem de chegada da API quando timestamp estiver ausente/estranho.
+  return idxFallback;
+}
+
 function compatInfo(score){
   const s=Number(score||0);
   if(s>=80)return{classe:'green',cor:'var(--green)',label:`🟢 ${s}%`};
@@ -792,7 +813,7 @@ function compatInfo(score){
 // ─── RENDER LISTA ───
 function renderLista(){
   const lista=document.getElementById('conv-list');
-  let entries=Object.entries(todasSessoes).filter(([tel,s])=>{
+  let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
     const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
     if(!mb)return false;
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
@@ -803,15 +824,9 @@ function renderLista(){
     return true;
   });
 
-  // Ordenação por última atividade real — mais recente no topo, igual WhatsApp
-  entries.sort((a,b)=>{
-    const hA=a[1].historico||[],hB=b[1].historico||[];
-    const msHistA=tsParaMs(obterTimestampMsg(hA[hA.length-1]));
-    const msHistB=tsParaMs(obterTimestampMsg(hB[hB.length-1]));
-    const msA=Math.max(Number(a[1].lastMessageAtMs||0),msHistA||0);
-    const msB=Math.max(Number(b[1].lastMessageAtMs||0),msHistB||0);
-    return msB-msA;
-  });
+  // Ordenação definitiva por última atividade real — mais recente no topo, igual WhatsApp.
+  // Ignora timestamps futuros/bugados para evitar datas desencontradas dominando a lista.
+  entries.sort((a,b)=>atividadeMsSessao(b[1],b[2])-atividadeMsSessao(a[1],a[2]));
 
   const all=Object.entries(todasSessoes);
   document.getElementById('cnt-todas').textContent=all.length;
@@ -835,7 +850,7 @@ function renderLista(){
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
-    const hInfo=formatarHora(obterTimestampMsg(ultima)||s.lastMessageAtMs||s.lastMessageAt);
+    const hInfo=formatarHora(atividadeMsSessao(s));
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
@@ -1420,41 +1435,78 @@ function renderListaVagas(busca){
     </div>`;
   }).join('');
 }
-function formatarBeneficiosResumo(textoBeneficios){
+function normalizarLinhaVaga(txt){
+  return String(txt||'').replace(/^[-•\s]+/,'').trim();
+}
+function emojiBeneficio(item){
+  const t=String(item||'').toLowerCase();
+  if(t.includes('médica')||t.includes('medica')||t.includes('samp'))return'🚑';
+  if(t.includes('odont'))return'🦷';
+  if(t.includes('seguro'))return'☘️';
+  if(t.includes('transporte')||t.includes('vt'))return'🚌';
+  if(t.includes('totalpass')||t.includes('academia'))return'🏋️';
+  if(t.includes('anivers'))return'🎁';
+  if(t.includes('sesc'))return'🎟️';
+  if(t.includes('alimenta')||t.includes('refei')||t.includes('ifood'))return'🍽️';
+  if(t.includes('ipog')||t.includes('faculdade')||t.includes('curso'))return'🎓';
+  if(t.includes('banco de horas'))return'⏳';
+  if(t.includes('premia')||t.includes('bonifica'))return'💳';
+  return'•';
+}
+function formatarBeneficiosDetalhados(textoBeneficios){
   if(!textoBeneficios)return'';
-  const itens=String(textoBeneficios).split(/;|,|\n/).map(p=>p.trim()).filter(Boolean);
-  // pega até 3 benefícios principais, sem repetir info de salário
-  return itens.slice(0,3).join(', ');
+  const itens=String(textoBeneficios).split(/;|\n|,(?=\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/).map(normalizarLinhaVaga).filter(Boolean);
+  return itens.map(i=>`${emojiBeneficio(i)} ${i}`).join('\n');
+}
+function linhasRequisitos(v){
+  const campos=[
+    campoVaga(v,['requisitoObrigatorio','Requisito Obrigatório','Requisito Obrigatorio']),
+    campoVaga(v,['escolaridade','Escolaridade']),
+    campoVaga(v,['experienciaMinima','Exp. Mínima','Exp. Minima']),
+    campoVaga(v,['perfilResumido','Perfil Resumido']),
+    campoVaga(v,['palavrasChave','Palavras-chave','Palavras Chave'])
+  ];
+  const linhas=[];
+  campos.forEach(c=>{
+    String(c||'').split(/;|\n/).map(normalizarLinhaVaga).filter(Boolean).forEach(x=>{
+      if(!linhas.some(l=>l.toLowerCase()===x.toLowerCase()))linhas.push(x);
+    });
+  });
+  return linhas.slice(0,6);
 }
 function montarTemplateVaga(v){
   const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'—';
   const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
+  const regime=campoVaga(v,['regime','Regime','Tipo de Contratação','Tipo de Contratacao'])||'CLT';
   const horario=campoVaga(v,['horario','Horário','Escala/Horário','Escala/Horario']);
   const escala=campoVaga(v,['escala','Escala']);
   const salario=campoVaga(v,['salario','Salário Base','Salario Base','Salário','Salario']);
   const beneficios=campoVaga(v,['beneficios','Benefícios','Beneficios']);
-  const requisito=campoVaga(v,['requisitoObrigatorio','Requisito Obrigatório','Requisito Obrigatorio']);
-  const escolaridade=campoVaga(v,['escolaridade','Escolaridade']);
-  const expMin=campoVaga(v,['experienciaMinima','Exp. Mínima','Exp. Minima']);
+  const obs=campoVaga(v,['observacoes','Observações','Observacoes']);
+  const inicioImediato=/in[ií]cio imediato/i.test(String(obs+' '+campoVaga(v,['perfilResumido','Perfil Resumido'])));
 
-  let txt=`🟢 ${cargo}\n`;
-  if(cidade)txt+=`📍 ${cidade}\n`;
-  txt+=`💼 CLT`;
-  if(horario||escala)txt+=` • 🕐 ${horario||escala}`;
-  txt+=`\n\n`;
-  if(salario)txt+=`💰 ${salario}`;
-  const benResumo=formatarBeneficiosResumo(beneficios);
-  if(benResumo)txt+=` + ${benResumo}`;
-  txt+=`\n`;
-  const reqs=[];
-  if(escolaridade)reqs.push(escolaridade);
-  if(expMin)reqs.push(expMin);
-  if(requisito)reqs.push(requisito);
+  let txt=`🟢 VAGA: ${cargo}\n`;
+  if(cidade)txt+=`📍 Local: ${cidade}\n`;
+  if(regime)txt+=`💼 Regime de contratação: ${regime}\n`;
+
+  txt+=`\n💼 Remuneração e Benefícios:\n`;
+  if(salario)txt+=`💰 Salário: ${salario}\n`;
+  const beneficiosDetalhados=formatarBeneficiosDetalhados(beneficios);
+  if(beneficiosDetalhados)txt+=`${beneficiosDetalhados}\n`;
+
+  const jornada=horario||escala;
+  if(jornada){
+    txt+=`\n⏰ Jornada de trabalho:\n${jornada}\n`;
+  }
+  if(inicioImediato)txt+=`\n🚀 Início imediato\n`;
+
+  const reqs=linhasRequisitos(v);
   if(reqs.length){
     txt+=`\n✅ Requisitos:\n`;
-    reqs.slice(0,3).forEach(r=>txt+=`• ${r}\n`);
+    reqs.forEach(r=>txt+=`• ${r}\n`);
   }
-  txt+=`\n📩 Tem interesse? Me confirma e sigo com os próximos passos! 💙`;
+
+  txt+=`\n😊 Caso tenha interesse nesta oportunidade, me avise para que eu possa seguir com sua candidatura.`;
   return txt;
 }
 function usarVaga(idx){
