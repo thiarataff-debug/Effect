@@ -575,6 +575,11 @@ async function carregarSessoes(){
     const r=await fetch(`${API}/inbox/sessoes`);
     const data=await r.json();
     todasSessoes=data.sessoes||{};
+    // DEBUG: mostra o timestamp da última msg de cada sessão no console
+    Object.entries(todasSessoes).slice(0,3).forEach(([tel,s])=>{
+      const h=s.historico||[];
+      if(h.length) console.log('[TS debug]',tel.slice(-4), JSON.stringify(h[h.length-1]?.timestamp), '→', tsParaDate(h[h.length-1]?.timestamp));
+    });
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
     if(sessaoAtual&&todasSessoes[sessaoAtual]) renderMsgs(todasSessoes[sessaoAtual]);
@@ -611,50 +616,48 @@ function contarNaoLidas(tel,sessao){
   return c;
 }
 function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !== 'Pausado manualmente no inbox' && sessao.motivoPausa !== 'Atendimento assumido manualmente';}
-function extrairHora(ts){
-  if(!ts)return'';
-  // Formato BR: "10/06/2026, 11:49:42" ou "10/06/2026 11:49"
-  const brM=ts.match(/\d{2}\/\d{2}\/\d{4}[,\s]+(\d{2}:\d{2})/);
-  if(brM)return brM[1];
-  // ISO ou GMT string
-  const d=new Date(ts);
-  if(!isNaN(d))return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  // fallback: pega primeiros 5 chars se parecer hora
-  if(/^\d{2}:\d{2}/.test(ts))return ts.slice(0,5);
-  return'';
-}
-
-// Converte qualquer timestamp em Date (ou null)
+// Converte QUALQUER formato de timestamp em Date local
+// Suporta: "10/06/2026, 11:49:42" | "Wed Jun 10 2026 11:49:42 GMT-0300..." | ISO | só hora
 function tsParaDate(ts){
   if(!ts)return null;
-  const brM=ts.match(/(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2}):?(\d{2})?/);
-  if(brM){
-    return new Date(
-      Number(brM[3]),Number(brM[2])-1,Number(brM[1]),
-      Number(brM[4]),Number(brM[5]),Number(brM[6]||0)
-    );
-  }
-  const d=new Date(ts);
-  return isNaN(d)?null:d;
+  const s=String(ts).trim();
+  // 1) Formato BR: "10/06/2026, 11:49:42" ou "10/06/2026 11:49"
+  const brM=s.match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2}):?(\d{2})?/);
+  if(brM) return new Date(+brM[3],+brM[2]-1,+brM[1],+brM[4],+brM[5],+(brM[6]||0));
+  // 2) Qualquer formato que o JS entende (ISO, GMT string, etc.)
+  const d=new Date(s);
+  if(!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function extrairHora(ts){
+  if(!ts)return'--:--';
+  const d=tsParaDate(ts);
+  if(d) return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  return'--:--';
 }
 
 function formatarHora(ts){
-  if(!ts)return{texto:'--',hoje:false,ts:0};
+  if(!ts)return{texto:'--',hoje:false,ms:0};
   const dm=tsParaDate(ts);
-  if(!dm)return{texto:'--',hoje:false,ts:0};
-  const hoje=new Date();
-  const ontem=new Date(hoje);ontem.setDate(hoje.getDate()-1);
-  const semana=new Date(hoje);semana.setDate(hoje.getDate()-6);
+  if(!dm)return{texto:'--',hoje:false,ms:0};
+  const ms=dm.getTime();
+  const agora=new Date();
+  const dHoje=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
+  const dOntem=new Date(dHoje);dOntem.setDate(dHoje.getDate()-1);
+  const dSemana=new Date(dHoje);dSemana.setDate(dHoje.getDate()-6);
+  const dMsg=new Date(dm.getFullYear(),dm.getMonth(),dm.getDate());
   const hora=dm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const isHoje=dm.toDateString()===hoje.toDateString();
-  const isOntem=dm.toDateString()===ontem.toDateString();
-  if(isHoje)return{texto:hora,hoje:true,ts:dm.getTime()};
-  if(isOntem)return{texto:'Ontem',hoje:false,ts:dm.getTime()};
-  if(dm>=semana){
+  if(dMsg.getTime()===dHoje.getTime()) return{texto:hora,hoje:true,ms};
+  if(dMsg.getTime()===dOntem.getTime()) return{texto:'Ontem',hoje:false,ms};
+  if(dm>=dSemana){
     const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    return{texto:dias[dm.getDay()],hoje:false,ts:dm.getTime()};
+    return{texto:dias[dm.getDay()],hoje:false,ms};
   }
-  return{texto:`${String(dm.getDate()).padStart(2,'0')}/${String(dm.getMonth()+1).padStart(2,'0')}/${String(dm.getFullYear()).slice(-2)}`,hoje:false,ts:dm.getTime()};
+  const dd=String(dm.getDate()).padStart(2,'0');
+  const mm=String(dm.getMonth()+1).padStart(2,'0');
+  const aa=String(dm.getFullYear()).slice(-2);
+  return{texto:`${dd}/${mm}/${aa}`,hoje:false,ms};
 }
 function compatInfo(score){
   const s=Number(score||0);
