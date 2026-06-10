@@ -2,6 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const pdfParse = require("pdf-parse");
 const path = require("path");
+const { google } = require("googleapis");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -14,7 +15,9 @@ const CONFIG = {
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
   VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
   VAGAS_URL: process.env.VAGAS_URL,
-  THIARA_WHATSAPP: "5527997925288"
+  THIARA_WHATSAPP: "5527997925288",
+  DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH",
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON
 };
 
 const sessoes = {};
@@ -47,6 +50,107 @@ function campo(vaga, nomes, padrao = "") {
 
 function agora() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+// ============================================================
+// GOOGLE DRIVE — currículos organizados por pasta de cargo
+// ============================================================
+
+let driveClient = null;
+const pastaPorCargoCache = {}; // { "auxiliar de servicos gerais": "folderId" }
+
+function getDriveClient() {
+  if (driveClient) return driveClient;
+  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) return null;
+  try {
+    const credentials = JSON.parse(CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/drive"]
+    });
+    driveClient = google.drive({ version: "v3", auth });
+    return driveClient;
+  } catch (e) {
+    console.error("Erro ao iniciar Google Drive client:", e.message);
+    return null;
+  }
+}
+
+function nomePastaCargo(cargo) {
+  const limpo = String(cargo || "Sem Cargo Identificado").trim();
+  return limpo
+    .replace(/[\\/:*?"<>|]/g, "-") // remove caracteres inválidos para nome de pasta
+    .slice(0, 100) || "Sem Cargo Identificado";
+}
+
+async function obterOuCriarPastaCargo(drive, cargo) {
+  const nomePasta = nomePastaCargo(cargo);
+  const chave = nomePasta.toLowerCase();
+  if (pastaPorCargoCache[chave]) return pastaPorCargoCache[chave];
+
+  // Procura subpasta existente com esse nome dentro da pasta raiz
+  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomePasta.replace(/'/g, "\\'")}' and trashed=false`;
+  const busca = await drive.files.list({ q, fields: "files(id, name)", supportsAllDrives: true, includeItemsFromAllDrives: true });
+
+  let folderId;
+  if (busca.data.files && busca.data.files.length > 0) {
+    folderId = busca.data.files[0].id;
+  } else {
+    const criada = await drive.files.create({
+      requestBody: {
+        name: nomePasta,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [CONFIG.DRIVE_ROOT_FOLDER_ID]
+      },
+      fields: "id",
+      supportsAllDrives: true
+    });
+    folderId = criada.data.id;
+  }
+  pastaPorCargoCache[chave] = folderId;
+  return folderId;
+}
+
+async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
+  try {
+    const drive = getDriveClient();
+    if (!drive) { console.log("Drive não configurado — pulando upload"); return null; }
+
+    const folderId = await obterOuCriarPastaCargo(drive, cargo);
+
+    // Nome final: telefone + nome do arquivo, evita sobrescrever
+    const nomeFinal = `${telefone}_${filename}`.replace(/[\\/:*?"<>|]/g, "-");
+
+    const { Readable } = require("stream");
+    const stream = Readable.from(buffer);
+
+    const resp = await drive.files.create({
+      requestBody: {
+        name: nomeFinal,
+        parents: [folderId]
+      },
+      media: {
+        mimeType: "application/pdf",
+        body: stream
+      },
+      fields: "id, webViewLink, webContentLink",
+      supportsAllDrives: true
+    });
+
+    // Torna o arquivo acessível por link (qualquer pessoa com o link pode visualizar)
+    try {
+      await drive.permissions.create({
+        fileId: resp.data.id,
+        requestBody: { role: "reader", type: "anyone" },
+        supportsAllDrives: true
+      });
+    } catch (e) { console.error("Erro ao definir permissão pública do CV:", e.message); }
+
+    return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
+  } catch (e) {
+    console.error("Erro uploadCurriculoDrive:", e.response?.data || e.message);
+    return null;
+  }
 }
 
 function garantirSessao(telefoneOriginal) {
@@ -259,7 +363,7 @@ app.post("/webhook", async (req, res) => {
     if (!message) return;
     if (message.id && mensagensProcessadas.has(message.id)) return;
     if (message.id) { mensagensProcessadas.add(message.id); if (mensagensProcessadas.size > 1000) mensagensProcessadas.clear(); }
-    if (!message.text?.body && !message.document) return;
+    if (!message.text?.body && !message.document && !message.audio) return;
     const from = limparTelefone(message.from);
     const sessaoAtual = garantirSessao(from);
     if (message.text?.body) {
@@ -272,6 +376,19 @@ app.post("/webhook", async (req, res) => {
       if (travou) return;
       const resposta = await processarMensagem(from, texto);
       if (resposta) await enviarMensagem(from, resposta);
+      return;
+    }
+    if (message.audio) {
+      sessaoAtual.historico.push({ role: "user", content: "[Áudio recebido]", timestamp: agora() });
+      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "");
+      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
+      const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
+      sessaoAtual.historico.push({ role: "assistant", content: respostaAudio, timestamp: agora() });
+      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      await salvarMensagemSheets(from, "assistant", respostaAudio, sessaoAtual.nome || "");
+      await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
+      await enviarMensagem(from, respostaAudio);
       return;
     }
     if (message.document) {
@@ -340,7 +457,7 @@ app.get("/inbox/sessoes", (req, res) => {
     Object.entries(sessoes).forEach(([tel, sessao]) => {
       const telefone = limparTelefone(tel);
       garantirSessao(telefone);
-      dados[telefone] = { historico: sessao.historico || [], nome: sessao.nome || null, modo: sessao.modo || "automatico", pausado: sessao.pausado === true || atendimentosManuais.has(telefone), motivoPausa: sessao.motivoPausa || "", aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false, ultimaAnalise: sessao.ultimaAnalise || null };
+      dados[telefone] = { historico: sessao.historico || [], nome: sessao.nome || null, modo: sessao.modo || "automatico", pausado: sessao.pausado === true || atendimentosManuais.has(telefone), motivoPausa: sessao.motivoPausa || "", aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || false, ultimaAnalise: sessao.ultimaAnalise || null, curriculo: sessao.curriculo ? { filename: sessao.curriculo.filename, recebidoEm: sessao.curriculo.recebidoEm, driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null } : null };
     });
     res.json({ sessoes: dados, total: Object.keys(dados).length });
   } catch (erro) { res.json({ sessoes: {}, total: 0 }); }
@@ -389,6 +506,19 @@ app.post("/inbox/enviar", async (req, res) => {
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
     return res.json({ ok: true, telefone, modo: "manual", pausado: true });
   } catch (erro) { res.json({ ok: false, erro: erro.message }); }
+});
+
+app.get("/inbox/curriculo/:telefone", (req, res) => {
+  try {
+    const telefone = limparTelefone(req.params.telefone);
+    const sessao = sessoes[telefone];
+    if (!sessao || !sessao.curriculo) return res.status(404).send("Currículo não encontrado");
+    const buffer = Buffer.from(sessao.curriculo.base64, "base64");
+    const inline = req.query.inline === "1";
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${sessao.curriculo.filename}"`);
+    res.send(buffer);
+  } catch (erro) { res.status(500).send("Erro ao obter currículo"); }
 });
 
 app.post("/inbox/observacao", async (req, res) => {
@@ -539,13 +669,29 @@ async function processarCurriculo(telefoneOriginal, documento) {
   const telefone = limparTelefone(telefoneOriginal);
   try {
     if (estaEmManual(telefone)) { console.log("CURRÍCULO BLOQUEADO — ATENDIMENTO MANUAL:", telefone); return null; }
-    const textoCurriculo = await baixarELerPdf(documento.id);
+    const { texto: textoCurriculo, buffer: pdfBuffer, filename: pdfFilename } = await baixarELerPdf(documento.id, documento.filename);
     if (!textoCurriculo || textoCurriculo.length < 50) return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar um PDF mais legível ou me contar sua experiência por aqui?";
     const vagas = await buscarVagas();
     const sessao = garantirSessao(telefone);
+    // Guarda o PDF em memória para download pelo Inbox
+    if (pdfBuffer) {
+      sessao.curriculo = { base64: pdfBuffer.toString("base64"), filename: pdfFilename || `curriculo_${telefone}.pdf`, recebidoEm: agora() };
+    }
     const vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
     const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
     const analise = await chamarClaudeJSON(prompt);
+
+    // Upload para o Drive na subpasta do cargo de interesse
+    if (pdfBuffer) {
+      const cargoDestino = analise.vagaInteresse || analise.areaInteresse || "Sem Cargo Identificado";
+      const driveInfo = await uploadCurriculoDrive(pdfBuffer, pdfFilename || `curriculo_${telefone}.pdf`, cargoDestino, telefone);
+      if (driveInfo) {
+        sessao.curriculo.driveLink = driveInfo.link;
+        sessao.curriculo.pasta = driveInfo.pasta;
+        analise.curriculoDriveLink = driveInfo.link;
+      }
+    }
+
     await salvarAnaliseNaPlanilha(telefone, analise);
     await enviarAlertaThiara(analise, telefone);
     sessao.aguardandoConfirmacaoInteresse = true;
@@ -563,11 +709,12 @@ async function processarCurriculo(telefoneOriginal, documento) {
   }
 }
 
-async function baixarELerPdf(mediaId) {
+async function baixarELerPdf(mediaId, filenameOriginal) {
   const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
   const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 30000 });
-  const pdfData = await pdfParse(Buffer.from(arquivo.data));
-  return String(pdfData.text || "").slice(0, 12000);
+  const buffer = Buffer.from(arquivo.data);
+  const pdfData = await pdfParse(buffer);
+  return { texto: String(pdfData.text || "").slice(0, 12000), buffer, filename: filenameOriginal || "curriculo.pdf" };
 }
 
 async function buscarCandidatoNaPlanilha(telefone) {
@@ -692,7 +839,7 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
   } catch (e) { console.error("Erro ao salvar análise:", e.message); }
 }
 
