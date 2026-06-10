@@ -369,6 +369,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <button class="ftab" onclick="setTab(this,'novas')">🔵 N.lidas <span class="ftab-count" id="cnt-novas">0</span></button>
       <button class="ftab" onclick="setTab(this,'manual')">👩 Laura <span class="ftab-count" id="cnt-manual">0</span></button>
       <button class="ftab" onclick="setTab(this,'lia')">🤖 Lia <span class="ftab-count" id="cnt-lia">0</span></button>
+      <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
     </div>
     <div class="conv-list" id="conv-list"><div class="empty">Carregando...</div></div>
   </div>
@@ -391,6 +392,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <button class="ha-btn ha-ghost" onclick="marcarLida()" title="Marcar como lida">✓✓</button>
           <button class="ha-btn ha-ghost" onclick="marcarNaoLida()" title="Não lida">🔵</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalCorrigir()" title="Corrigir Lia">⚙️ Corrigir</button>
+          <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
         </div>
@@ -532,6 +534,7 @@ let entrevistas = {}; // {telefone: [{data,hora,tipo,responsavel,obs,status,id}]
 let notas = {}; // {telefone: [{texto, ts}]}
 let statusMap = {}; // {telefone: string}
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
+let marcadosRetorno = {}; // {telefone: true}
 let timerEntrevistas = null;
 
 // ─── LOGIN ───
@@ -555,7 +558,8 @@ function carregarLocalData(){
     notas=JSON.parse(localStorage.getItem('effect_notas_v1')||'{}');
     statusMap=JSON.parse(localStorage.getItem('effect_status_v1')||'{}');
     intervencoes=JSON.parse(localStorage.getItem('effect_intervencoes_v1')||'{}');
-  }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};}
+    marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
+  }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};}
 }
 function salvarLocal(){
   try{
@@ -564,6 +568,7 @@ function salvarLocal(){
     localStorage.setItem('effect_notas_v1',JSON.stringify(notas));
     localStorage.setItem('effect_status_v1',JSON.stringify(statusMap));
     localStorage.setItem('effect_intervencoes_v1',JSON.stringify(intervencoes));
+    localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
   }catch(e){}
 }
 function getMeta(tel){if(!metaDados[tel])metaDados[tel]={ultimaMsgVista:0};return metaDados[tel];}
@@ -646,27 +651,30 @@ function extrairHora(ts){
   return'--:--';
 }
 
+// Retorna "YYYY-MM-DD" no horário de Brasília (UTC-3), sem depender de locale/timezone do navegador
+function brDateStr(ms){
+  return new Date(ms - 3*3600*1000).toISOString().slice(0,10);
+}
+
 function formatarHora(ts){
   if(!ts)return{texto:'',hoje:true,ms:Date.now()};
   const ms=tsParaMs(ts);
   if(!ms)return{texto:'',hoje:true,ms:Date.now()};
+  const agora=Date.now();
+  const dHoje=brDateStr(agora);
+  const dOntem=brDateStr(agora-86400000);
+  const dMsg=brDateStr(ms);
   const dm=new Date(ms);
-  // Datas em Brasília para comparação correta
-  const fmt=(d)=>d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'});
-  const hoje=new Date();
-  const dHoje=fmt(hoje);
-  const dOntem=fmt(new Date(hoje.getTime()-86400000));
-  const dSemana=hoje.getTime()-6*86400000;
-  const dMsg=fmt(dm);
   const hora=dm.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
   if(dMsg===dHoje)return{texto:hora,hoje:true,ms};
   if(dMsg===dOntem)return{texto:'Ontem',hoje:false,ms};
-  if(ms>=dSemana){
-    const nomeDia=dm.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'});
-    // nomeDia vem como "qua." "ter." etc — capitaliza primeira letra
-    return{texto:nomeDia.replace('.','').replace(/^\w/,c=>c.toUpperCase()),hoje:false,ms};
+  if(agora-ms<=6*86400000){
+    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const diaSemana=new Date(ms-3*3600*1000).getUTCDay();
+    return{texto:dias[diaSemana],hoje:false,ms};
   }
-  return{texto:dm.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:'America/Sao_Paulo'}),hoje:false,ms};
+  const[y,m,d]=dMsg.split('-');
+  return{texto:`${d}/${m}`,hoje:false,ms};
 }
 function compatInfo(score){
   const s=Number(score||0);
@@ -686,6 +694,7 @@ function renderLista(){
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
     if(tab==='lia')return!(s.modo==='manual'||s.pausado===true);
     if(tab==='atencao')return isAtencao(s);
+    if(tab==='retornar')return !!marcadosRetorno[tel];
     return true;
   });
 
@@ -702,6 +711,7 @@ function renderLista(){
   document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
+  document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]).length;
   const nAtencao=all.filter(([_,s])=>isAtencao(s)).length;
   document.getElementById('cnt-atencao').textContent=nAtencao;
   const bNovas=document.getElementById('badge-novas');
@@ -752,6 +762,8 @@ function renderLista(){
         <div class="conv-chips">
           ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-red">⚠️ Atenção</span>':''}
+          ${s.curriculo?'<span class="cc cc-blue">📄 CV</span>':''}
+          ${marcadosRetorno[tel]?'<span class="cc cc-yellow">📌 Retornar</span>':''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
       </div>
@@ -777,6 +789,7 @@ function abrirConversa(tel){
   document.getElementById('banner-manual').classList.toggle('show',isManual);
   document.getElementById('banner-atencao').classList.toggle('show',aten&&!isManual);
   document.getElementById('banner-motivo').textContent=s.motivoPausa||'';
+  atualizarBotaoRetornar();
   aplicarModoVisual(isManual?'manual':'lia');
   renderQuickReplies();
   renderMsgs(s);
@@ -897,6 +910,24 @@ function renderPainelPerfil(s){
   <div class="rp-section">
     <div class="rp-section-title">⚠️ Pontos de Atenção</div>
     <div style="font-size:11px;line-height:1.6;color:var(--text)">${formatarListaHtml(anal.pontosAtencao)}</div>
+  </div>
+  `:''}
+  ${s.curriculo?`
+  <div class="rp-section">
+    <div class="rp-section-title">📄 Currículo</div>
+    <div class="cv-box">
+      <div class="cv-icon">📄</div>
+      <div class="cv-info">
+        <div class="cv-name">${s.curriculo.filename}</div>
+        <div style="font-size:9px;color:var(--muted)">${s.curriculo.recebidoEm||''}</div>
+        ${s.curriculo.pasta?`<div style="font-size:9px;color:var(--muted)">📁 ${s.curriculo.pasta}</div>`:''}
+      </div>
+      <div class="cv-actions">
+        <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?inline=1','_blank')">👁️</button>
+        <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}','_blank')">⬇️</button>
+      </div>
+    </div>
+    ${s.curriculo.driveLink?`<a href="${s.curriculo.driveLink}" target="_blank" style="display:block;margin-top:6px;font-size:10px;color:var(--blue);text-decoration:underline">🔗 Abrir no Google Drive</a>`:''}
   </div>
   `:''}
   <div class="rp-section">
@@ -1114,6 +1145,23 @@ function renderQuickReplies(){
   document.getElementById('quick-bar').innerHTML=QUICK_REPLIES.map(q=>`<button class="qbtn" onclick="usarQuick('${q.replace(/'/g,"\\'")}');">${q.length>35?q.slice(0,35)+'…':q}</button>`).join('');
 }
 function usarQuick(t){const i=document.getElementById('msg-input');i.value=t;autoResize(i);i.focus();}
+
+function toggleRetornar(){
+  if(!sessaoAtual)return;
+  marcadosRetorno[sessaoAtual]=!marcadosRetorno[sessaoAtual];
+  salvarLocal();
+  atualizarBotaoRetornar();
+  renderLista();
+  toast(marcadosRetorno[sessaoAtual]?'📌 Marcado para retornar':'Marcação removida','success');
+}
+function atualizarBotaoRetornar(){
+  const btn=document.getElementById('btn-retornar');
+  if(!btn||!sessaoAtual)return;
+  const marcado=!!marcadosRetorno[sessaoAtual];
+  btn.style.background=marcado?'#fcd34d':'';
+  btn.style.color=marcado?'#92400e':'';
+  btn.title=marcado?'Remover marcação de retorno':'Marcar para retornar depois';
+}
 
 // ─── ENTREVISTAS ───
 function abrirModalEntrevista(){
