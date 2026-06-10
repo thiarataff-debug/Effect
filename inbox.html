@@ -795,6 +795,14 @@ function atividadeMsSessao(s, idxFallback=0){
     for(let i=hist.length-1;i>=Math.max(0,hist.length-5);i--){
       candidatos.push(tsParaMs(obterTimestampMsg(hist[i])));
     }
+    let validos1=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
+    if(!validos1.length){
+      // Nada nas últimas 5 msgs: varre o histórico inteiro antes de desistir.
+      for(let i=hist.length-6;i>=0;i--){
+        const ms=tsParaMs(obterTimestampMsg(hist[i]));
+        if(ms&&ms>0&&ms<limiteFuturo)candidatos.push(ms);
+      }
+    }
   }
   const validos=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
   if(validos.length)return Math.max(...validos);
@@ -850,7 +858,8 @@ function renderLista(){
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
-    const hInfo=formatarHora(atividadeMsSessao(s));
+    const atvMs=atividadeMsSessao(s);
+    const hInfo=atvMs>1e12?formatarHora(atvMs):{texto:'—',hoje:false,ms:0};
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
