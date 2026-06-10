@@ -213,7 +213,7 @@ async function carregarSessoesDoSheets() {
     Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
       const tel = limparTelefone(telOriginal);
       const modo = sessao.modo || (sessao.pausado ? "manual" : "automatico");
-      sessoes[tel] = { historico: Array.isArray(sessao.historico) ? sessao.historico.map(h => ({ role: h.role, content: h.content })) : [], nome: sessao.nome || null, modo, pausado: modo === "manual" || sessao.pausado === true, motivoPausa: sessao.motivoPausa || "" };
+      sessoes[tel] = { historico: Array.isArray(sessao.historico) ? sessao.historico.map(h => ({ role: h.role, content: h.content, timestamp: h.timestamp || h.horario || '' })) : [], nome: sessao.nome || null, modo, pausado: modo === "manual" || sessao.pausado === true, motivoPausa: sessao.motivoPausa || "" };
       if (sessoes[tel].pausado) atendimentosManuais.add(tel);
     });
     console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
