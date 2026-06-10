@@ -601,23 +601,25 @@ async function carregarSessoes(){
     const data=await r.json();
     const novas=data.sessoes||{};
 
-    // Proteção: se enviei uma mensagem localmente e o servidor ainda não devolveu,
-    // não deixa a sincronização apagar a bolha da Laura.
+    // Proteção: se enviei uma mensagem localmente e o servidor ainda não devolveu
+    // (ou devolveu sem ela ainda), não deixa a sincronização apagar a bolha da Laura/Lia.
+    // Comparação por CONTEÚDO, não por timestamp — pois alguns timestamps do backend
+    // vêm com datas futuras "bugadas" e quebravam a comparação anterior.
     Object.entries(todasSessoes||{}).forEach(([tel,antiga])=>{
       const nova=novas[tel];
       if(!nova)return;
       const histAntiga=antiga.historico||[];
       const histNova=nova.historico||[];
       const ultAntiga=histAntiga[histAntiga.length-1];
-      const ultNova=histNova[histNova.length-1];
-      const msAntiga=tsParaMs(obterTimestampMsg(ultAntiga));
-      const msNova=tsParaMs(obterTimestampMsg(ultNova));
-      if(ultAntiga&&ultAntiga.role==='assistant'&&msAntiga>msNova){
-        nova.historico=[...histNova,ultAntiga].sort((a,b)=>tsParaMs(obterTimestampMsg(a))-tsParaMs(obterTimestampMsg(b)));
-        nova.lastMessage=ultAntiga.content||nova.lastMessage||'';
-        nova.lastMessageRole='assistant';
-        nova.lastMessageAtMs=msAntiga;
-        nova.unreadCount=0;
+      if(ultAntiga&&ultAntiga.role==='assistant'){
+        const jaTem=histNova.some(m=>m&&m.role==='assistant'&&String(m.content||'')===String(ultAntiga.content||''));
+        if(!jaTem){
+          nova.historico=[...histNova,ultAntiga];
+          nova.lastMessage=ultAntiga.content||nova.lastMessage||'';
+          nova.lastMessageRole='assistant';
+          nova.lastMessageAtMs=ultAntiga.timestampMs||Date.now();
+          nova.unreadCount=0;
+        }
       }
     });
 
