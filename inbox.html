@@ -598,12 +598,29 @@ async function carregarSessoes(){
   try{
     const r=await fetch(`${API}/inbox/sessoes`);
     const data=await r.json();
-    todasSessoes=data.sessoes||{};
-    // DEBUG: mostra o timestamp da última msg de cada sessão no console
-    Object.entries(todasSessoes).slice(0,3).forEach(([tel,s])=>{
-      const h=s.historico||[];
-      if(h.length) console.log('[TS debug]',tel.slice(-4), JSON.stringify(h[h.length-1]?.timestamp), '→', tsParaDate(h[h.length-1]?.timestamp));
+    const novas=data.sessoes||{};
+
+    // Proteção: se enviei uma mensagem localmente e o servidor ainda não devolveu,
+    // não deixa a sincronização apagar a bolha da Laura.
+    Object.entries(todasSessoes||{}).forEach(([tel,antiga])=>{
+      const nova=novas[tel];
+      if(!nova)return;
+      const histAntiga=antiga.historico||[];
+      const histNova=nova.historico||[];
+      const ultAntiga=histAntiga[histAntiga.length-1];
+      const ultNova=histNova[histNova.length-1];
+      const msAntiga=tsParaMs(obterTimestampMsg(ultAntiga));
+      const msNova=tsParaMs(obterTimestampMsg(ultNova));
+      if(ultAntiga&&ultAntiga.role==='assistant'&&msAntiga>msNova){
+        nova.historico=[...histNova,ultAntiga].sort((a,b)=>tsParaMs(obterTimestampMsg(a))-tsParaMs(obterTimestampMsg(b)));
+        nova.lastMessage=ultAntiga.content||nova.lastMessage||'';
+        nova.lastMessageRole='assistant';
+        nova.lastMessageAtMs=msAntiga;
+        nova.unreadCount=0;
+      }
     });
+
+    todasSessoes=novas;
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
     if(sessaoAtual&&todasSessoes[sessaoAtual]) renderMsgs(todasSessoes[sessaoAtual]);
@@ -786,11 +803,13 @@ function renderLista(){
     return true;
   });
 
-  // Ordenação por timestamp real (numérico) — mais recente no topo igual WhatsApp
+  // Ordenação por última atividade real — mais recente no topo, igual WhatsApp
   entries.sort((a,b)=>{
     const hA=a[1].historico||[],hB=b[1].historico||[];
-    const msA=tsParaMs(obterTimestampMsg(hA[hA.length-1]));
-    const msB=tsParaMs(obterTimestampMsg(hB[hB.length-1]));
+    const msHistA=tsParaMs(obterTimestampMsg(hA[hA.length-1]));
+    const msHistB=tsParaMs(obterTimestampMsg(hB[hB.length-1]));
+    const msA=Math.max(Number(a[1].lastMessageAtMs||0),msHistA||0);
+    const msB=Math.max(Number(b[1].lastMessageAtMs||0),msHistB||0);
     return msB-msA;
   });
 
@@ -816,7 +835,7 @@ function renderLista(){
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
-    const hInfo=formatarHora(obterTimestampMsg(ultima));
+    const hInfo=formatarHora(obterTimestampMsg(ultima)||s.lastMessageAtMs||s.lastMessageAt);
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
@@ -1259,24 +1278,81 @@ function marcarNaoLida(){
 // ─── ENVIAR MSG ───
 async function enviarMsg(){
   if(!sessaoAtual)return;
+
   const input=document.getElementById('msg-input');
-  let texto=input.value.trim();if(!texto)return;
+  let texto=input.value.trim();
+  if(!texto)return;
+
   const isLaura=modoAtual==='manual';
   if(isLaura)texto+=ASSINATURA;
-  const btn=document.getElementById('send-btn');btn.disabled=true;
+
+  const btn=document.getElementById('send-btn');
+  btn.disabled=true;
+
+  const telefoneAtual=sessaoAtual;
+  const eventoLocal={
+    role:'assistant',
+    content:texto,
+    timestamp:new Date().toISOString(),
+    timestampISO:new Date().toISOString(),
+    timestampMs:Date.now(),
+    horarioFormatado:extrairHora(Date.now())
+  };
+
   try{
-    const r=await fetch(`${API}/inbox/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:texto,modo:'manual'})});
+    // Mostra imediatamente na tela, sem esperar o Sheets/Railway devolver.
+    if(todasSessoes[telefoneAtual]){
+      if(!Array.isArray(todasSessoes[telefoneAtual].historico))todasSessoes[telefoneAtual].historico=[];
+      todasSessoes[telefoneAtual].historico.push(eventoLocal);
+      todasSessoes[telefoneAtual].lastMessage=texto;
+      todasSessoes[telefoneAtual].lastMessageRole='assistant';
+      todasSessoes[telefoneAtual].lastMessageAtMs=eventoLocal.timestampMs;
+      todasSessoes[telefoneAtual].unreadCount=0;
+      todasSessoes[telefoneAtual].modo='manual';
+      todasSessoes[telefoneAtual].pausado=true;
+      renderMsgs(todasSessoes[telefoneAtual]);
+      renderLista();
+      setMeta(telefoneAtual,{ultimaMsgVista:todasSessoes[telefoneAtual].historico.length});
+    }
+
+    input.value='';
+    input.style.height='auto';
+
+    const r=await fetch(`${API}/inbox/enviar`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:telefoneAtual,mensagem:texto,modo:'manual'})
+    });
+
     const d=await r.json();
+
     if(d.ok){
-      input.value='';input.style.height='auto';
-      toast(isLaura?'👩 Enviado como Laura':'✉️ Enviado!','success');
-      await carregarSessoes();
-      if(sessaoAtual&&todasSessoes[sessaoAtual]){
-        const h=todasSessoes[sessaoAtual].historico||[];
-        setMeta(sessaoAtual,{ultimaMsgVista:h.length});
+      // Troca o evento local pelo evento oficial do servidor, quando vier.
+      if(d.mensagem&&todasSessoes[telefoneAtual]){
+        const hist=todasSessoes[telefoneAtual].historico||[];
+        const idx=hist.indexOf(eventoLocal);
+        if(idx>=0)hist[idx]=d.mensagem;
+        todasSessoes[telefoneAtual].lastMessage=d.mensagem.content||texto;
+        todasSessoes[telefoneAtual].lastMessageAtMs=d.mensagem.timestampMs||eventoLocal.timestampMs;
       }
-    }else toast('Erro: '+(d.erro||''),'error');
-  }catch(e){toast('Erro de conexão','error');}
+
+      toast(isLaura?'👩 Enviado como Laura':'✉️ Enviado!','success');
+
+      // Sincroniza depois, sem apagar a mensagem otimista imediatamente.
+      setTimeout(()=>{
+        carregarSessoes();
+      },2500);
+
+    }else{
+      toast('Erro: '+(d.erro||''),'error');
+      await carregarSessoes();
+    }
+
+  }catch(e){
+    toast('Erro de conexão','error');
+    await carregarSessoes();
+  }
+
   btn.disabled=false;
 }
 
