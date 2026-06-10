@@ -345,6 +345,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
     <button class="rbtn" style="background:#fca5a5;color:#7f1d1d" onclick="pausarTodas()">🚨 Pausar Todas</button>
     <button class="rbtn" onclick="reativarTodas()">🤖 Reativar Todas</button>
+    <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
   </div>
 </header>
 
@@ -626,6 +627,7 @@ async function carregarSessoes(){
     });
 
     todasSessoes=novas;
+    if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
     if(sessaoAtual&&todasSessoes[sessaoAtual]) renderMsgs(todasSessoes[sessaoAtual]);
@@ -1708,6 +1710,23 @@ function enviarCorrecao(){
 function fecharModal(id){document.getElementById(id).classList.remove('show');}
 
 // ─── PAUSAR/REATIVAR TODAS (emergência) ───
+let novaConversaIniciaManual=false;
+function atualizarBotaoNovasManual(){
+  const b=document.getElementById('btn-novas-manual');
+  if(!b)return;
+  if(novaConversaIniciaManual){b.textContent='🆕 Novas: Manual';b.style.background='#fcd34d';b.style.color='#92400e';}
+  else{b.textContent='🆕 Novas: Lia';b.style.background='';b.style.color='';}
+}
+async function toggleNovasManual(){
+  const novo=!novaConversaIniciaManual;
+  try{
+    const r=await fetch(`${API}/inbox/config-novas-conversas`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({manual:novo})});
+    const d=await r.json();
+    novaConversaIniciaManual=!!d.novaConversaIniciaManual;
+    atualizarBotaoNovasManual();
+    toast(novaConversaIniciaManual?'🆕 Novas conversas iniciarão em modo MANUAL':'🆕 Novas conversas iniciarão com a Lia','success');
+  }catch(e){toast('Erro ao alterar configuração','error');}
+}
 async function pausarTodas(){
   const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
   if(!tels.length){toast('Nenhuma conversa em modo Lia','success');return;}
