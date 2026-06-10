@@ -786,20 +786,23 @@ function formatarHora(ts){
 function atividadeMsSessao(s, idxFallback=0){
   const agora=Date.now();
   const limiteFuturo=agora+36*60*60*1000;
+  // Timestamps absurdamente no futuro (bug conhecido em alguns registros) viram "agora",
+  // em vez de serem descartados (o que deixava a conversa sem horário/data).
+  const clamp=ms=>(ms&&ms>0)?Math.min(ms,agora):0;
   const candidatos=[];
   if(s){
-    candidatos.push(Number(s.lastMessageAtMs||0));
-    candidatos.push(tsParaMs(s.lastMessageAt));
-    candidatos.push(tsParaMs(s.updatedAt));
+    candidatos.push(clamp(Number(s.lastMessageAtMs||0)));
+    candidatos.push(clamp(tsParaMs(s.lastMessageAt)));
+    candidatos.push(clamp(tsParaMs(s.updatedAt)));
     const hist=s.historico||[];
     for(let i=hist.length-1;i>=Math.max(0,hist.length-5);i--){
-      candidatos.push(tsParaMs(obterTimestampMsg(hist[i])));
+      candidatos.push(clamp(tsParaMs(obterTimestampMsg(hist[i]))));
     }
     let validos1=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
     if(!validos1.length){
       // Nada nas últimas 5 msgs: varre o histórico inteiro antes de desistir.
       for(let i=hist.length-6;i>=0;i--){
-        const ms=tsParaMs(obterTimestampMsg(hist[i]));
+        const ms=clamp(tsParaMs(obterTimestampMsg(hist[i])));
         if(ms&&ms>0&&ms<limiteFuturo)candidatos.push(ms);
       }
     }
