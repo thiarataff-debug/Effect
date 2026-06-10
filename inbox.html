@@ -393,6 +393,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <button class="ha-btn ha-ghost" onclick="marcarNaoLida()" title="Não lida">🔵</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalCorrigir()" title="Corrigir Lia">⚙️ Corrigir</button>
           <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes de vaga">📋 Vaga</button>
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
         </div>
@@ -495,6 +496,23 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-corrigir')">Cancelar</button>
       <button class="modal-btn modal-confirm" onclick="enviarCorrecao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ENVIAR VAGA -->
+<div class="modal-overlay" id="modal-vagas">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">📋 Enviar Detalhes de Vaga</div>
+    <div class="search-box" style="margin-bottom:10px">
+      <span style="color:var(--muted);font-size:11px">🔍</span>
+      <input type="text" id="vaga-busca" placeholder="Buscar vaga por cargo ou cidade..." oninput="renderListaVagas(this.value)">
+    </div>
+    <div id="lista-vagas" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+      <div class="empty">Carregando vagas...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-vagas')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1161,6 +1179,96 @@ function atualizarBotaoRetornar(){
   btn.style.background=marcado?'#fcd34d':'';
   btn.style.color=marcado?'#92400e':'';
   btn.title=marcado?'Remover marcação de retorno':'Marcar para retornar depois';
+}
+
+// ─── ENVIAR VAGA (RESPOSTA RÁPIDA) ───
+let vagasCache=null;
+async function abrirModalVagas(){
+  document.getElementById('modal-vagas').classList.add('show');
+  document.getElementById('vaga-busca').value='';
+  if(!vagasCache){
+    try{
+      const r=await fetch(`${API}/sheets/vagas`);
+      const d=await r.json();
+      vagasCache=(d.vagas||[]).filter(v=>{
+        const status=(v.status||v.Status||'').toLowerCase();
+        return !['encerrada','cancelada','inativa','suspensa','fechada','finalizada'].includes(status);
+      });
+    }catch(e){vagasCache=[];}
+  }
+  renderListaVagas('');
+}
+function campoVaga(v,nomes){
+  for(const n of nomes){if(v[n]!==undefined&&v[n]!==null&&String(v[n]).trim()!=='')return v[n];}
+  return'';
+}
+function renderListaVagas(busca){
+  const div=document.getElementById('lista-vagas');
+  if(!vagasCache||!vagasCache.length){div.innerHTML='<div class="empty">Nenhuma vaga ativa encontrada</div>';return;}
+  const b=(busca||'').toLowerCase();
+  const filtradas=vagasCache.filter(v=>{
+    const cargo=campoVaga(v,['cargo','Cargo','CARGO']);
+    const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
+    return!b||cargo.toLowerCase().includes(b)||cidade.toLowerCase().includes(b);
+  });
+  if(!filtradas.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada</div>';return;}
+  div.innerHTML=filtradas.map((v,i)=>{
+    const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'Vaga';
+    const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
+    const salario=campoVaga(v,['salario','Salário Base','Salario Base','Salário','Salario']);
+    return`<div class="sugestao-item" onclick="usarVaga(${vagasCache.indexOf(v)})">
+      <div style="font-weight:700;font-size:12px">${cargo}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">📍 ${cidade||'—'} ${salario?' · 💰 '+salario:''}</div>
+    </div>`;
+  }).join('');
+}
+function formatarBeneficiosResumo(textoBeneficios){
+  if(!textoBeneficios)return'';
+  const itens=String(textoBeneficios).split(/;|,|\n/).map(p=>p.trim()).filter(Boolean);
+  // pega até 3 benefícios principais, sem repetir info de salário
+  return itens.slice(0,3).join(', ');
+}
+function montarTemplateVaga(v){
+  const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'—';
+  const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
+  const horario=campoVaga(v,['horario','Horário','Escala/Horário','Escala/Horario']);
+  const escala=campoVaga(v,['escala','Escala']);
+  const salario=campoVaga(v,['salario','Salário Base','Salario Base','Salário','Salario']);
+  const beneficios=campoVaga(v,['beneficios','Benefícios','Beneficios']);
+  const requisito=campoVaga(v,['requisitoObrigatorio','Requisito Obrigatório','Requisito Obrigatorio']);
+  const escolaridade=campoVaga(v,['escolaridade','Escolaridade']);
+  const expMin=campoVaga(v,['experienciaMinima','Exp. Mínima','Exp. Minima']);
+
+  let txt=`🟢 ${cargo}\n`;
+  if(cidade)txt+=`📍 ${cidade}\n`;
+  txt+=`💼 CLT`;
+  if(horario||escala)txt+=` • 🕐 ${horario||escala}`;
+  txt+=`\n\n`;
+  if(salario)txt+=`💰 ${salario}`;
+  const benResumo=formatarBeneficiosResumo(beneficios);
+  if(benResumo)txt+=` + ${benResumo}`;
+  txt+=`\n`;
+  const reqs=[];
+  if(escolaridade)reqs.push(escolaridade);
+  if(expMin)reqs.push(expMin);
+  if(requisito)reqs.push(requisito);
+  if(reqs.length){
+    txt+=`\n✅ Requisitos:\n`;
+    reqs.slice(0,3).forEach(r=>txt+=`• ${r}\n`);
+  }
+  txt+=`\n📩 Tem interesse? Me confirma e sigo com os próximos passos! 💙`;
+  return txt;
+}
+function usarVaga(idx){
+  const v=vagasCache[idx];
+  if(!v)return;
+  const texto=montarTemplateVaga(v);
+  const input=document.getElementById('msg-input');
+  input.value=texto;
+  autoResize(input);
+  fecharModal('modal-vagas');
+  input.focus();
+  toast('📋 Detalhes da vaga inseridos — revise antes de enviar','success');
 }
 
 // ─── ENTREVISTAS ───
