@@ -334,10 +334,19 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
   }
 }
 
+// Quando true, toda NOVA conversa (primeiro contato) já nasce em modo manual,
+// pausada — a Lia não responde até alguém liberar manualmente no Inbox.
+let novaConversaIniciaManual = false;
+
 function garantirSessao(telefoneOriginal) {
   const telefone = limparTelefone(telefoneOriginal);
   if (!sessoes[telefone]) {
-    sessoes[telefone] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
+    if (novaConversaIniciaManual) {
+      sessoes[telefone] = { historico: [], nome: null, modo: "manual", pausado: true, motivoPausa: "Iniciado em modo manual (configuração ativa no Inbox)" };
+      atendimentosManuais.add(telefone);
+    } else {
+      sessoes[telefone] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
+    }
   }
   if (atendimentosManuais.has(telefone)) {
     sessoes[telefone].modo = "manual";
@@ -730,6 +739,11 @@ app.post("/sheets/candidatos/status", async (req, res) => {
 // ROTAS API — INBOX
 // ============================================================
 
+app.post("/inbox/config-novas-conversas", (req, res) => {
+  novaConversaIniciaManual = req.body.manual === true;
+  res.json({ ok: true, novaConversaIniciaManual });
+});
+
 app.get("/inbox/sessoes", (req, res) => {
   try {
     const lista = Object.entries(sessoes).map(([tel, sessao]) => {
@@ -773,6 +787,7 @@ app.get("/inbox/sessoes", (req, res) => {
       totalConversas,
       totalNaoLidasConversas,
       totalMensagensNaoLidas,
+      novaConversaIniciaManual,
       atualizadoEm: new Date().toISOString(),
       atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
     });
