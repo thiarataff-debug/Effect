@@ -668,12 +668,28 @@ function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !==
 function obterTimestampMsg(msg){
   if(!msg)return'';
 
-  // PRIORIDADE 1: timestampMs real vindo do backend/WhatsApp.
-  // Antes o inbox ignorava timestampMs e acabava usando ISO/UTC ou horárioFormatado,
-  // causando datas trocadas entre 10/06 e 11/06.
-  if(msg.timestampMs)return msg.timestampMs;
+  const agora = Date.now();
+  const limiteFuturo = agora + (24 * 60 * 60 * 1000);
 
-  return msg.timestampISO || msg.timestamp || msg.horario || msg.horarioFormatado || msg.dataHora || msg.createdAt || '';
+  const candidatos = [
+    msg.timestampMs,
+    msg.timestampISO,
+    msg.timestamp,
+    msg.createdAt,
+    msg.dataHora,
+    msg.horario,
+    msg.horarioFormatado
+  ];
+
+  for (const c of candidatos) {
+    const ms = tsParaMs(c);
+
+    if (ms && ms > 0 && ms < limiteFuturo) {
+      return c;
+    }
+  }
+
+  return '';
 }
 
 function tsParaMs(ts){
