@@ -147,6 +147,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .mbubble.manual{background:#e9ddff;border-top-right-radius:0}
 .mbubble.obs{background:#fff8e1;border:1px solid #ffd54f;color:#5a4a00;font-size:10px;border-radius:8px;max-width:85%;text-align:center}
 .msg-time{font-size:9px;color:var(--muted);padding:0 3px;margin-top:1px}
+.bubble-time{display:block;text-align:right;font-size:9px;color:#667781;margin-top:4px;line-height:1}
+.mbubble.lia .bubble-time{color:#667781}
+.mbubble.manual .bubble-time{color:#667781}
+.mbubble.candidato .bubble-time{color:#667781}
 
 .quick-bar{padding:6px 14px 0;background:#f0f2f5;display:flex;gap:5px;overflow-x:auto;flex-shrink:0}
 .qbtn{padding:5px 11px;border-radius:12px;border:1px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:10px;cursor:pointer;white-space:nowrap;color:var(--navy);font-weight:600;flex-shrink:0}
@@ -741,17 +745,30 @@ function tsParaMs(ts){
 }
 
 function ordenarHistorico(hist){
-  // Chat deve ficar igual WhatsApp: mensagens antigas em cima, atuais embaixo.
-  // Se uma mensagem não tiver timestamp válido, mantém a ordem original.
-  return (hist||[])
-    .map((msg,idx)=>({msg,idx,ms:tsParaMs(obterTimestampMsg(msg))}))
-    .sort((a,b)=>{
-      if(a.ms&&b.ms)return a.ms-b.ms;
+  // WhatsApp: antigas em cima, recentes embaixo.
+  // Primeiro tenta ordenar por timestamp real.
+  // Se os timestamps vierem iguais/ausentes, preserva a ordem original recebida.
+  const arr=(hist||[]).map((msg,idx)=>({
+    msg,
+    idx,
+    ms:tsParaMs(obterTimestampMsg(msg))
+  }));
+
+  const validos=arr.filter(x=>x.ms&&x.ms>0).length;
+
+  if(validos>=2){
+    arr.sort((a,b)=>{
+      if(a.ms&&b.ms){
+        if(a.ms!==b.ms)return a.ms-b.ms;
+        return a.idx-b.idx;
+      }
       if(a.ms&&!b.ms)return -1;
       if(!a.ms&&b.ms)return 1;
       return a.idx-b.idx;
-    })
-    .map(x=>x.msg);
+    });
+  }
+
+  return arr.map(x=>x.msg);
 }
 
 function tsParaDate(ts){
@@ -980,44 +997,103 @@ function abrirConversa(tel){
 
 // ─── RENDER MENSAGENS ───
 function renderMsgs(s){
-  const div=document.getElementById('messages');div.innerHTML='';
+  const div=document.getElementById('messages');
+  div.innerHTML='';
+
   const hist=ordenarHistorico(s?.historico||[]);
-  if(!hist.length){div.innerHTML='<div class="empty">Nenhuma mensagem ainda</div>';return;}
+
+  if(!hist.length){
+    div.innerHTML='<div class="empty">Nenhuma mensagem ainda</div>';
+    return;
+  }
+
   const meta=getMeta(sessaoAtual);
   const totalAntes=meta._snapshotAntes!==undefined?meta._snapshotAntes:meta.ultimaMsgVista;
+
   let naoLidasAntes=0;
-  for(let i=totalAntes;i<hist.length;i++){if(hist[i].role==='user')naoLidasAntes++;}
+  for(let i=totalAntes;i<hist.length;i++){
+    if(hist[i].role==='user')naoLidasAntes++;
+  }
+
   const mostrarDiv=naoLidasAntes>0&&totalAntes<hist.length&&totalAntes>0;
-  let ultimaData='';let ultimoRole=null;
+
+  let ultimaData='';
+  let ultimoRole=null;
+
   hist.forEach((msg,idx)=>{
-    const isUser=msg.role==='user';const isObs=msg.role==='observacao';
+    const isUser=msg.role==='user';
+    const isObs=msg.role==='observacao';
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
-    const ts=obterTimestampMsg(msg);const dataMsg=ts?formatarDataMensagem(ts):'';
+    const ts=obterTimestampMsg(msg);
+    const dataMsg=ts?formatarDataMensagem(ts):'';
+
     if(dataMsg&&dataMsg!==ultimaData){
-      const sep=document.createElement('div');sep.className='date-sep';sep.innerHTML=`<span>📅 ${dataMsg}</span>`;div.appendChild(sep);ultimaData=dataMsg;ultimoRole=null;
+      const sep=document.createElement('div');
+      sep.className='date-sep';
+      sep.innerHTML=`<span>📅 ${dataMsg}</span>`;
+      div.appendChild(sep);
+      ultimaData=dataMsg;
+      ultimoRole=null;
     }
+
     if(mostrarDiv&&idx===totalAntes){
-      const sep=document.createElement('div');sep.className='unread-sep';sep.innerHTML=`<span>${naoLidasAntes} nova${naoLidasAntes>1?'s':''}</span>`;div.appendChild(sep);ultimoRole=null;
+      const sep=document.createElement('div');
+      sep.className='unread-sep';
+      sep.innerHTML=`<span>${naoLidasAntes} nova${naoLidasAntes>1?'s':''}</span>`;
+      div.appendChild(sep);
+      ultimoRole=null;
     }
+
     const g=document.createElement('div');
+
     if(isObs){
       g.className='msg-group obs';
-      const b=document.createElement('div');b.className='mbubble obs';b.textContent='📝 '+(msg.content||'');g.appendChild(b);
-      if(ts){const t=document.createElement('div');t.className='msg-time';t.textContent=extrairHora(ts);g.appendChild(t);}
+
+      const b=document.createElement('div');
+      b.className='mbubble obs';
+      b.textContent='📝 '+(msg.content||'');
+
+      if(ts){
+        const span=document.createElement('span');
+        span.className='bubble-time';
+        span.textContent=extrairHora(ts);
+        b.appendChild(span);
+      }
+
+      g.appendChild(b);
     }else{
       const rc=isUser?'candidato':isLaura?'manual':'lia';
       g.className=`msg-group ${rc}`;
+
       if(ultimoRole!==msg.role){
-        const sn=document.createElement('div');sn.className='msg-sender';
+        const sn=document.createElement('div');
+        sn.className='msg-sender';
         sn.textContent=isUser?(s.nome?.split(' ')[0]||'👤 Candidato'):isLaura?'👩 Laura':'🤖 Lia';
         g.appendChild(sn);
       }
-      const b=document.createElement('div');b.className=`mbubble ${rc}`;b.textContent=msg.content||'';g.appendChild(b);
-      if(ts){const t=document.createElement('div');t.className='msg-time';t.textContent=extrairHora(ts);g.appendChild(t);}
+
+      const b=document.createElement('div');
+      b.className=`mbubble ${rc}`;
+      b.textContent=msg.content||'';
+
+      if(ts){
+        const span=document.createElement('span');
+        span.className='bubble-time';
+        span.textContent=extrairHora(ts);
+        b.appendChild(span);
+      }
+
+      g.appendChild(b);
     }
-    div.appendChild(g);ultimoRole=msg.role;
+
+    div.appendChild(g);
+    ultimoRole=msg.role;
   });
-  div.scrollTop=div.scrollHeight;
+
+  // Sempre abre igual WhatsApp: últimas mensagens visíveis embaixo.
+  setTimeout(()=>{
+    div.scrollTop=div.scrollHeight;
+  },50);
 }
 
 // ─── PAINEL DIREITO ───
