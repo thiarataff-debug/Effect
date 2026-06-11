@@ -12,6 +12,7 @@
   --pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb;--laura:#7b8e6e;--white:#ffffff;
   --red:#dc2626;--yellow:#d97706;--shadow:0 2px 8px rgba(0,0,0,.08)
 }
+html,body{height:100%;max-height:100%;overflow:hidden}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* ── LOGIN ── */
@@ -38,10 +39,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .rbtn:hover{background:rgba(255,255,255,.22)}
 
 /* ── LAYOUT ── */
-.app{display:flex;flex:1;overflow:hidden}
+.app{display:flex;flex:1;min-height:0;height:calc(100vh - 50px);overflow:hidden}
 
 /* ── SIDEBAR ── */
-.sidebar{width:300px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar{width:300px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:calc(100vh - 50px);min-height:0;overflow:hidden}
 .sb-top{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
 .sb-title-row{display:flex;justify-content:space-between;align-items:center}
 .sb-title{font-weight:700;font-size:12px;color:var(--navy)}
@@ -59,7 +60,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .ftab-count{background:rgba(0,0,0,.15);border-radius:8px;padding:0 4px;font-size:9px}
 .ftab.active .ftab-count{background:rgba(255,255,255,.25)}
 
-.conv-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+.conv-list{flex:1;height:0;min-height:0;overflow-y:scroll;overflow-x:hidden;padding-bottom:24px;overscroll-behavior:contain}
 /* Card estilo WhatsApp */
 .conv-card{
   padding:12px 14px 12px 12px;
@@ -1007,7 +1008,7 @@ function renderLista(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + `<div class="empty" style="padding:14px 8px 28px">Fim da lista — ${entries.length} conversa${entries.length===1?'':'s'}</div>`;
 }
 
 // ─── ABRIR CONVERSA ───
