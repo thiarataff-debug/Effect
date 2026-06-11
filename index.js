@@ -254,7 +254,7 @@ function normalizarSessaoParaInbox(telefone, sessao) {
 function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
   const evento = prepararEventoHistorico(role, content, timestampMs);
   sessao.historico.push(evento);
-  sessao.historico = sessao.historico.slice(-60);
+  sessao.historico = sessao.historico.slice(-500);
   return evento;
 }
 
@@ -520,7 +520,7 @@ async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, resposta
   if (respostaSegura) {
     await enviarMensagem(telefone, respostaSegura);
     registrarEntradaSessao(sessao, "assistant", respostaSegura);
-    sessao.historico = sessao.historico.slice(-20);
+    sessao.historico = sessao.historico.slice(-500);
     await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
   }
   await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
@@ -729,7 +729,7 @@ app.post("/webhook", async (req, res) => {
       const texto = message.text.body;
       registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
       await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "", messageTimestampMs);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       const travou = await aplicarTravasEntrada(from, texto);
@@ -741,13 +741,13 @@ app.post("/webhook", async (req, res) => {
     if (message.audio) {
       registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]", messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
       await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "", messageTimestampMs);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
       registrarEntradaSessao(sessaoAtual, "assistant", respostaAudio);
       marcarConversaRespondida(sessaoAtual);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
       await salvarMensagemSheets(from, "assistant", respostaAudio, sessaoAtual.nome || "");
       await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
       await enviarMensagem(from, respostaAudio);
@@ -756,7 +756,7 @@ app.post("/webhook", async (req, res) => {
     if (message.document) {
       registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-20);
+      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
       const resposta = await processarCurriculo(from, message.document);
@@ -931,7 +931,7 @@ app.post("/inbox/enviar", async (req, res) => {
     // Isso permite que o Inbox recarregue e já encontre a mensagem enviada.
     const eventoSalvo = registrarEntradaSessao(sessao, "assistant", mensagem);
     marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-60);
+    sessao.historico = sessao.historico.slice(-500);
 
     await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
@@ -1058,7 +1058,7 @@ app.post("/inbox/transicao", async (req, res) => {
     const sessao = garantirSessao(telefone);
     registrarEntradaSessao(sessao, "assistant", msg);
     marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-20);
+    sessao.historico = sessao.historico.slice(-500);
     await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
     res.json({ ok: true });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
@@ -1082,7 +1082,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
       const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
       registrarEntradaSessao(sessao, "assistant", resposta);
       marcarConversaRespondida(sessao);
-      sessao.historico = sessao.historico.slice(-20);
+      sessao.historico = sessao.historico.slice(-500);
       await salvarMensagemSheets(telefone, "assistant", resposta, nome);
       await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
       return resposta;
@@ -1095,7 +1095,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
     registrarEntradaSessao(sessao, "assistant", resposta);
       marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-20);
+    sessao.historico = sessao.historico.slice(-500);
     await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
     return resposta;
@@ -1119,7 +1119,7 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   if (respostaTravada) return null;
   registrarEntradaSessao(sessao, "assistant", resposta);
       marcarConversaRespondida(sessao);
-  sessao.historico = sessao.historico.slice(-20);
+  sessao.historico = sessao.historico.slice(-500);
   await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
   await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
   return resposta;
@@ -1191,7 +1191,7 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
     sessao.nome = analise.nome || sessao.nome;
     registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
     marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-20);
+    sessao.historico = sessao.historico.slice(-500);
     await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
     await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome);
