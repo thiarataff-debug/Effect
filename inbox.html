@@ -746,28 +746,31 @@ function tsParaMs(ts){
 }
 
 function ordenarHistorico(hist){
-  // WhatsApp: antigas em cima, recentes embaixo.
-  // Primeiro tenta ordenar por timestamp real.
-  // Se os timestamps vierem iguais/ausentes, preserva a ordem original recebida.
+  // Regra segura:
+  // - Se TODAS as mensagens têm timestamp válido, ordena por horário.
+  // - Se ALGUMA mensagem antiga veio sem timestamp ou com timestamp quebrado,
+  //   preserva a ordem original recebida do backend.
+  // Isso evita o bug de resposta nova aparecer acima de mensagem antiga.
   const arr=(hist||[]).map((msg,idx)=>({
     msg,
     idx,
     ms:tsParaMs(obterTimestampMsg(msg))
   }));
 
+  if(!arr.length)return [];
+
   const validos=arr.filter(x=>x.ms&&x.ms>0).length;
 
-  if(validos>=2){
-    arr.sort((a,b)=>{
-      if(a.ms&&b.ms){
-        if(a.ms!==b.ms)return a.ms-b.ms;
-        return a.idx-b.idx;
-      }
-      if(a.ms&&!b.ms)return -1;
-      if(!a.ms&&b.ms)return 1;
-      return a.idx-b.idx;
-    });
+  // Se houver mistura de mensagens válidas e inválidas, não reordena.
+  // O histórico antigo do Sheets já vem em ordem de conversa.
+  if(validos!==arr.length){
+    return arr.map(x=>x.msg);
   }
+
+  arr.sort((a,b)=>{
+    if(a.ms!==b.ms)return a.ms-b.ms;
+    return a.idx-b.idx;
+  });
 
   return arr.map(x=>x.msg);
 }
@@ -823,6 +826,9 @@ function formatarDataMensagem(ts){
 
 
 function horaFallbackMsg(msg){
+  const agora=new Date();
+  const horaAtual=agora.getHours()*60+agora.getMinutes();
+
   const candidatos=[
     msg?.horarioFormatado,
     msg?.horario,
@@ -836,7 +842,18 @@ function horaFallbackMsg(msg){
     if(ms)return extrairHora(ms);
 
     const m=c.match(/(\d{1,2}):(\d{2})/);
-    if(m)return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    if(m){
+      const h=Number(m[1]);
+      const min=Number(m[2]);
+      if(h>=0&&h<=23&&min>=0&&min<=59){
+        const total=h*60+min;
+        // Se for hora solta muito futura no dia, não confia.
+        // Mantém vazio para não mostrar horário louco.
+        if(total<=horaAtual+10){
+          return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+        }
+      }
+    }
   }
 
   return '';
