@@ -22,7 +22,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .lsub{font-size:12px;color:var(--muted);margin-bottom:28px}
 .lbox input{width:100%;padding:12px 16px;border:2px solid var(--bg);border-radius:10px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;margin-bottom:14px;display:block;transition:border .2s}
 .lbox input:focus{border-color:var(--blue)}
-.lbox button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s}
+.lbox button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointaer;transition:background .2s}
 .lbox button:hover{background:var(--blue)}
 .lerr{color:var(--pink);font-size:12px;margin-top:10px;display:none}
 
@@ -667,6 +667,12 @@ function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !==
 // Converte QUALQUER formato de timestamp em milissegundos
 function obterTimestampMsg(msg){
   if(!msg)return'';
+
+  // PRIORIDADE 1: timestampMs real vindo do backend/WhatsApp.
+  // Antes o inbox ignorava timestampMs e acabava usando ISO/UTC ou horárioFormatado,
+  // causando datas trocadas entre 10/06 e 11/06.
+  if(msg.timestampMs)return msg.timestampMs;
+
   return msg.timestampISO || msg.timestamp || msg.horario || msg.horarioFormatado || msg.dataHora || msg.createdAt || '';
 }
 
@@ -674,7 +680,10 @@ function tsParaMs(ts){
   if(!ts)return 0;
 
   try{
-    if(typeof ts === 'number')return ts;
+    if(typeof ts === 'number'){
+      // número de 10 dígitos = segundos; 13 dígitos = milissegundos
+      return ts < 1000000000000 ? ts * 1000 : ts;
+    }
 
     const s=String(ts).trim();
     if(!s)return 0;
@@ -710,6 +719,20 @@ function tsParaMs(ts){
   }catch(e){
     return 0;
   }
+}
+
+function ordenarHistorico(hist){
+  // Chat deve ficar igual WhatsApp: mensagens antigas em cima, atuais embaixo.
+  // Se uma mensagem não tiver timestamp válido, mantém a ordem original.
+  return (hist||[])
+    .map((msg,idx)=>({msg,idx,ms:tsParaMs(obterTimestampMsg(msg))}))
+    .sort((a,b)=>{
+      if(a.ms&&b.ms)return a.ms-b.ms;
+      if(a.ms&&!b.ms)return -1;
+      if(!a.ms&&b.ms)return 1;
+      return a.idx-b.idx;
+    })
+    .map(x=>x.msg);
 }
 
 function tsParaDate(ts){
@@ -860,7 +883,7 @@ function renderLista(){
   if(!entries.length){lista.innerHTML='<div class="empty">Nenhuma conversa</div>';return;}
 
   lista.innerHTML=entries.map(([tel,s])=>{
-    const hist=s.historico||[];
+    const hist=ordenarHistorico(s.historico||[]);
     const ultima=hist[hist.length-1];
     const nome=s.nome||telDisplay(tel);
     const isManual=s.modo==='manual'||s.pausado===true;
@@ -941,7 +964,7 @@ function abrirConversa(tel){
 // ─── RENDER MENSAGENS ───
 function renderMsgs(s){
   const div=document.getElementById('messages');div.innerHTML='';
-  const hist=s?.historico||[];
+  const hist=ordenarHistorico(s?.historico||[]);
   if(!hist.length){div.innerHTML='<div class="empty">Nenhuma mensagem ainda</div>';return;}
   const meta=getMeta(sessaoAtual);
   const totalAntes=meta._snapshotAntes!==undefined?meta._snapshotAntes:meta.ultimaMsgVista;
