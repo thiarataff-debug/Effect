@@ -135,9 +135,6 @@ function prepararEventoHistorico(role, content, timestampMs = null) {
 }
 
 function normalizarEventoHistorico(evento) {
-  const agora = Date.now();
-  const limiteFuturo = agora + (24 * 60 * 60 * 1000);
-
   function paraMs(valor) {
     if (!valor) return 0;
 
@@ -151,56 +148,62 @@ function normalizarEventoHistorico(evento) {
     if (/^\d{13,}$/.test(s)) return Number(s);
     if (/^\d{10}$/.test(s)) return Number(s) * 1000;
 
-    const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-    if (br) {
-      const d = new Date(
-        Number(br[3]),
-        Number(br[2]) - 1,
-        Number(br[1]),
-        Number(br[4] || 0),
-        Number(br[5] || 0),
-        Number(br[6] || 0)
-      );
+    // ISO: 2026-06-11T12:02:00.000Z
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+      const d = new Date(s);
       return isNaN(d.getTime()) ? 0 : d.getTime();
     }
 
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+    // Formato BR: 11/06/2026, 09:02:33
+    const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (br) {
+      const dia = Number(br[1]);
+      const mes = Number(br[2]);
+      const ano = Number(br[3]);
+      const hora = Number(br[4] || 0);
+      const minuto = Number(br[5] || 0);
+      const segundo = Number(br[6] || 0);
+
+      // Se vier em formato americano por algum motivo (MM/DD/YYYY), tenta corrigir.
+      const diaFinal = dia > 12 ? dia : dia;
+      const mesFinal = mes > 12 ? 1 : mes;
+      const d = new Date(ano, mesFinal - 1, diaFinal, hora, minuto, segundo);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+
+    // Não usar new Date() livre para texto curto tipo "09:02".
+    // Isso foi uma das causas de o Inbox assumir o horário atual.
+    return 0;
   }
 
   const candidatos = [
     evento?.timestampMs,
-    evento?.timestamp,
     evento?.timestampISO,
+    evento?.timestamp,
     evento?.createdAt,
     evento?.dataHora,
-    evento?.horario,
-    evento?.horarioFormatado
+    evento?.horario
   ];
 
   let ms = 0;
 
   for (const c of candidatos) {
     const tentativa = paraMs(c);
-    if (tentativa && tentativa > 0 && tentativa < limiteFuturo) {
+    if (tentativa && tentativa > 0) {
       ms = tentativa;
       break;
     }
   }
 
-  if (!ms) ms = Date.now();
-
-  const iso = new Date(ms).toISOString();
+  const iso = ms ? new Date(ms).toISOString() : "";
 
   return {
     ...(evento || {}),
-    timestamp: iso,
-    timestampISO: iso,
+    timestamp: iso || (evento?.timestamp || ""),
+    timestampISO: iso || (evento?.timestampISO || ""),
     timestampMs: ms,
-    horario: new Date(ms).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo"
-    }),
-    horarioFormatado: formatarDataWhatsApp(ms)
+    horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : (evento?.horario || ""),
+    horarioFormatado: ms ? formatarDataWhatsApp(ms) : (evento?.horarioFormatado || "")
   };
 }
 
@@ -255,9 +258,9 @@ function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
   return evento;
 }
 
-function marcarMensagemRecebida(sessao) {
+function marcarMensagemRecebida(sessao, timestampMs = null) {
   sessao.unreadCount = Number(sessao.unreadCount || 0) + 1;
-  sessao.lastMessageAtMs = Date.now();
+  sessao.lastMessageAtMs = timestampMs || Date.now();
 }
 
 function marcarConversaRespondida(sessao) {
@@ -578,21 +581,24 @@ async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOrigina
 // SHEETS
 // ============================================================
 
-async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome) {
+async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome, timestampMs = null) {
   const telefone = limparTelefone(telefoneOriginal);
   const MAX_TENTATIVAS = 3;
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
     try {
       if (!CONFIG.VAGAS_URL) return;
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const payload = JSON.stringify({ 
-  acao: "salvarMensagem", 
-  telefone, 
-  role, 
-  mensagem, 
-  nome: nome || "", 
-  timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
-});
+      const ms = timestampMs || Date.now();
+      const payload = JSON.stringify({
+        acao: "salvarMensagem",
+        telefone,
+        role,
+        mensagem,
+        nome: nome || "",
+        timestamp: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+        timestampISO: new Date(ms).toISOString(),
+        timestampMs: ms
+      });
       await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
       return;
     } catch (e) {
@@ -644,15 +650,7 @@ async function carregarSessoesDoSheets() {
 
       sessoes[tel] = {
         historico: Array.isArray(sessao.historico)
-          ? sessao.historico.map(h => ({
-              role: h.role,
-              content: h.content,
-              timestamp: h.timestamp || h.horario || '',
-              timestampISO: h.timestampISO || '',
-              timestampMs: h.timestampMs || 0,
-              horario: h.horario || h.timestamp || '',
-              horarioFormatado: h.horarioFormatado || formatarDataWhatsApp(h.timestampISO || h.timestampMs || h.timestamp || h.horario)
-            }))
+          ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
           : [],
         nome: sessao.nome || null,
         modo,
@@ -730,9 +728,9 @@ app.post("/webhook", async (req, res) => {
     if (message.text?.body) {
       const texto = message.text.body;
       registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual);
+      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
-      await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "");
+      await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "", messageTimestampMs);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       const travou = await aplicarTravasEntrada(from, texto);
       if (travou) return;
@@ -742,9 +740,9 @@ app.post("/webhook", async (req, res) => {
     }
     if (message.audio) {
       registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]", messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual);
+      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
-      await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "");
+      await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "", messageTimestampMs);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
       registrarEntradaSessao(sessaoAtual, "assistant", respostaAudio);
@@ -757,7 +755,7 @@ app.post("/webhook", async (req, res) => {
     }
     if (message.document) {
       registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual);
+      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
       await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
