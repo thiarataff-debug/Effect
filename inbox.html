@@ -609,56 +609,116 @@ const STATUS_LIST = [
 ];
 
 const STATUS_ATALHOS = [
-  {id:'curriculo', label:'📄 Currículo Recebido', status:'Currículo recebido', msg:'Recebemos seu currículo com sucesso e ele já foi encaminhado para análise.
+  {
+    id: 'curriculo',
+    label: '📄 Currículo Recebido',
+    status: 'Currículo recebido',
+    msg: `Recebemos seu currículo com sucesso e ele já foi encaminhado para análise.
 
 Caso seu perfil seja compatível com alguma oportunidade, entraremos em contato pelos próximos dias.
 
-Agradecemos seu interesse!'},
-  {id:'contato', label:'📞 Tentativa de Contato', status:'Tentativa de contato', msg:'Olá!
+Agradecemos seu interesse!`
+  },
+  {
+    id: 'contato',
+    label: '📞 Tentativa de Contato',
+    status: 'Tentativa de contato',
+    msg: `Olá!
 
 Tentamos contato referente ao seu processo seletivo.
 
-Quando possível, por favor, nos retorne para darmos continuidade.'},
-  {id:'aguardando', label:'⏳ Aguardando Retorno', status:'Aguardando candidato', msg:'Perfeito!
+Quando possível, por favor, nos retorne para darmos continuidade.`
+  },
+  {
+    id: 'aguardando',
+    label: '⏳ Aguardando Retorno',
+    status: 'Aguardando candidato',
+    msg: `Perfeito!
 
-Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.'},
-  {id:'aprovado_ent', label:'🟢 Aprovado para Entrevista', status:'Aprovado para entrevista', msg:'Seu perfil foi aprovado para a próxima etapa do processo seletivo.
+Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.`
+  },
+  {
+    id: 'aprovado_ent',
+    label: '🟢 Aprovado para Entrevista',
+    status: 'Aprovado para entrevista',
+    msg: `Seu perfil foi aprovado para a próxima etapa do processo seletivo.
 
-Gostaria de confirmar sua disponibilidade para participação na entrevista?'},
-  {id:'cliente', label:'📤 Encaminhado ao Cliente', status:'Encaminhado ao cliente', msg:'Seu perfil foi encaminhado para avaliação do gestor responsável pela vaga.
+Gostaria de confirmar sua disponibilidade para participação na entrevista?`
+  },
+  {
+    id: 'cliente',
+    label: '📤 Encaminhado ao Cliente',
+    status: 'Encaminhado ao cliente',
+    msg: `Seu perfil foi encaminhado para avaliação do gestor responsável pela vaga.
 
-Assim que tivermos um retorno, entraremos em contato.'},
-  {id:'gestor', label:'🏢 Entrevista com Gestor', status:'Entrevista com gestor', msg:'Parabéns!
+Assim que tivermos um retorno, entraremos em contato.`
+  },
+  {
+    id: 'gestor',
+    label: '🏢 Entrevista com Gestor',
+    status: 'Entrevista com gestor',
+    msg: `Parabéns!
 
 Você foi selecionado(a) para participar da entrevista com o gestor responsável pela vaga.
 
-Em breve enviaremos os detalhes da entrevista.'},
-  {id:'video', label:'📹 Solicitar Vídeo', status:'Solicitar vídeo', msg:'Para seguirmos com sua candidatura, pedimos que grave um vídeo curto, de 1 a 2 minutos, se apresentando e contando brevemente sobre sua experiência profissional.
+Em breve enviaremos os detalhes da entrevista.`
+  },
+  {
+    id: 'video',
+    label: '📹 Solicitar Vídeo',
+    status: 'Solicitar vídeo',
+    msg: `Para seguirmos com sua candidatura, pedimos que grave um vídeo curto, de 1 a 2 minutos, se apresentando e contando brevemente sobre sua experiência profissional.
 
-Pode enviar por aqui mesmo.'},
-  {id:'docs', label:'📄 Solicitar Documentos', status:'Solicitar documentos', msg:'Para continuidade do processo, por favor envie os documentos solicitados para conferência cadastral.
+Pode enviar por aqui mesmo.`
+  },
+  {
+    id: 'docs',
+    label: '📄 Solicitar Documentos',
+    status: 'Solicitar documentos',
+    msg: `Para continuidade do processo, por favor envie os documentos solicitados para conferência cadastral.
 
-Assim que recebermos a documentação, seguiremos com as próximas etapas.'},
-  {id:'admitido', label:'🎉 Admitido', status:'Admitido', msg:'Parabéns!
+Assim que recebermos a documentação, seguiremos com as próximas etapas.`
+  },
+  {
+    id: 'admitido',
+    label: '🎉 Admitido',
+    status: 'Admitido',
+    msg: `Parabéns!
 
 Temos a satisfação de informar que você foi aprovado(a) no processo seletivo.
 
 Em breve você receberá as orientações referentes à sua admissão.
 
-Desejamos muito sucesso nessa nova etapa!'},
-  {id:'reprovado', label:'❌ Reprovado', status:'Reprovado', msg:'Agradecemos sua participação no processo seletivo.
+Desejamos muito sucesso nessa nova etapa!`
+  },
+  {
+    id: 'reprovado',
+    label: '❌ Reprovado',
+    status: 'Reprovado',
+    msg: `Agradecemos sua participação no processo seletivo.
 
 Neste momento seguiremos com outros perfis mais aderentes à vaga em questão.
 
 Manteremos seu currículo em nosso banco de talentos para futuras oportunidades compatíveis.
 
-Desejamos muito sucesso em sua trajetória profissional!'},
-  {id:'faltou', label:'🚫 Não Compareceu', status:'Não compareceu', msg:'Identificamos sua ausência na entrevista agendada.
+Desejamos muito sucesso em sua trajetória profissional!`
+  },
+  {
+    id: 'faltou',
+    label: '🚫 Não Compareceu',
+    status: 'Não compareceu',
+    msg: `Identificamos sua ausência na entrevista agendada.
 
-Caso ainda tenha interesse na oportunidade, responda esta mensagem para verificarmos a possibilidade de reagendamento.'},
-  {id:'reagendar', label:'🔄 Reagendar Entrevista', status:'Reagendar entrevista', msg:'Recebemos sua solicitação de reagendamento.
+Caso ainda tenha interesse na oportunidade, responda esta mensagem para verificarmos a possibilidade de reagendamento.`
+  },
+  {
+    id: 'reagendar',
+    label: '🔄 Reagendar Entrevista',
+    status: 'Reagendar entrevista',
+    msg: `Recebemos sua solicitação de reagendamento.
 
-Em breve retornaremos com uma nova data e horário para a entrevista.'}
+Em breve retornaremos com uma nova data e horário para a entrevista.`
+  }
 ];
 
 let sessaoAtual = null;
