@@ -36,6 +36,7 @@ const CONFIG = {
 
 const sessoes = {};
 const mensagensProcessadas = new Set();
+const curriculosProcessados = new Set();
 const atendimentosManuais = new Set();
 
 function sleep(ms) {
@@ -754,10 +755,27 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.document) {
-      registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
+      const mediaKey = message.document.id || message.id || `${from}_${messageTimestampMs}`;
+      if (curriculosProcessados.has(mediaKey)) {
+        console.log("CURRÍCULO DUPLICADO IGNORADO:", mediaKey, from);
+        return;
+      }
+      curriculosProcessados.add(mediaKey);
+      if (curriculosProcessados.size > 1000) curriculosProcessados.clear();
+
+      const jaRegistrouCurriculoRecente = (sessaoAtual.historico || []).some(h => {
+        const ms = normalizarEventoHistorico(h).timestampMs || 0;
+        return h.role === "user" && String(h.content || "").includes("Currículo recebido") && Math.abs(messageTimestampMs - ms) < 2 * 60 * 1000;
+      });
+
+      if (!jaRegistrouCurriculoRecente) {
+        registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
+        await salvarMensagemSheets(from, "user", "[Documento/Currículo recebido]", sessaoAtual.nome || "", messageTimestampMs);
+      }
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "user", "[Documento/Currículo recebido]", sessaoAtual.nome || "", messageTimestampMs);
+      sessaoAtual.curriculoPendente = true;
+      sessaoAtual.curriculoPendenteEm = new Date(messageTimestampMs).toISOString();
 
       const emManual = estaEmManual(from);
 
@@ -966,7 +984,11 @@ app.get("/inbox/curriculo/:telefone", (req, res) => {
   try {
     const telefone = limparTelefone(req.params.telefone);
     const sessao = sessoes[telefone];
-    if (!sessao || !sessao.curriculo) return res.status(404).send("Currículo não encontrado");
+    if (!sessao || !sessao.curriculo) return res.status(404).send("Currículo não encontrado ou ainda em processamento");
+    if ((!sessao.curriculo.base64 || sessao.curriculo.base64.length < 50) && sessao.curriculo.driveLink) {
+      return res.redirect(sessao.curriculo.driveLink);
+    }
+    if (!sessao.curriculo.base64) return res.status(404).send("Currículo indisponível em memória. Abra pelo Google Drive ou peça reenvio.");
     const buffer = Buffer.from(sessao.curriculo.base64, "base64");
     const inline = req.query.inline === "1";
     res.set("Content-Type", "application/pdf");
@@ -987,6 +1009,101 @@ app.post("/inbox/observacao", async (req, res) => {
   } catch (e) { console.error("Erro salvar obs:", e.message); }
   res.json({ ok: true });
 });
+
+
+app.post("/inbox/status", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
+    const status = String(req.body.status || "").trim();
+    const prioritario = req.body.prioritario === true;
+    const enviar = req.body.enviarMensagem === true;
+    const mensagem = String(req.body.mensagem || "").trim();
+    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+
+    const sessao = garantirSessao(telefone);
+    sessao.statusProcesso = status || sessao.statusProcesso || "Novo contato";
+    if (prioritario) sessao.motivoPausa = "Prioritário";
+
+    if (CONFIG.VAGAS_URL && status) {
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      await axios.post(urlBase, {
+        acao: "salvarAnalise",
+        telefone,
+        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
+        status,
+        observacoes: `${status}${prioritario ? " | Prioritário" : ""}`,
+        vagaInteresse: sessao.ultimaAnalise?.vagaInteresse || "",
+        idVaga: sessao.ultimaAnalise?.idVaga || "",
+        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
+        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || ""
+      }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+    }
+
+    if (enviar && mensagem) {
+      await enviarMensagem(telefone, mensagem);
+      registrarEntradaSessao(sessao, "assistant", mensagem);
+      marcarConversaRespondida(sessao);
+      await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || sessao.ultimaAnalise?.nome || "");
+    }
+
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
+    return res.json({ ok: true, telefone, status: sessao.statusProcesso, prioritario });
+  } catch (erro) {
+    console.error("Erro /inbox/status:", erro.message);
+    return res.json({ ok: false, erro: erro.message });
+  }
+});
+
+app.post("/inbox/encaminhar", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
+    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+
+    const sessao = garantirSessao(telefone);
+    const idVaga = String(req.body.idVaga || req.body.id || "").trim();
+    const vagaInteresse = String(req.body.vagaInteresse || req.body.cargo || "").trim();
+    const vaga = req.body.vaga || {};
+    const agoraLocal = agora();
+
+    sessao.statusProcesso = "Interessado";
+    sessao.aguardandoConfirmacaoInteresse = false;
+    sessao.ultimaAnalise = {
+      ...(sessao.ultimaAnalise || {}),
+      idVaga,
+      vagaInteresse,
+      status: "Interessado",
+      curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || ""
+    };
+
+    if (CONFIG.VAGAS_URL) {
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      const basePayload = {
+        telefone,
+        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
+        status: "Interessado",
+        vagaInteresse,
+        idVaga,
+        proximaAcao: "Encaminhado manualmente pelo Inbox",
+        observacoes: `Encaminhado manualmente pelo Inbox em ${agoraLocal}.`,
+        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
+        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || sessao.ultimaAnalise?.pontosFortes || ""
+      };
+      await axios.post(urlBase, { acao: "salvarAnalise", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+      try {
+        await axios.post(urlBase, { acao: "confirmarInteresse", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+      } catch (e) {
+        console.error("confirmarInteresse manual falhou, mas salvarAnalise rodou:", e.message);
+      }
+    }
+
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
+    return res.json({ ok: true, telefone, idVaga, vagaInteresse, status: "Interessado" });
+  } catch (erro) {
+    console.error("Erro /inbox/encaminhar:", erro.message);
+    return res.json({ ok: false, erro: erro.message });
+  }
+});
+
 
 // ============================================================
 // ROTA — PORTAL DO CLIENTE
@@ -1149,6 +1266,7 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
     // Guarda o PDF em memória para download pelo Inbox
     if (pdfBuffer) {
       sessao.curriculo = { base64: pdfBuffer.toString("base64"), filename: pdfFilename || `curriculo_${telefone}.pdf`, recebidoEm: agora() };
+      sessao.curriculoPendente = false;
     }
     let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
     const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
