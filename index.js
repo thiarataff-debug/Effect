@@ -585,7 +585,14 @@ async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome) {
     try {
       if (!CONFIG.VAGAS_URL) return;
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const payload = JSON.stringify({ acao: "salvarMensagem", telefone, role, mensagem, nome: nome || "", timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
+      const payload = JSON.stringify({ 
+  acao: "salvarMensagem", 
+  telefone, 
+  role, 
+  mensagem, 
+  nome: nome || "", 
+  timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
+});
       await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
       return;
     } catch (e) {
