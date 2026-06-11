@@ -70,34 +70,96 @@ function agoraISO() {
   return new Date().toISOString();
 }
 
+function timestampSeguro(timestampMs = null) {
+  const agoraMs = Date.now();
+  const LIMITE_FUTURO_MS = 10 * 60 * 1000; // 10 minutos
+  const MINIMO_VALIDO_MS = new Date("2020-01-01T00:00:00.000Z").getTime();
+
+  let ms = Number(timestampMs || 0);
+
+  if (!ms || !Number.isFinite(ms)) return agoraMs;
+
+  // WhatsApp às vezes vem em segundos.
+  if (ms > 0 && ms < 10000000000) ms = ms * 1000;
+
+  if (ms < MINIMO_VALIDO_MS) return agoraMs;
+  if (ms > agoraMs + LIMITE_FUTURO_MS) return agoraMs;
+
+  return ms;
+}
+
+function timestampValidoOuZero(timestampMs = null) {
+  const agoraMs = Date.now();
+  const LIMITE_FUTURO_MS = 10 * 60 * 1000;
+  const MINIMO_VALIDO_MS = new Date("2020-01-01T00:00:00.000Z").getTime();
+
+  let ms = Number(timestampMs || 0);
+
+  if (!ms || !Number.isFinite(ms)) return 0;
+  if (ms > 0 && ms < 10000000000) ms = ms * 1000;
+  if (ms < MINIMO_VALIDO_MS) return 0;
+  if (ms > agoraMs + LIMITE_FUTURO_MS) return 0;
+
+  return ms;
+}
+
 function parseDataFlexivel(valor) {
   if (!valor) return null;
-  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    const msOk = timestampValidoOuZero(valor.getTime());
+    return msOk ? new Date(msOk) : null;
+  }
+
   if (typeof valor === "number") {
-    const d = new Date(valor);
-    return isNaN(d.getTime()) ? null : d;
+    const msOk = timestampValidoOuZero(valor);
+    return msOk ? new Date(msOk) : null;
   }
 
   const texto = String(valor).trim();
   if (!texto) return null;
 
-  const direto = new Date(texto);
-  if (!isNaN(direto.getTime())) return direto;
+  // ISO seguro: 2026-06-11T12:02:00.000Z
+  if (/^\d{4}-\d{2}-\d{2}T/.test(texto)) {
+    const d = new Date(texto);
+    const msOk = isNaN(d.getTime()) ? 0 : timestampValidoOuZero(d.getTime());
+    return msOk ? new Date(msOk) : null;
+  }
 
-  // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
+  // Timestamp numérico em texto.
+  if (/^\d{13,}$/.test(texto)) {
+    const msOk = timestampValidoOuZero(Number(texto));
+    return msOk ? new Date(msOk) : null;
+  }
+
+  if (/^\d{10}$/.test(texto)) {
+    const msOk = timestampValidoOuZero(Number(texto) * 1000);
+    return msOk ? new Date(msOk) : null;
+  }
+
+  // Aceita apenas formato BR completo: 10/06/2026, 14:27:05
   const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (m) {
     const dia = Number(m[1]);
-    const mes = Number(m[2]) - 1;
+    const mes = Number(m[2]);
     let ano = Number(m[3]);
     if (ano < 100) ano += 2000;
+
     const hora = Number(m[4] || 0);
     const minuto = Number(m[5] || 0);
     const segundo = Number(m[6] || 0);
-    const d = new Date(ano, mes, dia, hora, minuto, segundo);
-    return isNaN(d.getTime()) ? null : d;
+
+    if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2020 || ano > 2035) {
+      return null;
+    }
+
+    const d = new Date(ano, mes - 1, dia, hora, minuto, segundo);
+    const msOk = isNaN(d.getTime()) ? 0 : timestampValidoOuZero(d.getTime());
+    return msOk ? new Date(msOk) : null;
   }
 
+  // Nunca usar new Date(texto) genérico.
+  // Isso evita transformar "14:23" ou textos soltos em datas falsas.
   return null;
 }
 
@@ -121,8 +183,9 @@ function formatarDataWhatsApp(valor) {
 }
 
 function prepararEventoHistorico(role, content, timestampMs = null) {
-  const ms = timestampMs || Date.now();
+  const ms = timestampSeguro(timestampMs);
   const iso = new Date(ms).toISOString();
+
   return {
     role,
     content,
@@ -139,19 +202,19 @@ function normalizarEventoHistorico(evento) {
     if (!valor) return 0;
 
     if (typeof valor === "number") {
-      return valor < 10000000000 ? valor * 1000 : valor;
+      return timestampValidoOuZero(valor);
     }
 
     const s = String(valor).trim();
     if (!s) return 0;
 
-    if (/^\d{13,}$/.test(s)) return Number(s);
-    if (/^\d{10}$/.test(s)) return Number(s) * 1000;
+    if (/^\d{13,}$/.test(s)) return timestampValidoOuZero(Number(s));
+    if (/^\d{10}$/.test(s)) return timestampValidoOuZero(Number(s) * 1000);
 
     // ISO: 2026-06-11T12:02:00.000Z
     if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
       const d = new Date(s);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
+      return isNaN(d.getTime()) ? 0 : timestampValidoOuZero(d.getTime());
     }
 
     // Formato BR: 11/06/2026, 09:02:33
@@ -164,15 +227,15 @@ function normalizarEventoHistorico(evento) {
       const minuto = Number(br[5] || 0);
       const segundo = Number(br[6] || 0);
 
-      // Se vier em formato americano por algum motivo (MM/DD/YYYY), tenta corrigir.
-      const diaFinal = dia > 12 ? dia : dia;
-      const mesFinal = mes > 12 ? 1 : mes;
-      const d = new Date(ano, mesFinal - 1, diaFinal, hora, minuto, segundo);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
+      if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2020 || ano > 2035) {
+        return 0;
+      }
+
+      const d = new Date(ano, mes - 1, dia, hora, minuto, segundo);
+      return isNaN(d.getTime()) ? 0 : timestampValidoOuZero(d.getTime());
     }
 
     // Não usar new Date() livre para texto curto tipo "09:02".
-    // Isso foi uma das causas de o Inbox assumir o horário atual.
     return 0;
   }
 
@@ -259,13 +322,14 @@ function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
 }
 
 function marcarMensagemRecebida(sessao, timestampMs = null) {
+  const ms = timestampSeguro(timestampMs);
   sessao.unreadCount = Number(sessao.unreadCount || 0) + 1;
-  sessao.lastMessageAtMs = timestampMs || Date.now();
+  sessao.lastMessageAtMs = ms;
 }
 
-function marcarConversaRespondida(sessao) {
+function marcarConversaRespondida(sessao, timestampMs = null) {
   sessao.unreadCount = 0;
-  sessao.lastMessageAtMs = Date.now();
+  sessao.lastMessageAtMs = timestampSeguro(timestampMs);
 }
 
 const AREA_SYNONYMS = {
@@ -588,7 +652,7 @@ async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome, time
     try {
       if (!CONFIG.VAGAS_URL) return;
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const ms = timestampMs || Date.now();
+      const ms = timestampSeguro(timestampMs);
       const payload = JSON.stringify({
         acao: "salvarMensagem",
         telefone,
@@ -613,11 +677,32 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", unreadCount: Number(sessoes[telefone]?.unreadCount || 0), timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", unreadCount: Number(sessoes[telefone]?.unreadCount || 0), timestamp: agora(), timestampISO: agoraISO(), timestampMs: timestampSeguro() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
   }
+}
+
+function mesclarHistoricosSemDuplicar(h1 = [], h2 = []) {
+  const mapa = new Map();
+
+  [...(Array.isArray(h1) ? h1 : []), ...(Array.isArray(h2) ? h2 : [])]
+    .map(normalizarEventoHistorico)
+    .filter(h => h && h.content !== undefined)
+    .forEach((h, idx) => {
+      const chave = [
+        h.role || "",
+        String(h.content || "").slice(0, 300),
+        h.timestampMs || h.timestampISO || h.timestamp || idx
+      ].join("|");
+
+      if (!mapa.has(chave)) mapa.set(chave, h);
+    });
+
+  return Array.from(mapa.values())
+    .sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0))
+    .slice(-500);
 }
 
 async function carregarSessoesDoSheets() {
@@ -628,8 +713,21 @@ async function carregarSessoesDoSheets() {
     const data = r.data;
     if (!data.sucesso || !data.sessoes) return;
 
-    Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
+    const bruto = Object.entries(data.sessoes);
+    const duplicados = {};
+    let invalidos = 0;
+
+    bruto.forEach(([telOriginal, sessao]) => {
       const tel = limparTelefone(telOriginal);
+
+      if (!tel || tel === "undefined" || tel === "null" || tel.length < 10) {
+        invalidos++;
+        return;
+      }
+
+      if (!duplicados[tel]) duplicados[tel] = 0;
+      duplicados[tel]++;
+
       const motivoOriginal = sessao.motivoPausa || "";
       const motivoNormalizado = normalizarTexto(motivoOriginal);
 
@@ -648,22 +746,31 @@ async function carregarSessoesDoSheets() {
       const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
       const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
 
+      const existente = sessoes[tel] || {};
+
       sessoes[tel] = {
-        historico: Array.isArray(sessao.historico)
-          ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
-          : [],
-        nome: sessao.nome || null,
-        modo,
+        historico: mesclarHistoricosSemDuplicar(existente.historico || [], sessao.historico || []),
+        nome: sessao.nome || existente.nome || null,
+        modo: pausado ? "manual" : (modo || existente.modo || "automatico"),
         pausado,
         motivoPausa,
-        unreadCount: Number(sessao.unreadCount || 0)
+        unreadCount: Math.max(Number(existente.unreadCount || 0), Number(sessao.unreadCount || 0)),
+        aguardandoConfirmacaoInteresse: sessao.aguardandoConfirmacaoInteresse || existente.aguardandoConfirmacaoInteresse || false,
+        ultimaAnalise: sessao.ultimaAnalise || existente.ultimaAnalise || null,
+        curriculo: sessao.curriculo || existente.curriculo || null
       };
 
       if (pausado) atendimentosManuais.add(tel);
       else atendimentosManuais.delete(tel);
     });
 
-    console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
+    const telsDuplicados = Object.entries(duplicados).filter(([, qtd]) => qtd > 1);
+
+    console.log(`Sessões carregadas do Sheets: bruto=${bruto.length}, unicas=${Object.keys(sessoes).length}, invalidas=${invalidos}, duplicadas=${telsDuplicados.length}`);
+
+    if (telsDuplicados.length) {
+      console.log("Telefones duplicados consolidados:", telsDuplicados.slice(0, 20));
+    }
   } catch (e) {
     console.error("Erro carregarSessoesDoSheets:", e.message);
   }
@@ -724,7 +831,7 @@ app.post("/webhook", async (req, res) => {
     if (!message.text?.body && !message.document && !message.audio) return;
     const from = limparTelefone(message.from);
     const sessaoAtual = garantirSessao(from);
-    const messageTimestampMs = message.timestamp ? Number(message.timestamp) * 1000 : Date.now();
+    const messageTimestampMs = timestampSeguro(message.timestamp ? Number(message.timestamp) * 1000 : null);
     if (message.text?.body) {
       const texto = message.text.body;
       registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
@@ -821,40 +928,57 @@ app.post("/inbox/config-novas-conversas", (req, res) => {
 
 app.get("/inbox/sessoes", (req, res) => {
   try {
-    const lista = Object.entries(sessoes).map(([tel, sessao]) => {
-      const telefone = limparTelefone(tel);
-      garantirSessao(telefone);
+    const brutas = Object.entries(sessoes);
 
-      // Segurança extra: se restou motivo antigo agressivo em memória, não mostrar como manual.
-      const motivoNormalizado = normalizarTexto(sessao.motivoPausa || "");
-      const manualAntigoIndevido =
-        motivoNormalizado.includes("conversa longa sem avanco") ||
-        motivoNormalizado.includes("conversa longa sem avanço") ||
-        motivoNormalizado.includes("baixa confianca") ||
-        motivoNormalizado.includes("baixa confiança") ||
-        motivoNormalizado.includes("solicitacao de retorno") ||
-        motivoNormalizado.includes("solicitação de retorno") ||
-        motivoNormalizado.includes("assunto relacionado a entrevista") ||
-        motivoNormalizado.includes("assunto relacionado à entrevista") ||
-        motivoNormalizado.includes("possivel repeticao") ||
-        motivoNormalizado.includes("possível repetição");
+    const lista = brutas
+      .map(([tel, sessao]) => {
+        const telefone = limparTelefone(tel);
+        if (!telefone || telefone === "undefined" || telefone === "null" || telefone.length < 10) return null;
 
-      if (manualAntigoIndevido) {
-        atendimentosManuais.delete(telefone);
-        sessao.modo = "automatico";
-        sessao.pausado = false;
-        sessao.motivoPausa = "";
-      }
+        garantirSessao(telefone);
 
-      return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
-    }).sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
+        // Segurança extra: se restou motivo antigo agressivo em memória, não mostrar como manual.
+        const motivoNormalizado = normalizarTexto(sessao.motivoPausa || "");
+        const manualAntigoIndevido =
+          motivoNormalizado.includes("conversa longa sem avanco") ||
+          motivoNormalizado.includes("conversa longa sem avanço") ||
+          motivoNormalizado.includes("baixa confianca") ||
+          motivoNormalizado.includes("baixa confiança") ||
+          motivoNormalizado.includes("solicitacao de retorno") ||
+          motivoNormalizado.includes("solicitação de retorno") ||
+          motivoNormalizado.includes("assunto relacionado a entrevista") ||
+          motivoNormalizado.includes("assunto relacionado à entrevista") ||
+          motivoNormalizado.includes("possivel repeticao") ||
+          motivoNormalizado.includes("possível repetição");
+
+        if (manualAntigoIndevido) {
+          atendimentosManuais.delete(telefone);
+          sessao.modo = "automatico";
+          sessao.pausado = false;
+          sessao.motivoPausa = "";
+        }
+
+        return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
 
     const dados = {};
-    lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
+    lista.forEach(([telefone, sessao]) => {
+      if (!dados[telefone]) dados[telefone] = sessao;
+      else {
+        dados[telefone].historico = mesclarHistoricosSemDuplicar(dados[telefone].historico || [], sessao.historico || []);
+        dados[telefone] = normalizarSessaoParaInbox(telefone, {
+          ...dados[telefone],
+          historico: dados[telefone].historico
+        });
+      }
+    });
 
-    const totalConversas = lista.length;
-    const totalNaoLidasConversas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
-    const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
+    const sessoesUnicas = Object.entries(dados);
+    const totalConversas = sessoesUnicas.length;
+    const totalNaoLidasConversas = sessoesUnicas.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
+    const totalMensagensNaoLidas = sessoesUnicas.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
 
     res.json({
       sessoes: dados,
@@ -863,8 +987,13 @@ app.get("/inbox/sessoes", (req, res) => {
       totalNaoLidasConversas,
       totalMensagensNaoLidas,
       novaConversaIniciaManual,
-      atualizadoEm: new Date().toISOString(),
-      atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
+      atualizadoEm: new Date(timestampSeguro()).toISOString(),
+      atualizadoEmFormatado: formatarDataWhatsApp(timestampSeguro()),
+      diagnostico: {
+        brutas: brutas.length,
+        validasDepoisLimpeza: lista.length,
+        unicasEnviadas: totalConversas
+      }
     });
   } catch (erro) {
     res.json({ sessoes: {}, total: 0, totalConversas: 0, totalNaoLidasConversas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
