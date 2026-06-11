@@ -757,10 +757,23 @@ app.post("/webhook", async (req, res) => {
       registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
-      await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
-      const resposta = await processarCurriculo(from, message.document);
-      if (resposta) await enviarMensagem(from, resposta);
+      await salvarMensagemSheets(from, "user", "[Documento/Currículo recebido]", sessaoAtual.nome || "", messageTimestampMs);
+
+      const emManual = estaEmManual(from);
+
+      // IMPORTANTE:
+      // Antes, quando a conversa estava em atendimento manual/Laura, a Lia parava aqui e NÃO processava o PDF.
+      // Resultado: aparecia "Documento/Currículo recebido" no Inbox, mas o currículo não era salvo/analisado.
+      // Agora o currículo é baixado, salvo em memória/Drive e gravado na planilha mesmo em modo manual.
+      // Se estiver em manual, o processamento é silencioso: não envia mensagem automática ao candidato.
+      if (!emManual) {
+        await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
+      } else {
+        console.log("CURRÍCULO RECEBIDO EM MANUAL — processando/salvando silenciosamente:", from);
+      }
+
+      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual });
+      if (!emManual && resposta) await enviarMensagem(from, resposta);
       return;
     }
   } catch (erro) {
@@ -1125,10 +1138,10 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   return resposta;
 }
 
-async function processarCurriculo(telefoneOriginal, documento) {
+async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
   const telefone = limparTelefone(telefoneOriginal);
+  const silencioso = opcoes.silencioso === true;
   try {
-    if (estaEmManual(telefone)) { console.log("CURRÍCULO BLOQUEADO — ATENDIMENTO MANUAL:", telefone); return null; }
     const { texto: textoCurriculo, buffer: pdfBuffer, filename: pdfFilename } = await baixarELerPdf(documento.id, documento.filename);
     if (!textoCurriculo || textoCurriculo.length < 50) return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar um PDF mais legível ou me contar sua experiência por aqui?";
     const vagas = await buscarVagas();
@@ -1189,13 +1202,20 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
     sessao.aguardandoConfirmacaoInteresse = true;
     sessao.ultimaAnalise = analise;
     sessao.nome = analise.nome || sessao.nome;
-    registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
+
+    if (!silencioso) {
+      registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
+    } else {
+      // Mantém não-lida e sem resposta automática quando Laura/manual está atendendo.
+      console.log(`CURRÍCULO DE ${telefone} SALVO/ANALISADO EM MODO MANUAL — sem resposta automática ao candidato.`);
+    }
+
     await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
-    await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome);
-    return analise.mensagemCandidato;
+    return silencioso ? null : analise.mensagemCandidato;
   } catch (erro) {
     console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
     await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO PROCESSAR CURRÍCULO", String(erro.message || erro));
