@@ -620,7 +620,7 @@ async function carregarSessoes(){
           nova.historico=[...histNova,ultAntiga];
           nova.lastMessage=ultAntiga.content||nova.lastMessage||'';
           nova.lastMessageRole='assistant';
-          nova.lastMessageAtMs=ultAntiga.timestampMs||Date.now();
+          nova.lastMessageAtMs=tsParaMs(obterTimestampMsg(ultAntiga))||ultAntiga.timestampMs||0;
           nova.unreadCount=0;
         }
       }
@@ -666,72 +666,75 @@ function contarNaoLidas(tel,sessao){
 function isAtencao(sessao){return !!sessao.motivoPausa && sessao.motivoPausa !== 'Pausado manualmente no inbox' && sessao.motivoPausa !== 'Atendimento assumido manualmente';}
 // Converte QUALQUER formato de timestamp em milissegundos
 function obterTimestampMsg(msg){
-  if(!msg)return'';
+  if(!msg)return 0;
 
-  const agora = Date.now();
-  const limiteFuturo = agora + (24 * 60 * 60 * 1000);
+  const agora=Date.now();
+  const limiteFuturo=agora+(10*60*1000); // tolerância de 10 min; não deixa virar amanhã/horário atual
 
-  const candidatos = [
+  const candidatos=[
     msg.timestampMs,
     msg.timestampISO,
     msg.timestamp,
     msg.createdAt,
     msg.dataHora,
-    msg.horario,
-    msg.horarioFormatado
+    msg.horario
   ];
 
-  for (const c of candidatos) {
-    const ms = tsParaMs(c);
-
-    if (ms && ms > 0 && ms < limiteFuturo) {
-      return c;
+  for(const c of candidatos){
+    const ms=tsParaMs(c);
+    if(ms&&ms>0&&ms<=limiteFuturo){
+      return ms;
     }
   }
 
-  return '';
+  return 0;
 }
 
 function tsParaMs(ts){
   if(!ts)return 0;
 
   try{
-    if(typeof ts === 'number'){
-      // número de 10 dígitos = segundos; 13 dígitos = milissegundos
-      return ts < 1000000000000 ? ts * 1000 : ts;
+    if(typeof ts==='number'){
+      return ts<1000000000000?ts*1000:ts;
     }
 
     const s=String(ts).trim();
     if(!s)return 0;
 
-    // timestamp em milissegundos vindo do backend/sheets
-    if(/^\d{12,}$/.test(s))return Number(s);
-
-    // timestamp em segundos
+    if(/^\d{13,}$/.test(s))return Number(s);
     if(/^\d{10}$/.test(s))return Number(s)*1000;
 
-    // ISO UTC, exemplo: 2026-06-12T01:54:51.000Z
-    if(s.includes('T')){
+    // ISO vindo do servidor: 2026-06-11T12:02:00.000Z
+    if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
       const d=new Date(s);
-      return isNaN(d)?0:d.getTime();
+      return isNaN(d.getTime())?0:d.getTime();
     }
 
-    // Formato BR: 10/06/2026, 14:52:33
-    const br=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[\s,]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    // Data pura: 2026-06-11
+    const ymd=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(ymd){
+      return new Date(Number(ymd[1]),Number(ymd[2])-1,Number(ymd[3]),0,0,0).getTime();
+    }
+
+    // Formato BR salvo no Sheets/backend: 11/06/2026, 09:02:33
+    const br=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
     if(br){
-      return new Date(
-        Number(br[3]),
-        Number(br[2])-1,
-        Number(br[1]),
-        Number(br[4]),
-        Number(br[5]),
-        Number(br[6]||0)
-      ).getTime();
+      const dia=Number(br[1]);
+      const mes=Number(br[2]);
+      const ano=Number(br[3]);
+      const hora=Number(br[4]||0);
+      const minuto=Number(br[5]||0);
+      const segundo=Number(br[6]||0);
+
+      // Quando vier claramente impossível como BR, não força para horário atual.
+      if(dia<1||dia>31||mes<1||mes>12)return 0;
+
+      const d=new Date(ano,mes-1,dia,hora,minuto,segundo);
+      return isNaN(d.getTime())?0:d.getTime();
     }
 
-    const d=new Date(s);
-    return isNaN(d)?0:d.getTime();
-
+    // Importante: não usar new Date() genérico em textos como "09:02".
+    return 0;
   }catch(e){
     return 0;
   }
@@ -801,86 +804,58 @@ function formatarDataMensagem(ts){
 
 function formatarHora(ts){
   const ms=tsParaMs(ts);
-
-  if(!ms){
-    return{texto:'--:--',hoje:true,ms:0};
-  }
+  if(!ms)return{texto:'--:--',hoje:true,ms:0};
 
   const agora=new Date();
   const dataMsg=new Date(ms);
 
-  const hoje=new Date(
-    agora.getFullYear(),
-    agora.getMonth(),
-    agora.getDate()
-  );
+  const hoje=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
+  const diaMsg=new Date(dataMsg.getFullYear(),dataMsg.getMonth(),dataMsg.getDate());
+  const diffDias=Math.floor((hoje-diaMsg)/86400000);
 
-  const diaMsg=new Date(
-    dataMsg.getFullYear(),
-    dataMsg.getMonth(),
-    dataMsg.getDate()
-  );
-
-  const diff=Math.floor((hoje-diaMsg)/86400000);
-
-  if(diff===0){
-    return{
-      texto:dataMsg.toLocaleTimeString('pt-BR',{
-        hour:'2-digit',
-        minute:'2-digit'
-      }),
-      hoje:true,
-      ms
-    };
+  if(diffDias===0){
+    return{texto:extrairHora(ms),hoje:true,ms};
   }
 
-  if(diff===1){
+  if(diffDias===1){
     return{texto:'Ontem',hoje:false,ms};
   }
 
-  if(diff>=2 && diff<7){
+  if(diffDias>1&&diffDias<7){
     const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     return{texto:dias[dataMsg.getDay()],hoje:false,ms};
   }
 
-  return{
-    texto:dataMsg.toLocaleDateString('pt-BR'),
-    hoje:false,
-    ms
-  };
+  return{texto:dataMsg.toLocaleDateString('pt-BR'),hoje:false,ms};
 }
 
 function atividadeMsSessao(s, idxFallback=0){
+  const agora=Date.now();
+  const limiteFuturo=agora+(10*60*1000);
   const candidatos=[];
 
   if(s){
-    // Usa primeiro o timestamp real salvo pelo backend.
-    // IMPORTANTE: não transformar timestamp futuro/estranho em Date.now(),
-    // porque isso faz todas as conversas aparecerem com o horário atual.
-    if(s.lastMessageAtMs) candidatos.push(Number(s.lastMessageAtMs));
-    if(s.lastMessageAt) candidatos.push(tsParaMs(s.lastMessageAt));
-    if(s.formattedLastMessageAt) candidatos.push(tsParaMs(s.formattedLastMessageAt));
-    if(s.dataWhatsapp) candidatos.push(tsParaMs(s.dataWhatsapp));
-
     const hist=s.historico||[];
 
-    // Procura a última mensagem do histórico com timestamp válido.
-    // Mantém o horário original da mensagem recebida/enviada.
+    // Prioriza o histórico real das mensagens.
     for(let i=hist.length-1;i>=0;i--){
       const ms=tsParaMs(obterTimestampMsg(hist[i]));
-      if(ms>0){
+      if(ms&&ms>0&&ms<=limiteFuturo){
         candidatos.push(ms);
         break;
       }
     }
+
+    // Só usa os campos resumidos se forem válidos e não futuros.
+    const resumo=[s.lastMessageAtMs,s.lastMessageAt,s.updatedAt,s.dataWhatsapp,s.formattedLastMessageAt];
+    resumo.forEach(c=>{
+      const ms=tsParaMs(c);
+      if(ms&&ms>0&&ms<=limiteFuturo)candidatos.push(ms);
+    });
   }
 
-  const validos=candidatos.filter(ms=>ms && ms>0);
-
-  if(validos.length){
-    return Math.max(...validos);
-  }
-
+  const validos=candidatos.filter(ms=>ms&&ms>0);
+  if(validos.length)return Math.max(...validos);
   return idxFallback;
 }
 
@@ -933,7 +908,7 @@ function renderLista(){
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
     const atvMs=atividadeMsSessao(s);
-    const hInfo=atvMs>1e12?formatarHora(atvMs):{texto:'—',hoje:false,ms:0};
+    const hInfo=atvMs?formatarHora(atvMs):{texto:'—',hoje:false,ms:0};
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
