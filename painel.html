@@ -690,7 +690,7 @@ function renderCandidatos(){
       </div>
       <div class="cfoot"><span class="cdate">${c['Criado em']||''}</span>
         <div style="display:flex;gap:4px">
-          ${tel?`<button class="abtn wa" onclick="window.open('https://wa.me/${tel}','_blank')">💬</button>`:''}
+          ${tel?`<button class="abtn wa" onclick="abrirWhatsAppCandidato('${tel}')">💬</button>`:''}
           ${tel?`<button class="abtn ag" onclick="agendarCandidato('${tel}','${nome.replace(/'/g,"\\'")}')">📅</button>`:''}
         </div>
       </div>
@@ -715,6 +715,11 @@ function normTxt(v){
 }
 function telLimpo(v){
   return String(v||'').replace(/\D/g,'');
+}
+function abrirWhatsAppCandidato(tel){
+  const t=telLimpo(tel);
+  if(!t){toast('Telefone do candidato não encontrado','error');return}
+  window.open(`https://web.whatsapp.com/send?phone=${t}`,'_blank');
 }
 function abrirInboxTel(tel){
   const t=telLimpo(tel);
@@ -768,7 +773,7 @@ function renderCandidatosDaVaga(v){
       <div class="vcand-meta">${tel?`📱 +${tel}`:''}${perfil?`<br>💡 ${String(perfil).slice(0,110)}${String(perfil).length>110?'…':''}`:''}</div>
       <div class="vcand-actions">
         ${tel?`<button class="vmini inbox" onclick="event.stopPropagation();abrirInboxTel('${tel}')">💬 Inbox</button>`:''}
-        ${tel?`<button class="vmini wa" onclick="event.stopPropagation();window.open('https://wa.me/${tel}','_blank')">WhatsApp</button>`:''}
+        ${tel?`<button class="vmini wa" onclick="event.stopPropagation();abrirWhatsAppCandidato('${tel}')">WhatsApp</button>`:''}
         ${cvBtn}
       </div>
     </div>`;
