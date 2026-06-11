@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 3000;
 const CONFIG = {
   AI_PROVIDER: process.env.AI_PROVIDER || "gemini",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.0-flash",
   CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
   META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
@@ -1254,7 +1254,7 @@ async function chamarGemini(prompt, tentativa = 1) {
       return FALLBACK_INSTABILIDADE;
     }
 
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.5-flash";
+    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
       {
