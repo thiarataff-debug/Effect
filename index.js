@@ -135,15 +135,72 @@ function prepararEventoHistorico(role, content, timestampMs = null) {
 }
 
 function normalizarEventoHistorico(evento) {
-  const data = parseDataFlexivel(evento?.timestampISO || evento?.timestampMs || evento?.timestamp || evento?.horario);
-  const ms = data ? data.getTime() : 0;
+  const agora = Date.now();
+  const limiteFuturo = agora + (24 * 60 * 60 * 1000);
+
+  function paraMs(valor) {
+    if (!valor) return 0;
+
+    if (typeof valor === "number") {
+      return valor < 10000000000 ? valor * 1000 : valor;
+    }
+
+    const s = String(valor).trim();
+    if (!s) return 0;
+
+    if (/^\d{13,}$/.test(s)) return Number(s);
+    if (/^\d{10}$/.test(s)) return Number(s) * 1000;
+
+    const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (br) {
+      const d = new Date(
+        Number(br[3]),
+        Number(br[2]) - 1,
+        Number(br[1]),
+        Number(br[4] || 0),
+        Number(br[5] || 0),
+        Number(br[6] || 0)
+      );
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  const candidatos = [
+    evento?.timestampMs,
+    evento?.timestamp,
+    evento?.timestampISO,
+    evento?.createdAt,
+    evento?.dataHora,
+    evento?.horario,
+    evento?.horarioFormatado
+  ];
+
+  let ms = 0;
+
+  for (const c of candidatos) {
+    const tentativa = paraMs(c);
+    if (tentativa && tentativa > 0 && tentativa < limiteFuturo) {
+      ms = tentativa;
+      break;
+    }
+  }
+
+  if (!ms) ms = Date.now();
+
+  const iso = new Date(ms).toISOString();
+
   return {
     ...(evento || {}),
-    timestamp: data ? data.toISOString() : (evento?.timestamp || ""),
-    timestampISO: data ? data.toISOString() : (evento?.timestampISO || ""),
+    timestamp: iso,
+    timestampISO: iso,
     timestampMs: ms,
-    horario: evento?.horario || evento?.timestamp || "",
-    horarioFormatado: formatarDataWhatsApp(ms || evento?.timestamp || evento?.horario)
+    horario: new Date(ms).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo"
+    }),
+    horarioFormatado: formatarDataWhatsApp(ms)
   };
 }
 
