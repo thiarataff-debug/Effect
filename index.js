@@ -1427,7 +1427,7 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", perfilResumo: [analise.motivoMatch, analise.pontosFortes, analise.pontosAtencao].filter(Boolean).join("\n"), curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
   } catch (e) { console.error("Erro ao salvar análise:", e.message); }
 }
 
@@ -1435,30 +1435,7 @@ async function confirmarInteresseNaPlanilha(telefone, analise) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-
-    const perfilResumo = [
-      analise?.motivoMatch ? `Match: ${analise.motivoMatch}` : "",
-      analise?.pontosFortes ? `Pontos fortes: ${Array.isArray(analise.pontosFortes) ? analise.pontosFortes.join(", ") : analise.pontosFortes}` : "",
-      analise?.pontosAtencao ? `Atenção: ${Array.isArray(analise.pontosAtencao) ? analise.pontosAtencao.join(", ") : analise.pontosAtencao}` : ""
-    ].filter(Boolean).join("
-");
-
-    await axios.post(urlBase, {
-      acao: "confirmarInteresse",
-      telefone,
-      nome: analise?.nome || "",
-      vagaInteresse: analise?.vagaInteresse || "",
-      idVaga: analise?.idVaga || "",
-      scoreGeral: analise?.scoreGeral || "",
-      scoreVaga: analise?.scoreVaga || "",
-      classificacao: analise?.classificacao || "",
-      perfilResumo,
-      motivoMatch: analise?.motivoMatch || "",
-      pontosFortes: analise?.pontosFortes || "",
-      pontosAtencao: analise?.pontosAtencao || "",
-      analiseIA: analise?.analiseIA || "",
-      curriculoDriveLink: analise?.curriculoDriveLink || ""
-    }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+    await axios.post(urlBase, { acao: "confirmarInteresse", telefone, vagaInteresse: analise?.vagaInteresse || "", idVaga: analise?.idVaga || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
   } catch (e) { console.error("Erro ao confirmar interesse:", e.message); }
 }
 
