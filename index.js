@@ -1,5 +1,5 @@
 // VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
-// INDEX CONSOLIDADO — 10/06/2026
+// INDEX CONSOLIDADO — 10/06/2026 — versão Gemini
 // Ajustes principais:
 // 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
 // 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
@@ -20,6 +20,9 @@ app.use(express.json({ limit: "20mb" }));
 const PORT = process.env.PORT || 3000;
 
 const CONFIG = {
+  AI_PROVIDER: process.env.AI_PROVIDER || "gemini",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
   META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
@@ -999,7 +1002,7 @@ const FALLBACK_RATE_LIMIT = "Estou processando suas informações, só preciso d
 async function processarMensagem(telefoneOriginal, mensagem) {
   const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
-  if (estaEmManual(telefone)) { console.log("BLOQUEIO INTERNO — CLAUDE NÃO CHAMADO:", telefone); return null; }
+  if (estaEmManual(telefone)) { console.log("BLOQUEIO INTERNO — IA NÃO CHAMADA:", telefone); return null; }
   if (ehSaudacaoSimples(mensagem) && sessao.historico.length <= 1) {
     const candidatoExistente = await buscarCandidatoNaPlanilha(telefone);
     if (candidatoExistente?.encontrado) {
@@ -1244,10 +1247,59 @@ async function chamarClaudeJSON(prompt) {
 // - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
 // - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
 // - timeout maior (45s) para reduzir falsos timeouts sob carga
-async function chamarClaude(prompt, tentativa = 1) {
+async function chamarGemini(prompt, tentativa = 1) {
+  try {
+    if (!CONFIG.GEMINI_API_KEY) {
+      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
+      return FALLBACK_INSTABILIDADE;
+    }
+
+    const model = CONFIG.GEMINI_MODEL || "gemini-2.5-flash";
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1800
+        }
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 45000
+      }
+    );
+
+    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
+  } catch (erro) {
+    const status = erro.response?.status;
+    const corpo = erro.response?.data;
+    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+
+    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
+    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
+    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+
+    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
+
+    if (ehTimeoutOuRede && tentativa < 2) {
+      await sleep(1500);
+      return chamarGemini(prompt, tentativa + 1);
+    }
+
+    return FALLBACK_INSTABILIDADE;
+  }
+}
+
+async function chamarClaudeOriginal(prompt, tentativa = 1) {
   try {
     if (!CONFIG.CLAUDE_API_KEY) {
-      console.error("chamarClaude: CLAUDE_API_KEY não configurada.");
+      console.error("chamarClaudeOriginal: CLAUDE_API_KEY não configurada.");
       return FALLBACK_INSTABILIDADE;
     }
     const response = await axios.post("https://api.anthropic.com/v1/messages", {
@@ -1260,21 +1312,43 @@ async function chamarClaude(prompt, tentativa = 1) {
   } catch (erro) {
     const status = erro.response?.status;
     const corpo = erro.response?.data;
-    console.error(`Erro chamarClaude (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+    console.error(`Erro chamarClaudeOriginal (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
 
     const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
     const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
 
     if (ehRateLimit) return FALLBACK_RATE_LIMIT;
 
-    // Retry único para falhas de rede/timeout (não para erros 4xx de payload/autenticação).
     if (ehTimeoutOuRede && tentativa < 2) {
       await sleep(1500);
-      return chamarClaude(prompt, tentativa + 1);
+      return chamarClaudeOriginal(prompt, tentativa + 1);
     }
 
     return FALLBACK_INSTABILIDADE;
   }
+}
+
+// Função central de IA.
+// Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
+// Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
+async function chamarClaude(prompt, tentativa = 1) {
+  const provider = String(CONFIG.AI_PROVIDER || "gemini").toLowerCase().trim();
+
+  if (provider === "claude") {
+    return chamarClaudeOriginal(prompt, tentativa);
+  }
+
+  const respostaGemini = await chamarGemini(prompt, tentativa);
+
+  if (
+    (respostaGemini === FALLBACK_INSTABILIDADE || respostaGemini === FALLBACK_RATE_LIMIT) &&
+    CONFIG.CLAUDE_API_KEY
+  ) {
+    console.error("Gemini falhou. Tentando Claude como fallback temporário.");
+    return chamarClaudeOriginal(prompt, tentativa);
+  }
+
+  return respostaGemini;
 }
 
 async function salvarAnaliseNaPlanilha(telefone, analise) {
