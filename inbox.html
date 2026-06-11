@@ -801,60 +801,86 @@ function formatarDataMensagem(ts){
 
 function formatarHora(ts){
   const ms=tsParaMs(ts);
-  if(!ms)return{texto:'',hoje:true,ms:0};
 
-  const agora=Date.now();
-  const hoje=dataKeyBR(agora);
-  const ontem=dataKeyBR(agora-86400000);
-  const msg=dataKeyBR(ms);
-
-  if(msg===hoje){
-    return{texto:extrairHora(ms),hoje:true,ms};
+  if(!ms){
+    return{texto:'--:--',hoje:true,ms:0};
   }
 
-  if(msg===ontem){
+  const agora=new Date();
+  const dataMsg=new Date(ms);
+
+  const hoje=new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate()
+  );
+
+  const diaMsg=new Date(
+    dataMsg.getFullYear(),
+    dataMsg.getMonth(),
+    dataMsg.getDate()
+  );
+
+  const diff=Math.floor((hoje-diaMsg)/86400000);
+
+  if(diff===0){
+    return{
+      texto:dataMsg.toLocaleTimeString('pt-BR',{
+        hour:'2-digit',
+        minute:'2-digit'
+      }),
+      hoje:true,
+      ms
+    };
+  }
+
+  if(diff===1){
     return{texto:'Ontem',hoje:false,ms};
   }
 
-  const diffDias=Math.floor((new Date(hoje+'T00:00:00').getTime()-new Date(msg+'T00:00:00').getTime())/86400000);
-
-  if(diffDias>=0 && diffDias<7){
-    const mapa={Sun:'Dom',Mon:'Seg',Tue:'Ter',Wed:'Qua',Thu:'Qui',Fri:'Sex',Sat:'Sáb'};
-    const wk=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'}).format(new Date(ms));
-    return{texto:mapa[wk]||formatarDataMensagem(ms),hoje:false,ms};
+  if(diff>=2 && diff<7){
+    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    return{texto:dias[dataMsg.getDay()],hoje:false,ms};
   }
 
-  const p=dataBRParts(ms);
-  return{texto:`${p.day}/${p.month}`,hoje:false,ms};
+  return{
+    texto:dataMsg.toLocaleDateString('pt-BR'),
+    hoje:false,
+    ms
+  };
 }
 
 function atividadeMsSessao(s, idxFallback=0){
-  const agora=Date.now();
-  const limiteFuturo=agora+36*60*60*1000;
-  // Timestamps absurdamente no futuro (bug conhecido em alguns registros) viram "agora",
-  // em vez de serem descartados (o que deixava a conversa sem horário/data).
-  const clamp=ms=>(ms&&ms>0)?Math.min(ms,agora):0;
   const candidatos=[];
+
   if(s){
-    candidatos.push(clamp(Number(s.lastMessageAtMs||0)));
-    candidatos.push(clamp(tsParaMs(s.lastMessageAt)));
-    candidatos.push(clamp(tsParaMs(s.updatedAt)));
+    // Usa primeiro o timestamp real salvo pelo backend.
+    // IMPORTANTE: não transformar timestamp futuro/estranho em Date.now(),
+    // porque isso faz todas as conversas aparecerem com o horário atual.
+    if(s.lastMessageAtMs) candidatos.push(Number(s.lastMessageAtMs));
+    if(s.lastMessageAt) candidatos.push(tsParaMs(s.lastMessageAt));
+    if(s.formattedLastMessageAt) candidatos.push(tsParaMs(s.formattedLastMessageAt));
+    if(s.dataWhatsapp) candidatos.push(tsParaMs(s.dataWhatsapp));
+
     const hist=s.historico||[];
-    for(let i=hist.length-1;i>=Math.max(0,hist.length-5);i--){
-      candidatos.push(clamp(tsParaMs(obterTimestampMsg(hist[i]))));
-    }
-    let validos1=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
-    if(!validos1.length){
-      // Nada nas últimas 5 msgs: varre o histórico inteiro antes de desistir.
-      for(let i=hist.length-6;i>=0;i--){
-        const ms=clamp(tsParaMs(obterTimestampMsg(hist[i])));
-        if(ms&&ms>0&&ms<limiteFuturo)candidatos.push(ms);
+
+    // Procura a última mensagem do histórico com timestamp válido.
+    // Mantém o horário original da mensagem recebida/enviada.
+    for(let i=hist.length-1;i>=0;i--){
+      const ms=tsParaMs(obterTimestampMsg(hist[i]));
+      if(ms>0){
+        candidatos.push(ms);
+        break;
       }
     }
   }
-  const validos=candidatos.filter(ms=>ms&&ms>0&&ms<limiteFuturo);
-  if(validos.length)return Math.max(...validos);
-  // fallback: mantém ordem de chegada da API quando timestamp estiver ausente/estranho.
+
+  const validos=candidatos.filter(ms=>ms && ms>0);
+
+  if(validos.length){
+    return Math.max(...validos);
+  }
+
   return idxFallback;
 }
 
