@@ -402,6 +402,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <button class="ha-btn ha-ghost" onclick="abrirModalCorrigir()" title="Corrigir Lia">⚙️ Corrigir</button>
           <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes de vaga">📋 Vaga</button>
+          <button class="ha-btn ha-ghost" onclick="abrirCurriculoInbox()" title="Visualizar currículo">📎 CV</button>
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
         </div>
@@ -564,7 +565,6 @@ let statusMap = {}; // {telefone: string}
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
 let timerEntrevistas = null;
-let abrirTelParamFeito = false;
 
 // ─── LOGIN ───
 function entrar(){
@@ -604,6 +604,25 @@ function getMeta(tel){if(!metaDados[tel])metaDados[tel]={ultimaMsgVista:0};retur
 function setMeta(tel,dados){metaDados[tel]={...getMeta(tel),...dados};salvarLocal();}
 
 // ─── CARREGAR SESSÕES ───
+
+function abrirTelefoneDaUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const tel=(params.get('telefone')||params.get('tel')||params.get('phone')||'').replace(/\D/g,'');
+  if(!tel)return;
+  const tentar=()=>{
+    if(todasSessoes&&todasSessoes[tel]){
+      abrirConversa(tel);
+      return true;
+    }
+    const achado=Object.keys(todasSessoes||{}).find(k=>k.replace(/\D/g,'')===tel);
+    if(achado){abrirConversa(achado);return true;}
+    return false;
+  };
+  if(!tentar()){
+    setTimeout(()=>{ if(!tentar()) toast('Conversa não encontrada no Inbox','error'); },800);
+  }
+}
+
 async function carregarSessoes(){
   try{
     const r=await fetch(`${API}/inbox/sessoes`);
@@ -636,17 +655,6 @@ async function carregarSessoes(){
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
-
-    // Permite abrir uma conversa diretamente pelo link /inbox?tel=5527...
-    if(!abrirTelParamFeito){
-      abrirTelParamFeito=true;
-      const telParam=new URLSearchParams(window.location.search).get('tel');
-      const telLimpo=String(telParam||'').replace(/\D/g,'');
-      if(telLimpo&&todasSessoes[telLimpo]){
-        setTimeout(()=>abrirConversa(telLimpo),100);
-      }
-    }
-
     if(sessaoAtual&&todasSessoes[sessaoAtual]) renderMsgs(todasSessoes[sessaoAtual]);
     atualizarTitulo();
   }catch(e){console.error(e);}
@@ -1167,6 +1175,18 @@ function renderMsgs(s){
   setTimeout(()=>{
     div.scrollTop=div.scrollHeight;
   },50);
+}
+
+
+function abrirCurriculoInbox(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual]||{};
+  const link=s.curriculo?.driveLink||s.ultimaAnalise?.curriculoDriveLink||s.ultimaAnalise?.linkCurriculo||'';
+  if(link){
+    window.open(link,'_blank');
+    return;
+  }
+  window.open(`/inbox/curriculo/${encodeURIComponent(sessaoAtual)}?inline=1`,'_blank');
 }
 
 // ─── PAINEL DIREITO ───
