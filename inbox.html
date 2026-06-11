@@ -348,7 +348,6 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
-    <button class="rbtn" style="background:#fca5a5;color:#7f1d1d" onclick="pausarTodas()">🚨 Pausar Todas</button>
     <button class="rbtn" onclick="reativarTodas()">🤖 Reativar Todas</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
   </div>
@@ -373,7 +372,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     </div>
     <div class="ftabs">
       <button class="ftab active" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
-      <button class="ftab" onclick="setTab(this,'atencao')">⚠️ Atenção <span class="ftab-count" id="cnt-atencao">0</span></button>
+      <button class="ftab" onclick="setTab(this,'atencao')">⭐ Prioritário <span class="ftab-count" id="cnt-atencao">0</span></button>
       <button class="ftab" onclick="setTab(this,'novas')">🔵 N.lidas <span class="ftab-count" id="cnt-novas">0</span></button>
       <button class="ftab" onclick="setTab(this,'manual')">👩 Laura <span class="ftab-count" id="cnt-manual">0</span></button>
       <button class="ftab" onclick="setTab(this,'lia')">🤖 Lia <span class="ftab-count" id="cnt-lia">0</span></button>
@@ -401,7 +400,12 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <button class="ha-btn ha-ghost" onclick="marcarNaoLida()" title="Não lida">🔵</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalCorrigir()" title="Corrigir Lia">⚙️ Corrigir</button>
           <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes de vaga">📋 Vaga</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes da vaga, sem vincular candidato">📋 Vaga</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalEncaminhar()" title="Vincular candidato a uma vaga após aceite">🎯 Encaminhar</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
+          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalObs()" title="Registrar observação">📝 Obs</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status e usar mensagens padrão">📌 Status</button>
           <button class="ha-btn ha-ghost" onclick="abrirCurriculoInbox()" title="Visualizar currículo">📎 CV</button>
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
@@ -526,6 +530,56 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   </div>
 </div>
 
+
+<!-- MODAL: ENCAMINHAR CANDIDATO PARA VAGA -->
+<div class="modal-overlay" id="modal-encaminhar">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">🎯 Encaminhar candidato para vaga</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Use este botão somente quando o candidato aceitar participar da vaga. Ele vincula o candidato ao card da vaga no painel.
+    </div>
+    <div class="search-box" style="margin-bottom:10px">
+      <span style="color:var(--muted);font-size:11px">🔍</span>
+      <input type="text" id="enc-busca" placeholder="Buscar vaga por cargo, cliente ou cidade..." oninput="renderListaEncaminhar(this.value)">
+    </div>
+    <div id="lista-encaminhar" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+      <div class="empty">Carregando vagas...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-encaminhar')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: STATUS RÁPIDO -->
+<div class="modal-overlay" id="modal-status-rapido">
+  <div class="modal" style="width:520px">
+    <div class="modal-title">📌 Atualizar status do candidato</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Escolha o status. O sistema pergunta se deseja enviar a mensagem padrão ou apenas atualizar o processo.
+    </div>
+    <div id="status-grid" class="corrigir-grid"></div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-status-rapido')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: OBSERVAÇÃO RÁPIDA -->
+<div class="modal-overlay" id="modal-obs-rapida">
+  <div class="modal">
+    <div class="modal-title">📝 Registrar observação</div>
+    <div class="modal-field">
+      <label class="modal-label">Observação interna</label>
+      <textarea class="modal-input" id="obs-rapida-texto" rows="4" placeholder="Ex.: Mora perto, boa comunicação, gestor pediu retorno, etc."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-obs-rapida')">Cancelar</button>
+      <button class="modal-btn modal-confirm" onclick="salvarObsRapida()">Salvar observação</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -548,8 +602,63 @@ const QUICK_REPLIES = [
 
 const STATUS_LIST = [
   "Novo contato","Em triagem","Triagem concluída","Aguardando candidato",
-  "Aguardando recrutador","Entrevista agendada","Entrevista realizada",
-  "Encaminhado ao cliente","Banco de talentos","Contratado","Reprovado","Desistente"
+  "Aguardando recrutador","Currículo recebido","Aprovado para entrevista",
+  "Entrevista agendada","Entrevista realizada","Encaminhado ao cliente",
+  "Entrevista com gestor","Admitido","Banco de talentos","Reprovado",
+  "Não compareceu","Desistente"
+];
+
+const STATUS_ATALHOS = [
+  {id:'curriculo', label:'📄 Currículo Recebido', status:'Currículo recebido', msg:'Recebemos seu currículo com sucesso e ele já foi encaminhado para análise.
+
+Caso seu perfil seja compatível com alguma oportunidade, entraremos em contato pelos próximos dias.
+
+Agradecemos seu interesse!'},
+  {id:'contato', label:'📞 Tentativa de Contato', status:'Tentativa de contato', msg:'Olá!
+
+Tentamos contato referente ao seu processo seletivo.
+
+Quando possível, por favor, nos retorne para darmos continuidade.'},
+  {id:'aguardando', label:'⏳ Aguardando Retorno', status:'Aguardando candidato', msg:'Perfeito!
+
+Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.'},
+  {id:'aprovado_ent', label:'🟢 Aprovado para Entrevista', status:'Aprovado para entrevista', msg:'Seu perfil foi aprovado para a próxima etapa do processo seletivo.
+
+Gostaria de confirmar sua disponibilidade para participação na entrevista?'},
+  {id:'cliente', label:'📤 Encaminhado ao Cliente', status:'Encaminhado ao cliente', msg:'Seu perfil foi encaminhado para avaliação do gestor responsável pela vaga.
+
+Assim que tivermos um retorno, entraremos em contato.'},
+  {id:'gestor', label:'🏢 Entrevista com Gestor', status:'Entrevista com gestor', msg:'Parabéns!
+
+Você foi selecionado(a) para participar da entrevista com o gestor responsável pela vaga.
+
+Em breve enviaremos os detalhes da entrevista.'},
+  {id:'video', label:'📹 Solicitar Vídeo', status:'Solicitar vídeo', msg:'Para seguirmos com sua candidatura, pedimos que grave um vídeo curto, de 1 a 2 minutos, se apresentando e contando brevemente sobre sua experiência profissional.
+
+Pode enviar por aqui mesmo.'},
+  {id:'docs', label:'📄 Solicitar Documentos', status:'Solicitar documentos', msg:'Para continuidade do processo, por favor envie os documentos solicitados para conferência cadastral.
+
+Assim que recebermos a documentação, seguiremos com as próximas etapas.'},
+  {id:'admitido', label:'🎉 Admitido', status:'Admitido', msg:'Parabéns!
+
+Temos a satisfação de informar que você foi aprovado(a) no processo seletivo.
+
+Em breve você receberá as orientações referentes à sua admissão.
+
+Desejamos muito sucesso nessa nova etapa!'},
+  {id:'reprovado', label:'❌ Reprovado', status:'Reprovado', msg:'Agradecemos sua participação no processo seletivo.
+
+Neste momento seguiremos com outros perfis mais aderentes à vaga em questão.
+
+Manteremos seu currículo em nosso banco de talentos para futuras oportunidades compatíveis.
+
+Desejamos muito sucesso em sua trajetória profissional!'},
+  {id:'faltou', label:'🚫 Não Compareceu', status:'Não compareceu', msg:'Identificamos sua ausência na entrevista agendada.
+
+Caso ainda tenha interesse na oportunidade, responda esta mensagem para verificarmos a possibilidade de reagendamento.'},
+  {id:'reagendar', label:'🔄 Reagendar Entrevista', status:'Reagendar entrevista', msg:'Recebemos sua solicitação de reagendamento.
+
+Em breve retornaremos com uma nova data e horário para a entrevista.'}
 ];
 
 let sessaoAtual = null;
@@ -1038,7 +1147,7 @@ function renderLista(){
         </div>
         <div class="conv-chips">
           ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
-          ${aten?'<span class="cc cc-red">⚠️ Atenção</span>':''}
+          ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 CV</span>':''}
           ${marcadosRetorno[tel]?'<span class="cc cc-yellow">📌 Retornar</span>':''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
@@ -1272,8 +1381,8 @@ function renderPainelPerfil(s){
         ${s.curriculo.pasta?`<div style="font-size:9px;color:var(--muted)">📁 ${s.curriculo.pasta}</div>`:''}
       </div>
       <div class="cv-actions">
-        <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?inline=1','_blank')">👁️</button>
-        <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}','_blank')">⬇️</button>
+        <button class="cv-btn" onclick="abrirCurriculoSeguro(1)">👁️</button>
+        <button class="cv-btn" onclick="abrirCurriculoSeguro(0)">⬇️</button>
       </div>
     </div>
     ${s.curriculo.driveLink?`<a href="${s.curriculo.driveLink}" target="_blank" style="display:block;margin-top:6px;font-size:10px;color:var(--blue);text-decoration:underline">🔗 Abrir no Google Drive</a>`:''}
@@ -1746,6 +1855,118 @@ function usarVaga(idx){
   fecharModal('modal-vagas');
   input.focus();
   toast('📋 Detalhes da vaga inseridos — revise antes de enviar','success');
+}
+
+
+// ─── NOVAS AÇÕES DO INBOX: ENCAMINHAR / STATUS / PRIORITÁRIO / OBS ───
+function abrirCurriculoSeguro(inline=1){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual]||{};
+  if(s.curriculo&&s.curriculo.driveLink){window.open(s.curriculo.driveLink,'_blank');return;}
+  if(s.curriculo){window.open(`${API}/inbox/curriculo/${sessaoAtual}${inline?'?inline=1':''}`,'_blank');return;}
+  toast('Currículo ainda não disponível. Aguarde o processamento ou peça reenvio.','error');
+}
+
+function abrirModalEncaminhar(){
+  if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+  document.getElementById('modal-encaminhar').classList.add('show');
+  document.getElementById('enc-busca').value='';
+  abrirModalVagas().then(()=>{fecharModal('modal-vagas');renderListaEncaminhar('');}).catch(()=>renderListaEncaminhar(''));
+}
+function renderListaEncaminhar(busca){
+  const div=document.getElementById('lista-encaminhar');
+  if(!vagasCache||!vagasCache.length){div.innerHTML='<div class="empty">Nenhuma vaga ativa encontrada</div>';return;}
+  const b=String(busca||'').toLowerCase();
+  const lista=vagasCache.filter(v=>{
+    const txt=[campoVaga(v,['idVaga','ID Vaga','ID']),campoVaga(v,['cargo','Cargo','CARGO']),campoVaga(v,['cliente','Cliente / Empresa','Cliente']),campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local'])].join(' ').toLowerCase();
+    return !b||txt.includes(b);
+  });
+  if(!lista.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada</div>';return;}
+  div.innerHTML=lista.map(v=>{
+    const idx=vagasCache.indexOf(v);
+    const id=campoVaga(v,['idVaga','ID Vaga','ID']);
+    const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'Vaga';
+    const cliente=campoVaga(v,['cliente','Cliente / Empresa','Cliente'])||'';
+    const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local'])||'';
+    return `<div class="sugestao-item" onclick="encaminharParaVaga(${idx})">
+      <div style="font-weight:800;color:var(--navy);font-size:12px">${cargo}</div>
+      <div style="font-size:10px;color:var(--muted)">${id?`#${id} · `:''}${cliente}${cliente&&cidade?' · ':''}${cidade}</div>
+    </div>`;
+  }).join('');
+}
+async function encaminharParaVaga(idx){
+  if(!sessaoAtual)return;
+  const v=vagasCache[idx];if(!v)return;
+  const id=campoVaga(v,['idVaga','ID Vaga','ID']);
+  const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'Vaga';
+  const ok=confirm(`Confirmar encaminhamento deste candidato para a vaga:\n\n${cargo}${id?`\n${id}`:''}?`);
+  if(!ok)return;
+  const s=todasSessoes[sessaoAtual]||{};
+  statusMap[sessaoAtual]='Interessado';
+  if(!s.ultimaAnalise)s.ultimaAnalise={};
+  s.ultimaAnalise.vagaInteresse=cargo;
+  s.ultimaAnalise.idVaga=id;
+  registrarIntervencao('Thiara','Encaminhado para vaga',`${cargo}${id?` — ${id}`:''}`);
+  salvarLocal();renderLista();renderPainelDireito();fecharModal('modal-encaminhar');
+  try{
+    const r=await fetch(`${API}/inbox/encaminhar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,idVaga:id,vagaInteresse:cargo,vaga:v})});
+    const d=await r.json();
+    if(d.ok)toast('🎯 Candidato vinculado à vaga','success');
+    else toast('Vinculado localmente, mas não salvou no Sheets: '+(d.erro||''),'error');
+  }catch(e){toast('Vinculado localmente. Falha ao salvar no servidor.','error');}
+}
+
+function abrirModalStatus(){
+  if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+  const grid=document.getElementById('status-grid');
+  grid.innerHTML=STATUS_ATALHOS.map((a,i)=>`<div class="corrigir-option" onclick="aplicarStatusRapido(${i})">${a.label}</div>`).join('');
+  document.getElementById('modal-status-rapido').classList.add('show');
+}
+async function aplicarStatusRapido(idx){
+  const a=STATUS_ATALHOS[idx];if(!a||!sessaoAtual)return;
+  statusMap[sessaoAtual]=a.status;
+  registrarIntervencao('Thiara','Status atualizado',a.status);
+  salvarLocal();renderLista();renderPainelDireito();fecharModal('modal-status-rapido');
+  const enviar=confirm(`Status atualizado para: ${a.status}\n\nDeseja enviar a mensagem padrão ao candidato?`);
+  try{
+    await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status:a.status,enviarMensagem:false,mensagem:a.msg})});
+  }catch(e){}
+  if(enviar){
+    const input=document.getElementById('msg-input');
+    input.value=a.msg;autoResize(input);
+    await enviarMsg();
+  }else{
+    toast('📌 Status atualizado','success');
+  }
+}
+
+function togglePrioritario(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];if(!s)return;
+  const atual=isAtencao(s);
+  if(atual){s.motivoPausa='';}
+  else{s.motivoPausa='Prioritário';}
+  registrarIntervencao('Thiara',atual?'Removeu prioridade':'Marcou como prioritário','');
+  salvarLocal();renderLista();renderPainelDireito();abrirConversa(sessaoAtual);
+  fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status:statusMap[sessaoAtual]||'Novo contato',prioritario:!atual})}).catch(()=>{});
+  toast(atual?'Prioridade removida':'⭐ Candidato prioritário','success');
+}
+
+function abrirModalObs(){
+  if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+  document.getElementById('obs-rapida-texto').value='';
+  document.getElementById('modal-obs-rapida').classList.add('show');
+}
+async function salvarObsRapida(){
+  if(!sessaoAtual)return;
+  const txt=document.getElementById('obs-rapida-texto').value.trim();
+  if(!txt){toast('Digite a observação','error');return;}
+  if(!notas[sessaoAtual])notas[sessaoAtual]=[];
+  notas[sessaoAtual].push({texto:txt,ts:new Date().toLocaleString('pt-BR')});
+  registrarIntervencao('Thiara','Observação registrada',txt);
+  salvarLocal();fecharModal('modal-obs-rapida');renderPainelDireito();
+  try{await fetch(`${API}/inbox/observacao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,observacao:txt})});}catch(e){}
+  toast('📝 Observação salva','success');
 }
 
 // ─── ENTREVISTAS ───
