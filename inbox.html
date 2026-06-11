@@ -564,6 +564,7 @@ let statusMap = {}; // {telefone: string}
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
 let timerEntrevistas = null;
+let abrirTelParamFeito = false;
 
 // ─── LOGIN ───
 function entrar(){
@@ -635,6 +636,17 @@ async function carregarSessoes(){
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
+
+    // Permite abrir uma conversa diretamente pelo link /inbox?tel=5527...
+    if(!abrirTelParamFeito){
+      abrirTelParamFeito=true;
+      const telParam=new URLSearchParams(window.location.search).get('tel');
+      const telLimpo=String(telParam||'').replace(/\D/g,'');
+      if(telLimpo&&todasSessoes[telLimpo]){
+        setTimeout(()=>abrirConversa(telLimpo),100);
+      }
+    }
+
     if(sessaoAtual&&todasSessoes[sessaoAtual]) renderMsgs(todasSessoes[sessaoAtual]);
     atualizarTitulo();
   }catch(e){console.error(e);}
