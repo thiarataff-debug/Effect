@@ -1,5 +1,6 @@
 // VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
-// INDEX CONSOLIDADO — 10/06/2026 — versão Gemini
+// INDEX CONSOLIDADO — 10/06/2026
+// CORREÇÃO: horário real das mensagens recebido pelo timestamp do WhatsApp — versão Gemini
 // Ajustes principais:
 // 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
 // 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
@@ -119,10 +120,18 @@ function formatarDataWhatsApp(valor) {
   return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
-function prepararEventoHistorico(role, content) {
-  const iso = agoraISO();
-  const ms = Date.now();
-  return { role, content, timestamp: iso, timestampISO: iso, timestampMs: ms, horario: agora(), horarioFormatado: formatarDataWhatsApp(ms) };
+function prepararEventoHistorico(role, content, timestampMs = null) {
+  const ms = timestampMs || Date.now();
+  const iso = new Date(ms).toISOString();
+  return {
+    role,
+    content,
+    timestamp: iso,
+    timestampISO: iso,
+    timestampMs: ms,
+    horario: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    horarioFormatado: formatarDataWhatsApp(ms)
+  };
 }
 
 function normalizarEventoHistorico(evento) {
@@ -182,8 +191,8 @@ function normalizarSessaoParaInbox(telefone, sessao) {
   };
 }
 
-function registrarEntradaSessao(sessao, role, content) {
-  const evento = prepararEventoHistorico(role, content);
+function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
+  const evento = prepararEventoHistorico(role, content, timestampMs);
   sessao.historico.push(evento);
   sessao.historico = sessao.historico.slice(-60);
   return evento;
@@ -653,9 +662,10 @@ app.post("/webhook", async (req, res) => {
     if (!message.text?.body && !message.document && !message.audio) return;
     const from = limparTelefone(message.from);
     const sessaoAtual = garantirSessao(from);
+    const messageTimestampMs = message.timestamp ? Number(message.timestamp) * 1000 : Date.now();
     if (message.text?.body) {
       const texto = message.text.body;
-      registrarEntradaSessao(sessaoAtual, "user", texto);
+      registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "");
@@ -667,7 +677,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.audio) {
-      registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]");
+      registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]", messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "");
@@ -682,7 +692,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.document) {
-      registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]");
+      registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
       marcarMensagemRecebida(sessaoAtual);
       sessaoAtual.historico = sessaoAtual.historico.slice(-20);
       if (estaEmManual(from)) { console.log("LIA BLOQUEADA — DOCUMENTO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
