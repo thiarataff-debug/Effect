@@ -59,7 +59,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .ftab-count{background:rgba(0,0,0,.15);border-radius:8px;padding:0 4px;font-size:9px}
 .ftab.active .ftab-count{background:rgba(255,255,255,.25)}
 
-.conv-list{flex:1;overflow-y:auto}
+.conv-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
 /* Card estilo WhatsApp */
 .conv-card{
   padding:12px 14px 12px 12px;
@@ -819,6 +819,48 @@ function formatarDataMensagem(ts){
   return `${p.day}/${p.month}/${p.year}`;
 }
 
+
+
+function horaFallbackMsg(msg){
+  const candidatos=[
+    msg?.horarioFormatado,
+    msg?.horario,
+    msg?.timestamp,
+    msg?.timestampISO,
+    msg?.createdAt
+  ].filter(Boolean).map(x=>String(x).trim()).filter(Boolean);
+
+  for(const c of candidatos){
+    const ms=tsParaMs(c);
+    if(ms)return extrairHora(ms);
+
+    const m=c.match(/(\d{1,2}):(\d{2})/);
+    if(m)return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+  }
+
+  return '';
+}
+
+
+function textoHoraFallbackSessao(s, ultima){
+  const candidatos=[
+    s?.dataWhatsapp,
+    s?.formattedLastMessageAt,
+    s?.lastMessageAt,
+    ultima?.horarioFormatado,
+    ultima?.horario,
+    ultima?.timestamp
+  ].filter(Boolean).map(x=>String(x).trim()).filter(Boolean);
+
+  for(const c of candidatos){
+    if(c && c !== 'Invalid Date' && c !== 'NaN' && c !== '--:--'){
+      return c;
+    }
+  }
+
+  return '—';
+}
+
 function formatarHora(ts){
   const ms=tsParaMs(ts);
   if(!ms)return{texto:'--:--',hoje:true,ms:0};
@@ -1025,6 +1067,7 @@ function renderMsgs(s){
     const isObs=msg.role==='observacao';
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
     const ts=obterTimestampMsg(msg);
+    const horaTexto=ts?extrairHora(ts):horaFallbackMsg(msg);
     const dataMsg=ts?formatarDataMensagem(ts):'';
 
     if(dataMsg&&dataMsg!==ultimaData){
@@ -1053,10 +1096,10 @@ function renderMsgs(s){
       b.className='mbubble obs';
       b.textContent='📝 '+(msg.content||'');
 
-      if(ts){
+      if(horaTexto){
         const span=document.createElement('span');
         span.className='bubble-time';
-        span.textContent=extrairHora(ts);
+        span.textContent=horaTexto;
         b.appendChild(span);
       }
 
@@ -1076,10 +1119,10 @@ function renderMsgs(s){
       b.className=`mbubble ${rc}`;
       b.textContent=msg.content||'';
 
-      if(ts){
+      if(horaTexto){
         const span=document.createElement('span');
         span.className='bubble-time';
-        span.textContent=extrairHora(ts);
+        span.textContent=horaTexto;
         b.appendChild(span);
       }
 
