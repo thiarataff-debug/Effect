@@ -1158,7 +1158,11 @@ function renderLista(){
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
     if(tab==='lia')return!(s.modo==='manual'||s.pausado===true);
     if(tab==='atencao')return isAtencao(s);
-    if(tab==='curriculos')return !!(s.curriculo || (s.curriculos && s.curriculos.length));
+    if(tab==='curriculos')return !!(
+  s.curriculo ||
+  (s.curriculos && s.curriculos.length) ||
+  String(s.lastMessage||s.preview||'').toLowerCase().includes('currículo')
+);
     if(tab==='retornar')return !!marcadosRetorno[tel];
     return true;
   });
@@ -1172,7 +1176,12 @@ function renderLista(){
   document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
-  document.getElementById('cnt-curriculos').textContent=all.filter(([t,s])=>s.curriculo || (s.curriculos&&s.curriculos.length)).length;
+  document.getElementById('cnt-curriculos').textContent=
+all.filter(([t,s])=>
+  s.curriculo ||
+  (s.curriculos && s.curriculos.length) ||
+  String(s.lastMessage||s.preview||'').toLowerCase().includes('currículo')
+).length;
   document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]).length;
   const nAtencao=all.filter(([_,s])=>isAtencao(s)).length;
   document.getElementById('cnt-atencao').textContent=nAtencao;
