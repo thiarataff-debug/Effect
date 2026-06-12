@@ -1647,7 +1647,17 @@ function gerarTimeline(s){
     tl.push({hora:'',texto:`Status: ${st}`,icon:'📋',cor:'blue',ms:Date.now()});
   }
 
-  return tl.sort((a,b)=>(a.ms||0)-(b.ms||0));
+  const limpos = [];
+const vistos = new Set();
+
+tl.sort((a,b)=>(a.ms||0)-(b.ms||0)).forEach(item=>{
+  const chave = `${item.hora || ''}|${item.texto || ''}|${item.icon || ''}`;
+  if(vistos.has(chave)) return;
+  vistos.add(chave);
+  limpos.push(item);
+});
+
+return limpos;
 }
 
 
