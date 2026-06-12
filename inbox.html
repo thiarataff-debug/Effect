@@ -1017,8 +1017,8 @@ return `${formatarDataMensagem(ms)} ${extrairHora(ms)}`;
 
 
 function horaFallbackMsg(msg){
-  const agora=new Date();
-  const horaAtual=agora.getHours()*60+agora.getMinutes();
+const agoraSP = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
+const horaAtual = agoraSP.getHours()*60+agoraSP.getMinutes();
 
   const candidatos=[
     msg?.horarioFormatado,
