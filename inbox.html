@@ -1153,9 +1153,7 @@ function renderLista(){
   const lista=document.getElementById('conv-list');
   let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
 
-    const arquivadas=
-JSON.parse(localStorage.getItem('arquivadas')||'{}');
-
+    const arquivadas=JSON.parse(localStorage.getItem('arquivadas')||'{}');
 if(arquivadas[tel]) return false;
     
     const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
