@@ -1126,33 +1126,18 @@ function formatarHora(ts){
 }
 
 function atividadeMsSessao(s, idxFallback=0){
-  const agora=Date.now();
-  const limiteFuturo=agora+(10*60*1000);
-  const candidatos=[];
+  const hist = s?.historico || [];
 
-  if(s){
-    const hist=s.historico||[];
-
-    // Prioriza o histórico real das mensagens.
-    for(let i=hist.length-1;i>=0;i--){
-      const ms=tsParaMs(obterTimestampMsg(hist[i]));
-      if(ms&&ms>0&&ms<=limiteFuturo){
-        candidatos.push(ms);
-        break;
-      }
+  // Prioriza SOMENTE o histórico real das mensagens
+  for(let i=hist.length-1;i>=0;i--){
+    const ms = tsParaMs(obterTimestampMsg(hist[i]));
+    if(ms && ms > 0){
+      return ms;
     }
-
-    // Só usa os campos resumidos se forem válidos e não futuros.
-    const resumo=[s.lastMessageAtMs,s.lastMessageAt,s.updatedAt,s.dataWhatsapp,s.formattedLastMessageAt];
-    resumo.forEach(c=>{
-      const ms=tsParaMs(c);
-      if(ms&&ms>0&&ms<=limiteFuturo)candidatos.push(ms);
-    });
   }
 
-  const validos=candidatos.filter(ms=>ms&&ms>0);
-  if(validos.length)return Math.max(...validos);
-  return idxFallback;
+  // Se não houver histórico com timestamp válido
+  return 0;
 }
 
 function compatInfo(score){
