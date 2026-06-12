@@ -379,6 +379,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <button class="ftab" onclick="setTab(this,'novas')">🔵 N.lidas <span class="ftab-count" id="cnt-novas">0</span></button>
       <button class="ftab" onclick="setTab(this,'manual')">👩 Laura <span class="ftab-count" id="cnt-manual">0</span></button>
       <button class="ftab" onclick="setTab(this,'lia')">🤖 Lia <span class="ftab-count" id="cnt-lia">0</span></button>
+      <button class="ftab" onclick="setTab(this,'curriculos')">📄 Currículos <span class="ftab-count" id="cnt-curriculos">0</span></button>
       <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
     </div>
     <div class="conv-list" id="conv-list"><div class="empty">Carregando...</div></div>
@@ -1157,6 +1158,7 @@ function renderLista(){
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
     if(tab==='lia')return!(s.modo==='manual'||s.pausado===true);
     if(tab==='atencao')return isAtencao(s);
+    if(tab==='curriculos')return !!(s.curriculo || (s.curriculos && s.curriculos.length));
     if(tab==='retornar')return !!marcadosRetorno[tel];
     return true;
   });
@@ -1170,6 +1172,7 @@ function renderLista(){
   document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
+  document.getElementById('cnt-curriculos').textContent=all.filter(([t,s])=>s.curriculo || (s.curriculos&&s.curriculos.length)).length;
   document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]).length;
   const nAtencao=all.filter(([_,s])=>isAtencao(s)).length;
   document.getElementById('cnt-atencao').textContent=nAtencao;
