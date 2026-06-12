@@ -13,12 +13,15 @@ const express = require("express");
 const axios = require("axios");
 const pdfParse = require("pdf-parse");
 const path = require("path");
+const fs = require("fs");
 const { google } = require("googleapis");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
 const PORT = process.env.PORT || 3000;
+const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
+try { fs.mkdirSync(CURRICULOS_DIR, { recursive: true }); } catch (e) { console.error("Erro criando pasta local de currículos:", e.message); }
 
 const CONFIG = {
   AI_PROVIDER: process.env.AI_PROVIDER || "gemini",
@@ -241,7 +244,7 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     motivoPausa: sessao?.motivoPausa || "",
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
     ultimaAnalise: sessao?.ultimaAnalise || null,
-    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido' } : null,
+    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
     curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
     lastMessageRole: ultima?.role || "",
@@ -329,6 +332,37 @@ function getDriveClient() {
     console.error("Erro ao iniciar Google Drive client:", e.message);
     return null;
   }
+}
+
+
+function nomeArquivoSeguro(nome) {
+  return String(nome || "curriculo")
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "curriculo";
+}
+
+function salvarCurriculoLocal(buffer, filename, telefone, recebidoEmMs) {
+  try {
+    if (!buffer) return null;
+    const tel = limparTelefone(telefone);
+    const seguro = nomeArquivoSeguro(filename || `curriculo_${tel}`);
+    const finalName = `${tel}_${recebidoEmMs || Date.now()}_${seguro}`;
+    const fullPath = path.join(CURRICULOS_DIR, finalName);
+    fs.writeFileSync(fullPath, buffer);
+    return { localPath: fullPath, localFilename: finalName };
+  } catch (e) {
+    console.error("Erro salvarCurriculoLocal:", e.message);
+    return null;
+  }
+}
+
+function curriculoTemArquivo(cv) {
+  if (!cv) return false;
+  if (cv.base64) return true;
+  if (cv.localPath && fs.existsSync(cv.localPath)) return true;
+  return false;
 }
 
 function nomePastaCargo(cargo) {
@@ -422,7 +456,9 @@ function normalizarCurriculosParaInbox(sessao) {
     recebidoEmFormatado: formatarDataWhatsApp(cv.recebidoEmMs || cv.recebidoEm),
     driveLink: cv.driveLink || null,
     pasta: cv.pasta || null,
-    analiseStatus: cv.analiseStatus || "recebido"
+    analiseStatus: cv.analiseStatus || "recebido",
+    arquivoDisponivel: curriculoTemArquivo(cv),
+    local: !!cv.localPath
   })).sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0));
 }
 
@@ -458,6 +494,8 @@ function registrarCurriculoNaSessao(sessao, dados) {
     sizeBytes: dados.sizeBytes || null,
     mediaId,
     base64: dados.base64 || "",
+    localPath: dados.localPath || "",
+    localFilename: dados.localFilename || "",
     recebidoEmMs,
     recebidoEm: dados.recebidoEm || new Date(recebidoEmMs).toISOString(),
     driveLink: dados.driveLink || null,
@@ -679,7 +717,19 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessoes[telefone]?.modo || "automatico", pausado: sessoes[telefone]?.pausado || false, motivoPausa: sessoes[telefone]?.motivoPausa || "", unreadCount: Number(sessoes[telefone]?.unreadCount || 0), timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
+    const sessaoAtualSheets = sessoes[telefone] || {};
+    const curriculosMeta = (Array.isArray(sessaoAtualSheets.curriculos) ? sessaoAtualSheets.curriculos : (sessaoAtualSheets.curriculo ? [sessaoAtualSheets.curriculo] : [])).map(cv => ({
+      filename: cv.filename || "",
+      mimeType: cv.mimeType || "",
+      sizeBytes: cv.sizeBytes || null,
+      mediaId: cv.mediaId || null,
+      recebidoEm: cv.recebidoEm || "",
+      recebidoEmMs: cv.recebidoEmMs || 0,
+      driveLink: cv.driveLink || "",
+      pasta: cv.pasta || "",
+      analiseStatus: cv.analiseStatus || "recebido"
+    }));
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
@@ -714,6 +764,11 @@ async function carregarSessoesDoSheets() {
       const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
       const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
 
+      const existente = sessoes[tel] || {};
+      const curriculosExistentes = Array.isArray(existente.curriculos) ? existente.curriculos : (existente.curriculo ? [existente.curriculo] : []);
+      const curriculosSheets = Array.isArray(sessao.curriculos) ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
+      const curriculosMesclados = curriculosExistentes.length ? curriculosExistentes : curriculosSheets;
+
       sessoes[tel] = {
         historico: Array.isArray(sessao.historico)
           ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
@@ -722,7 +777,11 @@ async function carregarSessoesDoSheets() {
         modo,
         pausado,
         motivoPausa,
-        unreadCount: Number(sessao.unreadCount || 0)
+        unreadCount: Number(sessao.unreadCount || 0),
+        curriculos: curriculosMesclados,
+        curriculo: curriculosMesclados[0] || existente.curriculo || null,
+        ultimaAnalise: existente.ultimaAnalise || sessao.ultimaAnalise || null,
+        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo contato"
       };
 
       if (pausado) atendimentosManuais.add(tel);
@@ -1041,9 +1100,10 @@ app.get("/inbox/curriculo/:telefone", (req, res) => {
 
     const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
     const cv = lista[idx];
-    if (!cv?.base64) return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
-
-    const buffer = Buffer.from(cv.base64, "base64");
+    let buffer = null;
+    if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
+    else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+    if (!buffer) return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
     const inline = req.query.inline === "1" || req.query.inline === "true";
     res.set("Content-Type", cv.mimeType || "application/octet-stream");
     res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
@@ -1322,11 +1382,14 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
   try {
     const { texto: textoCurriculo, buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarELerPdf(documento.id, documento.filename, documento.mime_type || documento.mimeType);
 
-    // 1) RECEBIMENTO/SALVAMENTO DO CURRÍCULO — independente da IA.
+    // 1) RECEBIMENTO/SALVAMENTO DO CURRÍCULO — independente da IA e do Drive.
     if (arquivoBuffer) {
+      const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
       cvSalvo = registrarCurriculoNaSessao(sessao, {
         mediaId: documento.id || null,
         base64: arquivoBuffer.toString("base64"),
+        localPath: localInfo.localPath || "",
+        localFilename: localInfo.localFilename || "",
         filename: arquivoNome || `curriculo_${telefone}`,
         mimeType,
         sizeBytes,
@@ -1334,6 +1397,8 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
         recebidoEm: new Date(recebidoEmMs).toISOString(),
         analiseStatus: "recebido"
       });
+      sessao.curriculo = cvSalvo;
+      console.log(`CV SALVO NO INBOX — ${telefone} — ${cvSalvo.filename} — currículos na sessão: ${Array.isArray(sessao.curriculos) ? sessao.curriculos.length : 1}`);
 
       // Tenta subir no Drive mesmo se a IA estiver fora. Não pode bloquear o recebimento.
       try {
@@ -1345,7 +1410,9 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
         }
       } catch (e) {
         console.error(`Currículo de ${telefone}: upload no Drive falhou, mas arquivo ficou salvo no Inbox:`, e.message);
+        if (cvSalvo) cvSalvo.analiseStatus = "drive_indisponivel";
       }
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
     }
 
     // Se não houver texto legível, ainda assim o currículo fica salvo e abrindo.
