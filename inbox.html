@@ -1130,22 +1130,31 @@ function atividadeMsSessao(s, idxFallback=0){
 
   for(let i=hist.length-1;i>=0;i--){
     const h = hist[i] || {};
-    const candidatos = [h.timestampMs, h.timestamp, h.ts];
+
+    const candidatos = [
+      h.timestampMs,
+      h.timestampISO,
+      h.timestamp,
+      h.createdAt,
+      h.dataHora,
+      h.horario,
+      h.ts
+    ];
 
     for(const c of candidatos){
-      const n = Number(c);
-      if(!Number.isFinite(n) || n <= 0) continue;
+      const ms = tsParaMs(c);
 
-      const ms = n < 10000000000 ? n * 1000 : n;
-      const ano = new Date(ms).getFullYear();
+      if(ms && ms > 0){
+        const ano = new Date(ms).getFullYear();
 
-      if(ano >= 2024 && ano <= 2027){
-        return ms;
+        if(ano >= 2024 && ano <= 2027){
+          return ms;
+        }
       }
     }
   }
 
-  return 0;
+  return idxFallback || 0;
 }
 
 function compatInfo(score){
