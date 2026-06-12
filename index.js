@@ -71,6 +71,26 @@ function agora() {
 }
 
 function agoraISO() {
+  function agoraMs() {
+  return Date.now();
+}
+
+function agoraHorarioBR() {
+  return new Date().toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  });
+}
+
+function carimboTempo() {
+  const ms = Date.now();
+  return {
+    timestampMs: ms,
+    timestampISO: new Date(ms).toISOString(),
+    horarioFormatado: agoraHorarioBR()
+  };
+}
   return new Date().toISOString();
 }
 
@@ -258,8 +278,16 @@ function normalizarSessaoParaInbox(telefone, sessao) {
 
 function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
   const evento = prepararEventoHistorico(role, content, timestampMs);
+
   sessao.historico.push(evento);
   sessao.historico = sessao.historico.slice(-500);
+
+  sessao.lastMessageAtMs = evento.timestampMs || Date.now();
+  sessao.lastMessageAt = evento.timestampISO || new Date(sessao.lastMessageAtMs).toISOString();
+  sessao.formattedLastMessageAt = evento.horarioFormatado || "";
+  sessao.lastMessage = content || "";
+  sessao.lastMessageRole = role;
+
   return evento;
 }
 
