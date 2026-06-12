@@ -1196,6 +1196,7 @@ all.filter(([t,s])=>
     const ultima=hist[hist.length-1];
     const nome=s.nome||telDisplay(tel);
     const statusAtual=statusMap[tel]||'Novo contato';
+    const statusAtual=statusMap[tel]||'Novo contato';
     const isManual=s.modo==='manual'||s.pausado===true;
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
@@ -1234,6 +1235,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
           ${naoLidas>0?`<div class="unread-badge">${naoLidas}</div>`:''}
         </div>
         <div class="conv-chips">
+        ${statusAtual?`<span class="cc cc-gray">📌 ${statusAtual}</span>`:''}
         ${statusAtual?`<span class="cc cc-gray">📌 ${statusAtual}</span>`:''}
           ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
