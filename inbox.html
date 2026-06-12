@@ -1125,35 +1125,41 @@ function formatarHora(ts){
   return{texto:dataMsg.toLocaleDateString('pt-BR'),hoje:false,ms};
 }
 
+function horaSeguraLista(s, ultima){
+  const hist = Array.isArray(s?.historico) ? s.historico : [];
+  const msg = ultima || hist[hist.length - 1] || {};
+
+  const diretos = [
+    msg.horarioFormatado,
+    msg.horario,
+    msg.hora
+  ];
+
+  for(const v of diretos){
+    const txt = String(v || '').trim();
+    if(/^\d{2}:\d{2}$/.test(txt)) return txt;
+  }
+
+  const ms = obterTimestampMsg(msg);
+  if(ms && ms > 0){
+    return extrairHora(ms);
+  }
+
+  return '';
+}
+
 function atividadeMsSessao(s, idxFallback=0){
   const hist = Array.isArray(s?.historico) ? s.historico : [];
 
   for(let i=hist.length-1;i>=0;i--){
-    const h = hist[i] || {};
-
-    const candidatos = [
-      h.timestampMs,
-      h.timestampISO,
-      h.timestamp,
-      h.createdAt,
-      h.dataHora,
-      h.horario,
-      h.ts
-    ];
-
-    for(const c of candidatos){
-      const ms = tsParaMs(c);
-
-      if(ms && ms > 0){
-        const ano = new Date(ms).getFullYear();
-
-        if(ano >= 2024 && ano <= 2027){
-          return ms;
-        }
-      }
+    const ms = obterTimestampMsg(hist[i]);
+    if(ms && ms > 0){
+      return ms;
     }
   }
 
+  // Fallback apenas para manter ordenação estável quando não houver timestamp confiável.
+  // Não usa updatedAt/dataWhatsapp para evitar horários malucos na lista.
   return idxFallback || 0;
 }
 
@@ -1205,8 +1211,9 @@ function renderLista(){
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
-    const atvMs=atividadeMsSessao(s);
-    const hInfo = atvMs ? formatarHora(atvMs) : { texto:'', hoje:false, ms:0 };
+    const atvMs=atividadeMsSessao(s, idx);
+    const horaLista=horaSeguraLista(s, ultima);
+    const hInfo={texto:horaLista,hoje:false,ms:atvMs||0};
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
