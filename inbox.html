@@ -1126,17 +1126,25 @@ function formatarHora(ts){
 }
 
 function atividadeMsSessao(s, idxFallback=0){
-  const hist = s?.historico || [];
+  const hist = Array.isArray(s?.historico) ? s.historico : [];
 
-  // Prioriza SOMENTE o histórico real das mensagens
   for(let i=hist.length-1;i>=0;i--){
-    const ms = tsParaMs(obterTimestampMsg(hist[i]));
-    if(ms && ms > 0){
-      return ms;
+    const h = hist[i] || {};
+    const candidatos = [h.timestampMs, h.timestamp, h.ts];
+
+    for(const c of candidatos){
+      const n = Number(c);
+      if(!Number.isFinite(n) || n <= 0) continue;
+
+      const ms = n < 10000000000 ? n * 1000 : n;
+      const ano = new Date(ms).getFullYear();
+
+      if(ano >= 2024 && ano <= 2027){
+        return ms;
+      }
     }
   }
 
-  // Se não houver histórico com timestamp válido
   return 0;
 }
 
@@ -1189,8 +1197,7 @@ function renderLista(){
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
     const atvMs=atividadeMsSessao(s);
-    const horaFallback = textoHoraFallbackSessao(s, ultima);
-const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:false, ms:0 };
+    const hInfo = atvMs ? formatarHora(atvMs) : { texto:'', hoje:false, ms:0 };
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
