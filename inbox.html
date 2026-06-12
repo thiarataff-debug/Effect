@@ -1097,6 +1097,7 @@ function textoHoraFallbackSessao(s, ultima){
 
 function formatarHora(ts){
   const ms=tsParaMs(ts);
+  if(ms > Date.now() + (10 * 60 * 1000)) return {texto:'',hoje:false,ms:0};
   if(!ms)return{texto:'--:--',hoje:true,ms:0};
 
   const agora=new Date();
@@ -1124,14 +1125,19 @@ function formatarHora(ts){
 
 function atividadeMsSessao(s, idxFallback=0){
   const hist = s?.historico || [];
+  const agora = Date.now();
+  const limiteFuturo = agora + (10 * 60 * 1000);
 
-  // Prioriza SOMENTE o histórico real das mensagens
   for(let i=hist.length-1;i>=0;i--){
     const ms = tsParaMs(obterTimestampMsg(hist[i]));
-    if(ms && ms > 0){
+
+    if(ms && ms > 0 && ms <= limiteFuturo){
       return ms;
     }
   }
+
+  return 0;
+}
 
   // Se não houver histórico com timestamp válido
   return 0;
