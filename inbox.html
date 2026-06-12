@@ -117,12 +117,12 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .chat-area{flex:1;display:flex;flex-direction:column;background:#e5ddd5;overflow:hidden;position:relative}
 .chat-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted)}
 .chat-empty-icon{font-size:48px}
-.chat-header{background:var(--navy);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
-.chat-av{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0}
-.chat-info{flex:1;min-width:0}
-.chat-name{font-weight:700;font-size:13px}
-.chat-meta{font-size:10px;color:rgba(255,255,255,.55);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.header-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.chat-header{background:var(--navy);color:#fff;padding:10px 16px;display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-areas:'av info' 'actions actions';align-items:center;gap:8px 10px;flex-shrink:0}
+.chat-av{grid-area:av;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0}
+.chat-info{grid-area:info;min-width:0;display:flex;flex-direction:column;gap:2px}
+.chat-name{font-weight:800;font-size:14px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-meta{font-size:11px;color:rgba(255,255,255,.72);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-actions{grid-area:actions;display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0;padding-left:48px;max-width:100%}
 .ha-btn{padding:5px 10px;border-radius:7px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
 .ha-ghost{background:rgba(255,255,255,.12);color:#fff}.ha-ghost:hover{background:rgba(255,255,255,.25)}
 .ha-green{background:var(--green);color:var(--navy)}.ha-green:hover{opacity:.9}
@@ -296,6 +296,9 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 /* Currículo */
 .cv-box{background:var(--bg);border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px}
+.cv-box + .cv-box{margin-top:8px}
+.cv-status{font-size:9px;border-radius:999px;padding:2px 6px;font-weight:800;display:inline-block;margin-top:4px}
+.cv-ok{background:#d1fae5;color:#065f46}.cv-warn{background:#fef3c7;color:#92400e}.cv-err{background:#fee2e2;color:#991b1b}
 .cv-icon{font-size:20px;flex-shrink:0}
 .cv-info{flex:1;min-width:0}
 .cv-name{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1012,6 +1015,12 @@ function formatarDataMensagem(ts){
   return `${p.day}/${p.month}/${p.year}`;
 }
 
+function formatarDataHoraMensagem(ts){
+  const ms=tsParaMs(ts);
+  if(!ms)return '—';
+  return `${formatarDataMensagem(ms)} ${extrairHora(ms)}`;
+}
+
 
 
 function horaFallbackMsg(msg){
@@ -1231,7 +1240,8 @@ function abrirConversa(tel){
   document.getElementById('ch-av').textContent=isManual?'👩':aten?'⚠️':'🤖';
   document.getElementById('ch-av').style.background=isManual?'var(--laura)':aten?'var(--red)':'rgba(255,255,255,.15)';
   document.getElementById('ch-name').textContent=nome;
-  document.getElementById('ch-meta').textContent=`${telDisplay(tel)} · ${hist.length} msgs · ${isManual?'👩 Laura':'🤖 Lia'}`;
+  const qtdCv=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos.length:(s.curriculo?1:0);
+  document.getElementById('ch-meta').textContent=`📱 ${telDisplay(tel)} · ${hist.length} msgs${qtdCv?` · 📄 ${qtdCv} CV${qtdCv>1?'s':''}`:''} · ${isManual?'👩 Laura':'🤖 Lia'}`;
   document.getElementById('banner-manual').classList.toggle('show',isManual);
   document.getElementById('banner-atencao').classList.toggle('show',aten&&!isManual);
   document.getElementById('banner-motivo').textContent=s.motivoPausa||'';
@@ -1350,12 +1360,12 @@ function renderMsgs(s){
 function abrirCurriculoInbox(){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual]||{};
-  const link=s.curriculo?.driveLink||s.ultimaAnalise?.curriculoDriveLink||s.ultimaAnalise?.linkCurriculo||'';
-  if(link){
-    window.open(link,'_blank');
-    return;
-  }
-  window.open(`/inbox/curriculo/${encodeURIComponent(sessaoAtual)}?inline=1`,'_blank');
+  const lista=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos:(s.curriculo?[s.curriculo]:[]);
+  if(!lista.length){toast('Nenhum currículo salvo para esta conversa','error');return;}
+  const cv=lista[0];
+  const link=cv.driveLink||s.ultimaAnalise?.curriculoDriveLink||s.ultimaAnalise?.linkCurriculo||'';
+  if(link){window.open(link,'_blank');return;}
+  window.open(`/inbox/curriculo/${encodeURIComponent(sessaoAtual)}?idx=0&inline=1`,'_blank');
 }
 
 // ─── PAINEL DIREITO ───
@@ -1382,6 +1392,7 @@ function renderPainelPerfil(s){
   const hist=s.historico||[];
   const primeiraMsgTs=obterTimestampMsg(hist[0])||'';
   const tel=sessaoAtual;
+  const curriculos=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos:(s.curriculo?[s.curriculo]:[]);
   // Timeline da conversa
   const timeline=gerarTimeline(s);
   div.innerHTML=`
@@ -1430,22 +1441,29 @@ function renderPainelPerfil(s){
     <div style="font-size:11px;line-height:1.6;color:var(--text)">${formatarListaHtml(anal.pontosAtencao)}</div>
   </div>
   `:''}
-  ${s.curriculo?`
+  ${curriculos.length?`
   <div class="rp-section">
-    <div class="rp-section-title">📄 Currículo</div>
-    <div class="cv-box">
-      <div class="cv-icon">📄</div>
-      <div class="cv-info">
-        <div class="cv-name">${s.curriculo.filename}</div>
-        <div style="font-size:9px;color:var(--muted)">${s.curriculo.recebidoEm||''}</div>
-        ${s.curriculo.pasta?`<div style="font-size:9px;color:var(--muted)">📁 ${s.curriculo.pasta}</div>`:''}
-      </div>
-      <div class="cv-actions">
-        <button class="cv-btn" onclick="abrirCurriculoSeguro(1)">👁️</button>
-        <button class="cv-btn" onclick="abrirCurriculoSeguro(0)">⬇️</button>
-      </div>
-    </div>
-    ${s.curriculo.driveLink?`<a href="${s.curriculo.driveLink}" target="_blank" style="display:block;margin-top:6px;font-size:10px;color:var(--blue);text-decoration:underline">🔗 Abrir no Google Drive</a>`:''}
+    <div class="rp-section-title">📄 Currículos (${curriculos.length})</div>
+    ${curriculos.map((cv,i)=>{
+      const link=cv.driveLink||'';
+      const data=cv.recebidoEmFormatado||formatarDataHoraMensagem(cv.recebidoEmMs||cv.recebidoEm||cv.timestampMs)||'—';
+      const status=cv.analiseStatus||cv.status||'';
+      const statusClass=status==='analisado'?'cv-ok':status==='analise_indisponivel'||status==='sem_texto'?'cv-warn':status==='erro'?'cv-err':'cv-warn';
+      const statusTxt=status==='analisado'?'Analisado':status==='analise_indisponivel'?'Análise indisponível':status==='sem_texto'?'Arquivo salvo':status==='erro'?'Erro na análise':'Recebido';
+      return `<div class="cv-box">
+        <div class="cv-icon">📄</div>
+        <div class="cv-info">
+          <div class="cv-name">${cv.filename||'Currículo recebido'}</div>
+          <div style="font-size:9px;color:var(--muted)">${data}${cv.sizeBytes?` · ${(Number(cv.sizeBytes)/1024).toFixed(0)} KB`:''}</div>
+          ${cv.pasta?`<div style="font-size:9px;color:var(--muted)">📁 ${cv.pasta}</div>`:''}
+          <span class="cv-status ${statusClass}">${statusTxt}</span>
+        </div>
+        <div class="cv-actions">
+          ${link?`<button class="cv-btn" onclick="window.open('${link}','_blank')">👁️</button>`:`<button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}&inline=1','_blank')">👁️</button>`}
+          <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}','_blank')">⬇️</button>
+        </div>
+      </div>`;
+    }).join('')}
   </div>
   `:''}
   <div class="rp-section">
@@ -1559,67 +1577,57 @@ function gerarTimeline(s){
 
   if(hist[0]){
     const ts=obterTimestampMsg(hist[0]);
-    tl.push({
-      hora:extrairHora(ts),
-      texto:'Primeiro contato',
-      icon:'👋',
-      cor:'',
-      ms:tsParaMs(ts)
+    tl.push({hora:extrairHora(ts),texto:'Primeiro contato',icon:'👋',cor:'',ms:tsParaMs(ts)});
+  }
+
+  const curriculos=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos:(s.curriculo?[s.curriculo]:[]);
+  if(curriculos.length){
+    curriculos.forEach((cv,idx)=>{
+      const ms=tsParaMs(cv.recebidoEmMs||cv.recebidoEm||cv.timestampMs)||0;
+      tl.push({
+        hora:ms?extrairHora(ms):'--:--',
+        texto:`Currículo recebido${cv.filename?' — '+cv.filename:''}`,
+        icon:'📄',
+        cor:'green',
+        ms:ms||idx
+      });
+    });
+  }else{
+    const vistos=new Set();
+    hist.forEach(h=>{
+      const conteudo=String(h.content||'').toLowerCase();
+      const ts=obterTimestampMsg(h);
+      const ms=tsParaMs(ts)||0;
+      if(conteudo.includes('currículo') || conteudo.includes('curriculo') || conteudo.includes('documento')){
+        const chave=`${Math.floor(ms/120000)}|curriculo`;
+        if(vistos.has(chave))return;
+        vistos.add(chave);
+        tl.push({hora:ms?extrairHora(ms):'--:--',texto:'Currículo recebido',icon:'📄',cor:'green',ms});
+      }
     });
   }
 
   hist.forEach(h=>{
-    const conteudo=String(h.content||'').toLowerCase();
     const ts=obterTimestampMsg(h);
-
-    if(conteudo.includes('currículo') || conteudo.includes('curriculo') || conteudo.includes('documento')){
-      tl.push({
-        hora:extrairHora(ts),
-        texto:'Currículo recebido',
-        icon:'📄',
-        cor:'green',
-        ms:tsParaMs(ts)
-      });
-    }
-
     if(h.role==='observacao'){
-      tl.push({
-        hora:extrairHora(ts),
-        texto:'Nota interna registrada',
-        icon:'📝',
-        cor:'yellow',
-        ms:tsParaMs(ts)
-      });
+      tl.push({hora:extrairHora(ts),texto:'Nota interna registrada',icon:'📝',cor:'yellow',ms:tsParaMs(ts)});
     }
   });
 
   const ents=entrevistas[sessaoAtual]||[];
   ents.forEach(e=>{
     const ms=tsParaMs(`${e.data}T${e.hora||'00:00'}:00-03:00`);
-    tl.push({
-      hora:e.hora||'--:--',
-      texto:`Entrevista agendada — ${e.tipo}`,
-      icon:'📅',
-      cor:'green',
-      ms
-    });
+    tl.push({hora:e.hora||'--:--',texto:`Entrevista agendada — ${e.tipo}`,icon:'📅',cor:'green',ms});
   });
 
-  if(statusMap[sessaoAtual]){
-    tl.push({
-      hora:'',
-      texto:`Status: ${statusMap[sessaoAtual]}`,
-      icon:'📋',
-      cor:'',
-      ms:Date.now()
-    });
+  const st=statusMap[sessaoAtual];
+  if(st&&st!=='Novo contato'){
+    tl.push({hora:'',texto:`Status: ${st}`,icon:'📋',cor:'blue',ms:Date.now()});
   }
 
-  return tl
-    .filter(item=>item.texto)
-    .sort((a,b)=>(a.ms||0)-(b.ms||0))
-    .slice(-8);
+  return tl.sort((a,b)=>(a.ms||0)-(b.ms||0));
 }
+
 
 function formatarListaHtml(texto){
   if(!texto)return'—';
