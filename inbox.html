@@ -1220,7 +1220,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
           <div class="conv-time ${naoLidas>0?'unread-time':''}">${hInfo.texto}</div>
         </div>
         <div class="conv-preview-row">
-          <div class="conv-preview">${preview}</div>
+          <div class="conv-preview">${s.curriculo?'📄 Currículo recebido':preview}</div>
           ${naoLidas>0?`<div class="unread-badge">${naoLidas}</div>`:''}
         </div>
         <div class="conv-chips">
