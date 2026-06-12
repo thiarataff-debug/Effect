@@ -1052,22 +1052,50 @@ function horaFallbackMsg(msg){
 
 
 function textoHoraFallbackSessao(s, ultima){
-  const candidatos=[
+  const candidatos = [
     s?.dataWhatsapp,
     s?.formattedLastMessageAt,
     s?.lastMessageAt,
+    s?.lastMessageAtMs,
     ultima?.horarioFormatado,
-    ultima?.horario,
+    ultima?.timestampMs,
+    ultima?.timestampISO,
     ultima?.timestamp
-  ].filter(Boolean).map(x=>String(x).trim()).filter(Boolean);
+  ];
 
-  for(const c of candidatos){
-    if(c && c !== 'Invalid Date' && c !== 'NaN' && c !== '--:--'){
-      return c;
+  for (const c of candidatos) {
+    const valor = String(c || '').trim();
+
+    if (!valor || valor === 'Invalid Date' || valor === 'NaN' || valor === '--:--' || valor === '—') continue;
+
+    if (/^\d{2}:\d{2}$/.test(valor)) return valor;
+
+    const n = Number(valor);
+    if (Number.isFinite(n) && n > 0) {
+      const ms = n < 10000000000 ? n * 1000 : n;
+      const d = new Date(ms);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+      }
     }
+
+    const d = new Date(valor);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
+      });
+    }
+
+    return valor;
   }
 
-  return '—';
+  return '';
 }
 
 function formatarHora(ts){
