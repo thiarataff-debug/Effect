@@ -401,7 +401,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <div class="header-actions">
           <button class="ha-btn ha-ghost" onclick="marcarLida()" title="Marcar como lida">✓✓</button>
           <button class="ha-btn ha-ghost" onclick="marcarNaoLida()" title="Não lida">🔵</button>
-                    <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalCorrigir()" title="Corrigir Lia">⚙️ Corrigir</button>
+          <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes da vaga, sem vincular candidato">📋 Vaga</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalEncaminhar()" title="Vincular candidato a uma vaga após aceite">🎯 Encaminhar</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
@@ -865,7 +866,9 @@ function obterTimestampMsg(msg){
     msg.timestampISO,
     msg.timestamp,
     msg.createdAt,
-     ];
+    msg.dataHora,
+    msg.horario
+  ];
 
   for(const c of candidatos){
     const ms=tsParaMs(c);
@@ -1097,7 +1100,6 @@ function textoHoraFallbackSessao(s, ultima){
 
 function formatarHora(ts){
   const ms=tsParaMs(ts);
-  if(ms > Date.now() + (10 * 60 * 1000)) return {texto:'',hoje:false,ms:0};
   if(!ms)return{texto:'--:--',hoje:true,ms:0};
 
   const agora=new Date();
@@ -1125,19 +1127,14 @@ function formatarHora(ts){
 
 function atividadeMsSessao(s, idxFallback=0){
   const hist = s?.historico || [];
-  const agora = Date.now();
-  const limiteFuturo = agora + (10 * 60 * 1000);
 
+  // Prioriza SOMENTE o histórico real das mensagens
   for(let i=hist.length-1;i>=0;i--){
     const ms = tsParaMs(obterTimestampMsg(hist[i]));
-
-    if(ms && ms > 0 && ms <= limiteFuturo){
+    if(ms && ms > 0){
       return ms;
     }
   }
-
-  return 0;
-}
 
   // Se não houver histórico com timestamp válido
   return 0;
