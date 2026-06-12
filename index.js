@@ -241,7 +241,8 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     motivoPausa: sessao?.motivoPausa || "",
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
     ultimaAnalise: sessao?.ultimaAnalise || null,
-    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null } : null,
+    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido' } : null,
+    curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
     lastMessageRole: ultima?.role || "",
     lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
@@ -365,7 +366,7 @@ async function obterOuCriarPastaCargo(drive, cargo) {
   return folderId;
 }
 
-async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
+async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType = 'application/octet-stream') {
   try {
     const drive = getDriveClient();
     if (!drive) { console.log("Drive não configurado — pulando upload"); return null; }
@@ -384,7 +385,7 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
         parents: [folderId]
       },
       media: {
-        mimeType: "application/pdf",
+        mimeType: mimeType || 'application/octet-stream',
         body: stream
       },
       fields: "id, webViewLink, webContentLink",
@@ -405,6 +406,70 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone) {
     console.error("Erro uploadCurriculoDrive:", JSON.stringify(e.response?.data || e.message));
     return null;
   }
+}
+
+
+function normalizarCurriculosParaInbox(sessao) {
+  const lista = Array.isArray(sessao?.curriculos) ? sessao.curriculos : [];
+  return lista.map((cv, idx) => ({
+    idx,
+    filename: cv.filename || `curriculo_${idx + 1}.pdf`,
+    mimeType: cv.mimeType || "application/octet-stream",
+    sizeBytes: cv.sizeBytes || null,
+    mediaId: cv.mediaId || null,
+    recebidoEm: cv.recebidoEm || "",
+    recebidoEmMs: cv.recebidoEmMs || 0,
+    recebidoEmFormatado: formatarDataWhatsApp(cv.recebidoEmMs || cv.recebidoEm),
+    driveLink: cv.driveLink || null,
+    pasta: cv.pasta || null,
+    analiseStatus: cv.analiseStatus || "recebido"
+  })).sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0));
+}
+
+function registrarCurriculoNaSessao(sessao, dados) {
+  if (!sessao.curriculos) sessao.curriculos = [];
+  const mediaId = dados.mediaId || null;
+  if (mediaId) {
+    const existente = sessao.curriculos.find(cv => cv.mediaId === mediaId);
+    if (existente) {
+      Object.assign(existente, dados);
+      sessao.curriculo = existente;
+      return existente;
+    }
+  }
+
+  const recebidoEmMs = dados.recebidoEmMs || Date.now();
+  const filename = dados.filename || `curriculo_${recebidoEmMs}.pdf`;
+
+  // Evita duplicidade visual quando o mesmo arquivo chega repetido em poucos segundos.
+  const duplicado = sessao.curriculos.find(cv =>
+    String(cv.filename || "") === String(filename || "") &&
+    Math.abs(Number(cv.recebidoEmMs || 0) - Number(recebidoEmMs || 0)) < 120000
+  );
+  if (duplicado) {
+    Object.assign(duplicado, dados, { filename, recebidoEmMs });
+    sessao.curriculo = duplicado;
+    return duplicado;
+  }
+
+  const cv = {
+    filename,
+    mimeType: dados.mimeType || "application/octet-stream",
+    sizeBytes: dados.sizeBytes || null,
+    mediaId,
+    base64: dados.base64 || "",
+    recebidoEmMs,
+    recebidoEm: dados.recebidoEm || new Date(recebidoEmMs).toISOString(),
+    driveLink: dados.driveLink || null,
+    pasta: dados.pasta || null,
+    analiseStatus: dados.analiseStatus || "recebido"
+  };
+  sessao.curriculos.push(cv);
+  sessao.curriculos = sessao.curriculos
+    .sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0))
+    .slice(0, 20);
+  sessao.curriculo = cv;
+  return cv;
 }
 
 // Quando true, toda NOVA conversa (primeiro contato) já nasce em modo manual,
@@ -755,42 +820,27 @@ app.post("/webhook", async (req, res) => {
       return;
     }
     if (message.document) {
-      const mediaKey = message.document.id || message.id || `${from}_${messageTimestampMs}`;
-      if (curriculosProcessados.has(mediaKey)) {
-        console.log("CURRÍCULO DUPLICADO IGNORADO:", mediaKey, from);
-        return;
-      }
-      curriculosProcessados.add(mediaKey);
-      if (curriculosProcessados.size > 1000) curriculosProcessados.clear();
+      const emManual = estaEmManual(from);
+      const conteudoDoc = `[Documento/Currículo recebido]`;
 
-      const jaRegistrouCurriculoRecente = (sessaoAtual.historico || []).some(h => {
-        const ms = normalizarEventoHistorico(h).timestampMs || 0;
-        return h.role === "user" && String(h.content || "").includes("Currículo recebido") && Math.abs(messageTimestampMs - ms) < 2 * 60 * 1000;
-      });
-
-      if (!jaRegistrouCurriculoRecente) {
-        registrarEntradaSessao(sessaoAtual, "user", "[Documento/Currículo recebido]", messageTimestampMs);
-        await salvarMensagemSheets(from, "user", "[Documento/Currículo recebido]", sessaoAtual.nome || "", messageTimestampMs);
+      // Evita duplicar a mesma linha no histórico quando a Meta reenvia o evento.
+      const ultimo = sessaoAtual.historico?.[sessaoAtual.historico.length - 1];
+      const ultimoMs = Number(ultimo?.timestampMs || 0);
+      if (!(ultimo && ultimo.role === "user" && String(ultimo.content || "").includes("Documento/Currículo") && Math.abs(ultimoMs - messageTimestampMs) < 120000)) {
+        registrarEntradaSessao(sessaoAtual, "user", conteudoDoc, messageTimestampMs);
+        await salvarMensagemSheets(from, "user", conteudoDoc, sessaoAtual.nome || "", messageTimestampMs);
       }
+
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      sessaoAtual.curriculoPendente = true;
-      sessaoAtual.curriculoPendenteEm = new Date(messageTimestampMs).toISOString();
 
-      const emManual = estaEmManual(from);
-
-      // IMPORTANTE:
-      // Antes, quando a conversa estava em atendimento manual/Laura, a Lia parava aqui e NÃO processava o PDF.
-      // Resultado: aparecia "Documento/Currículo recebido" no Inbox, mas o currículo não era salvo/analisado.
-      // Agora o currículo é baixado, salvo em memória/Drive e gravado na planilha mesmo em modo manual.
-      // Se estiver em manual, o processamento é silencioso: não envia mensagem automática ao candidato.
       if (!emManual) {
-        await enviarMensagem(from, "Perfeito, recebi seu currículo. Vou analisar as informações agora. 💙");
+        await enviarMensagem(from, "Perfeito, recebi seu currículo. 💙");
       } else {
-        console.log("CURRÍCULO RECEBIDO EM MANUAL — processando/salvando silenciosamente:", from);
+        console.log("CURRÍCULO RECEBIDO EM MANUAL — salvando silenciosamente:", from);
       }
 
-      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual });
+      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual, timestampMs: messageTimestampMs });
       if (!emManual && resposta) await enviarMensagem(from, resposta);
       return;
     }
@@ -982,20 +1032,27 @@ app.post("/inbox/enviar", async (req, res) => {
 
 app.get("/inbox/curriculo/:telefone", (req, res) => {
   try {
-    const telefone = limparTelefone(req.params.telefone);
-    const sessao = sessoes[telefone];
-    if (!sessao || !sessao.curriculo) return res.status(404).send("Currículo não encontrado ou ainda em processamento");
-    if ((!sessao.curriculo.base64 || sessao.curriculo.base64.length < 50) && sessao.curriculo.driveLink) {
-      return res.redirect(sessao.curriculo.driveLink);
-    }
-    if (!sessao.curriculo.base64) return res.status(404).send("Currículo indisponível em memória. Abra pelo Google Drive ou peça reenvio.");
-    const buffer = Buffer.from(sessao.curriculo.base64, "base64");
-    const inline = req.query.inline === "1";
-    res.set("Content-Type", "application/pdf");
-    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${sessao.curriculo.filename}"`);
+    const tel = limparTelefone(req.params.telefone);
+    const sessao = sessoes[tel];
+    if (!sessao) return res.status(404).send("Conversa não encontrada");
+
+    const lista = Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
+    if (!lista.length) return res.status(404).send("Currículo não encontrado");
+
+    const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
+    const cv = lista[idx];
+    if (!cv?.base64) return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
+
+    const buffer = Buffer.from(cv.base64, "base64");
+    const inline = req.query.inline === "1" || req.query.inline === "true";
+    res.set("Content-Type", cv.mimeType || "application/octet-stream");
+    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
     res.send(buffer);
-  } catch (erro) { res.status(500).send("Erro ao obter currículo"); }
+  } catch (erro) {
+    res.status(500).send("Erro ao obter currículo");
+  }
 });
+
 
 app.post("/inbox/observacao", async (req, res) => {
   const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
@@ -1258,40 +1315,74 @@ async function processarMensagem(telefoneOriginal, mensagem) {
 async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
   const telefone = limparTelefone(telefoneOriginal);
   const silencioso = opcoes.silencioso === true;
-  try {
-    const { texto: textoCurriculo, buffer: pdfBuffer, filename: pdfFilename } = await baixarELerPdf(documento.id, documento.filename);
-    if (!textoCurriculo || textoCurriculo.length < 50) return "Recebi o currículo, mas não consegui ler bem o conteúdo do arquivo. Pode me enviar um PDF mais legível ou me contar sua experiência por aqui?";
-    const vagas = await buscarVagas();
-    const sessao = garantirSessao(telefone);
-    // Guarda o PDF em memória para download pelo Inbox
-    if (pdfBuffer) {
-      sessao.curriculo = { base64: pdfBuffer.toString("base64"), filename: pdfFilename || `curriculo_${telefone}.pdf`, recebidoEm: agora() };
-      sessao.curriculoPendente = false;
-    }
-    let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
-    const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
-    if (vagaRH && !vagasFiltradas.some(v => campo(v, ["idVaga", "ID Vaga", "ID"]) === campo(vagaRH, ["idVaga", "ID Vaga", "ID"]))) {
-      vagasFiltradas = [vagaRH, ...vagasFiltradas].slice(0, 5);
-    }
-    const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
-    const analise = await chamarClaudeJSON(prompt);
+  const recebidoEmMs = opcoes.timestampMs || Date.now();
+  const sessao = garantirSessao(telefone);
+  let cvSalvo = null;
 
-    // Correção determinística: se o currículo é de RH e existe vaga aberta de RH, não deixar a Lia dizer que não há vaga compatível.
-    if (vagaRH) {
-      const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
-      const cidadeRH = campo(vagaRH, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-      const idRH = campo(vagaRH, ["idVaga", "ID Vaga", "ID"]);
-      const semMatch = !analise.vagaInteresse || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas") || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas");
-      if (semMatch || !isRHVaga({ cargo: analise.vagaInteresse, area: analise.areaInteresse, palavrasChave: analise.motivoMatch })) {
-        analise.vagaInteresse = cargoRH || "Analista Administrativo (RH)";
-        analise.idVaga = idRH || analise.idVaga || "";
-        analise.cidade = analise.cidade || cidadeRH || "Serra/ES";
-        analise.areaInteresse = analise.areaInteresse || "Recursos Humanos";
-        analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 75);
-        analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 75);
-        analise.classificacao = analise.classificacao || "Bom";
-        analise.motivoMatch = analise.motivoMatch || "Experiência/aderência com RH, Recursos Humanos, DP, R&S ou Gente e Gestão.";
-        analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
+  try {
+    const { texto: textoCurriculo, buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarELerPdf(documento.id, documento.filename, documento.mime_type || documento.mimeType);
+
+    // 1) RECEBIMENTO/SALVAMENTO DO CURRÍCULO — independente da IA.
+    if (arquivoBuffer) {
+      cvSalvo = registrarCurriculoNaSessao(sessao, {
+        mediaId: documento.id || null,
+        base64: arquivoBuffer.toString("base64"),
+        filename: arquivoNome || `curriculo_${telefone}`,
+        mimeType,
+        sizeBytes,
+        recebidoEmMs,
+        recebidoEm: new Date(recebidoEmMs).toISOString(),
+        analiseStatus: "recebido"
+      });
+
+      // Tenta subir no Drive mesmo se a IA estiver fora. Não pode bloquear o recebimento.
+      try {
+        const driveInfo = await uploadCurriculoDrive(arquivoBuffer, cvSalvo.filename, "Currículos Recebidos", telefone, mimeType);
+        if (driveInfo) {
+          cvSalvo.driveLink = driveInfo.link;
+          cvSalvo.pasta = driveInfo.pasta;
+          sessao.curriculo = cvSalvo;
+        }
+      } catch (e) {
+        console.error(`Currículo de ${telefone}: upload no Drive falhou, mas arquivo ficou salvo no Inbox:`, e.message);
+      }
+    }
+
+    // Se não houver texto legível, ainda assim o currículo fica salvo e abrindo.
+    if (!textoCurriculo || textoCurriculo.length < 50) {
+      if (cvSalvo) cvSalvo.analiseStatus = "sem_texto";
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática não conseguiu ler o conteúdo do arquivo, mas ele ficou salvo para avaliação da equipe. 💙";
+    }
+
+    // 2) ANÁLISE DA IA — opcional. Se falhar, não invalida o currículo.
+    let analise;
+    try {
+      const vagas = await buscarVagas();
+      let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
+      const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
+      if (vagaRH && !vagasFiltradas.some(v => campo(v, ["idVaga", "ID Vaga", "ID"]) === campo(vagaRH, ["idVaga", "ID Vaga", "ID"]))) {
+        vagasFiltradas = [vagaRH, ...vagasFiltradas].slice(0, 5);
+      }
+
+      const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
+      analise = await chamarClaudeJSON(prompt);
+
+      if (vagaRH) {
+        const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
+        const cidadeRH = campo(vagaRH, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
+        const idRH = campo(vagaRH, ["idVaga", "ID Vaga", "ID"]);
+        const semMatch = !analise.vagaInteresse || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas") || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas");
+        if (semMatch || !isRHVaga({ cargo: analise.vagaInteresse, area: analise.areaInteresse, palavrasChave: analise.motivoMatch })) {
+          analise.vagaInteresse = cargoRH || "Analista Administrativo (RH)";
+          analise.idVaga = idRH || analise.idVaga || "";
+          analise.cidade = analise.cidade || cidadeRH || "Serra/ES";
+          analise.areaInteresse = analise.areaInteresse || "Recursos Humanos";
+          analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 75);
+          analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 75);
+          analise.classificacao = analise.classificacao || "Bom";
+          analise.motivoMatch = analise.motivoMatch || "Experiência/aderência com RH, Recursos Humanos, DP, R&S ou Gente e Gestão.";
+          analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
 
 Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perfil:
 
@@ -1299,55 +1390,69 @@ Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perf
 📍 ${cidadeRH || "Serra/ES"}
 
 Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
+        }
       }
-    }
 
-    // Upload para o Drive na subpasta do cargo de interesse
-    if (pdfBuffer) {
-      const cargoDestino = analise.vagaInteresse || analise.areaInteresse || "Sem Cargo Identificado";
-      const driveInfo = await uploadCurriculoDrive(pdfBuffer, pdfFilename || `curriculo_${telefone}.pdf`, cargoDestino, telefone);
-      if (driveInfo) {
-        sessao.curriculo.driveLink = driveInfo.link;
-        sessao.curriculo.pasta = driveInfo.pasta;
-        analise.curriculoDriveLink = driveInfo.link;
+      if (cvSalvo) {
+        cvSalvo.analiseStatus = "analisado";
+        analise.curriculoDriveLink = cvSalvo.driveLink || null;
+      }
+
+      await salvarAnaliseNaPlanilha(telefone, analise);
+      await enviarAlertaThiara(analise, telefone);
+      sessao.aguardandoConfirmacaoInteresse = true;
+      sessao.ultimaAnalise = analise;
+      sessao.nome = analise.nome || sessao.nome;
+
+      if (!silencioso) {
+        registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
+        marcarConversaRespondida(sessao);
+        sessao.historico = sessao.historico.slice(-500);
+        await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
       } else {
-        console.error(`Currículo de ${telefone}: upload pro Drive falhou ou não configurado (cargo destino: "${cargoDestino}").`);
+        console.log(`CURRÍCULO DE ${telefone} SALVO/ANALISADO EM MODO MANUAL — sem resposta automática ao candidato.`);
       }
+
+      await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome || sessao.nome || "");
+      return silencioso ? null : analise.mensagemCandidato;
+    } catch (erroIA) {
+      if (cvSalvo) cvSalvo.analiseStatus = "analise_indisponivel";
+      console.error("Análise automática indisponível, mas currículo foi salvo:", JSON.stringify(erroIA.response?.data || erroIA.message || erroIA));
+      await enviarAlertaSimplesThiara(telefone, "⚠️ CURRÍCULO SALVO, MAS IA NÃO ANALISOU", String(erroIA.message || erroIA));
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática está temporariamente indisponível, mas o arquivo ficou salvo para avaliação da equipe. 💙";
     }
-
-    await salvarAnaliseNaPlanilha(telefone, analise);
-    await enviarAlertaThiara(analise, telefone);
-    sessao.aguardandoConfirmacaoInteresse = true;
-    sessao.ultimaAnalise = analise;
-    sessao.nome = analise.nome || sessao.nome;
-
-    if (!silencioso) {
-      registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
-      marcarConversaRespondida(sessao);
-      sessao.historico = sessao.historico.slice(-500);
-      await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
-    } else {
-      // Mantém não-lida e sem resposta automática quando Laura/manual está atendendo.
-      console.log(`CURRÍCULO DE ${telefone} SALVO/ANALISADO EM MODO MANUAL — sem resposta automática ao candidato.`);
-    }
-
-    await salvarMensagemSheets(telefone, "user", "[Currículo PDF recebido]", analise.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome);
-    return silencioso ? null : analise.mensagemCandidato;
   } catch (erro) {
-    console.error("Erro ao processar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
-    await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO PROCESSAR CURRÍCULO", String(erro.message || erro));
-    return "Recebi seu currículo, mas tive dificuldade para concluir a análise automática agora. Podemos seguir com algumas perguntas rápidas por aqui. Qual foi sua última experiência profissional?";
+    console.error("Erro ao receber/salvar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
+    await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO RECEBER/SALVAR CURRÍCULO", String(erro.message || erro));
+    return silencioso ? null : "Recebi seu arquivo, mas tive uma falha técnica para salvar o currículo. Pode me encaminhar novamente, por favor?";
   }
 }
 
-async function baixarELerPdf(mediaId, filenameOriginal) {
+
+async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
   const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
   const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 30000 });
   const buffer = Buffer.from(arquivo.data);
-  const pdfData = await pdfParse(buffer);
-  return { texto: String(pdfData.text || "").slice(0, 12000), buffer, filename: filenameOriginal || "curriculo.pdf" };
+  const filename = filenameOriginal || "curriculo";
+  const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
+  let texto = "";
+
+  // A leitura automática só é obrigatória para análise. O salvamento do arquivo não depende dela.
+  const ehPdf = /pdf/i.test(mimeType) || /\.pdf$/i.test(filename);
+  if (ehPdf) {
+    try {
+      const pdfData = await pdfParse(buffer);
+      texto = String(pdfData.text || "").slice(0, 12000);
+    } catch (e) {
+      console.error("PDF salvo, mas leitura automática falhou:", e.message);
+      texto = "";
+    }
+  }
+
+  return { texto, buffer, filename, mimeType, sizeBytes: buffer.length };
 }
+
 
 async function buscarCandidatoNaPlanilha(telefone) {
   try {
