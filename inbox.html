@@ -1152,6 +1152,12 @@ function compatInfo(score){
 function renderLista(){
   const lista=document.getElementById('conv-list');
   let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
+
+    const arquivadas=
+JSON.parse(localStorage.getItem('arquivadas')||'{}');
+
+if(arquivadas[tel]) return false;
+    
     const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
     if(!mb)return false;
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
@@ -1701,6 +1707,25 @@ async function setModo(modo){
   }catch(e){toast('Erro ao alterar modo','error');}
 }
 function marcarLida(){
+  if(!sessaoAtual)return;
+
+  let arquivadas=
+    JSON.parse(localStorage.getItem('arquivadas')||'{}');
+
+  arquivadas[sessaoAtual]=true;
+
+  localStorage.setItem(
+    'arquivadas',
+    JSON.stringify(arquivadas)
+  );
+
+  renderLista();
+
+  document.getElementById('chat-active').style.display='none';
+  document.getElementById('chat-empty').style.display='flex';
+
+  toast('📁 Conversa arquivada','success');
+}
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];const hist=s?.historico||[];
   setMeta(sessaoAtual,{ultimaMsgVista:hist.length});renderLista();toast('✓✓ Lida','success');
