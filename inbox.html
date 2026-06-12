@@ -1010,8 +1010,8 @@ function formatarDataMensagem(ts){
 
 function formatarDataHoraMensagem(ts){
   const ms=tsParaMs(ts);
-  if(!ms)return '—';
-  return `${formatarDataMensagem(ms)} ${extrairHora(ms)}`;
+ if(!ms)return '';
+return `${formatarDataMensagem(ms)} ${extrairHora(ms)}`;
 }
 
 
@@ -1204,7 +1204,8 @@ function renderLista(){
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
     const atvMs=atividadeMsSessao(s);
-    const hInfo=atvMs?formatarHora(atvMs):{texto:'—',hoje:false,ms:0};
+    const horaFallback = textoHoraFallbackSessao(s, ultima);
+const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:false, ms:0 };
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
