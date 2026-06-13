@@ -1485,7 +1485,7 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
       }
 
       const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
-      analise = await chamarClaudeJSON(prompt);
+      analise = await chamarGeminiJSON(prompt).catch(() => chamarClaudeJSON(prompt));
 
       if (vagaRH) {
         const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
@@ -1677,6 +1677,34 @@ async function chamarClaudeJSON(prompt) {
   }
 }
 
+// Versão JSON-only do Gemini — usada exclusivamente para análise de currículo
+async function chamarGeminiJSON(prompt) {
+  try {
+    if (!CONFIG.GEMINI_API_KEY) return null;
+    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
+    const { default: axios2 } = await import("axios").catch(() => ({ default: require("axios") }));
+    const axiosFn = axios2 || require("axios");
+    const response = await axiosFn.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
+      {
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" }
+      },
+      { headers: { "Content-Type": "application/json" }, timeout: 45000 }
+    );
+    const texto = response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
+    if (!texto) throw new Error("Gemini retornou resposta vazia");
+    try { return JSON.parse(texto); }
+    catch (e) {
+      const match = texto.match(/\{[\s\S]*\}/);
+      if (match) return JSON.parse(match[0]);
+      throw new Error("GeminiJSON não retornou JSON válido: " + texto.slice(0, 200));
+    }
+  } catch (e) {
+    throw e;
+  }
+}
+
 // chamarClaude agora:
 // - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
 // - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
@@ -1700,8 +1728,7 @@ async function chamarGemini(prompt, tentativa = 1) {
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json"
+          maxOutputTokens: 8192
         }
       },
       {
