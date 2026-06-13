@@ -70,8 +70,7 @@ function agora() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
-function agoraISO() {
-  function agoraMs() {
+function agoraMs() {
   return Date.now();
 }
 
@@ -91,6 +90,8 @@ function carimboTempo() {
     horarioFormatado: agoraHorarioBR()
   };
 }
+
+function agoraISO() {
   return new Date().toISOString();
 }
 
@@ -111,14 +112,19 @@ function parseDataFlexivel(valor) {
   // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
   const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (m) {
-    const dia = Number(m[1]);
-    const mes = Number(m[2]) - 1;
+    let dia = Number(m[1]);
+    let mes = Number(m[2]);
     let ano = Number(m[3]);
     if (ano < 100) ano += 2000;
+    // Detecta DD/MM vs MM/DD e corrige se necessário
+    if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
     const hora = Number(m[4] || 0);
     const minuto = Number(m[5] || 0);
     const segundo = Number(m[6] || 0);
-    const d = new Date(ano, mes, dia, hora, minuto, segundo);
+    // Timezone BR explícito — evita erro em servidores UTC como Railway
+    const pad = n => String(n).padStart(2, '0');
+    const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
+    const d = new Date(isoStr);
     return isNaN(d.getTime()) ? null : d;
   }
 
@@ -188,9 +194,9 @@ function normalizarEventoHistorico(evento) {
       const minuto = Number(br[5] || 0);
       const segundo = Number(br[6] || 0);
 
-      // Se vier em formato americano por algum motivo (MM/DD/YYYY), tenta corrigir.
-      const diaFinal = dia > 12 ? dia : dia;
-      const mesFinal = mes > 12 ? 1 : mes;
+      // Detecta DD/MM vs MM/DD: se dia > 12 certamente é dia; se mes > 12 inverte.
+      const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
+      const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
       const d = new Date(ano, mesFinal - 1, diaFinal, hora, minuto, segundo);
       return isNaN(d.getTime()) ? 0 : d.getTime();
     }
@@ -298,7 +304,7 @@ function marcarMensagemRecebida(sessao, timestampMs = null) {
 
 function marcarConversaRespondida(sessao) {
   sessao.unreadCount = 0;
-  sessao.lastMessageAtMs = Date.now();
+  // Não sobrescreve lastMessageAtMs — preserva o horário real da última mensagem
 }
 
 const AREA_SYNONYMS = {
@@ -466,8 +472,37 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
 
     return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
   } catch (e) {
-    console.error("Erro uploadCurriculoDrive:", JSON.stringify(e.response?.data || e.message));
-    return null;
+    console.error("uploadCurriculoDrive falhou (1ª tentativa):", JSON.stringify(e.response?.data || e.message));
+    // Retry automático após 3 segundos
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const drive2 = getDriveClient();
+      if (!drive2) {
+        console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Drive indisponível`);
+        return null;
+      }
+      const folderId2 = await obterOuCriarPastaCargo(drive2, cargo);
+      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
+      const { Readable: Readable2 } = require("stream");
+      const resp2 = await drive2.files.create({
+        requestBody: { name: nomeFinal2, parents: [folderId2] },
+        media: { mimeType: mimeType || "application/octet-stream", body: Readable2.from(buffer) },
+        fields: "id, webViewLink",
+        supportsAllDrives: true
+      });
+      try {
+        await drive2.permissions.create({
+          fileId: resp2.data.id,
+          requestBody: { role: "reader", type: "anyone" },
+          supportsAllDrives: true
+        });
+      } catch (pe) { console.error("Erro permissão CV (retry):", pe.message); }
+      console.log(`✅ Currículo salvo no Drive após retry: ${telefone} | ${filename}`);
+      return { fileId: resp2.data.id, link: resp2.data.webViewLink, pasta: nomePastaCargo(cargo) };
+    } catch (e2) {
+      console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Erro: ${e2.message}`);
+      return null;
+    }
   }
 }
 
@@ -1022,21 +1057,21 @@ app.get("/inbox/sessoes", (req, res) => {
     lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
 
     const totalConversas = lista.length;
-    const totalNaoLidasConversas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
+    // conversas com pelo menos 1 msg não lida — use ESTE campo no badge do frontend
+    const totalNaoLidas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
     const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
 
     res.json({
       sessoes: dados,
-      total: totalConversas,
       totalConversas,
-      totalNaoLidasConversas,
+      totalNaoLidas,
       totalMensagensNaoLidas,
       novaConversaIniciaManual,
       atualizadoEm: new Date().toISOString(),
       atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
     });
   } catch (erro) {
-    res.json({ sessoes: {}, total: 0, totalConversas: 0, totalNaoLidasConversas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
+    res.json({ sessoes: {}, totalConversas: 0, totalNaoLidas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
   }
 });
 
