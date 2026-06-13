@@ -116,12 +116,10 @@ function parseDataFlexivel(valor) {
     let mes = Number(m[2]);
     let ano = Number(m[3]);
     if (ano < 100) ano += 2000;
-    // Detecta DD/MM vs MM/DD
     if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
     const hora = Number(m[4] || 0);
     const minuto = Number(m[5] || 0);
     const segundo = Number(m[6] || 0);
-    // -03:00 explícito: Railway roda em UTC, sem isso o horário fica 3h errado
     const pad = n => String(n).padStart(2, '0');
     const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
     const d = new Date(isoStr);
@@ -194,10 +192,9 @@ function normalizarEventoHistorico(evento) {
       const minuto = Number(br[5] || 0);
       const segundo = Number(br[6] || 0);
 
-      // Detecta DD/MM vs MM/DD: se dia > 12 certamente é dia; se mes > 12 inverte.
       const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
       const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
-      // CRÍTICO: -03:00 explícito — Railway roda em UTC, sem isso fica 3h errado
+      // -03:00 explícito: Railway roda em UTC, sem isso fica 3h errado
       const pad2 = n => String(n).padStart(2, '0');
       const iso2 = `${ano}-${pad2(mesFinal)}-${pad2(diaFinal)}T${pad2(hora)}:${pad2(minuto)}:${pad2(segundo)}-03:00`;
       const d = new Date(iso2);
@@ -307,7 +304,7 @@ function marcarMensagemRecebida(sessao, timestampMs = null) {
 
 function marcarConversaRespondida(sessao) {
   sessao.unreadCount = 0;
-  // Não sobrescreve lastMessageAtMs — preserva o horário real da última mensagem
+  // Preserva lastMessageAtMs real
 }
 
 const AREA_SYNONYMS = {
@@ -479,20 +476,20 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
     await new Promise(r => setTimeout(r, 3000));
     try {
       const drive2 = getDriveClient();
-      if (!drive2) { console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Drive indisponível`); return null; }
+      if (!drive2) { console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename}`); return null; }
       const folderId2 = await obterOuCriarPastaCargo(drive2, cargo);
-      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\//:*?"<>|]/g, "-");
+      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\/\\:*?"<>|]/g, "-");
       const { Readable: Readable2 } = require("stream");
       const resp2 = await drive2.files.create({
         requestBody: { name: nomeFinal2, parents: [folderId2] },
         media: { mimeType: mimeType || "application/octet-stream", body: Readable2.from(buffer) },
         fields: "id, webViewLink", supportsAllDrives: true
       });
-      try { await drive2.permissions.create({ fileId: resp2.data.id, requestBody: { role: "reader", type: "anyone" }, supportsAllDrives: true }); } catch (pe) { console.error("Erro permissão CV retry:", pe.message); }
+      try { await drive2.permissions.create({ fileId: resp2.data.id, requestBody: { role: "reader", type: "anyone" }, supportsAllDrives: true }); } catch(pe){}
       console.log(`✅ Currículo salvo no Drive (retry): ${telefone} | ${filename}`);
       return { fileId: resp2.data.id, link: resp2.data.webViewLink, pasta: nomePastaCargo(cargo) };
     } catch (e2) {
-      console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Erro: ${e2.message}`);
+      console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | ${e2.message}`);
       return null;
     }
   }
@@ -1703,7 +1700,8 @@ async function chamarGemini(prompt, tentativa = 1) {
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 1800
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json"
         }
       },
       {
