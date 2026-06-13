@@ -1700,8 +1700,9 @@ A primeira letra da resposta deve ser { e a última deve ser }.
   } catch (e) {
     const match = String(texto || "").match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
-    throw new Error("IA não retornou JSON válido: " + texto);
+     throw new Error("IA não retornou JSON válido: " + texto);
   }
+}
  
 async function chamarClaudeOriginal(prompt, tentativa = 1) {
   try {
