@@ -389,6 +389,7 @@ function salvarCurriculoLocal(buffer, filename, telefone, recebidoEmMs) {
 function curriculoTemArquivo(cv) {
   if (!cv) return false;
   if (cv.base64) return true;
+  if (cv.driveLink) return true;
   if (cv.localPath && fs.existsSync(cv.localPath)) return true;
   return false;
 }
