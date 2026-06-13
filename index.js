@@ -1680,6 +1680,29 @@ function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
 async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
 
 async function chamarClaudeJSON(prompt) {
+  const promptJSON = `
+${prompt}
+
+REGRA FINAL OBRIGATÓRIA:
+Responda SOMENTE com um JSON válido.
+Não escreva introdução.
+Não escreva explicação.
+Não use markdown.
+Não use crases.
+Não diga "estou processando".
+A primeira letra da resposta deve ser { e a última deve ser }.
+`;
+
+  const texto = await chamarClaude(promptJSON);
+
+  try {
+    return JSON.parse(texto);
+  } catch (e) {
+    const match = String(texto || "").match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error("IA não retornou JSON válido: " + texto);
+  }
+}
   const texto = await chamarClaude(prompt);
   try { return JSON.parse(texto); }
   catch (e) {
@@ -1712,7 +1735,7 @@ async function chamarGemini(prompt, tentativa = 1) {
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 1800
+          maxOutputTokens: 4096
         }
       },
       {
