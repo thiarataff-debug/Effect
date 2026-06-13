@@ -116,12 +116,12 @@ function parseDataFlexivel(valor) {
     let mes = Number(m[2]);
     let ano = Number(m[3]);
     if (ano < 100) ano += 2000;
-    // Detecta DD/MM vs MM/DD e corrige se necessário
+    // Detecta DD/MM vs MM/DD
     if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
     const hora = Number(m[4] || 0);
     const minuto = Number(m[5] || 0);
     const segundo = Number(m[6] || 0);
-    // Timezone BR explícito — evita erro em servidores UTC como Railway
+    // -03:00 explícito: Railway roda em UTC, sem isso o horário fica 3h errado
     const pad = n => String(n).padStart(2, '0');
     const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
     const d = new Date(isoStr);
@@ -197,7 +197,10 @@ function normalizarEventoHistorico(evento) {
       // Detecta DD/MM vs MM/DD: se dia > 12 certamente é dia; se mes > 12 inverte.
       const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
       const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
-      const d = new Date(ano, mesFinal - 1, diaFinal, hora, minuto, segundo);
+      // CRÍTICO: -03:00 explícito — Railway roda em UTC, sem isso fica 3h errado
+      const pad2 = n => String(n).padStart(2, '0');
+      const iso2 = `${ano}-${pad2(mesFinal)}-${pad2(diaFinal)}T${pad2(hora)}:${pad2(minuto)}:${pad2(segundo)}-03:00`;
+      const d = new Date(iso2);
       return isNaN(d.getTime()) ? 0 : d.getTime();
     }
 
@@ -473,31 +476,20 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
     return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
   } catch (e) {
     console.error("uploadCurriculoDrive falhou (1ª tentativa):", JSON.stringify(e.response?.data || e.message));
-    // Retry automático após 3 segundos
     await new Promise(r => setTimeout(r, 3000));
     try {
       const drive2 = getDriveClient();
-      if (!drive2) {
-        console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Drive indisponível`);
-        return null;
-      }
+      if (!drive2) { console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Drive indisponível`); return null; }
       const folderId2 = await obterOuCriarPastaCargo(drive2, cargo);
-      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
+      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\//:*?"<>|]/g, "-");
       const { Readable: Readable2 } = require("stream");
       const resp2 = await drive2.files.create({
         requestBody: { name: nomeFinal2, parents: [folderId2] },
         media: { mimeType: mimeType || "application/octet-stream", body: Readable2.from(buffer) },
-        fields: "id, webViewLink",
-        supportsAllDrives: true
+        fields: "id, webViewLink", supportsAllDrives: true
       });
-      try {
-        await drive2.permissions.create({
-          fileId: resp2.data.id,
-          requestBody: { role: "reader", type: "anyone" },
-          supportsAllDrives: true
-        });
-      } catch (pe) { console.error("Erro permissão CV (retry):", pe.message); }
-      console.log(`✅ Currículo salvo no Drive após retry: ${telefone} | ${filename}`);
+      try { await drive2.permissions.create({ fileId: resp2.data.id, requestBody: { role: "reader", type: "anyone" }, supportsAllDrives: true }); } catch (pe) { console.error("Erro permissão CV retry:", pe.message); }
+      console.log(`✅ Currículo salvo no Drive (retry): ${telefone} | ${filename}`);
       return { fileId: resp2.data.id, link: resp2.data.webViewLink, pasta: nomePastaCargo(cargo) };
     } catch (e2) {
       console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | Erro: ${e2.message}`);
@@ -1057,7 +1049,6 @@ app.get("/inbox/sessoes", (req, res) => {
     lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
 
     const totalConversas = lista.length;
-    // conversas com pelo menos 1 msg não lida — use ESTE campo no badge do frontend
     const totalNaoLidas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
     const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
 
@@ -1679,31 +1670,69 @@ function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
 
 async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
 
-const texto = String(await chamarClaude(promptJSON) || "").trim();
-  const promptJSON = `
-${prompt}
-
-REGRA FINAL OBRIGATÓRIA:
-Responda SOMENTE com um JSON válido.
-Não escreva introdução.
-Não escreva explicação.
-Não use markdown.
-Não use crases.
-Não diga "estou processando".
-A primeira letra da resposta deve ser { e a última deve ser }.
-`;
-
-  const texto = await chamarClaude(promptJSON);
-
-  try {
-    return JSON.parse(texto);
-  } catch (e) {
-    const match = String(texto || "").match(/\{[\s\S]*\}/);
+async function chamarClaudeJSON(prompt) {
+  const texto = await chamarClaude(prompt);
+  try { return JSON.parse(texto); }
+  catch (e) {
+    const match = texto.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
-     throw new Error("IA não retornou JSON válido: " + texto);
+    throw new Error("Claude não retornou JSON válido: " + texto);
   }
 }
- 
+
+// chamarClaude agora:
+// - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
+// - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
+// - timeout maior (45s) para reduzir falsos timeouts sob carga
+async function chamarGemini(prompt, tentativa = 1) {
+  try {
+    if (!CONFIG.GEMINI_API_KEY) {
+      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
+      return FALLBACK_INSTABILIDADE;
+    }
+
+    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1800
+        }
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 45000
+      }
+    );
+
+    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
+  } catch (erro) {
+    const status = erro.response?.status;
+    const corpo = erro.response?.data;
+    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+
+    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
+    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
+    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+
+    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
+
+    if (ehTimeoutOuRede && tentativa < 2) {
+      await sleep(1500);
+      return chamarGemini(prompt, tentativa + 1);
+    }
+
+    return FALLBACK_INSTABILIDADE;
+  }
+}
+
 async function chamarClaudeOriginal(prompt, tentativa = 1) {
   try {
     if (!CONFIG.CLAUDE_API_KEY) {
@@ -1739,132 +1768,6 @@ async function chamarClaudeOriginal(prompt, tentativa = 1) {
 // Função central de IA.
 // Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
 // Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
-async function chamarClaudeTexto(prompt) {
-  return await chamarClaude(prompt);
-}
-
-async function chamarClaudeJSON(prompt) {
-  const promptJSON = `
-${prompt}
-
-REGRA FINAL OBRIGATÓRIA:
-Responda SOMENTE com um JSON válido.
-Não escreva introdução.
-Não escreva explicação.
-Não use markdown.
-Não use crases.
-Não diga "estou processando".
-A primeira letra da resposta deve ser { e a última deve ser }.
-`;
-
-  const texto = await chamarClaude(promptJSON);
-
-  try {
-    return JSON.parse(texto);
-  } catch (e) {
-    const match = String(texto || "").match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("IA não retornou JSON válido: " + texto);
-  }
-}
-
-async function chamarGemini(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) {
-      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 4096
-        }
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 45000
-      }
-    );
-
-    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-
-    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
-
-    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
-    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
-
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 2) {
-      await sleep(1500);
-      return chamarGemini(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
-  }
-}
-
-async function chamarClaudeOriginal(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.CLAUDE_API_KEY) {
-      console.error("chamarClaudeOriginal: CLAUDE_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-
-    const response = await axios.post("https://api.anthropic.com/v1/messages", {
-      model: "claude-sonnet-4-6",
-      max_tokens: 1800,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: {
-        "x-api-key": CONFIG.CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
-      timeout: 45000
-    });
-
-    return response.data?.content?.[0]?.text || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-
-    console.error(`Erro chamarClaudeOriginal (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
-
-    const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
-
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 2) {
-      await sleep(1500);
-      return chamarClaudeOriginal(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
-  }
-}
-
-// Função central de IA.
-// Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
-// Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
-  
 async function chamarClaude(prompt, tentativa = 1) {
   const provider = String(CONFIG.AI_PROVIDER || "gemini").toLowerCase().trim();
 
@@ -1884,7 +1787,7 @@ async function chamarClaude(prompt, tentativa = 1) {
 
   return respostaGemini;
 }
-  
+
 async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
     if (!CONFIG.VAGAS_URL) return;
