@@ -1679,7 +1679,7 @@ function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
 
 async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
 
-async function chamarClaudeJSON(prompt) {
+const texto = String(await chamarClaude(promptJSON) || "").trim();
   const promptJSON = `
 ${prompt}
 
