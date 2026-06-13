@@ -1702,69 +1702,7 @@ A primeira letra da resposta deve ser { e a última deve ser }.
     if (match) return JSON.parse(match[0]);
     throw new Error("IA não retornou JSON válido: " + texto);
   }
-}
-  const texto = await chamarClaude(prompt);
-  try { return JSON.parse(texto); }
-  catch (e) {
-    const match = texto.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("Claude não retornou JSON válido: " + texto);
-  }
-}
-
-// chamarClaude agora:
-// - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
-// - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
-// - timeout maior (45s) para reduzir falsos timeouts sob carga
-async function chamarGemini(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) {
-      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 4096
-        }
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 45000
-      }
-    );
-
-    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
-
-    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
-    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
-
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 2) {
-      await sleep(1500);
-      return chamarGemini(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
-  }
-}
-
+ 
 async function chamarClaudeOriginal(prompt, tentativa = 1) {
   try {
     if (!CONFIG.CLAUDE_API_KEY) {
