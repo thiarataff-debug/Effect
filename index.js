@@ -2115,4 +2115,13 @@ function formatarLista(texto) {
 }
 
 async function enviarMensagem(toOriginal, body) {
-  const to = limparTelefone(toOri
+  const to = limparTelefone(toOriginal);
+  try {
+    if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) return;
+    await axios.post(`https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
+  } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
+}
+
+app.listen(PORT, () => {
+  console.log(`Lia rodando na porta ${PORT} — modo supervisor + Linhares via planilha ✅`);
+});
