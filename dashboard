@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effect | Central de R&S</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
+  --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
+  --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0}
+.logo-area{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.logo-area h1{color:#ffffff;font-size:19px;font-weight:700;letter-spacing:2px}
+.logo-area .logo-sub{color:var(--teal);font-size:10px;font-weight:600;margin-top:1px}
+.logo-area .logo-panel{color:rgba(161,161,170,0.55);font-size:9px;margin-top:1px;letter-spacing:.5px}
+.nav-section{padding:16px 18px 4px;font-size:8px;color:rgba(161,161,170,0.45);letter-spacing:2px;text-transform:uppercase;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:12px;font-weight:500;transition:.2s;border-left:3px solid transparent}
+.nav-item:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.05)}
+.nav-item.active{color:#ffffff;border-left-color:var(--teal);background:rgba(78,205,196,0.1)}
+.nav-item i{width:16px;text-align:center;font-size:12px;opacity:.8}
+.nav-item.active i{color:var(--teal);opacity:1}
+.badge{background:var(--blue);color:var(--white);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:auto;min-width:20px;text-align:center}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--white);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0}
+.page-title h2{font-size:17px;font-weight:700}
+.page-title p{font-size:11px;color:var(--gray);margin-top:2px}
+.topbar-actions{display:flex;gap:10px}
+.btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--green);color:var(--dark)}
+.btn-primary:hover{background:#79c9a5}
+.btn-outline{background:transparent;border:1px solid rgba(0,0,0,0.12);color:var(--dark)}
+.btn-outline:hover{border-color:var(--dark)}
+.content{flex:1;overflow-y:auto;padding:22px 26px}
+.view{display:none}.view.active{display:block}
+#kanban-view.active{display:flex;flex-direction:column}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--gray);border-radius:10px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:var(--white);border-radius:12px;padding:16px;border:1px solid rgba(0,0,0,0.06)}
+.kpi-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:14px}
+.kpi-label{font-size:10px;color:var(--gray);font-weight:600;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:700}
+.kpi-sub{font-size:10px;margin-top:4px}
+.kpi-up{color:var(--sage)}.kpi-dn{color:var(--salmon)}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:20px}
+.chart-card{background:var(--white);border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.06)}
+.chart-title{font-size:12px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.chart-title span{font-size:10px;color:var(--gray);font-weight:400}
+.funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.f-label{font-size:10px;color:var(--gray);width:120px;flex-shrink:0}
+.f-wrap{flex:1;background:var(--bg);border-radius:4px;height:20px;overflow:hidden}
+.f-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:700;color:var(--dark)}
+.f-num{font-size:10px;font-weight:700;width:26px;text-align:right;flex-shrink:0}
+.donut-legend{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.leg-row{display:flex;align-items:center;gap:7px;font-size:10px}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.leg-label{flex:1;color:var(--gray)}.leg-val{font-weight:700}
+.bar-wrap{display:flex;align-items:flex-end;gap:10px;height:120px;padding-top:10px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;border-radius:4px 4px 0 0}
+.bar-lbl{font-size:9px;color:var(--gray)}.bar-num{font-size:9px;font-weight:700}
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.activity-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg)}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white);flex-shrink:0}
+.at{font-size:11px;line-height:1.5}.at-time{font-size:10px;color:var(--gray);margin-top:2px}
+.int-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg);cursor:pointer}
+.int-row:hover{background:var(--bg);border-radius:8px;padding-left:8px}
+.time-badge{background:var(--bg);border-radius:8px;padding:6px 9px;text-align:center;flex-shrink:0}
+.time-badge .t{font-size:13px;font-weight:700}.time-badge .d{font-size:9px;color:var(--gray)}
+.int-info h4{font-size:11px;font-weight:700}.int-info p{font-size:10px;color:var(--gray);margin-top:1px}
+.tipo-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;margin-top:3px;display:inline-block}
+
+/* VAGAS */
+.vagas-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.vaga-tabs{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.vaga-tab{padding:7px 16px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:.2s;font-family:'Montserrat',sans-serif;border:1.5px solid rgba(0,0,0,0.12);background:var(--white);color:var(--dark);display:inline-flex;align-items:center;gap:6px}
+.vaga-tab.active{background:var(--dark);color:#fff;border-color:var(--dark)}
+.vaga-tab .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.vaga-tab .dot-green{background:#4caf50}
+.vaga-tab .dot-red{background:#e53935}
+.vagas-toolbar .search-in{padding:7px 13px;border:1.5px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);min-width:200px}
+.filter-bar{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+.search-in{flex:1;min-width:180px;padding:8px 13px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white)}
+.sel{padding:8px 13px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);cursor:pointer}
+.vagas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* VAGA CARD — novo layout */
+.vaga-card{background:var(--white);border-radius:12px;padding:16px 18px;border:1px solid rgba(0,0,0,0.07);cursor:pointer;transition:.2s;border-left:4px solid var(--teal);position:relative}
+.vaga-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.1);transform:translateY(-1px)}
+.vaga-card.urg{border-left-color:var(--salmon)}
+.vaga-card.encerrada{border-left-color:var(--gray);opacity:.8}
+.vc-title{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;line-height:1.3}
+.vc-client{font-size:11px;font-weight:600;color:var(--teal);margin-bottom:10px}
+.vc-icons{display:flex;gap:14px;font-size:10px;color:var(--gray);margin-bottom:10px;flex-wrap:wrap}
+.vc-icons span{display:flex;align-items:center;gap:4px}
+.vc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.vc-badge-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;background:var(--dark);color:#fff}
+.vc-badge-status .dot{width:7px;height:7px;border-radius:50%;background:#4caf50;flex-shrink:0}
+.vc-badge-status.encerrada-badge .dot{background:#e53935}
+.vc-badge-num{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(0,0,0,0.06);color:var(--gray)}
+.vc-timing{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--gray);margin-bottom:10px;flex-wrap:wrap}
+.vc-emdia{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;background:rgba(142,209,178,0.2);color:var(--sage)}
+.vc-sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:10px 0}
+.vc-cands-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.vc-cands-lbl{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+.vc-cands-cnt{background:var(--blue);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px}
+.vc-cand-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg)}
+.vc-cand-row:last-child{border-bottom:none}
+.vc-cav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.vc-cname{font-size:11px;font-weight:600;flex:1}
+.vc-score{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700}
+.vc-score.bom{background:rgba(142,209,178,0.25);color:var(--sage)}
+.vc-score.med{background:rgba(31,165,240,0.18);color:var(--blue)}
+.vc-score.baixo{background:rgba(244,175,161,0.25);color:#c0392b}
+.vc-cand-btns{display:flex;gap:4px}
+.vc-btn-sm{padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;border:none;transition:.2s}
+.vc-btn-inbox{background:var(--dark);color:#fff}
+.vc-btn-wa{background:#25D366;color:#fff}
+.v-num{font-size:9px;color:var(--gray);font-weight:600}
+.st-badge{font-size:9px;padding:3px 9px;border-radius:20px;font-weight:600}
+.v-title{font-size:13px;font-weight:700;margin-bottom:3px}
+.v-client{font-size:11px;color:var(--gray);margin-bottom:12px;display:flex;align-items:center;gap:4px}
+.v-meta{display:flex;gap:12px;font-size:10px;color:var(--gray);margin-bottom:12px;flex-wrap:wrap}
+.v-meta span{display:flex;align-items:center;gap:3px}
+.avatars{display:flex}.c-av{width:24px;height:24px;border-radius:50%;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--white);border:2px solid var(--white);margin-left:-5px}
+.c-av:first-child{margin-left:0}
+.c-count{font-size:10px;color:var(--gray);margin-left:6px}
+.prog-wrap{margin-top:11px;background:var(--bg);border-radius:4px;height:3px}
+.prog-fill{height:100%;border-radius:4px;background:var(--green)}
+
+/* KANBAN */
+.kb-filters{display:flex;gap:9px;margin-bottom:14px;align-items:center}
+.kb-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px;flex:1}
+.kb-col{min-width:230px;width:230px;display:flex;flex-direction:column;flex-shrink:0}
+.col-hdr{padding:9px 12px;border-radius:9px 9px 0 0;font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.col-cnt{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(0,0,0,0.15)}
+.col-body{background:rgba(0,0,0,0.025);border-radius:0 0 9px 9px;padding:9px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(0,0,0,0.05);border-top:none;min-height:200px;max-height:calc(100vh - 220px)}
+.kb-card{background:var(--white);border-radius:9px;padding:12px;cursor:pointer;transition:.2s;border:1px solid rgba(0,0,0,0.05);border-left:3px solid var(--green)}
+.kb-card:hover{box-shadow:0 3px 14px rgba(0,0,0,0.12)}
+.kb-card.urg{border-left-color:var(--salmon)}
+.kc-num{font-size:9px;color:var(--gray);font-weight:600;margin-bottom:3px}
+.kc-job{font-size:11px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.kc-client{font-size:10px;color:var(--gray);margin-bottom:8px}
+.kc-name{font-size:11px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.kc-score{display:flex;align-items:center;gap:3px;font-size:9px;font-weight:700;margin-bottom:8px;color:var(--sage)}
+.kc-footer{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--gray)}
+.kc-footer.late{color:var(--salmon);font-weight:600}
+.add-btn{width:100%;padding:7px;background:transparent;border:1px dashed rgba(0,0,0,0.12);border-radius:7px;color:var(--gray);font-size:11px;cursor:pointer;font-family:'Montserrat',sans-serif;transition:.2s;margin-top:4px}
+.add-btn:hover{background:var(--white);color:var(--dark)}
+
+/* CANDIDATOS TABLE */
+.tbl-wrap{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,0.06)}
+.cands-tbl{width:100%;border-collapse:collapse}
+.cands-tbl th{background:var(--dark);color:var(--gray);font-size:10px;font-weight:600;padding:11px 13px;text-align:left}
+.cands-tbl td{padding:11px 13px;font-size:11px;border-bottom:1px solid var(--bg)}
+.cands-tbl tr:hover td{background:var(--bg)}
+.score-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
+
+/* CALENDARIO */
+.cal-hdr{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.cal-nav-btn{padding:6px 11px;border:1px solid rgba(0,0,0,0.1);border-radius:6px;cursor:pointer;background:var(--white);font-family:'Montserrat',sans-serif;font-size:14px}
+.cal-month{font-size:17px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:rgba(0,0,0,0.06);border-radius:12px;overflow:hidden}
+.cal-dh{background:var(--dark);color:var(--gray);font-size:10px;font-weight:600;padding:9px;text-align:center}
+.cal-day{background:var(--white);min-height:90px;padding:7px}
+.cal-day.other{background:var(--bg)}
+.cal-day.today{background:rgba(142,209,178,0.07)}
+.cal-dn{font-size:11px;font-weight:600;margin-bottom:3px}
+.cal-day.today .cal-dn{color:var(--green);font-weight:700}
+.cal-ev{font-size:9px;padding:2px 5px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+
+/* RELATORIOS */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.metric-card{background:var(--white);border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.06)}
+.metric-lbl{font-size:11px;color:var(--gray);margin-bottom:8px;font-weight:600}
+.metric-big{font-size:30px;font-weight:700}
+.metric-ctx{font-size:10px;color:var(--gray);margin-top:5px}
+.prog{margin-top:10px;height:4px;background:var(--bg);border-radius:4px}
+.prog-f{height:100%;border-radius:4px}
+
+/* NR01 */
+.nr-header{background:var(--white);border-radius:12px;padding:22px;border:1px solid rgba(0,0,0,0.06);margin-bottom:18px}
+.nr-header h3{font-size:15px;font-weight:700;margin-bottom:5px}
+.nr-header p{font-size:12px;color:var(--gray)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:14px;width:92vw;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-left{flex:1;padding:26px;overflow-y:auto;border-right:1px solid var(--bg)}
+.modal-right{width:290px;padding:18px;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;gap:16px;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:3px}
+.modal-sub{font-size:11px;color:var(--gray);margin-bottom:18px}
+.sec-title{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.info-item label{font-size:10px;color:var(--gray);display:block;margin-bottom:2px}
+.info-item p{font-size:12px;font-weight:600}
+.stages-wrap{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px}
+.stage-btn{padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid rgba(0,0,0,0.1);cursor:pointer;background:var(--white);transition:.2s;font-family:'Montserrat',sans-serif}
+.stage-btn.active{background:var(--green);border-color:var(--green);color:var(--dark)}
+.cand-row2{display:flex;align-items:center;gap:9px;padding:9px;background:var(--bg);border-radius:9px;margin-bottom:7px;cursor:pointer}
+.cand-row2:hover{background:#eaecf0}
+.cr2-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white);flex-shrink:0}
+.cr2-name{font-size:11px;font-weight:700}.cr2-stage{font-size:10px;color:var(--gray)}
+.cr2-score{font-size:12px;font-weight:700;margin-left:auto}
+.chat-wrap{display:flex;flex-direction:column;height:240px}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-bottom:9px}
+.chat-msg{display:flex;gap:7px}
+.cm-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--white)}
+.cm-bubble{background:var(--bg);border-radius:0 9px 9px 9px;padding:7px 10px;font-size:11px;max-width:100%}
+.cm-name{font-weight:700;font-size:9px;margin-bottom:2px}
+.cm-time{font-size:9px;color:var(--gray);margin-top:2px}
+.chat-in{display:flex;gap:7px}
+.chat-input{flex:1;padding:8px 11px;border:1px solid rgba(0,0,0,0.1);border-radius:20px;font-family:'Montserrat',sans-serif;font-size:11px}
+.chat-send{padding:8px 12px;background:var(--green);border:none;border-radius:20px;cursor:pointer;font-size:12px}
+.sched-item{background:var(--white);border-radius:7px;padding:9px;margin-bottom:7px}
+.sched-tipo{font-size:11px;font-weight:700}.sched-cand{font-size:10px;color:var(--gray)}
+.sched-hora{font-size:10px;margin-top:3px}
+.budget-box{background:var(--white);border-radius:8px;padding:11px;font-size:11px;line-height:1.8}
+.quick-btn{width:100%;padding:8px 12px;background:var(--white);border:1px solid rgba(0,0,0,0.1);border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:500;text-align:left;display:flex;align-items:center;gap:8px;transition:.2s;margin-bottom:6px}
+.quick-btn:hover{border-color:var(--dark);background:var(--bg)}
+.quick-btn.danger{color:var(--salmon);border-color:rgba(244,175,161,0.4)}
+
+/* DISC */
+.disc-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.disc-letter{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.disc-bar-bg{flex:1;background:var(--bg);border-radius:4px;height:14px;overflow:hidden}
+.disc-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.disc-pct{font-size:10px;font-weight:700;width:28px;text-align:right;flex-shrink:0}
+.disc-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+.disc-match-ring{width:52px;height:52px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--green);flex-shrink:0}
+.disc-match-pct{font-size:14px;font-weight:800;line-height:1}
+.disc-match-lbl{font-size:8px;color:var(--gray)}
+.disc-tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;margin:2px}
+.disc-section{background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px}
+.disc-section-title{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.match-card{background:var(--white);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:8px;border:1px solid rgba(0,0,0,0.06)}
+.match-card:hover{background:var(--bg)}
+.match-info{flex:1}.match-name{font-size:12px;font-weight:700}.match-sub{font-size:10px;color:var(--gray);margin-top:2px}
+/* AGENDAR OVERLAY */
+#agendar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center}
+#agendar-overlay.show{display:flex}
+/* Gestor panel */
+.gestor-form{max-width:740px}
+.form-section{background:var(--white);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,0.06);margin-bottom:16px}
+.form-section-title{font-size:12px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.8px}
+.form-input,.form-select,.form-textarea{padding:9px 12px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);transition:.2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--green)}
+.form-textarea{resize:vertical;min-height:70px}
+.disc-question{background:var(--bg);border-radius:8px;padding:12px;margin-bottom:8px}
+.disc-q-text{font-size:12px;font-weight:500;margin-bottom:8px}
+.disc-q-hint{font-size:10px;color:var(--gray);margin-bottom:8px}
+.disc-q-options{display:flex;gap:6px;flex-wrap:wrap}
+.disc-q-opt{padding:5px 12px;border-radius:20px;border:1px solid rgba(0,0,0,0.12);font-size:11px;cursor:pointer;background:var(--white);font-family:'Montserrat',sans-serif;font-weight:500;transition:.2s}
+.disc-q-opt:hover,.disc-q-opt.sel{background:var(--green);border-color:var(--green);color:var(--dark);font-weight:700}
+.disc-result-preview{background:var(--dark);border-radius:10px;padding:14px;color:var(--white)}
+.disc-result-preview h4{font-size:11px;color:var(--gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo-area">
+    <h1>EFFECT</h1>
+    <div class="logo-sub">Pessoas &amp; Performance</div>
+    <div class="logo-panel">Painel Interno</div>
+  </div>
+  <nav>
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="gotoView('dashboard',this)"><i class="fas fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" onclick="gotoView('calendario',this)"><i class="fas fa-calendar-alt"></i> Agenda <span class="badge">3</span></div>
+    <div class="nav-item" onclick="gotoView('inbox-lia',this)"><i class="fas fa-comment-dots"></i> Inbox Lia</div>
+    <div class="nav-section">Banco de Dados</div>
+    <div class="nav-item" onclick="gotoView('candidatos',this)"><i class="fas fa-users"></i> Candidatos <span class="badge">41</span></div>
+    <div class="nav-item" onclick="gotoView('vagas',this)"><i class="fas fa-briefcase"></i> Vagas <span class="badge">58</span></div>
+    <div class="nav-item" onclick="gotoView('kanban',this)"><i class="fas fa-columns"></i> Kanban Pipeline</div>
+    <div class="nav-section">Ferramentas</div>
+    <div class="nav-item" onclick="window.open('https://effect-production.up.railway.app/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
+    <div class="nav-item" onclick="gotoView('relatorios',this)"><i class="fas fa-chart-bar"></i> Relatórios</div>
+    <div class="nav-item" onclick="gotoView('nr01',this)"><i class="fas fa-shield-alt"></i> NR-01</div>
+    <div class="nav-item" onclick="gotoView('disc',this)"><i class="fas fa-brain"></i> DISC &amp; Match</div>
+  </nav>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="page-title">
+      <h2 id="ptitle">Dashboard</h2>
+      <p id="psub">Visão geral · Junho 2026</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" onclick="openNovaVaga()"><i class="fas fa-plus"></i> Nova Vaga</button>
+      <button class="btn btn-primary" onclick="openModal(vagas[0])"><i class="fas fa-user-plus"></i> Novo Candidato</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-briefcase" style="color:var(--green)"></i></div>
+          <div class="kpi-label">Vagas Ativas</div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-sub kpi-up">↑ 2 este mês</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(31,165,240,.1)"><i class="fas fa-users" style="color:var(--blue)"></i></div>
+          <div class="kpi-label">Em Processo</div>
+          <div class="kpi-value">34</div>
+          <div class="kpi-sub kpi-up">↑ 8 essa semana</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(244,175,161,.15)"><i class="fas fa-hourglass-half" style="color:var(--salmon)"></i></div>
+          <div class="kpi-label">Ag. Resposta</div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-sub kpi-dn">↑ cliente pendente</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(123,142,96,.15)"><i class="fas fa-check-circle" style="color:var(--sage)"></i></div>
+          <div class="kpi-label">Contratados</div>
+          <div class="kpi-value">5</div>
+          <div class="kpi-sub kpi-up">↑ anterior: 3</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-percent" style="color:var(--green)"></i></div>
+          <div class="kpi-label">Taxa Aprovação</div>
+          <div class="kpi-value">68%</div>
+          <div class="kpi-sub kpi-up">↑ meta: 60%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(161,161,170,.15)"><i class="fas fa-clock" style="color:var(--gray)"></i></div>
+          <div class="kpi-label">Tempo Médio</div>
+          <div class="kpi-value">18d</div>
+          <div class="kpi-sub kpi-dn">meta: 15d</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Funil de Seleção <span>Junho 2026</span></div>
+          <div id="funnel-chart"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Vagas por Status</div>
+          <svg width="100%" viewBox="0 0 140 130" id="donut-svg"></svg>
+          <div class="donut-legend" id="donut-legend"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Contratações / Mês</div>
+          <div class="bar-wrap" id="bar-chart"></div>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="chart-card">
+          <div class="chart-title">Atividade Recente</div>
+          <div id="activity-feed"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Próximas Entrevistas &amp; Alinhamentos</div>
+          <div id="upcoming-ints"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAGAS -->
+    <div id="vagas-view" class="view">
+      <div class="vagas-toolbar">
+        <div class="vaga-tabs">
+          <button class="vaga-tab active" id="tab-todas" onclick="setVagaTab('todas',this)">Todas</button>
+          <button class="vaga-tab" id="tab-abertas" onclick="setVagaTab('abertas',this)"><span class="dot dot-green"></span> Abertas</button>
+          <button class="vaga-tab" id="tab-encerradas" onclick="setVagaTab('encerradas',this)"><span class="dot dot-red"></span> Encerradas</button>
+        </div>
+        <input class="search-in" id="vagas-search" placeholder="🔍 Buscar vaga, cargo ou cliente..." oninput="renderVagas()" style="min-width:220px;max-width:300px">
+        <button class="btn btn-primary" onclick="openNovaVaga()"><i class="fas fa-plus"></i> Nova Vaga</button>
+      </div>
+      <div class="vagas-grid" id="vagas-grid"></div>
+    </div>
+
+    <!-- KANBAN -->
+    <div id="kanban-view" class="view">
+      <div class="kb-filters">
+        <input class="search-in" placeholder="🔍 Buscar candidato..." style="max-width:250px">
+        <select class="sel"><option>Todas as vagas</option></select>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline"><i class="fas fa-filter"></i> Filtros</button>
+          <button class="btn btn-primary" onclick="openModal(vagas[0])"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>
+      </div>
+      <div class="kb-board" id="kb-board"></div>
+    </div>
+
+    <!-- CANDIDATOS -->
+    <div id="candidatos-view" class="view">
+      <div class="filter-bar">
+        <input class="search-in" placeholder="🔍 Buscar candidato...">
+        <select class="sel"><option>Todas as vagas</option></select>
+        <select class="sel"><option>Todas as etapas</option></select>
+      </div>
+      <div class="tbl-wrap">
+        <table class="cands-tbl">
+          <thead><tr>
+            <th>Candidato</th><th>Vaga</th><th>Cliente</th><th>Etapa</th>
+            <th>Score</th><th>Dias</th><th>Observação</th><th></th>
+          </tr></thead>
+          <tbody id="cands-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div id="calendario-view" class="view">
+      <div class="cal-hdr">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+        <div class="cal-month" id="cal-label"></div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline" id="btn-ver-semana" onclick="toggleCalView()"><i class="fas fa-calendar-week"></i> Ver Semana</button>
+          <button class="btn btn-primary" onclick="openAgendarModal()"><i class="fas fa-calendar-plus"></i> Agendar</button>
+        </div>
+      </div>
+      <div id="cal-wrap"></div>
+      <div id="semana-wrap" style="display:none"></div>
+    </div>
+
+    <!-- INBOX LIA -->
+    <div id="inbox-lia-view" class="view">
+      <div style="max-width:680px">
+        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h3 style="font-size:16px;font-weight:700">Inbox · Lia</h3>
+            <p style="font-size:12px;color:var(--gray);margin-top:4px">Mensagens, respostas e interações da assistente Lia com candidatos.</p>
+          </div>
+          <a href="https://effect-production.up.railway.app/painel" target="_blank" class="btn btn-outline" style="font-size:11px"><i class="fas fa-external-link-alt"></i> Abrir Lia</a>
+        </div>
+        <div id="lia-inbox-list"></div>
+      </div>
+    </div>
+
+    <!-- MODAL AGENDAR -->
+    <div class="modal-overlay" id="agendar-overlay" onclick="if(event.target===this)closeAgendar()">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:420px;max-width:95vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3 style="font-size:15px;font-weight:700">Agendar Compromisso</h3>
+        <button onclick="closeAgendar()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <select class="form-select" id="ag-tipo">
+            <option>Entrevista RH</option><option>Entrevista c/ Cliente</option><option>Alinhamento de Vaga</option><option>Follow-up</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Candidato / Participante</label><input class="form-input" id="ag-cand" placeholder="Nome do candidato ou gestor"></div>
+        <div class="form-group"><label class="form-label">Vaga Relacionada</label>
+          <select class="form-select" id="ag-vaga"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="ag-data" type="date"></div>
+          <div class="form-group"><label class="form-label">Horário</label><input class="form-input" id="ag-hora" type="time" value="09:00"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="ag-obs" placeholder="Link da reunião, instrução..." style="min-height:60px"></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="salvarAgendamento()"><i class="fas fa-check"></i> Confirmar</button>
+          <button class="btn btn-outline" onclick="closeAgendar()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- RELATORIOS -->
+    <div id="relatorios-view" class="view">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-lbl">⏱ Tempo Médio para Contratar</div>
+          <div class="metric-big" style="color:var(--green)">18 dias</div>
+          <div class="metric-ctx">Meta: 15d · Benchmark mercado: 25d</div>
+          <div class="prog"><div class="prog-f" style="width:72%;background:var(--green)"></div></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">🎯 Taxa de Conversão</div>
+          <div class="metric-big" style="color:var(--blue)">68%</div>
+          <div class="metric-ctx">Triagem → Contratado · ↑ 8% vs anterior</div>
+          <div class="prog"><div class="prog-f" style="width:68%;background:var(--blue)"></div></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">💼 Vagas Fechadas no Mês</div>
+          <div class="metric-big" style="color:var(--sage)">5</div>
+          <div class="metric-ctx">Junho 2026 · Meta: 6 vagas (83%)</div>
+          <div class="prog"><div class="prog-f" style="width:83%;background:var(--sage)"></div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="chart-card">
+          <div class="chart-title">Fontes de Candidatos</div>
+          <div id="source-chart"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Motivos de Desistência / Reprovação</div>
+          <div id="rejection-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NR-01 -->
+    <div id="nr01-view" class="view">
+      <div class="nr-header">
+        <h3>🛡 Gestão de Riscos Psicossociais · NR-01</h3>
+        <p>Mapeamento e monitoramento conforme nova NR-01 (vigência 2025) — inclusão obrigatória de riscos psicossociais no PGR</p>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-lbl">Diagnósticos Realizados</div>
+          <div class="metric-big" style="color:var(--green)">4</div>
+          <div class="metric-ctx">Empresas clientes mapeadas</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">Treinamentos Ministrados</div>
+          <div class="metric-big" style="color:var(--blue)">12h</div>
+          <div class="metric-ctx">Capacitações em 2026</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">Planos de Ação</div>
+          <div class="metric-big" style="color:var(--salmon)">7</div>
+          <div class="metric-ctx">3 em andamento · 4 concluídos</div>
+        </div>
+      </div>
+      <div class="chart-card" style="max-width:580px">
+        <div class="chart-title">Fatores de Risco Mapeados (média dos clientes)</div>
+        <div id="nr01-chart"></div>
+      </div>
+    </div>
+
+    <!-- PAINEL DO GESTOR -->
+    <div id="gestor-view" class="view">
+      <div class="gestor-form">
+        <div style="margin-bottom:18px">
+          <h3 style="font-size:16px;font-weight:700">Painel do Gestor · Requisição de Vaga</h3>
+          <p style="font-size:12px;color:var(--gray);margin-top:4px">Preencha as informações abaixo. As respostas sobre o perfil comportamental serão usadas para gerar automaticamente a recomendação DISC da vaga.</p>
+        </div>
+
+        <!-- Dados da vaga -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-briefcase" style="color:var(--green)"></i> Dados da Vaga</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" placeholder="Ex: Analista Administrativo"></div>
+            <div class="form-group"><label class="form-label">Departamento</label><input class="form-input" placeholder="Ex: Financeiro"></div>
+            <div class="form-group"><label class="form-label">Nº de Vagas</label><input class="form-input" type="number" value="1"></div>
+            <div class="form-group"><label class="form-label">Regime</label><select class="form-select"><option>CLT</option><option>PJ</option><option>Temporário</option><option>Estágio</option></select></div>
+            <div class="form-group"><label class="form-label">Faixa Salarial</label><input class="form-input" placeholder="Ex: R$ 4.000 – R$ 5.500"></div>
+            <div class="form-group"><label class="form-label">Prazo para Contratar</label><input class="form-input" type="date"></div>
+            <div class="form-group full"><label class="form-label">Justificativa da Abertura</label><select class="form-select"><option>Substituição</option><option>Expansão de equipe</option><option>Novo cargo</option><option>Falha técnica</option><option>Licença</option></select></div>
+            <div class="form-group full"><label class="form-label">Descrição das Principais Responsabilidades</label><textarea class="form-textarea" placeholder="Descreva as principais atividades e responsabilidades do cargo..."></textarea></div>
+          </div>
+        </div>
+
+        <!-- Perguntas DISC -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-brain" style="color:var(--blue)"></i> Perfil Comportamental — Perguntas para Definir o DISC Ideal</div>
+          <p style="font-size:11px;color:var(--gray);margin-bottom:14px">Responda cada pergunta conforme a realidade do cargo. O sistema calculará automaticamente o perfil DISC recomendado.</p>
+
+          <div class="disc-question">
+            <div class="disc-q-text">1. O profissional precisará tomar decisões rápidas, assumir riscos e resolver problemas com autonomia?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#e74c3c">D (Dominância)</strong> — liderança, assertividade, competitividade</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'d1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
+
+          <div class="disc-question">
+            <div class="disc-q-text">2. O cargo exige comunicação constante, persuasão, entusiasmo e capacidade de influenciar pessoas?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#f39c12">I (Influência)</strong> — comunicação, sociabilidade, otimismo</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'i1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
+
+          <div class="disc-question">
+            <div class="disc-q-text">3. A função requer constância, paciência, trabalho em equipe e suporte contínuo às pessoas?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#27ae60">S (Estabilidade)</strong> — calma, colaboração, lealdade, rotina</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'s1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
+
+          <div class="disc-question">
+            <div class="disc-q-text">4. O trabalho envolve análise detalhada, precisão, conformidade com normas e alto padrão de qualidade?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#2980b9">C (Conformidade)</strong> — análise, critério, perfeccionismo, processos</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'c1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
+
+          <div class="disc-question">
+            <div class="disc-q-text">5. Qual é o ritmo típico do ambiente de trabalho para essa função?</div>
+            <div class="disc-q-hint">↳ Ajuda a calibrar a intensidade entre D/I (ritmo rápido) e S/C (ritmo metódico)</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'r1','intenso')">Intenso e acelerado</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'r1','misto')">Misto (picos e calmaria)</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'r1','estavel')">Estável e previsível</button>
+            </div>
+          </div>
+
+          <div class="disc-question">
+            <div class="disc-q-text">6. O profissional liderará pessoas ou projetos formalmente?</div>
+            <div class="disc-q-hint">↳ Liderança formal reforça D; liderança colaborativa reforça S e I</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'l1','sim-formal')">Sim, liderança formal</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'l1','colabora')">Liderança colaborativa / influência</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'l1','nao')">Não, posição individual</button>
+            </div>
+          </div>
+
+          <!-- Preview DISC calculado -->
+          <div class="disc-result-preview" id="disc-preview" style="margin-top:16px">
+            <h4>🎯 Perfil DISC Recomendado (calculado pelas respostas)</h4>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div id="disc-preview-bars" style="flex:1;min-width:220px"></div>
+              <div id="disc-preview-tag" style="text-align:center"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Competências -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-star" style="color:var(--sage)"></i> Competências e Requisitos</div>
+          <div class="form-row">
+            <div class="form-group full"><label class="form-label">Competências Técnicas Obrigatórias</label><textarea class="form-textarea" placeholder="Ex: Excel avançado, SAP, legislação trabalhista..."></textarea></div>
+            <div class="form-group full"><label class="form-label">Competências Comportamentais Desejadas</label><textarea class="form-textarea" placeholder="Ex: Comunicação clara, proatividade, organização..."></textarea></div>
+            <div class="form-group"><label class="form-label">Escolaridade Mínima</label><select class="form-select"><option>Ensino Médio</option><option>Técnico</option><option>Superior cursando</option><option>Superior completo</option><option>Pós-graduação</option><option>MBA / Mestrado</option></select></div>
+            <div class="form-group"><label class="form-label">Experiência Mínima</label><select class="form-select"><option>Sem experiência</option><option>6 meses</option><option>1 ano</option><option>2 anos</option><option>3+ anos</option><option>5+ anos</option></select></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="padding:12px 24px" onclick="alert('Requisição enviada para a Effect! O perfil DISC recomendado foi gerado automaticamente.')"><i class="fas fa-paper-plane"></i> Enviar Requisição</button>
+          <button class="btn btn-outline" style="padding:12px 20px" onclick="alert('Salvando rascunho...')"><i class="fas fa-save"></i> Salvar Rascunho</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISC & MATCH -->
+    <div id="disc-view" class="view">
+      <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h3 style="font-size:16px;font-weight:700">DISC & Match de Candidatos</h3>
+          <p style="font-size:12px;color:var(--gray);margin-top:4px">Perfis DISC recomendados por vaga e compatibilidade com cada candidato.</p>
+        </div>
+        <select class="sel" id="disc-vaga-sel" onchange="renderDiscView()">
+          <option value="0">R&S-319 · Analista Administrativo</option>
+          <option value="1">R&S-309 · Assistente de Logística</option>
+          <option value="2">R&S-322 · Coordenador de RH</option>
+          <option value="3">R&S-315 · Gerente Financeiro</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chart-card">
+          <div class="chart-title">Perfil DISC Ideal para a Vaga</div>
+          <div id="disc-vaga-bars"></div>
+          <div id="disc-vaga-desc" style="margin-top:12px;font-size:11px;color:var(--gray);line-height:1.6"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Match dos Candidatos</div>
+          <div id="disc-matches"></div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-top:16px">
+        <div class="chart-title">Perfis DISC dos Candidatos em Processo</div>
+        <div id="disc-all-candidates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:4px"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeBG(event)">
+<div class="modal">
+  <div class="modal-left">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+      <div>
+        <div id="m-num" style="font-size:9px;color:var(--gray);font-weight:600;margin-bottom:3px"></div>
+        <div class="modal-title" id="m-title"></div>
+        <div class="modal-sub" id="m-client"></div>
+      </div>
+      <button onclick="closeModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray)">✕</button>
+    </div>
+
+    <div class="sec-title">📋 Requisição da Vaga</div>
+    <div class="info-grid" id="m-req"></div>
+
+    <div class="sec-title">🏷 Etapa do Processo</div>
+    <div class="stages-wrap" id="m-stages"></div>
+
+    <div class="sec-title">🧠 Perfil DISC Recomendado para a Vaga</div>
+    <div class="disc-section" id="m-disc-vaga"></div>
+
+    <div class="sec-title">👥 Candidatos Vinculados <span style="font-size:9px;color:var(--gray);font-weight:400;margin-left:6px">— clique para ver currículo completo e match DISC</span></div>
+    <div id="m-cands"></div>
+    <button class="btn btn-outline" style="width:100%;margin-top:6px;justify-content:center" onclick="alert('Vincular candidato à vaga...')"><i class="fas fa-plus"></i> Vincular Candidato</button>
+
+    <div class="sec-title" style="margin-top:18px">💬 Bate-papo da Vaga</div>
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="m-chat"></div>
+      <div class="chat-in">
+        <input class="chat-input" placeholder="Mensagem..." id="chat-in" onkeydown="sendMsg(event)">
+        <button class="chat-send" onclick="sendMsgClick()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-right">
+    <div>
+      <div class="sec-title">📅 Agenda da Vaga</div>
+      <div id="m-sched"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="openAgendarModal(curModal)"><i class="fas fa-calendar-plus"></i> Agendar</button>
+    </div>
+    <div>
+      <div class="sec-title">💰 Orçamento &amp; Aprovação</div>
+      <div class="budget-box" id="m-budget"></div>
+    </div>
+    <div>
+      <div class="sec-title">⚡ Ações Rápidas</div>
+      <button class="quick-btn" onclick="alert('E-mail para candidato...')"><i class="fas fa-envelope" style="color:var(--blue)"></i> E-mail ao candidato</button>
+      <button class="quick-btn" onclick="alert('WhatsApp...')"><i class="fab fa-whatsapp" style="color:var(--sage)"></i> WhatsApp</button>
+      <button class="quick-btn" onclick="alert('Gerar relatório desta vaga...')"><i class="fas fa-file-alt" style="color:var(--green)"></i> Relatório da vaga</button>
+      <button class="quick-btn" onclick="alert('Exportar candidatos...')"><i class="fas fa-download" style="color:var(--gray)"></i> Exportar candidatos</button>
+      <button class="quick-btn danger" onclick="alert('Arquivar vaga...')"><i class="fas fa-archive"></i> Arquivar vaga</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ===== DATA =====
+// ===== DISC CONFIG =====
+const discCores = {D:'#e74c3c',I:'#f39c12',S:'#27ae60',C:'#2980b9'};
+const discNomes = {D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
+const discEmojis = {D:'⚡',I:'🌟',S:'🤝',C:'📐'};
+
+// DISC dos candidatos (perfil avaliado)
+const discCandidatos = {
+  'Tayme Oliveira':    {D:12,I:20,S:48,C:20, prim:'S', desc:'Estável, colaborativa, prefere rotina e suporte à equipe.'},
+  'Elisabete Santos':  {D:22,I:35,S:28,C:15, prim:'I', desc:'Comunicativa, persuasiva, entusiasta. Alta habilidade relacional.'},
+  'Carlos Menezes':    {D:18,I:15,S:42,C:25, prim:'S', desc:'Paciente, organizado, comprometido com processos.'},
+  'Marcos Ferreira':   {D:30,I:25,S:30,C:15, prim:'D', desc:'Proativo, orientado a resultados, boa energia para metas.'},
+  'Juliana Rocha':     {D:20,I:38,S:25,C:17, prim:'I', desc:'Extrovertida, engaja bem com equipe, comunicação clara.'},
+  'Fernanda Lima':     {D:28,I:22,S:30,C:20, prim:'D', desc:'Liderança natural, analítica, foco em entrega e resultados.'},
+  'Paulo Drummond':    {D:15,I:18,S:35,C:32, prim:'C', desc:'Analítico, metódico, alto padrão de qualidade.'},
+  'Roberto Nunes':     {D:38,I:20,S:22,C:20, prim:'D', desc:'Executivo assertivo, decisivo, orientado a estratégia.'},
+};
+
+// DISC ideal por vaga (recomendado)
+const discVagas = {
+  1: {D:15,I:20,S:45,C:20, prim:'S', desc:'Analista Administrativo exige estabilidade para rotinas, atenção a detalhes (C) e boa relação interpessoal (I). Alto S indica capacidade de manter processos e atender demandas com consistência.'},
+  2: {D:25,I:20,S:40,C:15, prim:'S', desc:'Logística operacional requer constância (S), mas também pró-atividade (D) para resolver imprevistos. Foco em execução e ritmo de trabalho.'},
+  3: {D:30,I:25,S:25,C:20, prim:'D', desc:'Coordenação de RH requer liderança (D), habilidade de influência com equipes (I) e visão estratégica. Perfil D/I com consistência.'},
+  4: {D:40,I:15,S:20,C:25, prim:'D', desc:'Gestão financeira de alto nível requer assertividade (D), rigor analítico (C) e capacidade de tomar decisões com dados. Perfil predominantemente D com C forte.'},
+  5: {D:18,I:45,S:20,C:17, prim:'I', desc:'Marketing digital exige criatividade, comunicação e capacidade de engajar públicos (I). Ritmo rápido, tendência a inovar.'},
+};
+
+const etapas = ['Não Planejada','Divulgação','Triagem','Entrevista RH','Teste Prático','Entrevista Cliente','Proposta','Admissão','Contratado'];
+const etapaCores = {'Não Planejada':'#a1a1aa','Divulgação':'#1fa5f0','Triagem':'#f5c518','Entrevista RH':'#f4afa1','Teste Prático':'#b07fe8','Entrevista Cliente':'#8ed1b2','Proposta':'#7b8e60','Admissão':'#f5a623','Contratado':'#2a2a2b'};
+
+const vagas = [
+  {
+    id:1, num:'R&S-319', titulo:'Analista Administrativo', cliente:'UNILOG - Gestão Integrada',
+    status:'Em andamento', etapa:'Divulgação', nivel:'Analista', urg:false,
+    prazo:'15/07/2026', salario:'A combinar', regime:'CLT', local:'São Paulo - SP',
+    vagas_n:1, resp:'Jamyli', aprov:'Marilia Eduarda Alcantara', justif:'Falha técnica', orc:'Aprovado',
+    candidatos:[
+      {nome:'Tayme Oliveira',etapa:'Triagem',score:72,obs:'Foco em admissão/R&S, menor expertise técnica',cor:'#8ed1b2'},
+      {nome:'Elisabete Santos',etapa:'Entrevista RH',score:85,obs:'Instabilidade anterior preocupa, mas vale entrevista',cor:'#1fa5f0'},
+      {nome:'Carlos Menezes',etapa:'Triagem',score:68,obs:'Perfil interessante, agendar entrevista',cor:'#7b8e60'},
+    ],
+    chat:[
+      {autor:'Jacyara Moro Noe',msg:'Segue comentários em relação aos currículos recebidos.',hora:'14:32',cor:'#8ed1b2'},
+      {autor:'Jamyli',msg:'Tayme: não possui perfil ideal, foco mais em admissão/recrutamento.',hora:'14:45',cor:'#1fa5f0'},
+      {autor:'Jacyara Moro Noe',msg:'Elisabete me preocupa a instabilidade, mas acho que compensa uma entrevista.',hora:'15:01',cor:'#7b8e60'},
+    ],
+    agenda:[
+      {tipo:'Entrevista RH',cand:'Elisabete Santos',data:'16/06',hora:'09:00',cor:'#8ed1b2'},
+      {tipo:'Alinhamento c/ Gestor',cand:'UNILOG - Gestão Integrada',data:'17/06',hora:'14:00',cor:'#1fa5f0'},
+    ]
+  },
+  {
+    id:2, num:'R&S-309', titulo:'Assistente de Logística', cliente:'UNILOG - Filial G5',
+    status:'Urgente', etapa:'Entrevista RH', nivel:'Operacional', urg:true,
+    prazo:'02/07/2026', salario:'R$ 2.200', regime:'CLT', local:'Guarulhos - SP',
+    vagas_n:2, resp:'Thiara', aprov:'Diretor Operacional', justif:'Expansão de equipe', orc:'Aprovado',
+    candidatos:[
+      {nome:'Marcos Ferreira',etapa:'Teste Prático',score:90,obs:'Teste prático enviado — aguardando retorno até 16/06',cor:'#8ed1b2'},
+      {nome:'Juliana Rocha',etapa:'Admissão',score:94,obs:'Documentação solicitada. Início previsto 01/07.',cor:'#1fa5f0'},
+    ],
+    chat:[
+      {autor:'Thiara',msg:'Juliana aprovada! Enviando proposta hoje.',hora:'10:15',cor:'#8ed1b2'},
+      {autor:'Gestor UNILOG G5',msg:'Ótimo! Precisamos com urgência.',hora:'10:30',cor:'#f4afa1'},
+    ],
+    agenda:[
+      {tipo:'Entrevista c/ Gestor',cand:'Marcos Ferreira',data:'14/06',hora:'15:00',cor:'#f4afa1'},
+    ]
+  },
+  {
+    id:3, num:'R&S-322', titulo:'Coordenador de RH', cliente:'TechBrasil S.A.',
+    status:'Em andamento', etapa:'Triagem', nivel:'Gestão', urg:false,
+    prazo:'30/07/2026', salario:'R$ 7.000 – R$ 9.000', regime:'CLT', local:'São Paulo - SP',
+    vagas_n:1, resp:'Thiara', aprov:'CEO', justif:'Substituição', orc:'Aprovado',
+    candidatos:[
+      {nome:'Fernanda Lima',etapa:'Entrevista Cliente',score:88,obs:'Aprovada na Entrevista RH. Agendada entrevista com CEO em 18/06.',cor:'#8ed1b2'},
+      {nome:'Paulo Drummond',etapa:'Teste Prático',score:82,obs:'Teste de caso enviado — análise de clima e estrutura de RH.',cor:'#7b8e60'},
+    ],
+    chat:[
+      {autor:'Thiara',msg:'Iniciando triagem dos CVs recebidos. 12 candidatos hoje.',hora:'09:00',cor:'#8ed1b2'},
+    ],
+    agenda:[]
+  },
+  {
+    id:4, num:'R&S-315', titulo:'Gerente Financeiro', cliente:'Grupo Nortec',
+    status:'Proposta', etapa:'Proposta', nivel:'Diretoria', urg:false,
+    prazo:'20/06/2026', salario:'R$ 12.000+', regime:'CLT', local:'Campinas - SP',
+    vagas_n:1, resp:'Thiara', aprov:'Presidente', justif:'Novo cargo criado', orc:'Aprovado',
+    candidatos:[
+      {nome:'Roberto Nunes',etapa:'Admissão',score:96,obs:'Proposta aceita! Coletando documentação para admissão.',cor:'#8ed1b2'},
+    ],
+    chat:[
+      {autor:'Thiara',msg:'Proposta enviada ao Roberto. Aguardando retorno até sexta.',hora:'11:00',cor:'#8ed1b2'},
+      {autor:'Grupo Nortec',msg:'Ótima escolha Thiara! Aguardamos ansiosamente.',hora:'11:22',cor:'#7b8e60'},
+    ],
+    agenda:[
+      {tipo:'Follow-up proposta',cand:'Roberto Nunes',data:'15/06',hora:'10:00',cor:'#7b8e60'},
+    ]
+  },
+  {
+    id:5, num:'R&S-318', titulo:'Analista de Marketing Digital', cliente:'StartupX',
+    status:'Triagem', etapa:'Triagem', nivel:'Analista', urg:false,
+    prazo:'25/07/2026', salario:'R$ 4.500', regime:'PJ', local:'Remoto',
+    vagas_n:1, resp:'Jamyli', aprov:'CMO', justif:'Novo projeto digital', orc:'Em análise',
+    candidatos:[],
+    chat:[{autor:'Jamyli',msg:'Vaga publicada no LinkedIn e Indeed. Aguardando candidaturas.',hora:'08:30',cor:'#1fa5f0'}],
+    agenda:[]
+  },
+  {
+    id:6, num:'R&S-301', titulo:'Auxiliar de Produção', cliente:'Indústria Metalform',
+    status:'Encerrada', etapa:'Contratado', nivel:'Operacional', urg:false,
+    prazo:'10/04/2026', salario:'R$ 1.800', regime:'CLT', local:'Santo André - SP',
+    vagas_n:3, resp:'Thiara', aprov:'Supervisor Produção', justif:'Expansão de equipe', orc:'Aprovado',
+    encerrada:true,
+    candidatos:[
+      {nome:'Carlos Menezes',etapa:'Contratado',score:88,obs:'Contratado em 10/04/2026.',cor:'#8ed1b2'},
+    ],
+    chat:[{autor:'Thiara',msg:'Vaga encerrada. Carlos Menezes contratado com sucesso.',hora:'10:00',cor:'#8ed1b2'}],
+    agenda:[]
+  },
+  {
+    id:7, num:'R&S-305', titulo:'Recepcionista', cliente:'Clínica Bem Estar',
+    status:'Encerrada', etapa:'Contratado', nivel:'Operacional', urg:false,
+    prazo:'05/05/2026', salario:'R$ 2.000', regime:'CLT', local:'São Paulo - SP',
+    vagas_n:1, resp:'Jamyli', aprov:'Diretora Clínica', justif:'Substituição', orc:'Aprovado',
+    encerrada:true,
+    candidatos:[
+      {nome:'Tayme Oliveira',etapa:'Contratado',score:92,obs:'Admitida em 05/05/2026.',cor:'#8ed1b2'},
+    ],
+    chat:[{autor:'Jamyli',msg:'Vaga encerrada com sucesso. Tayme já em período de experiência.',hora:'11:30',cor:'#1fa5f0'}],
+    agenda:[]
+  },
+];
+
+const activities = [
+  {text:'<strong>Elisabete Santos</strong> avançou para Entrevista RH · UNILOG-319',time:'há 2h',cor:'#8ed1b2',ini:'ES'},
+  {text:'Nova vaga criada: <strong>Analista de Marketing Digital</strong> · StartupX',time:'há 4h',cor:'#1fa5f0',ini:'SX'},
+  {text:'<strong>Roberto Nunes</strong> recebeu proposta · Grupo Nortec',time:'ontem',cor:'#7b8e60',ini:'RN'},
+  {text:'<strong>Juliana Rocha</strong> aprovada pelo gestor · UNILOG G5',time:'ontem',cor:'#f4afa1',ini:'JR'},
+  {text:'Alinhamento agendado com gestor TechBrasil · 17/06',time:'2 dias',cor:'#8ed1b2',ini:'TB'},
+];
+
+const upcomingInts = [
+  {hora:'09:00',data:'Seg 16/06',cand:'Elisabete Santos',vaga:'Analista Administrativo',tipo:'Entrevista RH',cor:'#8ed1b2'},
+  {hora:'14:00',data:'Seg 16/06',cand:'Gestor UNILOG',vaga:'Alinhamento de vaga · R&S-319',tipo:'Alinhamento',cor:'#1fa5f0'},
+  {hora:'15:00',data:'Sex 14/06',cand:'Marcos Ferreira',vaga:'Assistente de Logística',tipo:'Entrevista c/ Gestor',cor:'#f4afa1'},
+  {hora:'10:00',data:'Dom 15/06',cand:'Roberto Nunes',vaga:'Follow-up Proposta',tipo:'Follow-up',cor:'#7b8e60'},
+];
+
+// ===== STATE =====
+let curModal = null;
+let calMon = 5; let calYr = 2026;
+let vagaTabAtiva = 'todas';
+let calViewSemana = false;
+
+// ===== NAV =====
+function gotoView(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(name+'-view').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const titles = {
+    dashboard:['Dashboard','Visão geral · Junho 2026'],
+    vagas:['Vagas','Pipeline de recrutamento'],
+    kanban:['Kanban · Pipeline','Gestão de etapas por candidato'],
+    candidatos:['Candidatos','Todos os candidatos em processo'],
+    calendario:['Calendário','Entrevistas, alinhamentos e follow-ups'],
+    relatorios:['Relatórios & Indicadores','Métricas de desempenho'],
+    nr01:['NR-01 · Riscos Psicossociais','Gestão de conformidade'],
+    gestor:['Painel do Gestor','Requisição de vaga com perfil DISC'],
+    disc:['DISC & Match de Candidatos','Compatibilidade por perfil comportamental'],
+    'inbox-lia':['Inbox · Lia','Mensagens e interações da assistente'],
+  };
+  document.getElementById('ptitle').textContent = titles[name][0];
+  document.getElementById('psub').textContent = titles[name][1];
+}
+
+// ===== RENDER DASHBOARD =====
+function renderDashboard() {
+  // Funnel
+  const fd = [{l:'Inscritos',n:89,c:'#8ed1b2'},{l:'Triagem',n:45,c:'#1fa5f0'},{l:'Entrevista RH',n:22,c:'#7b8e60'},{l:'Entrev. Cliente',n:12,c:'#f5c518'},{l:'Proposta',n:7,c:'#f4afa1'},{l:'Contratados',n:5,c:'#2a2a2b'}];
+  document.getElementById('funnel-chart').innerHTML = fd.map(f=>`
+    <div class="funnel-row">
+      <div class="f-label">${f.l}</div>
+      <div class="f-wrap"><div class="f-bar" style="width:${(f.n/89*100).toFixed(0)}%;background:${f.c}">${f.n}</div></div>
+      <div class="f-num">${f.n}</div>
+    </div>`).join('');
+
+  // Donut
+  const dd = [{l:'Em andamento',v:4,c:'#8ed1b2'},{l:'Urgente',v:1,c:'#f4afa1'},{l:'Triagem',v:2,c:'#1fa5f0'},{l:'Proposta',v:1,c:'#7b8e60'}];
+  const tot = dd.reduce((a,b)=>a+b.v,0), r=46,cx=70,cy=60, circ=2*Math.PI*r;
+  let off=0, segs=dd.map(d=>{const l=(d.v/tot)*circ,s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.c}" stroke-width="18" stroke-dasharray="${l} ${circ-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;off+=l;return s;});
+  document.getElementById('donut-svg').innerHTML=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f5f7fa" stroke-width="18"/>${segs.join('')}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-family="Montserrat" font-weight="700" font-size="17" fill="#2a2a2b">${tot}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="Montserrat" font-size="8" fill="#a1a1aa">vagas</text>`;
+  document.getElementById('donut-legend').innerHTML=dd.map(d=>`<div class="leg-row"><div class="leg-dot" style="background:${d.c}"></div><div class="leg-label">${d.l}</div><div class="leg-val">${d.v}</div></div>`).join('');
+
+  // Bars
+  const ms=['Jan','Fev','Mar','Abr','Mai','Jun'],vs=[2,4,3,6,3,5],mx=6;
+  document.getElementById('bar-chart').innerHTML=ms.map((m,i)=>`<div class="bar-col"><div class="bar-num">${vs[i]}</div><div class="bar" style="height:${(vs[i]/mx*100).toFixed(0)}%;background:${i===5?'#8ed1b2':'rgba(142,209,178,0.3)'}"></div><div class="bar-lbl">${m}</div></div>`).join('');
+
+  // Activity
+  document.getElementById('activity-feed').innerHTML=activities.map(a=>`<div class="activity-row"><div class="av" style="background:${a.cor}">${a.ini}</div><div><div class="at">${a.text}</div><div class="at-time">${a.time}</div></div></div>`).join('');
+
+  // Upcoming
+  document.getElementById('upcoming-ints').innerHTML=upcomingInts.map(i=>`<div class="int-row" onclick="gotoView('calendario',document.querySelectorAll('.nav-item')[4])"><div class="time-badge"><div class="t">${i.hora}</div><div class="d">${i.data}</div></div><div class="int-info"><h4>${i.cand}</h4><p>${i.vaga}</p><span class="tipo-badge" style="background:${i.cor}22;color:${i.cor}">${i.tipo}</span></div></div>`).join('');
+}
+
+// ===== VAGAS TAB =====
+function setVagaTab(tab, el) {
+  vagaTabAtiva = tab;
+  document.querySelectorAll('.vaga-tab').forEach(t => t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderVagas();
+}
+
+// ===== RENDER VAGAS =====
+function renderVagas() {
+  const q = (document.getElementById('vagas-search')?.value||'').toLowerCase();
+  let lista = vagas.filter(v => {
+    if(vagaTabAtiva === 'abertas' && v.encerrada) return false;
+    if(vagaTabAtiva === 'encerradas' && !v.encerrada) return false;
+    if(q && !v.titulo.toLowerCase().includes(q) && !v.cliente.toLowerCase().includes(q) && !v.num.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!lista.length) {
+    document.getElementById('vagas-grid').innerHTML='<div style="color:var(--gray);font-size:13px;padding:20px 0">Nenhuma vaga encontrada.</div>';
+    return;
+  }
+  document.getElementById('vagas-grid').innerHTML = lista.map(v => {
+    const diasAberta = v.encerrada ? '—' : Math.floor(Math.random()*35+10);
+    const encerrada = !!v.encerrada;
+    const scoreLabel = s => s >= 85 ? 'bom' : s >= 70 ? 'med' : 'baixo';
+    const scoreText  = s => s >= 85 ? `Bom ${s}` : s >= 70 ? `Ok ${s}` : `${s}`;
+    const candsHtml = v.candidatos.slice(0,3).map(c=>`
+      <div class="vc-cand-row">
+        <div class="vc-cav" style="background:${c.cor}">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+        <div class="vc-cname">${c.nome}</div>
+        <span class="vc-score ${scoreLabel(c.score)}">${scoreText(c.score)}</span>
+        <div class="vc-cand-btns">
+          <button class="vc-btn-sm vc-btn-inbox" onclick="event.stopPropagation();gotoView('inbox-lia',null)">Inbox</button>
+          <button class="vc-btn-sm vc-btn-wa" onclick="event.stopPropagation();alert('WhatsApp: '+c.nome)"><i class="fab fa-whatsapp"></i></button>
+        </div>
+      </div>`).join('');
+    return `
+    <div class="vaga-card ${v.urg?'urg':''} ${encerrada?'encerrada':''}" onclick="openModal(vagas.find(x=>x.id===${v.id}))">
+      <div class="vc-title">${v.titulo}</div>
+      <div class="vc-client">${v.cliente}</div>
+      <div class="vc-icons">
+        <span>📍 ${v.local}</span>
+        <span>💰 ${v.salario}</span>
+        <span>⏰ ${v.regime}</span>
+      </div>
+      <div class="vc-badges">
+        <span class="vc-badge-status ${encerrada?'encerrada-badge':''}"><span class="dot"></span>${encerrada?'Encerrada':'Aberta'}</span>
+        <span class="vc-badge-num">${v.num}</span>
+      </div>
+      <div class="vc-timing">
+        <span>⏱ ${diasAberta}${encerrada?'':' dias'}</span>
+        <span>📅 Prazo: ${v.prazo}</span>
+        ${!encerrada?`<span class="vc-emdia">Em dia</span>`:''}
+      </div>
+      <hr class="vc-sep">
+      <div class="vc-cands-hdr">
+        <span class="vc-cands-lbl">Candidatos interessados</span>
+        <span class="vc-cands-cnt">${v.candidatos.length}</span>
+      </div>
+      ${candsHtml || '<div style="font-size:10px;color:var(--gray)">Nenhum candidato vinculado.</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ===== RENDER KANBAN =====
+function renderKanban() {
+  document.getElementById('kb-board').innerHTML=etapas.map(e=>{
+    const cards=vagas.flatMap(v=>v.candidatos.filter(c=>c.etapa===e).map(c=>({...c,vaga:v})));
+    return `<div class="kb-col">
+      <div class="col-hdr" style="background:${etapaCores[e]}22;color:${etapaCores[e]}">${e}<span class="col-cnt" style="color:${etapaCores[e]}">${cards.length}</span></div>
+      <div class="col-body">
+        ${cards.map(c=>`<div class="kb-card ${c.vaga.urg?'urg':''}" onclick="openModal(vagas.find(v=>v.id===${c.vaga.id}))">
+          <div class="kc-num">${c.vaga.num} · ${c.vaga.cliente.split(' ')[0]}</div>
+          <div class="kc-job">${c.vaga.titulo}</div>
+          <div class="kc-client"><i class="fas fa-user" style="font-size:9px;margin-right:3px"></i>${c.nome}</div>
+          <div class="kc-score"><span style="color:#f5c518">${'★'.repeat(Math.round(c.score/20))}</span>${c.score}/100</div>
+          <div class="kc-footer"><i class="fas fa-clock" style="margin-right:3px"></i>${c.vaga.prazo}</div>
+        </div>`).join('')}
+        <button class="add-btn">+ Adicionar candidato</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== RENDER CANDIDATOS =====
+function renderCandidatos() {
+  const all=vagas.flatMap(v=>v.candidatos.map(c=>({...c,vaga:v})));
+  document.getElementById('cands-tbody').innerHTML=all.map(c=>{
+    const sc=c.score>=85?'#8ed1b2':c.score>=70?'#1fa5f0':'#f4afa1';
+    return `<tr style="cursor:pointer" onclick="openModal(vagas.find(v=>v.id===${c.vaga.id}))">
+      <td><div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:50%;background:${c.cor};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div><strong>${c.nome}</strong></div></td>
+      <td>${c.vaga.titulo}</td>
+      <td>${c.vaga.cliente.split(' ')[0]}</td>
+      <td><span class="tag" style="background:${etapaCores[c.etapa]}22;color:${etapaCores[c.etapa]}">${c.etapa}</span></td>
+      <td><span class="score-chip" style="background:${sc}22;color:${sc}">${c.score}/100</span></td>
+      <td style="color:var(--gray)">${Math.floor(Math.random()*8)+1}d</td>
+      <td style="color:var(--gray);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.obs}</td>
+      <td><button class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();openModal(vagas.find(v=>v.id===${c.vaga.id}))">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== RENDER CALENDARIO =====
+function renderCalendario() {
+  const d=new Date(calYr,calMon,1), lbl=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  document.getElementById('cal-label').textContent=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  const first=d.getDay(), dim=new Date(calYr,calMon+1,0).getDate(), today=new Date();
+  const evs={9:[{t:'Alinhamento 14:15',c:'#1fa5f0'}],10:[{t:'Entrevista 09:00',c:'#8ed1b2'},{t:'Alinhamento 17:00',c:'#7b8e60'}],11:[{t:'Reservado 14:00',c:'#a1a1aa'},{t:'Alinhamento 17:00',c:'#7b8e60'}],12:[{t:'Alinhamento 17:00',c:'#7b8e60'}],13:[{t:'Alinhamento 17:00',c:'#f4afa1'}],16:[{t:'Entrevista RH 09:00',c:'#8ed1b2'},{t:'Entrev. Gestor 14:00',c:'#f4afa1'}],17:[{t:'Follow-up 10:00',c:'#7b8e60'},{t:'Alinhamento 14:00',c:'#1fa5f0'}],20:[{t:'Prazo proposta',c:'#f4afa1'}]};
+  const dns=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html=`<div class="cal-grid">${dns.map(d=>`<div class="cal-dh">${d}</div>`).join('')}`;
+  const prev=new Date(calYr,calMon,0).getDate();
+  for(let i=0;i<first;i++) html+=`<div class="cal-day other"><div class="cal-dn" style="color:var(--gray)">${prev-first+i+1}</div></div>`;
+  for(let day=1;day<=dim;day++){
+    const isT=today.getDate()===day&&today.getMonth()===calMon&&today.getFullYear()===calYr;
+    const ev=(evs[day]||[]).map(e=>`<div class="cal-ev" style="background:${e.c}22;color:${e.c}">${e.t}</div>`).join('');
+    html+=`<div class="cal-day ${isT?'today':''}"><div class="cal-dn">${day}</div>${ev}</div>`;
+  }
+  const rem=42-first-dim;
+  for(let i=1;i<=rem;i++) html+=`<div class="cal-day other"><div class="cal-dn" style="color:var(--gray)">${i}</div></div>`;
+  html+='</div>';
+  document.getElementById('cal-wrap').innerHTML=html;
+}
+function changeMonth(d){calMon+=d;if(calMon>11){calMon=0;calYr++;}if(calMon<0){calMon=11;calYr--;}if(calViewSemana)renderSemana();else renderCalendario();}
+
+// ===== WEEK VIEW =====
+function toggleCalView() {
+  calViewSemana = !calViewSemana;
+  const btn = document.getElementById('btn-ver-semana');
+  const calWrap = document.getElementById('cal-wrap');
+  const semWrap = document.getElementById('semana-wrap');
+  if(calViewSemana) {
+    calWrap.style.display='none'; semWrap.style.display='block';
+    btn.innerHTML='<i class="fas fa-calendar-alt"></i> Ver Mês';
+    renderSemana();
+  } else {
+    calWrap.style.display=''; semWrap.style.display='none';
+    btn.innerHTML='<i class="fas fa-calendar-week"></i> Ver Semana';
+    renderCalendario();
+  }
+}
+
+function renderSemana() {
+  const today = new Date(calYr, calMon, 13); // semana de 13/06
+  const dow = today.getDay();
+  const inicio = new Date(today); inicio.setDate(today.getDate() - dow);
+  const dias = Array.from({length:7},(_,i)=>{const d=new Date(inicio);d.setDate(inicio.getDate()+i);return d;});
+  const horas = [8,9,10,11,12,13,14,15,16,17,18];
+  const evsDia = {1:[{h:9,t:'Entrevista · Elisabete Santos',c:'#8ed1b2'}],2:[{h:14,t:'Alinhamento · UNILOG',c:'#1fa5f0'}],5:[{h:15,t:'Entrev. Gestor · Marcos F.',c:'#f4afa1'}],0:[{h:10,t:'Follow-up · Roberto N.',c:'#7b8e60'}]};
+  const dNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr><th style="width:50px;padding:8px;color:var(--gray)"></th>`;
+  dias.forEach((d,i)=>{
+    const isT=d.getDate()===new Date().getDate()&&d.getMonth()===new Date().getMonth();
+    html+=`<th style="padding:8px;text-align:center;${isT?'color:var(--blue);font-weight:700':'color:var(--gray)'}">
+      ${dNames[i]}<br><span style="font-size:15px;font-weight:700">${d.getDate()}</span></th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  horas.forEach(h=>{
+    html+=`<tr><td style="padding:4px 8px;color:var(--gray);white-space:nowrap;vertical-align:top;border-top:1px solid var(--bg)">${h}:00</td>`;
+    dias.forEach((d,i)=>{
+      const ev=(evsDia[i]||[]).filter(e=>e.h===h);
+      html+=`<td style="border:1px solid var(--bg);padding:3px;vertical-align:top;min-height:40px">
+        ${ev.map(e=>`<div style="background:${e.c}22;color:${e.c};border-left:3px solid ${e.c};padding:3px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:2px">${e.t}</div>`).join('')}
+      </td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('semana-wrap').innerHTML=html;
+}
+
+// ===== AGENDAR MODAL =====
+function openAgendarModal(vaga) {
+  const sel = document.getElementById('ag-vaga');
+  if(sel) sel.innerHTML = vagas.map(v=>`<option value="${v.id}" ${vaga&&vaga.id===v.id?'selected':''}>${v.num} · ${v.titulo}</option>`).join('');
+  const d = new Date(); const ds = d.toISOString().split('T')[0];
+  const inp = document.getElementById('ag-data'); if(inp) inp.value=ds;
+  document.getElementById('agendar-overlay').classList.add('show');
+}
+function closeAgendar(){document.getElementById('agendar-overlay').classList.remove('show');}
+function salvarAgendamento(){
+  const tipo=document.getElementById('ag-tipo').value;
+  const cand=document.getElementById('ag-cand').value||'—';
+  const data=document.getElementById('ag-data').value;
+  const hora=document.getElementById('ag-hora').value;
+  const vagaId=parseInt(document.getElementById('ag-vaga').value);
+  const vaga=vagas.find(v=>v.id===vagaId);
+  if(vaga && data && hora){
+    const [yr,mo,dy]=data.split('-');
+    vaga.agenda.push({tipo,cand,data:`${dy}/${mo}`,hora,cor:'#8ed1b2'});
+    upcomingInts.unshift({hora,data:`${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(data).getDay()]} ${dy}/${mo}`,cand,vaga:vaga.titulo,tipo,cor:'#8ed1b2'});
+  }
+  closeAgendar();
+  if(curModal&&curModal.id===vagaId) openModal(vaga);
+  renderCalendario();
+  alert(`✅ Agendado: ${tipo} com ${cand} em ${data} às ${hora}`);
+}
+
+// ===== INBOX LIA =====
+function renderInboxLia() {
+  const msgs = [
+    {de:'Tayme Oliveira',msg:'Olá! Vi que a vaga de Analista Adm está aberta, tenho interesse!',hora:'há 15 min',vaga:'R&S-319',cor:'#8ed1b2',resp:true},
+    {de:'Marcos Ferreira',msg:'Bom dia! Quando recebo o resultado do teste prático?',hora:'há 1h',vaga:'R&S-309',cor:'#1fa5f0',resp:false},
+    {de:'Juliana Rocha',msg:'Documentos enviados por e-mail conforme solicitado.',hora:'há 2h',vaga:'R&S-309',cor:'#f4afa1',resp:true},
+    {de:'Paulo Drummond',msg:'Gostaria de saber o prazo para retorno do processo seletivo.',hora:'ontem',vaga:'R&S-322',cor:'#7b8e60',resp:false},
+    {de:'Candidato Novo',msg:'Olá, vi a vaga de Marketing Digital. Posso me candidatar?',hora:'ontem',vaga:'R&S-318',cor:'#a1a1aa',resp:false},
+  ];
+  document.getElementById('lia-inbox-list').innerHTML = msgs.map(m=>`
+    <div style="background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border:1px solid rgba(0,0,0,0.07);display:flex;gap:12px;align-items:flex-start">
+      <div style="width:38px;height:38px;border-radius:50%;background:${m.cor};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${m.de.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <strong style="font-size:12px">${m.de}</strong>
+          <span style="font-size:10px;color:var(--gray)">${m.hora}</span>
+        </div>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:6px">${m.vaga}</div>
+        <div style="font-size:12px;margin-bottom:8px">${m.msg}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary" style="padding:4px 12px;font-size:10px" onclick="alert('Responder via Lia...')"><i class="fas fa-reply"></i> Responder</button>
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="openModal(vagas.find(v=>v.num==='${m.vaga}'))">Ver Vaga</button>
+          ${m.resp?'<span style="font-size:10px;color:var(--sage);font-weight:700;padding:4px 0">✓ Lia respondeu</span>':'<span style="font-size:10px;color:var(--salmon);font-weight:700;padding:4px 0">● Aguardando</span>'}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ===== RENDER RELATORIOS =====
+function renderRelatorios() {
+  const src=[{l:'LinkedIn',n:42,c:'#1fa5f0'},{l:'Indicação',n:28,c:'#8ed1b2'},{l:'Indeed',n:15,c:'#7b8e60'},{l:'WhatsApp',n:10,c:'#f4afa1'},{l:'Outros',n:5,c:'#a1a1aa'}];
+  document.getElementById('source-chart').innerHTML=src.map(s=>`<div class="funnel-row"><div class="f-label">${s.l}</div><div class="f-wrap"><div class="f-bar" style="width:${(s.n/42*100).toFixed(0)}%;background:${s.c}">${s.n}</div></div></div>`).join('');
+  const rej=[{l:'Salário abaixo',n:18,c:'#f4afa1'},{l:'Perfil técnico',n:15,c:'#a1a1aa'},{l:'Não compareceu',n:12,c:'#f5c518'},{l:'Outra proposta',n:9,c:'#8ed1b2'},{l:'Distância',n:7,c:'#1fa5f0'}];
+  document.getElementById('rejection-chart').innerHTML=rej.map(r=>`<div class="funnel-row"><div class="f-label">${r.l}</div><div class="f-wrap"><div class="f-bar" style="width:${(r.n/18*100).toFixed(0)}%;background:${r.c}">${r.n}</div></div></div>`).join('');
+  const nr=[{l:'Sobrecarga de trabalho',n:72,c:'#f4afa1'},{l:'Pressão por metas',n:65,c:'#f4afa1'},{l:'Falta de autonomia',n:45,c:'#f5c518'},{l:'Conflitos interpessoais',n:30,c:'#8ed1b2'},{l:'Assédio/constrangimento',n:15,c:'#8ed1b2'}];
+  const nr01=document.getElementById('nr01-chart');
+  if(nr01) nr01.innerHTML=nr.map(r=>`<div class="funnel-row"><div class="f-label">${r.l}</div><div class="f-wrap"><div class="f-bar" style="width:${r.n}%;background:${r.c}">${r.n}%</div></div></div>`).join('');
+}
+
+// ===== MODAL =====
+function openModal(vaga) {
+  if(!vaga) return;
+  curModal=vaga;
+  document.getElementById('m-num').textContent=`${vaga.num} · ${vaga.nivel} · Responsável: ${vaga.resp}`;
+  document.getElementById('m-title').textContent=vaga.titulo;
+  document.getElementById('m-client').textContent=`${vaga.cliente} · ${vaga.local}`;
+  document.getElementById('m-req').innerHTML=[{l:'Regime',v:vaga.regime},{l:'Salário',v:vaga.salario},{l:'Nº Vagas',v:vaga.vagas_n},{l:'Prazo',v:vaga.prazo},{l:'Justificativa',v:vaga.justif},{l:'Aprovador',v:vaga.aprov}].map(i=>`<div class="info-item"><label>${i.l}</label><p>${i.v}</p></div>`).join('');
+  renderDiscVagaModal(vaga.id);
+  document.getElementById('m-stages').innerHTML=etapas.map(e=>`<button class="stage-btn ${e===vaga.etapa?'active':''}" onclick="setStage('${e}')">${e}</button>`).join('');
+  document.getElementById('m-cands').innerHTML=renderCandidatosComDisc(vaga);
+  document.getElementById('m-chat').innerHTML=vaga.chat.map(m=>`<div class="chat-msg"><div class="cm-av" style="background:${m.cor}">${m.autor.split(' ').map(n=>n[0]).join('').slice(0,2)}</div><div class="cm-bubble"><div class="cm-name">${m.autor}</div>${m.msg}<div class="cm-time">${m.hora}</div></div></div>`).join('');
+  document.getElementById('m-sched').innerHTML=vaga.agenda.length?vaga.agenda.map(a=>`<div class="sched-item" style="border-left:3px solid ${a.cor}"><div class="sched-tipo">${a.tipo}</div><div class="sched-cand">${a.cand}</div><div class="sched-hora" style="color:${a.cor}"><i class="fas fa-clock"></i> ${a.data} às ${a.hora}</div></div>`).join(''):`<div style="font-size:11px;color:var(--gray)">Nenhum agendamento.</div>`;
+  document.getElementById('m-budget').innerHTML=`<span style="color:var(--gray)">Orçamento:</span> <strong>${vaga.orc}</strong><br><span style="color:var(--gray)">Faixa salarial:</span> <strong>${vaga.salario}</strong><br><span style="color:var(--gray)">Aprovador:</span> <strong>${vaga.aprov}</strong>`;
+  const chat=document.getElementById('m-chat');
+  chat.scrollTop=chat.scrollHeight;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show');curModal=null;}
+function closeBG(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+function setStage(e){if(!curModal)return;curModal.etapa=e;document.getElementById('m-stages').querySelectorAll('.stage-btn').forEach(b=>b.classList.toggle('active',b.textContent===e));}
+function sendMsg(e){if(e.key==='Enter')sendMsgClick();}
+function sendMsgClick(){
+  const inp=document.getElementById('chat-in');
+  if(!inp.value.trim()||!curModal)return;
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const html=`<div class="chat-msg"><div class="cm-av" style="background:#8ed1b2">TT</div><div class="cm-bubble"><div class="cm-name">Thiara</div>${inp.value}<div class="cm-time">${hora}</div></div></div>`;
+  document.getElementById('m-chat').innerHTML+=html;
+  const chat=document.getElementById('m-chat');
+  chat.scrollTop=chat.scrollHeight;
+  inp.value='';
+}
+function openNovaVaga(){
+  // Abre o portal do cliente numa nova aba
+  window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');
+}
+
+// ===== DISC FUNCTIONS =====
+function discBars(profile, small=false) {
+  return ['D','I','S','C'].map(k => {
+    const w = profile[k] || 0;
+    return `<div class="disc-bar-row">
+      <div class="disc-letter" style="background:${discCores[k]}">${k}</div>
+      <div class="disc-bar-bg"><div class="disc-bar-fill" style="width:${w}%;background:${discCores[k]}"></div></div>
+      <div class="disc-pct" style="color:${discCores[k]}">${w}%</div>
+    </div>`;
+  }).join('');
+}
+
+function discMatchScore(vagaDisc, candDisc) {
+  // Calcula similaridade ponderada
+  const diff = ['D','I','S','C'].reduce((acc,k) => acc + Math.abs((vagaDisc[k]||0)-(candDisc[k]||0)), 0);
+  return Math.max(0, Math.round(100 - diff * 0.8));
+}
+
+function discMatchColor(score) {
+  if(score >= 80) return 'var(--green)';
+  if(score >= 60) return '#f5c518';
+  return 'var(--salmon)';
+}
+
+function discMatchLabel(score) {
+  if(score >= 80) return 'Ótimo match';
+  if(score >= 60) return 'Match parcial';
+  return 'Baixo match';
+}
+
+function renderDiscVagaModal(vagaId) {
+  const disc = discVagas[vagaId];
+  if(!disc) return;
+  const el = document.getElementById('m-disc-vaga');
+  if(!el) return;
+  el.innerHTML = `
+    <div style="display:flex;gap:14px;align-items:flex-start">
+      <div style="flex:1">${discBars(disc)}</div>
+      <div style="text-align:center;flex-shrink:0">
+        <div style="width:50px;height:50px;border-radius:50%;background:${discCores[disc.prim]};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;margin:0 auto 6px">${disc.prim}</div>
+        <div style="font-size:9px;color:var(--gray);font-weight:600">${discNomes[disc.prim]}</div>
+        <div style="font-size:10px;color:var(--gray)">primário</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--gray);line-height:1.6">${disc.desc}</div>
+  `;
+}
+
+function renderCandidatosComDisc(vaga) {
+  const vagaDisc = discVagas[vaga.id];
+  return vaga.candidatos.map(c => {
+    const cd = discCandidatos[c.nome] || {D:25,I:25,S:25,C:25,prim:'S'};
+    const match = vagaDisc ? discMatchScore(vagaDisc, cd) : null;
+    const mc = match ? discMatchColor(match) : 'var(--gray)';
+    return `<div class="cand-row2">
+      <div class="cr2-av" style="background:${c.cor}">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+      <div style="flex:1">
+        <div class="cr2-name">${c.nome}</div>
+        <div class="cr2-stage">${c.etapa}</div>
+        <div style="margin-top:4px;display:flex;gap:4px">
+          ${['D','I','S','C'].map(k=>`<span class="disc-tag" style="background:${discCores[k]}22;color:${discCores[k]}">${k} ${cd[k]}%</span>`).join('')}
+        </div>
+        <div style="font-size:10px;color:var(--gray);margin-top:3px">${cd.desc}</div>
+      </div>
+      <div style="text-align:center;flex-shrink:0;margin-left:8px">
+        ${match !== null ? `
+          <div style="width:46px;height:46px;border-radius:50%;border:3px solid ${mc};display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <div style="font-size:13px;font-weight:800;color:${mc};line-height:1">${match}%</div>
+            <div style="font-size:8px;color:var(--gray)">match</div>
+          </div>
+          <div style="font-size:9px;color:${mc};font-weight:700;margin-top:3px">${discMatchLabel(match)}</div>
+        ` : `<div class="cr2-score" style="color:var(--green)">${c.score}</div>`}
+      </div>
+    </div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--gray);padding:8px 0">Nenhum candidato vinculado ainda.</div>';
+}
+
+function renderDiscView() {
+  const sel = document.getElementById('disc-vaga-sel');
+  const idx = sel ? parseInt(sel.value) : 0;
+  const vaga = vagas[idx];
+  if(!vaga) return;
+  const disc = discVagas[vaga.id];
+  if(!disc) return;
+
+  // Perfil ideal da vaga
+  const barsEl = document.getElementById('disc-vaga-bars');
+  if(barsEl) barsEl.innerHTML = discBars(disc);
+  const descEl = document.getElementById('disc-vaga-desc');
+  if(descEl) descEl.innerHTML = `<strong style="color:${discCores[disc.prim]}">${discEmojis[disc.prim]} Perfil primário: ${discNomes[disc.prim]}</strong><br>${disc.desc}`;
+
+  // Matches dos candidatos
+  const matchEl = document.getElementById('disc-matches');
+  if(matchEl) {
+    if(!vaga.candidatos.length) { matchEl.innerHTML='<div style="font-size:12px;color:var(--gray)">Nenhum candidato vinculado.</div>'; }
+    else {
+      matchEl.innerHTML = vaga.candidatos.map(c => {
+        const cd = discCandidatos[c.nome] || {D:25,I:25,S:25,C:25,prim:'S'};
+        const match = discMatchScore(disc, cd);
+        const mc = discMatchColor(match);
+        return `<div class="match-card">
+          <div class="disc-match-ring" style="border-color:${mc}">
+            <div class="disc-match-pct" style="color:${mc}">${match}%</div>
+            <div class="disc-match-lbl">match</div>
+          </div>
+          <div class="match-info">
+            <div class="match-name">${c.nome}</div>
+            <div class="match-sub">${c.etapa} · DISC primário: <strong style="color:${discCores[cd.prim]}">${cd.prim} – ${discNomes[cd.prim]}</strong></div>
+            <div style="font-size:10px;margin-top:4px">${['D','I','S','C'].map(k=>`<span class="disc-tag" style="background:${discCores[k]}22;color:${discCores[k]}">${k}${cd[k]}%</span>`).join(' ')}</div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:${mc}">${discMatchLabel(match)}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Todos os candidatos
+  const allEl = document.getElementById('disc-all-candidates');
+  if(allEl) {
+    const all = vagas.flatMap(v => v.candidatos.map(c=>({...c,vaga:v})));
+    allEl.innerHTML = all.map(c => {
+      const cd = discCandidatos[c.nome] || {D:25,I:25,S:25,C:25,prim:'S',desc:''};
+      return `<div class="chart-card" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:34px;height:34px;border-radius:50%;background:${c.cor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+          <div>
+            <div style="font-size:12px;font-weight:700">${c.nome}</div>
+            <div style="font-size:10px;color:var(--gray)">${c.vaga.titulo}</div>
+          </div>
+          <div style="margin-left:auto;width:32px;height:32px;border-radius:50%;background:${discCores[cd.prim]};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff">${cd.prim}</div>
+        </div>
+        ${discBars(cd)}
+        <div style="font-size:10px;color:var(--gray);margin-top:8px">${cd.desc}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// DISC Gestor form
+const discState = {d1:'frequente',i1:'as-vezes',s1:'frequente',c1:'frequente',r1:'misto',l1:'colabora'};
+function discSelect(btn, key, val) {
+  discState[key] = val;
+  btn.closest('.disc-q-options').querySelectorAll('.disc-q-opt').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  updateDiscPreview();
+}
+function updateDiscPreview() {
+  const weights = {nunca:5,raramente:10,'as-vezes':20,frequente:35,sempre:45};
+  const D = (weights[discState.d1]||20) + (discState.r1==='intenso'?10:0) + (discState.l1==='sim-formal'?10:0);
+  const I = (weights[discState.i1]||20) + (discState.r1==='intenso'?5:0) + (discState.l1==='colabora'?8:0);
+  const S = (weights[discState.s1]||20) + (discState.r1==='estavel'?10:0) + (discState.l1==='colabora'?5:0);
+  const C = (weights[discState.c1]||20) + (discState.r1==='estavel'?5:0);
+  const tot = D+I+S+C;
+  const p = {D:Math.round(D/tot*100),I:Math.round(I/tot*100),S:Math.round(S/tot*100),C:Math.round(C/tot*100)};
+  const prim = ['D','I','S','C'].reduce((a,b)=>p[a]>p[b]?a:b);
+  const barsEl = document.getElementById('disc-preview-bars');
+  const tagEl = document.getElementById('disc-preview-tag');
+  if(barsEl) barsEl.innerHTML = ['D','I','S','C'].map(k=>`
+    <div class="disc-bar-row">
+      <div class="disc-letter" style="background:${discCores[k]}">${k}</div>
+      <div class="disc-bar-bg" style="background:rgba(255,255,255,0.1)"><div class="disc-bar-fill" style="width:${p[k]}%;background:${discCores[k]}"></div></div>
+      <div class="disc-pct" style="color:${discCores[k]}">${p[k]}%</div>
+    </div>`).join('');
+  if(tagEl) tagEl.innerHTML = `<div style="width:56px;height:56px;border-radius:50%;background:${discCores[prim]};display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;margin:0 auto 6px">${prim}</div><div style="font-size:10px;color:var(--gray)">${discNomes[prim]}</div>`;
+}
+
+// ===== INIT =====
+renderDashboard();
+renderVagas();
+renderKanban();
+renderCandidatos();
+renderCalendario();
+renderRelatorios();
+renderDiscView();
+updateDiscPreview();
+renderInboxLia();
+</script>
+</body>
+</html>
