@@ -23,9 +23,17 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .lsub{font-size:12px;color:var(--muted);margin-bottom:28px}
 .lbox input{width:100%;padding:12px 16px;border:2px solid var(--bg);border-radius:10px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;margin-bottom:14px;display:block;transition:border .2s}
 .lbox input:focus{border-color:var(--blue)}
-.lbox button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointaer;transition:background .2s}
-.lbox button:hover{background:var(--blue)}
+.lbox button:not(.pwd-eye){width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s}
+.lbox button:not(.pwd-eye):hover{background:var(--blue)}
 .lerr{color:var(--pink);font-size:12px;margin-top:10px;display:none}
+.pwd-wrap{position:relative;width:100%;margin-bottom:14px}
+.lbox .pwd-wrap input{width:100%;padding:12px 44px 12px 16px!important;border:2px solid var(--bg);border-radius:10px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;margin-bottom:0!important;display:block;transition:border .2s;box-sizing:border-box;background:#fff}
+.lbox .pwd-wrap input:focus{border-color:var(--blue)}
+.pwd-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;width:28px;height:28px;padding:0;font-size:15px;cursor:pointer;color:var(--muted);line-height:1;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s}
+.pwd-eye:hover{background:var(--bg);color:var(--text)}
+.lbox .lremember{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-bottom:16px;cursor:pointer;justify-content:center}
+.lbox .lremember input{width:15px;height:15px;margin:0;display:inline-block;cursor:pointer}
+.lsaved{font-size:11px;color:var(--green);margin-top:6px;display:none}
 
 /* ── HEADER ── */
 header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;height:50px}
@@ -311,12 +319,72 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .int-item .int-quem{font-weight:700;color:var(--navy)}
 .int-item .int-detalhe{color:var(--muted);margin-top:2px}
 
+
+/* ── DROPDOWN MAIS ── */
+.ha-dropdown{position:relative;display:inline-block}
+.ha-dropdown-menu{display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:300;min-width:190px;padding:5px 0}
+.ha-dropdown-menu.show{display:block}
+.ha-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:background .1s}
+.ha-dropdown-item:hover{background:var(--bg)}
+.ha-dropdown-item .di-icon{font-size:14px;width:18px;text-align:center}
+.ha-separator{height:1px;background:var(--border);margin:4px 0}
+/* botão reativar destacado */
+.rbtn-reativar{background:var(--green)!important;color:var(--navy)!important;font-weight:800!important}
+.rbtn-reativar:hover{opacity:.88!important}
+
 /* Scroll */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
 
 /* Empty */
 .empty{padding:28px;text-align:center;color:var(--muted);font-size:11px}
+
+/* ── FASE 1 + EXTRAS ── */
+.conv-card.alerta24h:not(.active){border-left:3px solid #d97706}
+.conv-card.precisa-humano:not(.active){border-left:3px solid var(--red)!important}
+.cc-warning{background:#fef3c7;color:#92400e}
+.cc-humano{background:#fee2e2;color:#7f1d1d}
+.cc-disc-D{background:#fee2e2;color:#991b1b}.cc-disc-I{background:#fef9c3;color:#854d0e}.cc-disc-S{background:#dcfce7;color:#166534}.cc-disc-C{background:#dbeafe;color:#1e40af}
+.rbtn-pausar{background:rgba(220,38,38,.75)!important;color:#fff!important;font-weight:800!important}
+.rbtn-pausar:hover{background:rgba(220,38,38,1)!important}
+.ha-btn.btn-template{background:#d97706;color:#fff}
+.ha-btn.btn-template:hover{opacity:.88}
+
+/* ── CALENDÁRIO ── */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dow{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:4px 0;text-transform:uppercase}
+.cal-day{min-height:44px;border-radius:6px;padding:4px;cursor:pointer;transition:background .1s;display:flex;flex-direction:column;align-items:center}
+.cal-day:hover:not(.cal-empty){background:#e8f4fd}
+.cal-empty{cursor:default;opacity:.3}
+.cal-hoje .cal-num{background:var(--navy);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-tem-ent{background:#f0f9ff}
+.cal-num{font-size:11px;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-dot-row{display:flex;gap:2px;margin-top:2px}
+.cal-dot{width:5px;height:5px;border-radius:50%}
+.dot-blue{background:var(--blue)}.dot-green{background:#059669}.dot-red{background:var(--pink)}.dot-orange{background:#d97706}
+
+/* ── FALTOSOS ── */
+.falt-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.falt-tab{padding:4px 10px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:var(--bg);color:var(--muted);transition:all .15s}
+.falt-tab.active{background:var(--navy);color:#fff}
+.falt-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.falt-stat{background:#fff;border-radius:10px;padding:10px 12px;flex:1;min-width:55px;text-align:center;box-shadow:var(--shadow)}
+.falt-stat-num{font-size:20px;font-weight:800}
+.falt-stat-label{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* ── AGENDA VIEW ── */
+.agenda-view{display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa}
+.agenda-view.show{display:flex}
+.agenda-body{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.agenda-body{grid-template-columns:1fr}}
+.agenda-card{background:#fff;border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+.agenda-card-title{font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+
+/* ── MODAL HORÁRIOS ── */
+.horario-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;margin:3px;transition:border .15s}
+.horario-chip:hover{border-color:var(--red)}
+.horario-chip .del{color:var(--red);font-size:13px;line-height:1}
 </style>
 </head>
 <body>
@@ -326,9 +394,18 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   <div class="lbox">
     <div class="llogo">Effect <span>Pessoas</span></div>
     <div class="lsub">Inbox da Lia — Acesso restrito</div>
-    <input type="password" id="pwd" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')entrar()">
+    <div class="pwd-wrap">
+      <input type="password" id="pwd" placeholder="Senha de acesso"
+        onkeydown="if(event.key==='Enter')entrar()"
+        autocomplete="current-password">
+      <button class="pwd-eye" type="button" onclick="toggleSenhaVisivel()" id="pwd-eye" title="Mostrar/ocultar senha">👁️</button>
+    </div>
+    <label class="lremember">
+      <input type="checkbox" id="lembrar-senha"> Lembrar senha neste dispositivo
+    </label>
     <button onclick="entrar()">Entrar</button>
     <div class="lerr" id="lerr">Senha incorreta.</div>
+    <div class="lsaved" id="lsaved">✓ Senha salva — entrando automaticamente...</div>
   </div>
 </div>
 
@@ -345,14 +422,17 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <div class="hlogo">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-inbox" style="background:rgba(255,255,255,.22)">💬 Conversas</button>
     <button class="rbtn" onclick="mostrarView('entrevistas')" id="nav-entrevistas">📅 Entrevistas</button>
+    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">🗓️ Agenda</button>
   </div>
   <div class="hright">
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
-    <button class="rbtn" onclick="reativarTodas()">🤖 Reativar Todas</button>
+    <button class="rbtn rbtn-pausar" onclick="pausarTodas()" title="Colocar TODAS as conversas em modo Manual">⏸️ Pausar Todas</button>
+    <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
+    <button class="rbtn" id="btn-backup" onclick="fazerBackupManual()" title="Salvar backup agora no Google Drive">💾 Backup</button>
   </div>
 </header>
 
@@ -381,6 +461,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <button class="ftab" onclick="setTab(this,'lia')">🤖 Lia <span class="ftab-count" id="cnt-lia">0</span></button>
       <button class="ftab" onclick="setTab(this,'curriculos')">📄 CVs <span class="ftab-count" id="cnt-curriculos">0</span></button>
       <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
+      <button class="ftab" onclick="setTab(this,'arquivadas')">📦 Arquivadas <span class="ftab-count" id="cnt-arquivadas">0</span></button>
     </div>
     <div class="conv-list" id="conv-list"><div class="empty">Carregando...</div></div>
   </div>
@@ -400,18 +481,31 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <div class="chat-meta" id="ch-meta">—</div>
         </div>
         <div class="header-actions">
-          <button class="ha-btn ha-ghost" onclick="marcarLida()" title="Arquivar / marcar como resolvida">📁 Arquivar</button>
-          <button class="ha-btn ha-ghost" onclick="marcarNaoLida()" title="Não lida">🔵</button>
-          <button class="ha-btn ha-ghost" id="btn-retornar" onclick="toggleRetornar()" title="Marcar para retornar depois">📌</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalVagas()" title="Enviar detalhes da vaga, sem vincular candidato">📋 Vaga</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalEncaminhar()" title="Vincular candidato a uma vaga após aceite">🎯 Encaminhar</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
-          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalObs()" title="Registrar observação">📝 Obs</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status e usar mensagens padrão">📌 Status</button>
-          <button class="ha-btn ha-ghost" onclick="abrirCurriculoInbox()" title="Visualizar currículo">📎 CV</button>
+          <!-- Primários: sempre visíveis -->
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
+          <button class="ha-btn ha-ghost" onclick="arquivarConversa()" title="Arquivar — oculta da caixa principal; volta ao responder">📁 Arquivar</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status e usar mensagens padrão">📌 Status</button>
+          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
+          <button class="ha-btn btn-template" id="btn-template" onclick="abrirModalTemplate()" style="display:none" title="Enviar template de retomada (conversa parada >24h)">📤 Template</button>
+          <button class="ha-btn" id="btn-disc" onclick="abrirDiscCandidato()" title="Enviar link DISC ou ver resultado" style="background:#dbeafe;color:#1e40af;font-weight:700">📊 DISC</button>
+          <!-- Dropdown Mais -->
+          <div class="ha-dropdown" id="dropdown-mais">
+            <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event)">⋯ Mais</button>
+            <div class="ha-dropdown-menu" id="dropdown-mais-menu">
+              <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
+              <div class="ha-dropdown-item" onclick="abrirModalSlots();fecharDropdownMais()"><span class="di-icon">🕐</span> Oferecer Horários</div>
+              <div class="ha-separator"></div>
+              <div class="ha-dropdown-item" onclick="abrirModalVagas();fecharDropdownMais()"><span class="di-icon">📋</span> Enviar Vaga</div>
+              <div class="ha-dropdown-item" onclick="abrirModalEncaminhar();fecharDropdownMais()"><span class="di-icon">🎯</span> Encaminhar</div>
+              <div class="ha-dropdown-item" onclick="abrirModalObs();fecharDropdownMais()"><span class="di-icon">📝</span> Observação</div>
+              <div class="ha-dropdown-item" onclick="abrirCurriculoInbox();fecharDropdownMais()"><span class="di-icon">📎</span> Ver Currículo</div>
+              <div class="ha-separator"></div>
+              <div class="ha-dropdown-item" onclick="toggleRetornar();fecharDropdownMais()" id="item-retornar"><span class="di-icon">📌</span> Marcar p/ Retornar</div>
+              <div class="ha-dropdown-item" onclick="marcarNaoLida();fecharDropdownMais()"><span class="di-icon">🔵</span> Marcar Não Lida</div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="status-banner sb-manual" id="banner-manual">👩 <strong>Laura</strong> está respondendo — assinatura automática ativa.</div>
@@ -583,6 +677,56 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   </div>
 </div>
 
+<!-- VIEW: AGENDA (CALENDÁRIO) -->
+<div class="agenda-view" id="view-agenda">
+  <div class="ev-header" style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div class="ev-title">🗓️ Agenda</div>
+      <div class="ev-subtitle">Calendário de entrevistas + Faltosos</div>
+    </div>
+    <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários Lia</button>
+  </div>
+  <div class="agenda-body" id="agenda-body">
+    <!-- preenchido por renderAgenda() -->
+  </div>
+</div>
+
+<!-- MODAL: TEMPLATES DE RETOMADA -->
+<div class="modal-overlay" id="modal-template">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">📤 Enviar Template de Retomada</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Escolha um modelo. O texto vai para o campo de mensagem — revise antes de enviar.</div>
+    <div id="template-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-template')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HORÁRIOS DISPONÍVEIS (Lia oferece ao candidato) -->
+<div class="modal-overlay" id="modal-horarios">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">🕐 Configurar Horários Disponíveis</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Estes horários serão oferecidos pela Lia ao candidato quando precisar agendar entrevista.<br>
+      Você também pode gerar e enviar uma mensagem com slots para o candidato atual.
+    </div>
+    <div class="rp-section-title">Horários configurados</div>
+    <div id="horarios-chips" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <input class="modal-input" type="time" id="novo-horario-input" style="flex:1">
+      <button class="modal-btn modal-confirm" onclick="adicionarHorario()">+ Adicionar</button>
+    </div>
+    <div class="rp-section-title" style="margin-top:4px">Data para oferecer</div>
+    <input class="modal-input" type="date" id="slots-data" style="margin-bottom:12px">
+    <div style="background:var(--bg);border-radius:8px;padding:10px;font-size:11px;line-height:1.6;color:var(--text);white-space:pre-wrap;margin-bottom:10px" id="slots-preview"></div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-horarios')">Fechar</button>
+      <button class="modal-btn modal-confirm" onclick="usarSlotsNoChat()">Inserir no chat</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -594,7 +738,46 @@ const API = window.location.origin;
 const NOME_MANUAL = "Laura";
 const ASSINATURA = `\n\n— ${NOME_MANUAL}, Equipe Effect 💙`;
 
-const QUICK_REPLIES = [];
+const QUICK_REPLIES = [
+  "Pode me enviar seu currículo?",
+  "Qual o seu bairro?",
+  "Você tem experiência na área?",
+  "Vou encaminhar para análise 💙",
+  "Aguardo seu retorno!",
+  "Qual vaga te interessa?"
+];
+
+// ── HELPERS FASE 1 ──────────────────────────────────────────────
+function normalizarTextoJS(t){
+  return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+}
+
+// Último msg foi do bot/humano e passou +24h → candidato não respondeu
+function isAlerta24h(tel,s){
+  if(arquivadas[tel])return false;
+  const hist=s.historico||[];
+  if(!hist.length)return false;
+  const ultima=hist[hist.length-1];
+  if(ultima.role==='user')return false;
+  const ms=tsParaMs(obterTimestampMsg(ultima));
+  if(!ms)return false;
+  return(Date.now()-ms)>24*60*60*1000;
+}
+
+// Candidato pediu humano/Thiara → badge vermelho + subir ao topo
+const PALAVRAS_HUMANO_JS=[
+  'thiara','quero falar com alguem','quero falar com alguém',
+  'responsavel','responsável','atendente','falar com pessoa',
+  'falar com humano','nao quero robo','não quero robô','nao quero robot'
+];
+function precisaHumano(tel,s){
+  const motivo=normalizarTextoJS(s.motivoPausa||'');
+  if(motivo.includes('pediu atendimento humano')||motivo.includes('responsav'))return true;
+  const hist=s.historico||[];
+  return hist.filter(h=>h.role==='user').slice(-5).some(m=>
+    PALAVRAS_HUMANO_JS.some(p=>normalizarTextoJS(m.content||'').includes(p))
+  );
+}
 
 const STATUS_LIST = [
   "Novo contato","Em triagem","Triagem concluída","Aguardando candidato",
@@ -729,20 +912,57 @@ let notas = {}; // {telefone: [{texto, ts}]}
 let statusMap = {}; // {telefone: string}
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
+let arquivadas = {}; // {telefone: true}
 let timerEntrevistas = null;
 
 // ─── LOGIN ───
-function entrar(){
-  if(document.getElementById('pwd').value===SENHA){
+function toggleSenhaVisivel(){
+  const p=document.getElementById('pwd');
+  const e=document.getElementById('pwd-eye');
+  if(p.type==='password'){p.type='text';e.textContent='🙈';}
+  else{p.type='password';e.textContent='👁️';}
+}
+
+function entrar(senhaOverride){
+  const senha=senhaOverride||document.getElementById('pwd').value;
+  if(senha===SENHA){
+    // Gravar senha se "Lembrar" estiver marcado
+    const lembrar=document.getElementById('lembrar-senha');
+    if(lembrar&&lembrar.checked){
+      try{localStorage.setItem('effect_saved_pwd',btoa(senha));localStorage.setItem('effect_lembrar','1');}catch(e){}
+    }
     document.getElementById('login').classList.add('hidden');
     carregarLocalData();
     carregarSessoes();
     setInterval(carregarSessoes, 5000);
     iniciarTimerEntrevistas();
+    verificarConfirmacoes24h();
+    setInterval(verificarConfirmacoes24h,60*60*1000);
   } else {
     document.getElementById('lerr').style.display='block';
+    document.getElementById('pwd').style.borderColor='var(--pink)';
+    setTimeout(()=>{document.getElementById('pwd').style.borderColor='';},1500);
   }
 }
+
+function inicializarLogin(){
+  try{
+    const lembrar=localStorage.getItem('effect_lembrar');
+    const saved=localStorage.getItem('effect_saved_pwd');
+    if(lembrar==='1'&&saved){
+      const pwd=atob(saved);
+      const campo=document.getElementById('pwd');
+      const cb=document.getElementById('lembrar-senha');
+      if(campo)campo.value=pwd;
+      if(cb)cb.checked=true;
+      // Login automático após breve delay visual
+      const msg=document.getElementById('lsaved');
+      if(msg)msg.style.display='block';
+      setTimeout(()=>entrar(pwd),900);
+    }
+  }catch(e){}
+}
+window.addEventListener('DOMContentLoaded',inicializarLogin);
 
 // ─── LOCAL STORAGE ───
 function carregarLocalData(){
@@ -753,6 +973,7 @@ function carregarLocalData(){
     statusMap=JSON.parse(localStorage.getItem('effect_status_v1')||'{}');
     intervencoes=JSON.parse(localStorage.getItem('effect_intervencoes_v1')||'{}');
     marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
+    arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
   }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};}
 }
 function salvarLocal(){
@@ -763,6 +984,7 @@ function salvarLocal(){
     localStorage.setItem('effect_status_v1',JSON.stringify(statusMap));
     localStorage.setItem('effect_intervencoes_v1',JSON.stringify(intervencoes));
     localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
+    localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
   }catch(e){}
 }
 function getMeta(tel){if(!metaDados[tel])metaDados[tel]={ultimaMsgVista:0};return metaDados[tel];}
@@ -816,6 +1038,21 @@ async function carregarSessoes(){
       }
     });
 
+    // Auto-desarquivar quando candidato manda nova mensagem
+    Object.entries(novas).forEach(([tel,s])=>{
+      if(arquivadas[tel]){
+        const hist=s.historico||[];
+        const ultima=hist[hist.length-1];
+        if(ultima&&ultima.role==='user'){
+          const msUltima=tsParaMs(obterTimestampMsg(ultima));
+          const agora=Date.now();
+          if(msUltima&&(agora-msUltima)<5*60*1000){ // mensagem nova (últimos 5 min)
+            delete arquivadas[tel];
+            salvarLocal();
+          }
+        }
+      }
+    });
     todasSessoes=novas;
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -829,9 +1066,14 @@ async function carregarSessoes(){
 function mostrarView(v){
   document.getElementById('view-inbox').style.display=v==='inbox'?'flex':'none';
   document.getElementById('view-entrevistas').style.display=v==='entrevistas'?'flex':'none';
+  const agendaEl=document.getElementById('view-agenda');
+  if(agendaEl)agendaEl.style.display=v==='agenda'?'flex':'none';
   document.getElementById('nav-inbox').style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   document.getElementById('nav-entrevistas').style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
+  const navAg=document.getElementById('nav-agenda');
+  if(navAg)navAg.style.background=v==='agenda'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
+  if(v==='agenda') renderAgenda();
 }
 
 // ─── DISPLAY ───
@@ -1164,12 +1406,18 @@ function renderLista(){
   String(s.lastMessage||s.preview||'').toLowerCase().includes('currículo')
 );
     if(tab==='retornar')return !!marcadosRetorno[tel];
-    return true;
+    if(tab==='arquivadas')return !!arquivadas[tel];
+    return !arquivadas[tel]; // Arquivadas ficam ocultas da lista principal
   });
 
-  // Ordenação definitiva por última atividade real — mais recente no topo, igual WhatsApp.
-  // Ignora timestamps futuros/bugados para evitar datas desencontradas dominando a lista.
-  entries.sort((a,b)=>atividadeMsSessao(b[1],b[2])-atividadeMsSessao(a[1],a[2]));
+  // Ordenação: 1) precisa humano → topo  2) alerta 24h  3) atividade recente
+  entries.sort((a,b)=>{
+    const pha=precisaHumano(a[0],a[1]),phb=precisaHumano(b[0],b[1]);
+    if(pha!==phb)return pha?-1:1;
+    const a24=isAlerta24h(a[0],a[1]),b24=isAlerta24h(b[0],b[1]);
+    if(a24!==b24)return a24?-1:1;
+    return atividadeMsSessao(b[1],b[2])-atividadeMsSessao(a[1],a[2]);
+  });
 
   const all=Object.entries(todasSessoes);
   document.getElementById('cnt-todas').textContent=all.length;
@@ -1183,6 +1431,7 @@ all.filter(([t,s])=>
   String(s.lastMessage||s.preview||'').toLowerCase().includes('currículo')
 ).length;
   document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]).length;
+  document.getElementById('cnt-arquivadas').textContent=Object.keys(arquivadas).filter(t=>arquivadas[t]&&todasSessoes[t]).length;
   const nAtencao=all.filter(([_,s])=>isAtencao(s)).length;
   document.getElementById('cnt-atencao').textContent=nAtencao;
   const bNovas=document.getElementById('badge-novas');
@@ -1219,8 +1468,10 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
 
     const analise=s.ultimaAnalise;
     const compat=analise?compatInfo(analise.scoreVaga||analise.scoreGeral):null;
+    const alerta24=isAlerta24h(tel,s);
+    const humano=precisaHumano(tel,s);
 
-    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}`;
+    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}${alerta24&&!isActive?' alerta24h':''}${humano&&!isActive?' precisa-humano':''}`;
 
     return `<div class="${cardClass}" onclick="abrirConversa('${tel}')">
       <div class="avatar ${avClass}">${avContent}</div>
@@ -1234,10 +1485,13 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
           ${naoLidas>0?`<div class="unread-badge">${naoLidas}</div>`:''}
         </div>
         <div class="conv-chips">
-        ${statusAtual?`<span class="cc cc-gray">📌 ${statusAtual}</span>`:''}
+          ${humano?'<span class="cc cc-humano">🆘 Precisa humano</span>':''}
+          ${alerta24?'<span class="cc cc-warning">⚠️ +24h sem resposta</span>':''}
+          ${s.discResult?`<span class="cc cc-disc-${s.discResult.primario}">📊 ${s.discResult.primario}${s.discResult.secundario?'/'+s.discResult.secundario:''}</span>`:''}
+          ${statusAtual?`<span class="cc cc-gray">📌 ${statusAtual}</span>`:''}
           ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
-${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
+          ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
           ${marcadosRetorno[tel]?'<span class="cc cc-yellow">📌 Retornar</span>':''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
@@ -1267,6 +1521,9 @@ function abrirConversa(tel){
   document.getElementById('banner-motivo').textContent=s.motivoPausa||'';
   atualizarBotaoRetornar();
   aplicarModoVisual(isManual?'manual':'lia');
+  // Template button: aparece apenas em conversas com +24h sem resposta do candidato
+  const btnTpl=document.getElementById('btn-template');
+  if(btnTpl)btnTpl.style.display=isAlerta24h(tel,s)?'inline-flex':'none';
   renderQuickReplies();
   renderMsgs(s);
   setMeta(tel,{ultimaMsgVista:hist.length});
@@ -1715,6 +1972,30 @@ function marcarLida(){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];const hist=s?.historico||[];
   setMeta(sessaoAtual,{ultimaMsgVista:hist.length});renderLista();toast('✓✓ Lida','success');
+}
+function arquivarConversa(){
+  if(!sessaoAtual)return;
+  const tel=sessaoAtual;
+  // Marcar como lida também
+  const s=todasSessoes[tel];const hist=s?.historico||[];
+  setMeta(tel,{ultimaMsgVista:hist.length});
+  // Arquivar
+  arquivadas[tel]=true;
+  salvarLocal();
+  // Ir para próxima conversa ou fechar
+  const lista=Object.keys(todasSessoes).filter(t=>!arquivadas[t]&&t!==tel);
+  toast('📦 Arquivada','success');
+  if(lista.length){
+    // Pega a mais recente da lista principal
+    lista.sort((a,b)=>atividadeMsSessao(todasSessoes[b])-atividadeMsSessao(todasSessoes[a]));
+    abrirConversa(lista[0]);
+  } else {
+    sessaoAtual=null;
+    document.getElementById('chat-active').style.display='none';
+    document.getElementById('chat-empty').style.display='flex';
+    document.getElementById('right-panel').style.display='none';
+  }
+  renderLista();
 }
 function marcarNaoLida(){
   if(!sessaoAtual)return;
@@ -2245,6 +2526,25 @@ function atualizarBotaoNovasManual(){
   if(novaConversaIniciaManual){b.textContent='🆕 Novas: Manual';b.style.background='#fcd34d';b.style.color='#92400e';}
   else{b.textContent='🆕 Novas: Lia';b.style.background='';b.style.color='';}
 }
+async function fazerBackupManual(){
+  const btn=document.getElementById('btn-backup');
+  if(btn){btn.textContent='⏳ Salvando…';btn.disabled=true;}
+  try{
+    const r=await fetch(`${API}/inbox/backup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const d=await r.json();
+    if(d.ok){
+      toast('💾 Backup salvo no Google Drive!','success');
+      if(btn)btn.textContent='✅ Backup OK';
+      setTimeout(()=>{if(btn){btn.textContent='💾 Backup';btn.disabled=false;}},3000);
+    }else{
+      toast('Erro no backup — verifique logs do Railway','error');
+      if(btn){btn.textContent='💾 Backup';btn.disabled=false;}
+    }
+  }catch(e){
+    toast('Erro de conexão no backup','error');
+    if(btn){btn.textContent='💾 Backup';btn.disabled=false;}
+  }
+}
 async function toggleNovasManual(){
   const novo=!novaConversaIniciaManual;
   try{
@@ -2273,7 +2573,7 @@ async function pausarTodas(){
 async function reativarTodas(){
   const tels=Object.entries(todasSessoes).filter(([t,s])=>s.modo==='manual'||s.pausado===true).map(([t])=>t);
   if(!tels.length){toast('Nenhuma conversa em modo manual','success');return;}
-  if(!confirm(`Reativar a Lia em TODAS as ${tels.length} conversas em modo manual?`))return;
+  // Sem confirmação — ação instantânea
   toast(`⏳ Reativando ${tels.length} conversas...`,'success');
   for(const tel of tels){
     try{
@@ -2285,6 +2585,448 @@ async function reativarTodas(){
   if(sessaoAtual)renderPainelDireito();
   toast(`✅ ${tels.length} conversas reativadas`,'success');
 }
+
+// ─── TEMPLATE DE RETOMADA ───
+const TEMPLATES_RETOMADA=[
+  {titulo:'Retomada gentil',texto:`Olá! Tudo bem? 😊 Passando para saber se ainda tem interesse na oportunidade que conversamos. Quando puder, é só me responder por aqui! 💙`},
+  {titulo:'Confirmar interesse',texto:`Oi! 😊 Vi que nossa conversa ficou em aberto. Ainda posso te ajudar a encontrar uma vaga? Pode me responder quando quiser.`},
+  {titulo:'Urgência de vaga',texto:`Olá! Temos uma vaga disponível que pode ser do seu interesse. Você ainda está buscando emprego? 💙`},
+  {titulo:'Retomada de triagem',texto:`Oi! Lembro que conversamos sobre uma oportunidade. Para dar continuidade à sua triagem, preciso de mais algumas informações. Podemos continuar?`},
+];
+// ─── DISC ───
+const DISC_PERFIS = {
+  D:{nome:'Dominante',emoji:'🔴',cor:'#dc2626'},
+  I:{nome:'Influente',emoji:'🟡',cor:'#d97706'},
+  S:{nome:'Estável',emoji:'🟢',cor:'#16a34a'},
+  C:{nome:'Analítico',emoji:'🔵',cor:'#1fa5ff'}
+};
+
+function abrirDiscCandidato(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  const linkDisc=`${API}/disc/${sessaoAtual}`;
+
+  if(s?.discResult){
+    // Já tem resultado — mostrar no painel
+    mostrarDiscNoPainel(s.discResult);
+    return;
+  }
+
+  // Sem resultado — oferecer link para copiar ou enviar
+  const input=document.getElementById('msg-input');
+  const nome=s?.nome||'você';
+  const msg=`Olá, ${nome.split(' ')[0]}! Para avançar no seu processo seletivo, pedimos que responda um breve questionário de perfil comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
+  input.value=msg;
+  autoResize(input);
+  input.focus();
+  toast('📊 Link DISC inserido — revise e envie','success');
+}
+
+function mostrarDiscNoPainel(disc){
+  if(!disc)return;
+  const p=DISC_PERFIS[disc.primario]||{nome:disc.primario,emoji:'📊',cor:'#1e3a5f'};
+  const ps=disc.secundario?DISC_PERFIS[disc.secundario]:null;
+  const pct=disc.percentuais||{};
+
+  const rpBody=document.getElementById('rp-body');
+  rpBody.innerHTML=`
+    <div class="rp-section">
+      <div class="rp-section-title">📊 Perfil DISC</div>
+      <div style="text-align:center;padding:12px 0 8px">
+        <div style="font-size:32px">${p.emoji}${ps?ps.emoji:''}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--navy);margin-top:4px">${p.nome}${ps?' / '+ps.nome:''}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${new Date(disc.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
+        ${['D','I','S','C'].map(k=>{const pp=DISC_PERFIS[k];return`
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;font-weight:800;width:12px;color:${pp.cor}">${k}</span>
+          <div style="flex:1;background:#e8ecf1;border-radius:999px;height:10px;overflow:hidden">
+            <div style="width:${pct[k]||0}%;height:100%;background:${pp.cor};border-radius:999px;transition:width 1s"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);width:28px;text-align:right">${pct[k]||0}%</span>
+        </div>`;}).join('')}
+      </div>
+      <button class="nota-save" onclick="abrirDiscCompleto('${sessaoAtual}')">🔍 Ver relatório completo</button>
+    </div>`;
+}
+
+function abrirDiscCompleto(tel){
+  window.open(`${API}/disc/resultado-view/${tel}`,'_blank');
+}
+
+function mostrarDiscNoPainelSeTiver(tel,s){
+  if(s?.discResult) mostrarDiscNoPainel(s.discResult);
+}
+
+function abrirModalTemplate(){
+  if(!sessaoAtual)return;
+  const div=document.getElementById('template-lista');
+  div.innerHTML=TEMPLATES_RETOMADA.map((t,i)=>`
+    <div class="sugestao-item" onclick="usarTemplate(${i})">
+      <div style="font-weight:700;font-size:11px;margin-bottom:4px">${t.titulo}</div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.4">${t.texto.slice(0,80)}…</div>
+    </div>`).join('');
+  document.getElementById('modal-template').classList.add('show');
+}
+function usarTemplate(idx){
+  const t=TEMPLATES_RETOMADA[idx];
+  if(!t)return;
+  const input=document.getElementById('msg-input');
+  input.value=t.texto;autoResize(input);
+  fecharModal('modal-template');
+  input.focus();
+  toast('📤 Template inserido — revise e envie','success');
+}
+
+// ─── RESUMIR CONVERSA (chama /inbox/resumir) ───
+async function resumirConversa(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];if(!s)return;
+  // Ativa aba historico e mostra loading
+  const rpBody=document.getElementById('rp-body');
+  rpBody.innerHTML='<div style="text-align:center;padding:28px;color:var(--muted)">⏳ Gerando resumo com IA…</div>';
+  document.querySelectorAll('.rp-tab').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.rp-tab[onclick*="historico"]')?.classList.add('active');
+  rpTab='historico';
+  try{
+    const r=await fetch(`${API}/inbox/resumir`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:sessaoAtual})
+    });
+    const d=await r.json();
+    if(d.ok&&d.resumo){
+      rpBody.innerHTML=`
+        <div class="rp-section">
+          <div class="rp-section-title">🔍 Resumo gerado pela IA</div>
+          <div class="ai-summary" style="white-space:pre-wrap">${d.resumo}</div>
+          <button class="nota-save" style="margin-top:8px" onclick="salvarResumoComaNota()">📝 Salvar como nota</button>
+        </div>
+        ${renderPainelHistoricoHTML(s)}`;
+      window._ultimoResumo=d.resumo;
+    }else{
+      rpBody.innerHTML=`<div class="empty">Erro: ${d.erro||'Sem resposta da IA'}</div>`;
+    }
+  }catch(e){
+    rpBody.innerHTML=`<div class="empty">Erro de conexão</div>`;
+  }
+}
+function salvarResumoComaNota(){
+  if(!sessaoAtual||!window._ultimoResumo)return;
+  if(!notas[sessaoAtual])notas[sessaoAtual]=[];
+  notas[sessaoAtual].push({texto:'[Resumo IA] '+window._ultimoResumo,ts:new Date().toLocaleString('pt-BR')});
+  salvarLocal();
+  toast('📝 Resumo salvo como nota','success');
+}
+function renderPainelHistoricoHTML(s){
+  const intervs=intervencoes[sessaoAtual]||[];
+  return`<div class="rp-section"><div class="rp-section-title">📊 Estatísticas</div>
+    <div class="rp-row"><span class="rp-label">Total msgs</span><span class="rp-val">${(s.historico||[]).length}</span></div>
+    <div class="rp-row"><span class="rp-label">Msgs candidato</span><span class="rp-val">${(s.historico||[]).filter(h=>h.role==='user').length}</span></div>
+    <div class="rp-row"><span class="rp-label">Msgs Lia/Laura</span><span class="rp-val">${(s.historico||[]).filter(h=>h.role==='assistant').length}</span></div>
+    <div class="rp-row"><span class="rp-label">Modo atual</span><span class="rp-val">${s.modo==='manual'?'👩 Laura':'🤖 Lia'}</span></div>
+  </div>`;
+}
+
+// ─── AGENDA / CALENDÁRIO ───
+let calMes=new Date().getMonth();
+let calAno=new Date().getFullYear();
+let calDiaSel='';
+
+function renderAgenda(){
+  const body=document.getElementById('agenda-body');
+  if(!body)return;
+  body.innerHTML=`
+    <div class="agenda-card">
+      <div class="agenda-card-title">🗓️ Calendário</div>
+      <div id="cal-wrap"></div>
+    </div>
+    <div>
+      <div class="agenda-card" style="margin-bottom:16px">
+        <div class="agenda-card-title">📊 Faltosos & Comparecimentos</div>
+        <div id="falt-wrap"></div>
+      </div>
+      <div class="agenda-card" id="cal-detail-card" style="display:none">
+        <div class="agenda-card-title" id="cal-detail-title">📅</div>
+        <div id="cal-detail"></div>
+      </div>
+    </div>`;
+  renderCalendario();
+  renderFaltosos();
+  verificarConfirmacoes24h();
+}
+
+function renderCalendario(){
+  const wrap=document.getElementById('cal-wrap');if(!wrap)return;
+  const hoje=new Date();
+  const primeiroDia=new Date(calAno,calMes,1);
+  const diasNoMes=new Date(calAno,calMes+1,0).getDate();
+  const primeiroDS=primeiroDia.getDay();
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Index de entrevistas por data
+  const entsByDate={};
+  Object.entries(entrevistas).forEach(([tel,ents])=>{
+    ents.forEach(e=>{
+      if(!entsByDate[e.data])entsByDate[e.data]=[];
+      const s=todasSessoes[tel];
+      entsByDate[e.data].push({...e,telefone:tel,nome:s?.nome||telDisplay(tel)});
+    });
+  });
+
+  let html=`
+    <div class="cal-nav">
+      <button class="rbtn" onclick="navCal(-1)">‹</button>
+      <span style="font-weight:800;font-size:13px">${meses[calMes]} ${calAno}</span>
+      <button class="rbtn" onclick="navCal(1)">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dow">Dom</div><div class="cal-dow">Seg</div><div class="cal-dow">Ter</div>
+      <div class="cal-dow">Qua</div><div class="cal-dow">Qui</div><div class="cal-dow">Sex</div><div class="cal-dow">Sáb</div>`;
+
+  for(let i=0;i<primeiroDS;i++)html+='<div class="cal-day cal-empty"></div>';
+
+  for(let d=1;d<=diasNoMes;d++){
+    const ds=`${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje=hoje.getDate()===d&&hoje.getMonth()===calMes&&hoje.getFullYear()===calAno;
+    const isSel=calDiaSel===ds;
+    const entsNoDia=entsByDate[ds]||[];
+    const dots=entsNoDia.slice(0,4).map(e=>{
+      const cor=e.status==='Realizada'?'dot-green':e.status==='Cancelada'||e.status==='Não Compareceu'?'dot-red':e.status==='Remarcou'?'dot-orange':'dot-blue';
+      return`<div class="cal-dot ${cor}"></div>`;
+    }).join('');
+    html+=`<div class="cal-day${isHoje?' cal-hoje':''}${entsNoDia.length?' cal-tem-ent':''}${isSel?' cal-tem-ent':''}" onclick="selecionarDia('${ds}')">
+      <span class="cal-num">${d}</span>
+      ${dots?`<div class="cal-dot-row">${dots}</div>`:''}
+    </div>`;
+  }
+  html+='</div>';
+
+  // Legenda
+  html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:9px;color:var(--muted)">
+    <span><span class="cal-dot dot-blue" style="display:inline-block;margin-right:3px"></span>Pendente</span>
+    <span><span class="cal-dot dot-green" style="display:inline-block;margin-right:3px"></span>Realizada</span>
+    <span><span class="cal-dot dot-orange" style="display:inline-block;margin-right:3px"></span>Remarcou</span>
+    <span><span class="cal-dot dot-red" style="display:inline-block;margin-right:3px"></span>Faltou/Cancelada</span>
+  </div>`;
+
+  wrap.innerHTML=html;
+}
+
+function navCal(dir){
+  calMes+=dir;
+  if(calMes>11){calMes=0;calAno++;}
+  if(calMes<0){calMes=11;calAno--;}
+  renderCalendario();
+}
+
+function selecionarDia(ds){
+  calDiaSel=ds;
+  renderCalendario();
+  const card=document.getElementById('cal-detail-card');
+  const detail=document.getElementById('cal-detail');
+  const title=document.getElementById('cal-detail-title');
+  if(!card||!detail)return;
+
+  const entsNoDia=[];
+  Object.entries(entrevistas).forEach(([tel,ents])=>{
+    ents.forEach(e=>{
+      if(e.data===ds){
+        const s=todasSessoes[tel];
+        entsNoDia.push({...e,telefone:tel,nome:s?.nome||telDisplay(tel),cargo:s?.ultimaAnalise?.vagaInteresse||'—'});
+      }
+    });
+  });
+
+  const[y,m,d]=ds.split('-');
+  title.textContent=`📅 ${d}/${m}/${y} — ${entsNoDia.length} entrevista(s)`;
+  card.style.display='block';
+
+  if(!entsNoDia.length){
+    detail.innerHTML=`<div class="empty" style="padding:16px">Nenhuma entrevista</div>
+      <button class="entrevista-btn" onclick="abrirModalEntrevistaData('${ds}')">📅 Agendar neste dia</button>`;
+    return;
+  }
+
+  detail.innerHTML=entsNoDia.map(e=>`
+    <div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${e.status==='Realizada'?'var(--green)':e.status==='Cancelada'||e.status==='Não Compareceu'?'var(--red)':e.status==='Remarcou'?'#d97706':'var(--blue)'}">
+      <div style="font-weight:700;font-size:11px">${e.nome}</div>
+      <div style="font-size:10px;color:var(--muted)">${e.hora} · ${e.tipo} · ${e.cargo}</div>
+      <div style="font-size:10px;margin-top:2px"><strong>Status:</strong> ${e.status||'Pendente'}</div>
+      <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+        <button class="ev-act-btn confirmar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Confirmada');selecionarDia('${ds}');renderFaltosos()">✓ Conf</button>
+        <button class="ev-act-btn realizar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Realizada');selecionarDia('${ds}');renderFaltosos()">✅ Compareceu</button>
+        <button class="ev-act-btn cancelar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Não Compareceu');selecionarDia('${ds}');renderFaltosos()">✕ Faltou</button>
+        <button style="padding:4px 8px;border-radius:6px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:#e0e7ff;color:#3730a3" onclick="marcarEntrevista('${e.telefone}','${e.id}','Remarcou');selecionarDia('${ds}');renderFaltosos()">🔄 Remarcou</button>
+        <button class="rbtn" style="font-size:10px;padding:3px 8px" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬 Conversa</button>
+      </div>
+    </div>`).join('')+
+    `<button class="entrevista-btn" onclick="abrirModalEntrevistaData('${ds}')">📅 Agendar nova neste dia</button>`;
+}
+
+function abrirModalEntrevistaData(ds){
+  document.getElementById('ent-data').value=ds;
+  document.getElementById('ent-hora').value='09:00';
+  document.getElementById('ent-obs').value='';
+  document.getElementById('modal-entrevista').classList.add('show');
+}
+
+// ─── FALTOSOS / ESTATÍSTICAS ───
+let faltTab='todas';
+function renderFaltosos(){
+  const wrap=document.getElementById('falt-wrap');if(!wrap)return;
+
+  const todas=[];
+  Object.entries(entrevistas).forEach(([tel,ents])=>{
+    ents.forEach(e=>{
+      const s=todasSessoes[tel];
+      todas.push({...e,telefone:tel,nome:s?.nome||telDisplay(tel),cargo:s?.ultimaAnalise?.vagaInteresse||'—'});
+    });
+  });
+
+  const compareceu=todas.filter(e=>e.status==='Realizada');
+  const faltou=todas.filter(e=>e.status==='Não Compareceu');
+  const remarcou=todas.filter(e=>e.status==='Remarcou');
+  const pendente=todas.filter(e=>!e.status||e.status==='Pendente'||e.status==='Confirmada');
+
+  let html=`
+    <div class="falt-stats">
+      <div class="falt-stat"><div class="falt-stat-num" style="color:#059669">${compareceu.length}</div><div class="falt-stat-label">✅ Compareceu</div></div>
+      <div class="falt-stat"><div class="falt-stat-num" style="color:var(--red)">${faltou.length}</div><div class="falt-stat-label">✕ Faltou</div></div>
+      <div class="falt-stat"><div class="falt-stat-num" style="color:#d97706">${remarcou.length}</div><div class="falt-stat-label">🔄 Remarcou</div></div>
+      <div class="falt-stat"><div class="falt-stat-num" style="color:var(--blue)">${pendente.length}</div><div class="falt-stat-label">⏳ Pendente</div></div>
+    </div>
+    <div class="falt-tabs">
+      <button class="falt-tab ${faltTab==='todas'?'active':''}" onclick="setFaltTab('todas')">Todas (${todas.length})</button>
+      <button class="falt-tab ${faltTab==='faltou'?'active':''}" onclick="setFaltTab('faltou')">✕ Faltou (${faltou.length})</button>
+      <button class="falt-tab ${faltTab==='remarcou'?'active':''}" onclick="setFaltTab('remarcou')">🔄 Remarcou (${remarcou.length})</button>
+      <button class="falt-tab ${faltTab==='compareceu'?'active':''}" onclick="setFaltTab('compareceu')">✅ Compareceu (${compareceu.length})</button>
+    </div>`;
+
+  const lista=faltTab==='faltou'?faltou:faltTab==='remarcou'?remarcou:faltTab==='compareceu'?compareceu:todas;
+  if(!lista.length){html+='<div class="empty" style="padding:12px">Nenhum registro</div>';}
+  else{
+    html+=lista.sort((a,b)=>(b.data+b.hora).localeCompare(a.data+a.hora)).slice(0,20).map(e=>`
+      <div style="background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:5px;font-size:10px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div>
+          <div style="font-weight:700">${e.nome}</div>
+          <div style="color:var(--muted)">${formatarDataBr(e.data)} ${e.hora} · ${e.tipo}</div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <span style="background:${e.status==='Realizada'?'#d1fae5':e.status==='Não Compareceu'?'#fee2e2':e.status==='Remarcou'?'#fef3c7':'#f3f4f6'};color:${e.status==='Realizada'?'#065f46':e.status==='Não Compareceu'?'var(--red)':e.status==='Remarcou'?'#92400e':'var(--muted)'};border-radius:6px;padding:2px 7px;font-weight:700;font-size:9px">${e.status||'Pendente'}</span>
+          <button class="rbtn" style="font-size:9px;padding:2px 6px" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬</button>
+        </div>
+      </div>`).join('');
+  }
+
+  wrap.innerHTML=html;
+}
+function setFaltTab(t){faltTab=t;renderFaltosos();}
+
+// ─── CONFIRMAÇÃO 24H ANTES ───
+function verificarConfirmacoes24h(){
+  const amanha=new Date();
+  amanha.setDate(amanha.getDate()+1);
+  const amanhaStr=`${amanha.getFullYear()}-${String(amanha.getMonth()+1).padStart(2,'0')}-${String(amanha.getDate()).padStart(2,'0')}`;
+
+  Object.entries(entrevistas).forEach(([tel,ents])=>{
+    ents.forEach(e=>{
+      if(e.data===amanhaStr&&(e.status==='Pendente'||e.status==='Confirmada')&&!e._alerta24h){
+        e._alerta24h=true;
+        salvarLocal();
+        const s=todasSessoes[tel];
+        const nome=s?.nome||telDisplay(tel);
+        // Toast de aviso
+        setTimeout(()=>{
+          toast(`🔔 Entrevista amanhã: ${nome} às ${e.hora}. Enviar lembrete?`,'success');
+        },500);
+        // Alerta no topo
+        mostrarAlertaEntrevista(`⏰ Lembrete 24h: ${nome} — ${e.hora}`);
+      }
+    });
+  });
+}
+
+// ─── HORÁRIOS DISPONÍVEIS (Lia oferece slots) ───
+let horariosConfig=JSON.parse(localStorage.getItem('effect_horarios_v1')||'["09:00","11:00","14:00"]');
+
+function abrirModalSlots(){
+  if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+  const hoje=new Date().toISOString().split('T')[0];
+  document.getElementById('slots-data').value=hoje;
+  abrirModalHorarios();
+}
+
+function abrirModalHorarios(){
+  renderHorariosChips();
+  atualizarPreviewSlots();
+  document.getElementById('modal-horarios').classList.add('show');
+}
+
+function renderHorariosChips(){
+  const div=document.getElementById('horarios-chips');
+  if(!div)return;
+  div.innerHTML=horariosConfig.map((h,i)=>`
+    <span class="horario-chip">${h} <span class="del" onclick="removerHorario(${i})">✕</span></span>`).join('');
+}
+
+function adicionarHorario(){
+  const inp=document.getElementById('novo-horario-input');
+  const val=inp.value;
+  if(!val)return;
+  if(!horariosConfig.includes(val)){
+    horariosConfig.push(val);
+    horariosConfig.sort();
+    try{localStorage.setItem('effect_horarios_v1',JSON.stringify(horariosConfig));}catch(e){}
+  }
+  inp.value='';
+  renderHorariosChips();
+  atualizarPreviewSlots();
+}
+
+function removerHorario(idx){
+  horariosConfig.splice(idx,1);
+  try{localStorage.setItem('effect_horarios_v1',JSON.stringify(horariosConfig));}catch(e){}
+  renderHorariosChips();
+  atualizarPreviewSlots();
+}
+
+function atualizarPreviewSlots(){
+  const ds=document.getElementById('slots-data')?.value||'';
+  const prev=document.getElementById('slots-preview');
+  if(!prev)return;
+  if(!ds){prev.textContent='Selecione uma data para ver o preview.';return;}
+  const[y,m,d]=ds.split('-');
+  const txt=`Olá! 😊 Temos os seguintes horários disponíveis para a sua entrevista no dia ${d}/${m}/${y}:\n\n${horariosConfig.map(h=>`🕐 ${h}`).join('\n')}\n\nQual horário você prefere?`;
+  prev.textContent=txt;
+}
+
+function usarSlotsNoChat(){
+  const prev=document.getElementById('slots-preview');
+  if(!prev||!sessaoAtual){fecharModal('modal-horarios');return;}
+  const input=document.getElementById('msg-input');
+  input.value=prev.textContent;
+  autoResize(input);
+  fecharModal('modal-horarios');
+  input.focus();
+  toast('🕐 Mensagem com horários inserida — revise e envie','success');
+}
+
+// ─── DROPDOWN MAIS ───
+function toggleDropdownMais(e){
+  e.stopPropagation();
+  const m=document.getElementById('dropdown-mais-menu');
+  m.classList.toggle('show');
+}
+function fecharDropdownMais(){
+  document.getElementById('dropdown-mais-menu').classList.remove('show');
+}
+document.addEventListener('click',function(e){
+  if(!document.getElementById('dropdown-mais')?.contains(e.target)){
+    fecharDropdownMais();
+  }
+});
 
 // ─── UTILS ───
 function filtrarLista(v){busca=v;renderLista();}
