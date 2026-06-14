@@ -7,276 +7,308 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1e3a5f;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--shadow:0 1px 6px rgba(0,0,0,.09)}
+:root{
+  --navy:#1e3a5f;
+  --navy2:#162440;
+  --bg:#f5f7fa;
+  --white:#ffffff;
+  --muted:#a1a1aa;
+  --green:#8ed1b2;
+  --blue:#1fa5f0;
+  --pink:#f4afa1;
+  --text:#2a2a2b;
+  --shadow:0 1px 6px rgba(0,0,0,.09);
+}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
 
-/* ── HEADER FIXO ── */
-.header{background:var(--navy);width:100%;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+/* ── HEADER ── */
+.header{background:var(--navy2);width:100%;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.22)}
 .logo{font-size:16px;font-weight:800;color:#fff}.logo span{color:var(--green)}
-.header-sub{font-size:10px;color:var(--muted);margin-top:1px}
-.etapa-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#fff;display:none}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.etapa-badge{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#fff;display:none}
+.prog-wrap{display:none;align-items:center;gap:6px}
+.prog-track{width:90px;height:4px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:99px;transition:width .35s ease}
+.prog-txt{font-size:10px;color:rgba(255,255,255,.65);font-weight:700;white-space:nowrap}
 
 /* ── CONTAINER ── */
-.container{width:100%;max-width:580px;padding:20px 14px 60px}
+.container{width:100%;max-width:480px;padding:18px 14px 70px}
 
-/* ── CARD BASE ── */
-.card{background:#fff;border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:14px}
+/* ── CARD ── */
+.card{background:var(--white);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:14px}
 .card h2{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:10px}
-.card p,.card li{font-size:12.5px;color:#374151;line-height:1.65;margin-bottom:6px}
-.card ul{padding-left:16px;margin-bottom:8px}
+.card p{font-size:12.5px;color:#374151;line-height:1.65;margin-bottom:6px}
 
 /* ── INTRO ── */
 .dica{background:#f0fdf4;border-left:3px solid var(--green);padding:10px 14px;border-radius:8px;font-size:11.5px;color:#065f46;margin-top:10px;line-height:1.5}
-.etapas-preview{display:flex;gap:10px;margin:14px 0}
-.etapa-prev{flex:1;background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:2px solid #dde3ea}
-.etapa-prev .ep-num{font-size:20px;font-weight:800;color:var(--navy)}
-.etapa-prev .ep-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px}
-.etapa-prev .ep-desc{font-size:11px;color:#4b5563;margin-top:4px;line-height:1.4}
+.etapas-prev{display:flex;gap:10px;margin:14px 0}
+.ep{flex:1;background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:2px solid #dde3ea}
+.ep-num{font-size:22px;font-weight:800;color:var(--navy)}
+.ep-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px;letter-spacing:.04em}
+.ep-desc{font-size:11px;color:#4b5563;margin-top:4px;line-height:1.4}
 
 /* ── CAMPOS ── */
-input[type=text]{width:100%;padding:12px 14px;border:2px solid #dde3ea;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border .15s;background:#fff}
+.fl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+input[type=text]{width:100%;padding:12px 14px;border:2px solid #dde3ea;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
 input[type=text]:focus{border-color:var(--blue)}
-.campo-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 
 /* ── BOTÕES ── */
-.btn{width:100%;border:none;border-radius:10px;padding:13px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn{width:100%;border:none;border-radius:10px;padding:13px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s,opacity .15s;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-primary{background:var(--navy);color:#fff}.btn-primary:hover:not(:disabled){background:var(--blue)}
-.btn-secondary{background:var(--bg);color:var(--text);border:1px solid #dde3ea}.btn-secondary:hover{background:#dde3ea}
 .btn-green{background:#16a34a;color:#fff}.btn-green:hover:not(:disabled){background:#15803d}
-.btn:disabled{background:#c8d0da;cursor:not-allowed}
-
-/* ── STICKY COUNTER ── */
-.sticky-counter{position:sticky;top:52px;z-index:90;background:var(--navy);color:#fff;padding:8px 16px;display:none;align-items:center;justify-content:space-between;width:100%;max-width:580px;font-size:11px;font-weight:700}
-.counter-bar{height:4px;background:rgba(255,255,255,.2);border-radius:999px;flex:1;margin:0 12px;overflow:hidden}
-.counter-fill{height:100%;background:var(--green);border-radius:999px;transition:width .3s}
-
-/* ── INSTRUÇÃO ── */
-.instrucao-box{background:#eff8ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.5}
-.instrucao-box strong{display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-
-/* ── GRUPOS ── */
-.grupo{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);margin-bottom:10px;transition:box-shadow .2s}
-.grupo.completo{border-left:3px solid var(--green)}
-.grupo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.grupo-num{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.grupo-status{font-size:10px;font-weight:700;color:var(--green);display:none}
-.grupo.completo .grupo-status{display:block}
-.grupo-words{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-@media(min-width:440px){.grupo-words{grid-template-columns:1fr 1fr 1fr 1fr}}
-
-/* ── CHIPS ── */
-.wchip{padding:9px 6px;border-radius:9px;border:2px solid #dde3ea;background:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .14s;-webkit-tap-highlight-color:transparent;user-select:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text)}
-.wchip:active{transform:scale(.96)}
-.wchip.mais{border-color:#16a34a;background:#dcfce7;color:#14532d}
-.wchip.menos{border-color:#dc2626;background:#fee2e2;color:#7f1d1d}
-.wchip-tag{font-size:9px;font-weight:800;opacity:0;height:11px;transition:opacity .14s;letter-spacing:.03em}
-.wchip.mais .wchip-tag,.wchip.menos .wchip-tag{opacity:1}
-.wchip.mais .wchip-tag::before{content:'✓ MAIS'}
-.wchip.menos .wchip-tag::before{content:'✕ MENOS'}
+.btn:disabled{background:#c8d0da;cursor:not-allowed;color:#8a9ab0}
 
 /* ── ALERTA ── */
-.alerta-inline{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 13px;font-size:11.5px;color:#991b1b;margin-bottom:10px;display:none}
+.alerta{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 13px;font-size:11.5px;color:#991b1b;margin-bottom:10px;display:none}
+
+/* ── REFERÊNCIA ── */
+.ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.ref-btn{background:var(--white);border:2px solid #dde3ea;border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--text);transition:all .15s;-webkit-tap-highlight-color:transparent}
+.ref-btn:hover{border-color:var(--green)}
+.ref-btn.sel{border-color:var(--green);background:#f0fdf4;color:#14532d}
+.ref-icon{font-size:22px;display:block;margin-bottom:4px}
+
+/* ── CARD-CLICK UX ── */
+.grupo-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.grupo-num{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.etapa-lbl-q{font-size:10px;font-weight:700;color:var(--green)}
+.instrucao-q{font-size:12px;color:#374151;line-height:1.5;margin-bottom:14px;padding:10px 12px;background:#f8fafc;border-radius:8px;border-left:3px solid var(--navy)}
+
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wcard{
+  background:var(--white);
+  border:2px solid #dde3ea;
+  border-radius:14px;
+  padding:16px 10px 13px;
+  text-align:center;
+  cursor:pointer;
+  user-select:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+  min-height:90px;
+}
+.wcard:active{transform:scale(.95)}
+.wcard .wph{font-size:8px;color:var(--muted);line-height:1.4;font-style:italic}
+.wcard .wwd{font-size:15px;font-weight:800;color:var(--text);line-height:1.2}
+.wcard .wtag{font-size:9px;font-weight:800;padding:3px 10px;border-radius:99px;opacity:0;transition:opacity .15s;margin-top:3px}
+
+.wcard.mais{background:#f0fdf4;border-color:#16a34a}
+.wcard.mais .wwd{color:#14532d}
+.wcard.mais .wtag{background:#16a34a;color:#fff;opacity:1}
+.wcard.menos{background:#fef2f2;border-color:#dc2626}
+.wcard.menos .wwd{color:#991b1b}
+.wcard.menos .wtag{background:#dc2626;color:#fff;opacity:1}
+.wcard.off{opacity:.25;cursor:default;pointer-events:none}
+
+.quiz-hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:13px;min-height:18px}
+.next-ind{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:11px;font-weight:800;color:#16a34a;opacity:0;transition:opacity .3s}
 
 /* ── TRANSIÇÃO ── */
-.transicao-content{text-align:center;padding:10px 0}
-.transicao-content .icon{font-size:48px;margin-bottom:12px}
-.transicao-content h2{font-size:17px;font-weight:800;color:var(--navy);margin-bottom:8px}
-.transicao-content p{font-size:12.5px;color:#4b5563;line-height:1.6;margin-bottom:6px}
-.destaque{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#78350f;margin:12px 0;line-height:1.5}
+.trans-content{text-align:center;padding:8px 0}
+.trans-content .icon{font-size:46px;margin-bottom:12px}
+.trans-content h2{font-size:17px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.trans-content p{font-size:12.5px;color:#4b5563;line-height:1.6;margin-bottom:6px}
+.destaque{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#78350f;margin:12px 0;line-height:1.5;text-align:left}
+
+/* ── CONCLUÍDO (lock) ── */
+.lock-box{text-align:center;padding:28px 10px}
+.lock-box .icon{font-size:52px;margin-bottom:14px}
+.lock-box h2{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.lock-box p{font-size:12.5px;color:#4b5563;line-height:1.65}
+
+/* ── CÁLCULO ── */
+.calc-box{text-align:center;padding:44px 20px}
 
 /* ── RESULTADO ── */
-.resultado-top{text-align:center;padding:6px 0 14px}
+.res-top{text-align:center;padding:4px 0 14px}
 .res-emoji{font-size:44px;display:block;margin-bottom:6px}
-.res-titulo{font-size:17px;font-weight:800;color:var(--navy)}
+.res-titulo{font-size:18px;font-weight:800;color:var(--navy)}
 .res-sub{font-size:11px;color:var(--muted);margin-top:3px}
-
 .perfis-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
-.perfil-card{border-radius:10px;padding:12px;border:1px solid #dde3ea}
-.perfil-card-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
-.perfil-card-nome{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px}
-
+.pcard{border-radius:10px;padding:12px;border:1px solid #dde3ea}
+.pcard-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.pcard-nome{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px}
 .disc-bar-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
 .disc-bar-l{font-size:11px;font-weight:800;width:12px;flex-shrink:0}
 .disc-bar-track{flex:1;background:#e8ecf1;border-radius:999px;height:10px;overflow:hidden}
-.disc-bar-f{height:100%;border-radius:999px;transition:width 1.2s ease}
-.disc-bar-pct{font-size:10px;font-weight:700;color:var(--muted);width:26px;text-align:right;flex-shrink:0}
-
-.secao-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:14px}
-.item-lista{display:flex;gap:7px;margin-bottom:5px;font-size:12px;line-height:1.55;color:#374151}
+.disc-bar-f{height:100%;border-radius:999px;width:0;transition:width 1.2s ease}
+.disc-bar-pct{font-size:10px;font-weight:700;color:var(--muted);width:28px;text-align:right;flex-shrink:0}
+.sec-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:14px}
+.item-lista{display:flex;gap:7px;margin-bottom:6px;font-size:12px;line-height:1.55;color:#374151}
 .item-lista::before{content:'•';font-weight:900;flex-shrink:0}
 .item-lista.pos::before{color:#16a34a}
 .item-lista.neg::before{color:var(--pink)}
-
+.combo-box{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 13px;font-size:12px;color:#1e40af;font-weight:600;line-height:1.5;margin-top:8px}
 .tensao-card{border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid}
 .tensao-card.alta{background:#fef9c3;border-color:#fde68a}
 .tensao-card.media{background:#f0f9ff;border-color:#bae6fd}
-.tensao-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
-.tensao-texto{font-size:12px;line-height:1.55;color:#374151}
-
-.combo-box{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 13px;font-size:12px;color:#1e40af;font-weight:600;line-height:1.5;margin-top:8px}
-
-/* ── FIM ── */
-.tela-fim-box{text-align:center;padding:20px 10px}
-.tela-fim-box .icon{font-size:52px;margin-bottom:12px}
-.tela-fim-box h2{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.tensao-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.tensao-txt{font-size:12px;line-height:1.55;color:#374151}
 
 /* ── PRINT ── */
 .btn-print{background:var(--bg);border:1px solid #dde3ea;border-radius:10px;padding:11px;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px}
 .btn-print:hover{background:#dde3ea}
 
 .hidden{display:none!important}
-@media(max-width:380px){.container{padding:14px 10px 50px}.card{padding:15px}.grupo{padding:10px 11px}}
+@media(max-width:380px){.container{padding:14px 10px 50px}.card{padding:15px}.wcard{padding:13px 8px 11px;min-height:80px}.wcard .wwd{font-size:14px}}
+
+@media print{
+  .header,.btn,.btn-print,.card:last-child{display:none!important}
+  body{background:#fff}
+  .container{max-width:100%;padding:10px}
+  .card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}
+  .disc-bar-f{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style>
 </head>
 <body>
 
-<div class="header" id="main-header">
-  <div>
-    <div class="logo">Effect <span>Pessoas</span></div>
-    <div class="header-sub">Análise de Perfil Comportamental · DISC</div>
+<div class="header">
+  <div class="logo">Effect <span>Pessoas</span></div>
+  <div class="header-right">
+    <div class="etapa-badge" id="etapa-badge"></div>
+    <div class="prog-wrap" id="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <span class="prog-txt" id="prog-txt">0/12</span>
+    </div>
   </div>
-  <div class="etapa-badge" id="etapa-badge">Etapa 1 de 2</div>
 </div>
 
-<div class="sticky-counter" id="sticky-counter">
-  <span id="counter-texto">0 de 24</span>
-  <div class="counter-bar"><div class="counter-fill" id="counter-fill" style="width:0%"></div></div>
-  <span id="counter-pct">0%</span>
-</div>
+<div class="container">
 
-<div class="container" id="app">
+  <!-- ══ TELA: CONCLUÍDO (lock) ══ -->
+  <div id="tela-concluido" class="hidden">
+    <div class="card">
+      <div class="lock-box">
+        <div class="icon">✅</div>
+        <h2>Questionário já preenchido</h2>
+        <p>Você já respondeu este questionário anteriormente. Seu perfil comportamental foi registrado com sucesso.<br><br>Entre em contato com a equipe Effect para mais informações.</p>
+      </div>
+    </div>
+  </div>
 
-  <!-- ══════════════════ TELA: INTRO ══════════════════ -->
+  <!-- ══ TELA: INTRO ══ -->
   <div id="tela-intro">
     <div class="card">
       <h2>📊 Perfil Comportamental DISC</h2>
-      <p>Este questionário identifica seu estilo de comportamento natural e como você age no ambiente de trabalho. <strong>Não há respostas certas ou erradas.</strong></p>
-      <div class="etapas-preview">
-        <div class="etapa-prev">
+      <p>Identifica seu estilo de comportamento natural e como você age no trabalho. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.</p>
+      <div class="etapas-prev">
+        <div class="ep">
           <div class="ep-num">1</div>
-          <div class="ep-label">Quem eu sou</div>
+          <div class="ep-lbl">Quem eu sou</div>
           <div class="ep-desc">Como você se vê naturalmente</div>
         </div>
-        <div class="etapa-prev">
+        <div class="ep">
           <div class="ep-num">2</div>
-          <div class="ep-label">O que esperam</div>
+          <div class="ep-lbl">O que esperam</div>
           <div class="ep-desc">Como outros gostariam que você fosse</div>
         </div>
       </div>
-      <p>Cada etapa tem <strong>24 grupos de palavras</strong>. Em cada grupo, escolha a palavra que <strong>MAIS</strong> e a que <strong>MENOS</strong> representa você.</p>
-      <div class="dica">💡 Responda de forma espontânea — a primeira impressão costuma ser a mais honesta. Tempo estimado: <strong>8 a 12 minutos</strong>.</div>
+      <p>São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.</p>
+      <div class="dica">💡 Responda pelo primeiro instinto — a resposta mais espontânea é a mais honesta. Tempo estimado: <strong>5 a 8 minutos</strong>.</div>
     </div>
-
-    <div class="alerta-inline" id="alerta-nome">Por favor, informe seu nome para continuar.</div>
+    <div class="alerta" id="alerta-nome">Por favor, informe seu nome para continuar.</div>
     <div class="card">
-      <div class="campo-label">Seu nome completo</div>
-      <input type="text" id="nome-input" placeholder="Digite seu nome..." autocomplete="name"
-        onkeydown="if(event.key==='Enter')iniciar()">
-      <div class="campo-label" style="margin-top:14px">Vaga de interesse <span style="font-weight:400;text-transform:none">(opcional)</span></div>
-      <input type="text" id="vaga-input" placeholder="Ex: Garçom, Auxiliar de cozinha..." autocomplete="off">
+      <div class="fl">Seu nome completo</div>
+      <input type="text" id="nome-input" placeholder="Digite seu nome..." autocomplete="name" onkeydown="if(event.key==='Enter')iniciar()">
+      <div class="fl" style="margin-top:14px">Vaga de interesse <span style="font-weight:400;text-transform:none">(opcional)</span></div>
+      <input type="text" id="vaga-input" placeholder="Ex: Garçom, Bartender, Gerente..." autocomplete="off">
     </div>
     <button class="btn btn-primary" onclick="iniciar()">Começar questionário →</button>
   </div>
 
-  <!-- ══════════════════ TELA: ETAPA 1 ══════════════════ -->
-  <div id="tela-etapa1" class="hidden">
-    <div class="instrucao-box">
-      <strong>Etapa 1 · Quem eu sou</strong>
-      Leia cada grupo de palavras e marque a que <strong>MAIS</strong> representa seu jeito de ser no trabalho e a que <strong>MENOS</strong> representa. Você deve marcar UMA de cada por grupo.
+  <!-- ══ TELA: QUIZ ══ -->
+  <div id="tela-quiz" class="hidden">
+    <div class="card">
+      <div class="grupo-hdr">
+        <span class="grupo-num" id="quiz-num">Grupo 1 de 12</span>
+        <span class="etapa-lbl-q" id="quiz-etapa-lbl">Quem eu sou</span>
+      </div>
+      <div class="instrucao-q" id="quiz-instrucao">Toque na palavra que <strong>mais</strong> representa você</div>
+      <div class="card-grid" id="quiz-cards"></div>
+      <div class="quiz-hint" id="quiz-hint">Toque na palavra que <strong>mais</strong> representa você</div>
+      <div class="next-ind" id="quiz-next">✓ Próximo grupo…</div>
     </div>
-    <div id="grupos-etapa1"></div>
-    <div class="alerta-inline" id="alerta-e1">Complete todos os 24 grupos antes de continuar.</div>
-    <button class="btn btn-primary" id="btn-e1" onclick="finalizarEtapa1()">Ir para a Etapa 2 →</button>
   </div>
 
-  <!-- ══════════════════ TELA: TRANSIÇÃO ══════════════════ -->
+  <!-- ══ TELA: TRANSIÇÃO (+ seleção de referência) ══ -->
   <div id="tela-transicao" class="hidden">
     <div class="card">
-      <div class="transicao-content">
+      <div class="trans-content">
         <div class="icon">✅</div>
         <h2>Etapa 1 concluída!</h2>
-        <p>Ótimo! Agora vem a segunda parte, tão importante quanto a primeira.</p>
+        <p>Ótimo trabalho! Agora vem a segunda parte, igualmente importante.</p>
         <div class="destaque">
           <strong>Etapa 2 — O que os outros esperam de mim</strong><br>
-          Pense no seu ambiente de trabalho atual (ou no trabalho que você está buscando). Como as <strong>pessoas ao seu redor gostariam que você fosse</strong>? O que elas esperam de você no dia a dia?<br><br>
-          Use os <strong>mesmos grupos de palavras</strong>, mas agora pensando nessas expectativas externas — não em como você realmente é.
+          Usando os mesmos grupos de palavras, responda agora pelo olhar de outra pessoa: como ela <strong>gostaria que você fosse</strong>?
         </div>
-        <p style="font-size:11px;color:var(--muted)">Não existe resposta certa. Pode ser diferente ou igual à etapa anterior.</p>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">Em quem você vai pensar ao responder?</p>
+      <div class="ref-grid">
+        <button class="ref-btn" onclick="selecionarRef(this,'Meu chefe','gostaria que eu fosse')"><span class="ref-icon">👔</span>Meu chefe</button>
+        <button class="ref-btn" onclick="selecionarRef(this,'Minha equipe','gostaria que eu fosse')"><span class="ref-icon">👥</span>Minha equipe</button>
+        <button class="ref-btn" onclick="selecionarRef(this,'Meus clientes','gostariam que eu fosse')"><span class="ref-icon">🤝</span>Meus clientes</button>
+        <button class="ref-btn" onclick="selecionarRef(this,'Minha família','gostaria que eu fosse')"><span class="ref-icon">🏠</span>Minha família</button>
       </div>
     </div>
-    <button class="btn btn-green" onclick="iniciarEtapa2()">Iniciar Etapa 2 →</button>
+    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()" disabled>Iniciar Etapa 2 →</button>
   </div>
 
-  <!-- ══════════════════ TELA: ETAPA 2 ══════════════════ -->
-  <div id="tela-etapa2" class="hidden">
-    <div class="instrucao-box" style="background:#fef9c3;border-color:#fde68a;color:#78350f">
-      <strong>Etapa 2 · O que os outros esperam de mim</strong>
-      Para cada grupo, marque a palavra que as pessoas ao seu redor <strong>mais gostariam</strong> que você fosse e a que <strong>menos esperariam</strong> de você.
-    </div>
-    <div id="grupos-etapa2"></div>
-    <div class="alerta-inline" id="alerta-e2">Complete todos os 24 grupos antes de enviar.</div>
-    <button class="btn btn-primary" id="btn-e2" onclick="enviarResultado()">Gerar meu perfil →</button>
-  </div>
-
-  <!-- ══════════════════ TELA: CALCULANDO ══════════════════ -->
+  <!-- ══ TELA: CALCULANDO ══ -->
   <div id="tela-calc" class="hidden">
-    <div class="card" style="text-align:center;padding:40px 20px">
-      <div style="font-size:36px;margin-bottom:12px">⏳</div>
-      <div style="font-size:14px;font-weight:700;color:var(--navy)">Analisando seu perfil…</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Cruzando Perfil Natural × Perfil Adaptado</div>
+    <div class="card">
+      <div class="calc-box">
+        <div style="font-size:38px;margin-bottom:14px">⏳</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">Analisando seu perfil…</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Cruzando Perfil Natural × Perfil Adaptado</div>
+      </div>
     </div>
   </div>
 
-  <!-- ══════════════════ TELA: RESULTADO ══════════════════ -->
+  <!-- ══ TELA: RESULTADO ══ -->
   <div id="tela-resultado" class="hidden">
-
     <div class="card">
-      <div class="resultado-top">
+      <div class="res-top">
         <span class="res-emoji" id="res-emoji">📊</span>
         <div class="res-titulo" id="res-titulo">Perfil</div>
         <div class="res-sub" id="res-sub"></div>
       </div>
-
-      <!-- Dois perfis lado a lado -->
       <div class="perfis-row">
-        <div class="perfil-card" id="card-natural">
-          <div class="perfil-card-titulo">🧠 Perfil Natural</div>
-          <div class="perfil-card-nome" id="nat-nome"></div>
+        <div class="pcard" id="pcard-nat">
+          <div class="pcard-titulo">🧠 Perfil Natural</div>
+          <div class="pcard-nome" id="nat-nome"></div>
           <div id="nat-bars"></div>
         </div>
-        <div class="perfil-card" id="card-adaptado" style="background:#fffbeb;border-color:#fde68a">
-          <div class="perfil-card-titulo">🎭 Perfil Adaptado</div>
-          <div class="perfil-card-nome" id="ada-nome"></div>
+        <div class="pcard" id="pcard-ada" style="background:#fffbeb;border-color:#fde68a">
+          <div class="pcard-titulo">🎭 Perfil Adaptado</div>
+          <div class="pcard-nome" id="ada-nome"></div>
           <div id="ada-bars"></div>
         </div>
       </div>
-
-      <div class="secao-titulo">Sobre você — Perfil Natural</div>
+      <div class="sec-titulo">Sobre você — Perfil Natural</div>
       <p id="res-resumo" style="font-size:12.5px;line-height:1.65;color:#374151"></p>
       <div id="res-combo" class="combo-box hidden"></div>
     </div>
-
-    <!-- Pontos fortes & Atenção -->
     <div class="card">
-      <div class="secao-titulo">✅ Pontos fortes</div>
+      <div class="sec-titulo">✅ Pontos fortes</div>
       <div id="res-forcas"></div>
-      <div class="secao-titulo">⚠️ Pontos de atenção</div>
+      <div class="sec-titulo">⚠️ Pontos de atenção</div>
       <div id="res-atencao"></div>
     </div>
-
-    <!-- Análise de tensão -->
     <div class="card" id="card-tensao" style="display:none">
-      <div class="secao-titulo">⚡ Análise de tensão</div>
-      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Diferenças entre seu perfil natural e o que o ambiente espera — onde você pode estar se esforçando mais.</p>
+      <div class="sec-titulo">⚡ Análise de tensão</div>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Diferenças entre seu perfil natural e o que o ambiente espera de você.</p>
       <div id="res-tensoes"></div>
     </div>
-
     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
-
     <div class="card" style="margin-top:14px;text-align:center;padding:18px">
       <div style="font-size:22px;margin-bottom:6px">💙</div>
-      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px">Resultado enviado à equipe Effect!</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.5">Entraremos em contato em breve. Obrigado por participar!</div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px">Resultado salvo com sucesso!</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">Perfil registrado pela equipe Effect Pessoas.</div>
     </div>
   </div>
 
@@ -284,10 +316,8 @@ input[type=text]:focus{border-color:var(--blue)}
 
 <script>
 // ══════════════════════════════════════════
-// DADOS
+// QUESTÕES — 12 GRUPOS  [D, I, S, C]
 // ══════════════════════════════════════════
-
-// Posição 0=D 1=I 2=S 3=C
 const QUESTOES = [
   ["Decidido","Entusiasmado","Paciente","Preciso"],
   ["Competitivo","Sociável","Leal","Analítico"],
@@ -300,58 +330,41 @@ const QUESTOES = [
   ["Incisivo","Criativo","Atencioso","Criterioso"],
   ["Pragmático","Espontâneo","Consistente","Exato"],
   ["Controlador","Divertido","Tranquilo","Meticuloso"],
-  ["Desafiador","Popular","Gentil","Rigoroso"],
-  ["Focado","Empolgado","Dedicado","Disciplinado"],
-  ["Rápido","Falante","Seguro","Perfeccionista"],
-  ["Corajoso","Amigável","Previsível","Minucioso"],
-  ["Líder","Carismático","Prestativo","Responsável"],
-  ["Firme","Alegre","Compreensivo","Planejador"],
-  ["Resoluto","Motivador","Fiel","Formal"],
-  ["Ambicioso","Dinâmico","Sereno","Metódico"],
-  ["Eficiente","Envolvente","Equilibrado","Precavido"],
-  ["Objetivo","Agradável","Receptivo","Discreto"],
-  ["Vigoroso","Extrovertido","Tolerante","Caprichoso"],
-  ["Ativo","Empático","Pacífico","Zeloso"],
-  ["Enérgico","Radiante","Bondoso","Criterioso"]
+  ["Desafiador","Popular","Gentil","Rigoroso"]
 ];
-
 const KEYS = ['D','I','S','C'];
-const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5ff'};
+const TOTAL = 12;
+const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5f0'};
 
+// ══════════════════════════════════════════
+// PERFIS, COMBOS, TENSÃO
+// ══════════════════════════════════════════
 const PERFIS = {
-  D:{
-    nome:'Dominante', emoji:'🔴',
-    resumo:'Você é orientado a resultados, direto e decisivo. Age com rapidez diante de desafios, busca autonomia e não tem medo de assumir riscos. Tem liderança natural e prefere ambientes onde pode colocar suas ideias em prática.',
-    forcas:['Determinação e foco em resultados concretos','Capacidade de decidir rapidamente sob pressão','Liderança natural e iniciativa para agir'],
-    atencao:['Pode ser visto como impaciente ou autoritário','Tendência a agir sem ouvir o time completamente']
-  },
-  I:{
-    nome:'Influente', emoji:'🟡',
-    resumo:'Você é comunicativo, entusiasmado e inspira as pessoas ao redor. Constrói relacionamentos com facilidade, é otimista e funciona muito bem em ambientes colaborativos e de contato com o público.',
-    forcas:['Comunicação natural e poder de persuasão','Energia positiva e entusiasmo contagiante','Facilidade em criar vínculos e motivar equipes'],
-    atencao:['Pode ter dificuldade com tarefas repetitivas e rotineiras','Tendência a ser otimista demais e subestimar dificuldades']
-  },
-  S:{
-    nome:'Estável', emoji:'🟢',
-    resumo:'Você é paciente, leal e extremamente confiável. Valoriza harmonia e consistência, sendo um pilar de equilíbrio para qualquer equipe. Trabalha com dedicação em funções que exigem constância e cuidado com as pessoas.',
-    forcas:['Confiabilidade e comprometimento acima da média','Excelência no trabalho em equipe e suporte ao próximo','Paciência genuína e capacidade de ouvir com atenção'],
-    atencao:['Pode ter dificuldade com mudanças repentinas e imprevistos','Tendência a evitar conflitos mesmo quando necessário']
-  },
-  C:{
-    nome:'Analítico', emoji:'🔵',
-    resumo:'Você é preciso, sistemático e detalhista. Busca qualidade e exatidão em tudo que faz, seguindo processos com rigor. Ideal para funções que exigem controle, organização, análise e alto padrão de entrega.',
-    forcas:['Alta precisão e atenção rigorosa aos detalhes','Raciocínio lógico, crítico e analítico','Comprometimento profundo com a qualidade do trabalho'],
-    atencao:['Pode ser lento nas decisões pela busca de perfeição','Tendência ao perfeccionismo excessivo que pode travar a execução']
-  }
+  D:{nome:'Dominante',emoji:'🔴',
+     resumo:'Você é orientado a resultados, direto e decisivo. Age com rapidez diante de desafios, busca autonomia e não tem medo de assumir riscos. Tem liderança natural e prefere ambientes onde pode colocar suas ideias em prática.',
+     forcas:['Determinação e foco em resultados concretos','Capacidade de decidir rapidamente sob pressão','Liderança natural e iniciativa para agir'],
+     atencao:['Pode ser visto como impaciente ou autoritário','Tendência a agir sem ouvir o time completamente']},
+  I:{nome:'Influente',emoji:'🟡',
+     resumo:'Você é comunicativo, entusiasmado e inspira as pessoas ao redor. Constrói relacionamentos com facilidade, é otimista e funciona muito bem em ambientes colaborativos e de contato com o público.',
+     forcas:['Comunicação natural e poder de persuasão','Energia positiva e entusiasmo contagiante','Facilidade em criar vínculos e motivar equipes'],
+     atencao:['Pode ter dificuldade com tarefas repetitivas e rotineiras','Tendência a ser otimista demais e subestimar dificuldades']},
+  S:{nome:'Estável',emoji:'🟢',
+     resumo:'Você é paciente, leal e extremamente confiável. Valoriza harmonia e consistência, sendo um pilar de equilíbrio para qualquer equipe. Trabalha com dedicação em funções que exigem constância e cuidado com as pessoas.',
+     forcas:['Confiabilidade e comprometimento acima da média','Excelência no trabalho em equipe e suporte ao próximo','Paciência genuína e capacidade de ouvir com atenção'],
+     atencao:['Pode ter dificuldade com mudanças repentinas e imprevistos','Tendência a evitar conflitos mesmo quando necessário']},
+  C:{nome:'Analítico',emoji:'🔵',
+     resumo:'Você é preciso, sistemático e detalhista. Busca qualidade e exatidão em tudo que faz, seguindo processos com rigor. Ideal para funções que exigem controle, organização, análise e alto padrão de entrega.',
+     forcas:['Alta precisão e atenção rigorosa aos detalhes','Raciocínio lógico, crítico e analítico','Comprometimento profundo com a qualidade do trabalho'],
+     atencao:['Pode ser lento nas decisões pela busca de perfeição','Tendência ao perfeccionismo excessivo que pode travar a execução']}
 };
 
 const COMBOS = {
-  DI:'Executor Inspirador — combina foco em resultados com entusiasmo e boa comunicação com as pessoas.',
+  DI:'Executor Inspirador — combina foco em resultados com entusiasmo e boa comunicação.',
   DS:'Executor Consistente — determinação com estabilidade e alto senso de responsabilidade.',
   DC:'Analista Decisor — alta exigência de qualidade aliada à determinação e objetividade.',
   ID:'Influenciador Determinado — comunicação impactante com foco direto em resultados.',
-  IS:'Comunicador Estável — influência com consistência, harmonia e cuidado genuíno com as pessoas.',
-  IC:'Comunicador Criterioso — entusiasmo e habilidade de relação aliados à atenção cuidadosa aos detalhes.',
+  IS:'Comunicador Estável — influência com consistência, harmonia e cuidado genuíno.',
+  IC:'Comunicador Criterioso — entusiasmo aliado à atenção cuidadosa aos detalhes.',
   SD:'Estável Determinado — confiabilidade e constância com foco em superar metas.',
   SI:'Estável Comunicativo — harmonia e consistência com facilidade de relacionamento.',
   SC:'Especialista Confiável — estabilidade com rigor técnico e alta qualidade na entrega.',
@@ -361,349 +374,366 @@ const COMBOS = {
 };
 
 const TENSAO_MSGS = {
-  D:{
-    up:'Você está agindo de forma mais assertiva e direta do que é natural para você — o ambiente pode exigir uma postura de liderança que exige esforço extra da sua parte.',
-    down:'Você é naturalmente mais decidido do que o ambiente espera — pode estar contendo sua assertividade para se adaptar às expectativas.'
-  },
-  I:{
-    up:'Você está sendo mais comunicativo e sociável do que seu perfil natural — o ambiente pode exigir mais interação e entusiasmo do que você confortavelmente gerencia.',
-    down:'Você é naturalmente mais expressivo do que demonstra no trabalho — pode estar moderando seu entusiasmo para parecer mais contido ou profissional.'
-  },
-  S:{
-    up:'Você está sendo mais paciente e constante do que sente naturalmente — pode estar se esforçando para manter a estabilidade e corresponder às expectativas de harmonia.',
-    down:'Você é naturalmente mais estável do que o ambiente espera — pode estar sendo pressionado a agir com mais agilidade ou flexibilidade do que lhe é confortável.'
-  },
-  C:{
-    up:'Você está sendo mais detalhista e analítico do que seu perfil natural — o ambiente pode exigir de você uma precisão e rigor que demandam esforço adicional.',
-    down:'Você é naturalmente mais criterioso do que demonstra — pode estar simplificando sua abordagem para acompanhar o ritmo do ambiente.'
-  }
+  D:{up:'Você está agindo de forma mais assertiva do que é natural — o ambiente exige uma postura de liderança que demanda esforço extra.',
+     down:'Você é naturalmente mais decidido do que o ambiente espera — pode estar contendo sua assertividade.'},
+  I:{up:'Você está sendo mais comunicativo do que seu perfil natural — o ambiente pode exigir mais interação do que você gerencia confortavelmente.',
+     down:'Você é naturalmente mais expressivo do que demonstra — pode estar moderando seu entusiasmo para se adaptar.'},
+  S:{up:'Você está sendo mais paciente do que sente naturalmente — pode estar se esforçando para corresponder às expectativas de harmonia.',
+     down:'Você é naturalmente mais estável do que o ambiente espera — pode estar sendo pressionado a agir com mais agilidade.'},
+  C:{up:'Você está sendo mais detalhista do que seu perfil natural — o ambiente pode exigir uma precisão que demanda esforço adicional.',
+     down:'Você é naturalmente mais criterioso do que demonstra — pode estar simplificando sua abordagem para se adaptar ao ritmo do ambiente.'}
 };
 
 // ══════════════════════════════════════════
 // ESTADO
 // ══════════════════════════════════════════
 let etapaAtual = 0;
+let grupoAtual = 0;
 let nomeCandidata = '';
 let vagaCandidato = '';
 let telefone = '';
+let referencia = '';
+let referenciaVerbo = '';
+let maisIdx = null;   // índice visual do card selecionado como MAIS
+let menosIdx = null;  // índice visual do card selecionado como MENOS
 
-// respostas[etapa][grupoIdx] = { mais: idx|null, menos: idx|null }
+// grupos embaralhados: [{palavra, disc}][]
+let gruposE1 = [];
+let gruposE2 = [];
+
 const respostas = {
-  1: Array.from({length:24},()=>({mais:null,menos:null})),
-  2: Array.from({length:24},()=>({mais:null,menos:null}))
+  1: Array.from({length:TOTAL}, () => ({mais:null, menos:null})),
+  2: Array.from({length:TOTAL}, () => ({mais:null, menos:null}))
 };
+
+// ══════════════════════════════════════════
+// EMBARALHAR
+// ══════════════════════════════════════════
+function embaralhar() {
+  const result = [];
+  for (let gi = 0; gi < TOTAL; gi++) {
+    const arr = QUESTOES[gi].map((palavra, i) => ({palavra, disc: KEYS[i]}));
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    result.push(arr);
+  }
+  return result;
+}
+
+// ══════════════════════════════════════════
+// TELAS
+// ══════════════════════════════════════════
+function mostrarTela(id) {
+  ['tela-concluido','tela-intro','tela-quiz','tela-transicao','tela-calc','tela-resultado']
+    .forEach(t => document.getElementById(t).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
 
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
-  const p = new URLSearchParams(window.location.search);
-  telefone = p.get('tel') || p.get('telefone') || location.pathname.split('/').pop() || '';
+window.addEventListener('DOMContentLoaded', async () => {
+  const segs = location.pathname.split('/');
+  telefone = segs[segs.length - 1] || '';
+
+  // Lock check — pula para 'interno' (uso pessoal da Thiara)
+  const isInterno = (telefone === 'interno');
+  if (!isInterno && telefone) {
+    try {
+      const r = await fetch('/disc/resultado/' + encodeURIComponent(telefone));
+      const data = await r.json();
+      if (data.ok && data.resultado) {
+        mostrarTela('tela-concluido');
+        return;
+      }
+    } catch(e) {/* servidor offline — continua normalmente */}
+  }
+
+  gruposE1 = embaralhar();
+  gruposE2 = embaralhar();
+
   document.getElementById('nome-input').focus();
 });
 
-function mostrarTela(id) {
-  ['tela-intro','tela-etapa1','tela-transicao','tela-etapa2','tela-calc','tela-resultado']
-    .forEach(t => document.getElementById(t).classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
 // ══════════════════════════════════════════
-// INTRO
+// INTRO → iniciar
 // ══════════════════════════════════════════
 function iniciar() {
   const inp = document.getElementById('nome-input');
   nomeCandidata = inp.value.trim();
   vagaCandidato = document.getElementById('vaga-input').value.trim();
-  const al = document.getElementById('alerta-nome');
+
   if (!nomeCandidata) {
-    al.style.display='block'; inp.style.borderColor='var(--pink)'; inp.focus();
-    setTimeout(()=>{al.style.display='none';inp.style.borderColor='#dde3ea';},2500);
+    const al = document.getElementById('alerta-nome');
+    al.style.display = 'block';
+    inp.style.borderColor = '#f4afa1';
+    inp.focus();
+    setTimeout(() => { al.style.display='none'; inp.style.borderColor='#dde3ea'; }, 2500);
     return;
   }
+
   etapaAtual = 1;
-  atualizarBadgeEtapa(1);
-  construirGrupos(1);
-  ativarStickyCounter();
-  mostrarTela('tela-etapa1');
+  grupoAtual = 0;
+  respostas[1] = Array.from({length:TOTAL}, () => ({mais:null, menos:null}));
+  atualizarBadge();
+  renderQuiz();
+  mostrarTela('tela-quiz');
 }
 
 // ══════════════════════════════════════════
-// CONSTRUIR GRUPOS
+// QUIZ — renderizar grupo atual
 // ══════════════════════════════════════════
-function construirGrupos(etapa) {
-  const container = document.getElementById(`grupos-etapa${etapa}`);
-  container.innerHTML = QUESTOES.map((q, gi) => `
-    <div class="grupo" id="g${etapa}-${gi}">
-      <div class="grupo-header">
-        <span class="grupo-num">Grupo ${gi+1}</span>
-        <span class="grupo-status">✓ completo</span>
-      </div>
-      <div class="grupo-words">
-        ${q.map((palavra, wi) => `
-          <div class="wchip" id="wc${etapa}-${gi}-${wi}" onclick="clickWord(${etapa},${gi},${wi})">
-            <span>${palavra}</span>
-            <span class="wchip-tag"></span>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
-}
+function renderQuiz() {
+  maisIdx = null;
+  menosIdx = null;
 
-// ══════════════════════════════════════════
-// INTERAÇÃO COM CHIP
-// ══════════════════════════════════════════
-function clickWord(etapa, gi, wi) {
-  const r = respostas[etapa][gi];
+  const grupos = etapaAtual === 1 ? gruposE1 : gruposE2;
+  const grupo = grupos[grupoAtual];
+  const frase = etapaAtual === 1
+    ? 'Eu naturalmente sou…'
+    : (referencia + ' ' + referenciaVerbo + '…');
 
-  if (r.mais === wi) {
-    r.mais = null;                        // desseleciona MAIS
-  } else if (r.menos === wi) {
-    r.menos = null;                       // desseleciona MENOS
-  } else if (r.mais === null) {
-    r.mais = wi;                          // 1ª seleção → MAIS
-  } else if (r.menos === null && r.mais !== wi) {
-    r.menos = wi;                         // 2ª seleção → MENOS
-  }
-  // Ambos preenchidos e clicando em palavra nova: ignora (usuário deve desselecionar um primeiro)
+  // Header info
+  document.getElementById('quiz-num').textContent = 'Grupo ' + (grupoAtual + 1) + ' de ' + TOTAL;
+  document.getElementById('quiz-etapa-lbl').textContent = etapaAtual === 1 ? 'Quem eu sou' : 'O que esperam';
+  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperariam de você';
+  document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+  document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+  document.getElementById('quiz-next').style.opacity = '0';
 
-  renderGrupo(etapa, gi);
-  atualizarCounter(etapa);
-}
+  // Progress bar
+  const pct = Math.round(grupoAtual / TOTAL * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-txt').textContent = grupoAtual + '/' + TOTAL;
+  document.getElementById('prog-wrap').style.display = 'flex';
 
-function renderGrupo(etapa, gi) {
-  const r = respostas[etapa][gi];
-  QUESTOES[gi].forEach((_, wi) => {
-    const chip = document.getElementById(`wc${etapa}-${gi}-${wi}`);
-    chip.className = 'wchip';
-    if (r.mais === wi) chip.classList.add('mais');
-    else if (r.menos === wi) chip.classList.add('menos');
+  // Renderiza cards
+  const grid = document.getElementById('quiz-cards');
+  grid.innerHTML = '';
+  grupo.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'wcard';
+    card.setAttribute('data-idx', i);
+    card.innerHTML =
+      '<span class="wph">' + frase + '</span>' +
+      '<span class="wwd">' + item.palavra + '</span>' +
+      '<span class="wtag">—</span>';
+    card.addEventListener('click', () => clickCard(i, item.disc, grupo.length));
+    grid.appendChild(card);
   });
-  const grupo = document.getElementById(`g${etapa}-${gi}`);
-  const completo = r.mais !== null && r.menos !== null;
-  grupo.classList.toggle('completo', completo);
 }
 
 // ══════════════════════════════════════════
-// COUNTER STICKY
+// QUIZ — click no card
 // ══════════════════════════════════════════
-function ativarStickyCounter() {
-  document.getElementById('sticky-counter').style.display='flex';
-}
-function desativarStickyCounter() {
-  document.getElementById('sticky-counter').style.display='none';
+function clickCard(i, disc, total) {
+  const cards = document.querySelectorAll('.wcard');
+  const hint = document.getElementById('quiz-hint');
+
+  // Primeiro click → MAIS
+  if (maisIdx === null) {
+    maisIdx = i;
+    cards[i].classList.add('mais');
+    cards[i].querySelector('.wtag').textContent = 'MAIS ✓';
+    respostas[etapaAtual][grupoAtual].mais = disc;
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperariam';
+    hint.innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
+    return;
+  }
+
+  // Clicou no mesmo card ou já escolheu menos → ignora
+  if (i === maisIdx || menosIdx !== null) return;
+
+  // Segundo click → MENOS
+  menosIdx = i;
+  cards[i].classList.add('menos');
+  cards[i].querySelector('.wtag').textContent = 'MENOS ✗';
+  respostas[etapaAtual][grupoAtual].menos = disc;
+
+  // Fade nos outros
+  cards.forEach((c, idx) => {
+    if (idx !== maisIdx && idx !== menosIdx) c.classList.add('off');
+  });
+  hint.textContent = '';
+  document.getElementById('quiz-next').style.opacity = '1';
+
+  // Avança automaticamente
+  setTimeout(() => {
+    grupoAtual++;
+    if (grupoAtual >= TOTAL) {
+      if (etapaAtual === 1) {
+        document.getElementById('prog-wrap').style.display = 'none';
+        mostrarTela('tela-transicao');
+      } else {
+        finalizarQuestionario();
+      }
+    } else {
+      renderQuiz();
+    }
+  }, 750);
 }
 
-function countCompletos(etapa) {
-  return respostas[etapa].filter(r => r.mais!==null && r.menos!==null).length;
-}
-
-function atualizarCounter(etapa) {
-  const c = countCompletos(etapa);
-  const pct = Math.round(c/24*100);
-  document.getElementById('counter-texto').textContent = `${c} de 24 grupos`;
-  document.getElementById('counter-fill').style.width = pct+'%';
-  document.getElementById('counter-pct').textContent = pct+'%';
-}
-
-function atualizarBadgeEtapa(n) {
+function atualizarBadge() {
   const b = document.getElementById('etapa-badge');
   b.style.display = 'block';
-  b.textContent = `Etapa ${n} de 2`;
+  b.textContent = 'Etapa ' + etapaAtual + ' de 2';
 }
 
 // ══════════════════════════════════════════
-// FINALIZAR ETAPA 1
+// TRANSIÇÃO — seleção de referência
 // ══════════════════════════════════════════
-function finalizarEtapa1() {
-  const c = countCompletos(1);
-  if (c < 24) {
-    const al = document.getElementById('alerta-e1');
-    al.style.display = 'block';
-    al.textContent = `Complete todos os grupos — faltam ${24-c}.`;
-    // Scroll até primeiro incompleto
-    const idx = respostas[1].findIndex(r => r.mais===null || r.menos===null);
-    if (idx>=0) document.getElementById(`g1-${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'});
-    setTimeout(()=>al.style.display='none', 3000);
-    return;
-  }
-  desativarStickyCounter();
-  mostrarTela('tela-transicao');
+function selecionarRef(el, ref, verbo) {
+  document.querySelectorAll('.ref-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  referencia = ref;
+  referenciaVerbo = verbo;
+  document.getElementById('btn-e2').disabled = false;
 }
 
-// ══════════════════════════════════════════
-// INICIAR ETAPA 2
-// ══════════════════════════════════════════
 function iniciarEtapa2() {
   etapaAtual = 2;
-  atualizarBadgeEtapa(2);
-  construirGrupos(2);
-  ativarStickyCounter();
-  atualizarCounter(2);
-  mostrarTela('tela-etapa2');
+  grupoAtual = 0;
+  respostas[2] = Array.from({length:TOTAL}, () => ({mais:null, menos:null}));
+  atualizarBadge();
+  renderQuiz();
+  mostrarTela('tela-quiz');
 }
 
 // ══════════════════════════════════════════
-// ENVIAR RESULTADO
+// FINALIZAR
 // ══════════════════════════════════════════
-async function enviarResultado() {
-  const c = countCompletos(2);
-  if (c < 24) {
-    const al = document.getElementById('alerta-e2');
-    al.style.display = 'block';
-    al.textContent = `Complete todos os grupos — faltam ${24-c}.`;
-    const idx = respostas[2].findIndex(r => r.mais===null || r.menos===null);
-    if (idx>=0) document.getElementById(`g2-${idx}`)?.scrollIntoView({behavior:'smooth',block:'center'});
-    setTimeout(()=>al.style.display='none', 3000);
-    return;
-  }
-
-  desativarStickyCounter();
-  document.getElementById('etapa-badge').style.display='none';
+async function finalizarQuestionario() {
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('etapa-badge').style.display = 'none';
   mostrarTela('tela-calc');
 
-  // Calcular perfis
-  const naturalPct = calcularPerfil(1);
+  const naturalPct  = calcularPerfil(1);
   const adaptadoPct = calcularPerfil(2);
-  const resultado = gerarRelatorio(naturalPct, adaptadoPct);
+  const relatorio   = gerarRelatorio(naturalPct, adaptadoPct);
 
-  // Renderizar resultado localmente
-  renderizarResultado(resultado, naturalPct, adaptadoPct);
+  renderizarResultado(relatorio, naturalPct, adaptadoPct);
 
-  // Enviar ao servidor (não-bloqueante)
   try {
     await fetch('/disc/submit', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         telefone,
         nome: nomeCandidata,
         vaga: vagaCandidato,
-        respostasNatural: respostas[1].map(r=>({mais:r.mais,menos:r.menos})),
-        respostasAdaptado: respostas[2].map(r=>({mais:r.mais,menos:r.menos})),
-        percentuaisNatural: naturalPct,
+        referencia,
+        respostasNatural:  respostas[1].map(r => ({mais: r.mais, menos: r.menos})),
+        respostasAdaptado: respostas[2].map(r => ({mais: r.mais, menos: r.menos})),
+        percentuaisNatural:  naturalPct,
         percentuaisAdaptado: adaptadoPct,
-        primarioNatural: resultado.primarioNatural,
-        primarioAdaptado: resultado.primarioAdaptado,
-        secundarioNatural: resultado.secundarioNatural
+        primarioNatural:    relatorio.primarioNatural,
+        primarioAdaptado:   relatorio.primarioAdaptado,
+        secundarioNatural:  relatorio.secundarioNatural
       })
     });
   } catch(e) {
-    console.warn('Servidor offline — resultado calculado localmente');
+    console.warn('Servidor offline — resultado calculado localmente.');
   }
 
   mostrarTela('tela-resultado');
 }
 
 // ══════════════════════════════════════════
-// CÁLCULO DE PERFIL
+// CÁLCULO
 // ══════════════════════════════════════════
 function calcularPerfil(etapa) {
-  const scores = {D:0,I:0,S:0,C:0};
+  const scores = {D:0, I:0, S:0, C:0};
   respostas[etapa].forEach(r => {
-    if (r.mais !== null) scores[KEYS[r.mais]]++;
+    if (r.mais !== null) scores[r.mais]++;
   });
-  const total = 24;
   const pct = {};
-  KEYS.forEach(k => pct[k] = Math.round(scores[k]/total*100));
+  KEYS.forEach(k => pct[k] = Math.round(scores[k] / TOTAL * 100));
   return pct;
 }
 
 function gerarRelatorio(naturalPct, adaptadoPct) {
-  const sortedNat = Object.entries(naturalPct).sort((a,b)=>b[1]-a[1]);
-  const sortedAda = Object.entries(adaptadoPct).sort((a,b)=>b[1]-a[1]);
-
-  const primarioNatural = sortedNat[0][0];
-  const secundarioNatural = sortedNat[1][1] >= 18 ? sortedNat[1][0] : null;
-  const primarioAdaptado = sortedAda[0][0];
-
-  // Tensões: diferença >= 12 pontos
+  const sortedNat = Object.entries(naturalPct).sort((a,b) => b[1]-a[1]);
+  const sortedAda = Object.entries(adaptadoPct).sort((a,b) => b[1]-a[1]);
+  const primarioNatural   = sortedNat[0][0];
+  const secundarioNatural = sortedNat[1][1] >= 17 ? sortedNat[1][0] : null;
+  const primarioAdaptado  = sortedAda[0][0];
   const tensoes = KEYS
-    .map(k => ({trait:k, gap: adaptadoPct[k]-naturalPct[k]}))
-    .filter(t => Math.abs(t.gap) >= 12)
-    .sort((a,b) => Math.abs(b.gap)-Math.abs(a.gap));
-
+    .map(k => ({trait: k, gap: adaptadoPct[k] - naturalPct[k]}))
+    .filter(t => Math.abs(t.gap) >= 8)
+    .sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
   return {primarioNatural, secundarioNatural, primarioAdaptado, tensoes};
 }
 
 // ══════════════════════════════════════════
 // RENDERIZAR RESULTADO
 // ══════════════════════════════════════════
-function renderizarResultado(resultado, naturalPct, adaptadoPct) {
-  const {primarioNatural, secundarioNatural, primarioAdaptado, tensoes} = resultado;
+function renderizarResultado(rel, naturalPct, adaptadoPct) {
+  const {primarioNatural, secundarioNatural, primarioAdaptado, tensoes} = rel;
   const pN = PERFIS[primarioNatural];
   const pA = PERFIS[primarioAdaptado];
 
-  // Cabeçalho
   document.getElementById('res-emoji').textContent = pN.emoji;
-  document.getElementById('res-titulo').textContent = `${pN.nome}${secundarioNatural ? ' / '+PERFIS[secundarioNatural].nome : ''}`;
-  document.getElementById('res-sub').textContent = `${nomeCandidata}${vagaCandidato?' · '+vagaCandidato:''} · Análise DISC`;
+  document.getElementById('res-titulo').textContent =
+    pN.nome + (secundarioNatural ? ' / ' + PERFIS[secundarioNatural].nome : '');
+  document.getElementById('res-sub').textContent =
+    nomeCandidata + (vagaCandidato ? ' · ' + vagaCandidato : '') + ' · Análise DISC';
 
-  // Perfil Natural
-  document.getElementById('nat-nome').textContent = `${pN.emoji} ${pN.nome}`;
+  document.getElementById('nat-nome').textContent = pN.emoji + ' ' + pN.nome;
   document.getElementById('nat-bars').innerHTML = renderBars(naturalPct);
-
-  // Perfil Adaptado
-  document.getElementById('ada-nome').textContent = `${pA.emoji} ${pA.nome}`;
+  document.getElementById('ada-nome').textContent = pA.emoji + ' ' + pA.nome;
   document.getElementById('ada-bars').innerHTML = renderBars(adaptadoPct);
 
-  // Resumo
   document.getElementById('res-resumo').textContent = pN.resumo;
 
-  // Combo
-  const comboKey = secundarioNatural ? primarioNatural+secundarioNatural : null;
-  const comboEl = document.getElementById('res-combo');
+  const comboKey = secundarioNatural ? primarioNatural + secundarioNatural : null;
+  const comboEl  = document.getElementById('res-combo');
   if (comboKey && COMBOS[comboKey]) {
-    comboEl.textContent = '🔗 '+COMBOS[comboKey];
+    comboEl.textContent = '🔗 ' + COMBOS[comboKey];
     comboEl.classList.remove('hidden');
   }
 
-  // Forças e atenção
-  document.getElementById('res-forcas').innerHTML = pN.forcas.map(f=>`<div class="item-lista pos">${f}</div>`).join('');
-  document.getElementById('res-atencao').innerHTML = pN.atencao.map(a=>`<div class="item-lista neg">${a}</div>`).join('');
+  document.getElementById('res-forcas').innerHTML =
+    pN.forcas.map(f => '<div class="item-lista pos">' + f + '</div>').join('');
+  document.getElementById('res-atencao').innerHTML =
+    pN.atencao.map(a => '<div class="item-lista neg">' + a + '</div>').join('');
 
-  // Tensões
   if (tensoes.length > 0) {
-    document.getElementById('card-tensao').style.display='block';
+    document.getElementById('card-tensao').style.display = 'block';
     document.getElementById('res-tensoes').innerHTML = tensoes.map(t => {
       const direcao = t.gap > 0 ? 'up' : 'down';
-      const msgs = TENSAO_MSGS[t.trait];
-      const nivel = Math.abs(t.gap) >= 20 ? 'alta' : 'media';
-      return `<div class="tensao-card ${nivel}">
-        <div class="tensao-label" style="color:${CORES[t.trait]}">${PERFIS[t.trait].emoji} Tensão em ${t.trait} (${t.gap>0?'+':''}${t.gap}%)</div>
-        <div class="tensao-texto">${msgs[direcao]}</div>
-      </div>`;
+      const nivel   = Math.abs(t.gap) >= 17 ? 'alta' : 'media';
+      return '<div class="tensao-card ' + nivel + '">' +
+        '<div class="tensao-lbl" style="color:' + CORES[t.trait] + '">' +
+          PERFIS[t.trait].emoji + ' Tensão em ' + t.trait +
+          ' (' + (t.gap > 0 ? '+' : '') + t.gap + '%)' +
+        '</div>' +
+        '<div class="tensao-txt">' + TENSAO_MSGS[t.trait][direcao] + '</div>' +
+      '</div>';
     }).join('');
   }
 
-  // Animar barras
+  // Anima barras após DOM render
   setTimeout(() => {
     document.querySelectorAll('.disc-bar-f').forEach(el => {
-      el.style.width = el.dataset.pct+'%';
+      el.style.width = el.dataset.pct + '%';
     });
   }, 200);
 }
 
 function renderBars(pct) {
-  return KEYS.map(k => `
-    <div class="disc-bar-row">
-      <div class="disc-bar-l" style="color:${CORES[k]}">${k}</div>
-      <div class="disc-bar-track">
-        <div class="disc-bar-f" style="width:0%;background:${CORES[k]}" data-pct="${pct[k]||0}"></div>
-      </div>
-      <div class="disc-bar-pct">${pct[k]||0}%</div>
-    </div>`).join('');
+  return KEYS.map(k =>
+    '<div class="disc-bar-row">' +
+      '<div class="disc-bar-l" style="color:' + CORES[k] + '">' + k + '</div>' +
+      '<div class="disc-bar-track">' +
+        '<div class="disc-bar-f" style="background:' + CORES[k] + '" data-pct="' + (pct[k]||0) + '"></div>' +
+      '</div>' +
+      '<div class="disc-bar-pct">' + (pct[k]||0) + '%</div>' +
+    '</div>'
+  ).join('');
 }
 </script>
-
-<style>
-@media print {
-  .header,.sticky-counter,.btn,.btn-print{display:none!important}
-  body{background:#fff;padding:0}
-  .container{max-width:100%;padding:10px}
-  .card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}
-  .disc-bar-f{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-</style>
 </body>
 </html>
