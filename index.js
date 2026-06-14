@@ -270,6 +270,7 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     motivoPausa: sessao?.motivoPausa || "",
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
     ultimaAnalise: sessao?.ultimaAnalise || null,
+    discResult: sessao?.discResult || null,
     curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
     curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
@@ -877,6 +878,108 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 // ============================================================
+// BACKUP AUTOMÁTICO (DIÁRIO + SEMANAL) → Google Drive
+// ============================================================
+
+let ultimoBackupDiario = null;
+let ultimoBackupSemanal = null;
+
+async function fazerBackup(tipo = "diario") {
+  const drive = getDriveClient();
+  if (!drive) { console.warn("Backup: Drive não disponível."); return false; }
+
+  try {
+    // Garante pasta "Backups" dentro da pasta raiz do Drive
+    const nomeBackupFolder = "Backups-Lia";
+    let backupFolderId = null;
+
+    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeBackupFolder}' and trashed=false`;
+    const busca = await drive.files.list({ q, fields: "files(id)" });
+    if (busca.data.files?.length) {
+      backupFolderId = busca.data.files[0].id;
+    } else {
+      const nova = await drive.files.create({
+        requestBody: { name: nomeBackupFolder, mimeType: "application/vnd.google-apps.folder", parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
+        fields: "id"
+      });
+      backupFolderId = nova.data.id;
+    }
+
+    // Monta snapshot
+    const agora = new Date();
+    const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const snapshot = {
+      tipo,
+      geradoEm: agora.toISOString(),
+      totalSessoes: Object.keys(sessoes).length,
+      sessoes: Object.fromEntries(
+        Object.entries(sessoes).map(([tel, s]) => [tel, {
+          nome: s.nome,
+          modo: s.modo,
+          pausado: s.pausado,
+          motivoPausa: s.motivoPausa,
+          totalMensagens: s.historico?.length || 0,
+          ultimaMensagem: s.historico?.slice(-1)[0]?.content?.slice(0, 100) || "",
+          ultimaAnalise: s.ultimaAnalise || null,
+          historico: s.historico || []
+        }])
+      )
+    };
+
+    const { Readable } = require("stream");
+    const conteudo = JSON.stringify(snapshot, null, 2);
+    const stream = Readable.from(Buffer.from(conteudo, "utf8"));
+
+    await drive.files.create({
+      requestBody: {
+        name: `backup-${tipo}-${ts}.json`,
+        parents: [backupFolderId],
+        mimeType: "application/json"
+      },
+      media: { mimeType: "application/json", body: stream },
+      fields: "id"
+    });
+
+    console.log(`✅ Backup ${tipo} salvo no Drive — ${ts} — ${Object.keys(sessoes).length} sessões`);
+    if (tipo === "diario") ultimoBackupDiario = agora;
+    if (tipo === "semanal") ultimoBackupSemanal = agora;
+    return true;
+  } catch (e) {
+    console.error(`Erro backup ${tipo}:`, e.message);
+    return false;
+  }
+}
+
+// Backup diário — executa a cada 24h
+setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
+
+// Backup semanal — executa a cada 7 dias
+setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
+
+// Primeiro backup diário roda 5min após o servidor subir
+setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
+
+// Endpoint para backup manual via Inbox
+app.post("/inbox/backup", async (req, res) => {
+  const ok = await fazerBackup("manual");
+  return res.json({
+    ok,
+    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
+    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null
+  });
+});
+
+// Endpoint de status do backup
+app.get("/inbox/backup/status", (req, res) => {
+  res.json({
+    ok: true,
+    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
+    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null,
+    totalSessoes: Object.keys(sessoes).length
+  });
+});
+
+// ============================================================
 // ROTAS PRINCIPAIS
 // ============================================================
 
@@ -966,8 +1069,125 @@ app.post("/webhook", async (req, res) => {
 // ============================================================
 
 app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
+app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
 app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
+
+// ─── DISC ASSESSMENT ───
+app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc.html")));
+
+app.post("/disc/submit", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || '');
+    const nome = String(req.body.nome || '').trim();
+    const vaga = String(req.body.vaga || '').trim();
+    const percentuaisNatural = req.body.percentuaisNatural || {};
+    const percentuaisAdaptado = req.body.percentuaisAdaptado || {};
+    const primarioNatural = req.body.primarioNatural || '';
+    const primarioAdaptado = req.body.primarioAdaptado || '';
+    const secundarioNatural = req.body.secundarioNatural || null;
+
+    const resultado = {
+      respondidoEm: new Date().toISOString(),
+      nome, vaga,
+      percentuaisNatural,
+      percentuaisAdaptado,
+      primario: primarioNatural,          // compatibilidade com inbox
+      primarioNatural,
+      primarioAdaptado,
+      secundario: secundarioNatural,
+      secundarioNatural
+    };
+
+    if (telefone && sessoes[telefone]) {
+      sessoes[telefone].discResult = resultado;
+      if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
+    }
+
+    await salvarDiscNoDrive(telefone, nome, resultado).catch(e => console.error('Erro DISC Drive:', e.message));
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Erro /disc/submit:', e.message);
+    return res.json({ ok: false, erro: e.message });
+  }
+});
+
+app.get("/disc/resultado/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discResult) return res.json({ ok: false });
+  return res.json({ ok: true, resultado: sessao.discResult });
+});
+
+// Relatório visual completo (abre em nova aba pelo inbox)
+app.get("/disc/resultado-view/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
+  const d = sessao.discResult;
+  const nome = d.nome || sessao.nome || tel;
+  const pct = d.percentuais || {};
+  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5ff'};
+  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Analítico'};
+  const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC — ${nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:30px 20px;max-width:600px;margin:0 auto}
+  .card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,.09);margin-bottom:16px}
+  h1{font-size:20px;font-weight:800;color:#1e3a5f;margin-bottom:4px} .sub{font-size:11px;color:#a1a1aa;margin-bottom:20px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px} .bar-l{font-size:12px;font-weight:800;width:14px}
+  .bar-t{flex:1;background:#e8ecf1;border-radius:999px;height:14px;overflow:hidden} .bar-f{height:100%;border-radius:999px}
+  .bar-p{font-size:11px;font-weight:700;color:#a1a1aa;width:32px;text-align:right}
+  .sec-t{font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:16px}
+  p{font-size:12.5px;line-height:1.65;color:#374151} li{font-size:12.5px;line-height:1.65;color:#374151;margin-left:16px;margin-bottom:4px}
+  .logo{font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:20px}.logo span{color:#8ed1b2}
+  @media print{body{background:#fff}.card{box-shadow:none;border:1px solid #e5e7eb}}</style></head><body>
+  <div class="logo">Effect <span>Pessoas</span></div>
+  <div class="card">
+    <h1>${EMOJIS[d.primario]||''} ${NOMES[d.primario]||d.primario}${d.secundario?' / '+NOMES[d.secundario]:''}</h1>
+    <div class="sub">📋 Relatório DISC · ${nome} · ${new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
+    ${['D','I','S','C'].map(k=>`<div class="bar-row">
+      <div class="bar-l" style="color:${CORES[k]}">${k}</div>
+      <div class="bar-t"><div class="bar-f" style="width:${pct[k]||0}%;background:${CORES[k]}"></div></div>
+      <div class="bar-p">${pct[k]||0}%</div>
+    </div>`).join('')}
+  </div>
+  <button onclick="window.print()" style="background:#1e3a5f;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:16px">🖨️ Imprimir / Salvar PDF</button>
+  </body></html>`;
+  res.send(html);
+});
+
+async function salvarDiscNoDrive(telefone, nome, resultado) {
+  const drive = getDriveClient();
+  if (!drive) return;
+
+  // Garante pasta DISC-Resultados
+  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='DISC-Resultados' and trashed=false`;
+  const busca = await drive.files.list({ q, fields: 'files(id)' });
+  let folderId;
+  if (busca.data.files?.length) {
+    folderId = busca.data.files[0].id;
+  } else {
+    const nova = await drive.files.create({
+      requestBody: { name: 'DISC-Resultados', mimeType: 'application/vnd.google-apps.folder', parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
+      fields: 'id'
+    });
+    folderId = nova.data.id;
+  }
+
+  const { Readable } = require('stream');
+  const ts = new Date().toISOString().slice(0, 10);
+  const nomeArq = `DISC-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
+  const conteudo = JSON.stringify({ telefone, nome, ...resultado }, null, 2);
+
+  await drive.files.create({
+    requestBody: { name: nomeArq, parents: [folderId], mimeType: 'application/json' },
+    media: { mimeType: 'application/json', body: Readable.from(Buffer.from(conteudo, 'utf8')) },
+    fields: 'id'
+  });
+  console.log(`✅ DISC salvo no Drive: ${nomeArq}`);
+}
 app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
 app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
 app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
@@ -1100,6 +1320,42 @@ app.post("/inbox/modo", async (req, res) => {
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
     return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
   } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
+});
+
+// ─── RESUMIR CONVERSA com IA ───
+app.post("/inbox/resumir", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone);
+    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+    const sessao = garantirSessao(telefone);
+    const hist = sessao.historico || [];
+    if (!hist.length) return res.json({ ok: false, erro: "Sem histórico para resumir" });
+
+    const ultimas = hist.slice(-30);
+    const transcript = ultimas.map(h => `${h.role === 'user' ? 'Candidato' : 'Lia'}: ${h.content || ''}`).join('\n');
+
+    const prompt = `Você é um assistente de RH. Com base no histórico de conversa abaixo, forneça um resumo estruturado e objetivo.
+
+HISTÓRICO:
+${transcript}
+
+Responda EXATAMENTE neste formato (sem markdown, sem asteriscos):
+Nome: [nome do candidato ou "não identificado"]
+Cidade/Bairro: [cidade e/ou bairro mencionado ou "não informado"]
+Vaga de interesse: [cargo ou vaga ou "não mencionado"]
+Experiência: [resumo breve da experiência ou "não informado"]
+Pendências: [o que ainda falta coletar ou confirmar — seja específico]
+Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "Aguardar envio de currículo", "Analisar perfil"]`;
+
+    const resumo = await chamarGeminiJSON(prompt).catch(() => chamarGemini(prompt));
+    if (!resumo) return res.json({ ok: false, erro: "IA não retornou resposta" });
+
+    const texto = typeof resumo === 'string' ? resumo : JSON.stringify(resumo, null, 2);
+    return res.json({ ok: true, resumo: texto });
+  } catch (erro) {
+    console.error("Erro /inbox/resumir:", erro.message);
+    return res.json({ ok: false, erro: erro.message });
+  }
 });
 
 app.post("/inbox/enviar", async (req, res) => {
