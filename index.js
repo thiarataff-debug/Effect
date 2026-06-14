@@ -1078,7 +1078,8 @@ app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc
 
 app.post("/disc/submit", async (req, res) => {
   try {
-    const telefone = limparTelefone(req.body.telefone || '');
+    const _rawTel = String(req.body.telefone || '');
+    const telefone = _rawTel === 'interno' ? 'interno' : limparTelefone(_rawTel);
     const nome = String(req.body.nome || '').trim();
     const vaga = String(req.body.vaga || '').trim();
     const percentuaisNatural = req.body.percentuaisNatural || {};
@@ -1099,7 +1100,11 @@ app.post("/disc/submit", async (req, res) => {
       secundarioNatural
     };
 
-    if (telefone && sessoes[telefone]) {
+    // Garante que sessão 'interno' existe mesmo sem conversa prévia
+    if (telefone) {
+      if (!sessoes[telefone]) {
+        sessoes[telefone] = { historico: [], nome: null, modo: 'automatico', pausado: false, motivoPausa: '' };
+      }
       sessoes[telefone].discResult = resultado;
       if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
     }
@@ -1114,7 +1119,8 @@ app.post("/disc/submit", async (req, res) => {
 });
 
 app.get("/disc/resultado/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
+  const _rawTelRes = req.params.telefone;
+  const tel = _rawTelRes === 'interno' ? 'interno' : limparTelefone(_rawTelRes);
   const sessao = sessoes[tel];
   if (!sessao?.discResult) return res.json({ ok: false });
   return res.json({ ok: true, resultado: sessao.discResult });
