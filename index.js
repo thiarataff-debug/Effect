@@ -70,7 +70,8 @@ function agora() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
-function agoraMs() {
+function agoraISO() {
+  function agoraMs() {
   return Date.now();
 }
 
@@ -90,8 +91,6 @@ function carimboTempo() {
     horarioFormatado: agoraHorarioBR()
   };
 }
-
-function agoraISO() {
   return new Date().toISOString();
 }
 
@@ -112,17 +111,14 @@ function parseDataFlexivel(valor) {
   // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
   const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (m) {
-    let dia = Number(m[1]);
-    let mes = Number(m[2]);
+    const dia = Number(m[1]);
+    const mes = Number(m[2]) - 1;
     let ano = Number(m[3]);
     if (ano < 100) ano += 2000;
-    if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
     const hora = Number(m[4] || 0);
     const minuto = Number(m[5] || 0);
     const segundo = Number(m[6] || 0);
-    const pad = n => String(n).padStart(2, '0');
-    const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
-    const d = new Date(isoStr);
+    const d = new Date(ano, mes, dia, hora, minuto, segundo);
     return isNaN(d.getTime()) ? null : d;
   }
 
@@ -192,12 +188,10 @@ function normalizarEventoHistorico(evento) {
       const minuto = Number(br[5] || 0);
       const segundo = Number(br[6] || 0);
 
-      const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
-      const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
-      // -03:00 explícito: Railway roda em UTC, sem isso fica 3h errado
-      const pad2 = n => String(n).padStart(2, '0');
-      const iso2 = `${ano}-${pad2(mesFinal)}-${pad2(diaFinal)}T${pad2(hora)}:${pad2(minuto)}:${pad2(segundo)}-03:00`;
-      const d = new Date(iso2);
+      // Se vier em formato americano por algum motivo (MM/DD/YYYY), tenta corrigir.
+      const diaFinal = dia > 12 ? dia : dia;
+      const mesFinal = mes > 12 ? 1 : mes;
+      const d = new Date(ano, mesFinal - 1, diaFinal, hora, minuto, segundo);
       return isNaN(d.getTime()) ? 0 : d.getTime();
     }
 
@@ -270,7 +264,6 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     motivoPausa: sessao?.motivoPausa || "",
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
     ultimaAnalise: sessao?.ultimaAnalise || null,
-    discResult: sessao?.discResult || null,
     curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
     curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
@@ -305,7 +298,7 @@ function marcarMensagemRecebida(sessao, timestampMs = null) {
 
 function marcarConversaRespondida(sessao) {
   sessao.unreadCount = 0;
-  // Preserva lastMessageAtMs real
+  sessao.lastMessageAtMs = Date.now();
 }
 
 const AREA_SYNONYMS = {
@@ -315,16 +308,67 @@ const AREA_SYNONYMS = {
     "r&s", "rs", "treinamento", "endomarketing", "clima", "cultura",
     "administracao de pessoal", "administração de pessoal",
     "analista administrativo rh", "administrativo rh", "carreira", "remuneracao", "remuneração"
+  ],
+  logistica: [
+    "logistica", "logístico", "logistica", "auxiliar de logistica", "assistente de logistica",
+    "operador de logistica", "estoque", "almoxarifado", "expedicao", "expedição",
+    "armazem", "armazém", "separacao", "separação", "conferente", "inventario", "inventário",
+    "carga e descarga", "carregamento", "descarga", "empilhadeira", "paletizacao", "paletização",
+    "supply chain", "cadeia de suprimentos", "transportadora", "frota", "deposito", "depósito"
+  ],
+  administrativo: [
+    "administrativo", "administracao", "administração", "assistente administrativo",
+    "auxiliar administrativo", "secretaria", "secretario", "secretária", "recepcao", "recepção",
+    "recepcionista", "backoffice", "back office", "suporte administrativo", "rotinas administrativas",
+    "digitacao", "digitação", "financeiro", "contas a pagar", "contas a receber",
+    "faturamento", "cobranca", "cobrança", "tesouraria", "fiscal", "notas fiscais",
+    "sesmt", "seguranca do trabalho", "segurança do trabalho", "meio ambiente"
+  ],
+  operacional: [
+    "operacional", "operacoes", "operações", "producao", "produção", "operador",
+    "auxiliar de producao", "auxiliar de produção", "linha de producao", "linha de produção",
+    "montagem", "embalagem", "qualidade", "controle de qualidade", "manutencao", "manutenção",
+    "tecnico", "técnico", "operador de maquina", "operador de máquina", "trainee operacoes", "trainee de operacoes"
+  ],
+  projetos: [
+    "projetos", "assistente de projetos", "analista de projetos", "gerente de projetos",
+    "pmo", "engenharia", "engenheiro", "engenheira", "analista", "tecnico de campo",
+    "tecnico de projetos", "vistoriador", "instalacao", "instalação", "obras", "construcao", "construção"
+  ],
+  alimentos: [
+    "garcom", "garçom", "garconete", "garçonete", "barman", "bartender",
+    "cozinha", "cozinheiro", "cozinheira", "auxiliar de cozinha", "ajudante de cozinha",
+    "pizzaiolo", "churrasco", "chefe de cozinha", "sous chef", "confeiteiro", "confeitaria",
+    "atendente de restaurante", "atendente de bar", "restaurante", "buffet", "lanchonete",
+    "padeiro", "panificacao", "panificação", "sorvete", "sorveteria", "chapa"
+  ],
+  limpeza: [
+    "limpeza", "servicos gerais", "serviços gerais", "faxina", "faxineira", "faxineiro",
+    "zelador", "zeladora", "auxiliar de limpeza", "copeira", "copeiro",
+    "lavanderia", "higienizacao", "higienização", "portaria", "porteiro", "vigilancia", "vigilância",
+    "diaria", "diária"
+  ],
+  vendas: [
+    "vendas", "vendedor", "vendedora", "comercial", "representante", "consultor de vendas",
+    "atendimento ao cliente", "atendente", "balconista", "caixa", "promotor", "promotora",
+    "televendas", "telemarketing", "call center", "sdr"
   ]
 };
 
-function contemSinonimoRH(texto = "") {
+// Verifica se texto contém sinônimo de uma área específica
+function contemSinonimoArea(texto = "", area) {
   const clean = normalizarTexto(texto);
-  return AREA_SYNONYMS.rh.some(term => clean.includes(normalizarTexto(term)));
+  return (AREA_SYNONYMS[area] || []).some(term => clean.includes(normalizarTexto(term)));
 }
 
-function isRHVaga(vaga) {
-  return contemSinonimoRH([
+// Mantido para compatibilidade com código existente
+function contemSinonimoRH(texto = "") {
+  return contemSinonimoArea(texto, "rh");
+}
+
+// Retorna texto consolidado de uma vaga para matching
+function textoDaVagaParaArea(vaga) {
+  return normalizarTexto([
     campo(vaga, ["cargo", "Cargo", "CARGO"]),
     campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
     campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
@@ -334,12 +378,34 @@ function isRHVaga(vaga) {
   ].join(" "));
 }
 
+function isVagaDaArea(vaga, area) {
+  return contemSinonimoArea(textoDaVagaParaArea(vaga), area);
+}
+
+function isRHVaga(vaga) {
+  return isVagaDaArea(vaga, "rh");
+}
+
+function candidatoTemPerfilArea(texto = "", area) {
+  return contemSinonimoArea(texto, area);
+}
+
 function candidatoTemPerfilRH(texto = "") {
-  return contemSinonimoRH(texto);
+  return candidatoTemPerfilArea(texto, "rh");
+}
+
+function buscarVagaDaArea(vagas = [], area) {
+  return vagas.find(v => vagaEstaAtiva(v) && isVagaDaArea(v, area));
 }
 
 function buscarVagaRH(vagas = []) {
-  return vagas.find(v => vagaEstaAtiva(v) && isRHVaga(v));
+  return buscarVagaDaArea(vagas, "rh");
+}
+
+// Detecta área principal do candidato a partir do texto
+function detectarAreaCandidato(texto = "") {
+  const areas = ["logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
+  return areas.find(area => candidatoTemPerfilArea(texto, area)) || null;
 }
 
 // ============================================================
@@ -473,26 +539,8 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
 
     return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
   } catch (e) {
-    console.error("uploadCurriculoDrive falhou (1ª tentativa):", JSON.stringify(e.response?.data || e.message));
-    await new Promise(r => setTimeout(r, 3000));
-    try {
-      const drive2 = getDriveClient();
-      if (!drive2) { console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename}`); return null; }
-      const folderId2 = await obterOuCriarPastaCargo(drive2, cargo);
-      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\/\\:*?"<>|]/g, "-");
-      const { Readable: Readable2 } = require("stream");
-      const resp2 = await drive2.files.create({
-        requestBody: { name: nomeFinal2, parents: [folderId2] },
-        media: { mimeType: mimeType || "application/octet-stream", body: Readable2.from(buffer) },
-        fields: "id, webViewLink", supportsAllDrives: true
-      });
-      try { await drive2.permissions.create({ fileId: resp2.data.id, requestBody: { role: "reader", type: "anyone" }, supportsAllDrives: true }); } catch(pe){}
-      console.log(`✅ Currículo salvo no Drive (retry): ${telefone} | ${filename}`);
-      return { fileId: resp2.data.id, link: resp2.data.webViewLink, pasta: nomePastaCargo(cargo) };
-    } catch (e2) {
-      console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | ${e2.message}`);
-      return null;
-    }
+    console.error("Erro uploadCurriculoDrive:", JSON.stringify(e.response?.data || e.message));
+    return null;
   }
 }
 
@@ -878,208 +926,6 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 // ============================================================
-// BACKUP AUTOMÁTICO — SEGURANÇA EFFECT
-// Estrutura: SEGURANÇA EFFECT / 2026-06-14 / arquivos
-// ============================================================
-
-let ultimoBackupDiario = null;
-let ultimoBackupSemanal = null;
-let ultimoBackupManual = null;
-let pastaSegurancaId = null; // ID da pasta raiz "SEGURANÇA EFFECT"
-
-const { Readable } = require("stream");
-
-// ── Helpers de pasta ──────────────────────────────────────────
-async function obterOuCriarPasta(drive, nome, parentId) {
-  const nomeSeg = nome.replace(/'/g, "\\'");
-  const q = `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeSeg}' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: "files(id)", supportsAllDrives: true, includeItemsFromAllDrives: true });
-  if (busca.data.files?.length) return busca.data.files[0].id;
-  const nova = await drive.files.create({
-    requestBody: { name: nome, mimeType: "application/vnd.google-apps.folder", parents: [parentId] },
-    fields: "id", supportsAllDrives: true
-  });
-  return nova.data.id;
-}
-
-async function obterPastaSeguranca(drive) {
-  if (pastaSegurancaId) return pastaSegurancaId;
-  pastaSegurancaId = await obterOuCriarPasta(drive, "SEGURANÇA EFFECT", CONFIG.DRIVE_ROOT_FOLDER_ID);
-  return pastaSegurancaId;
-}
-
-async function obterPastaData(drive, data) {
-  // data no formato "2026-06-14"
-  const rootId = await obterPastaSeguranca(drive);
-  return await obterOuCriarPasta(drive, data, rootId);
-}
-
-// ── Upload de arquivo JSON no Drive ──────────────────────────
-async function uploadJsonDrive(drive, nome, conteudo, pastaId) {
-  const buf = Buffer.from(JSON.stringify(conteudo, null, 2), "utf8");
-  const stream = Readable.from(buf);
-  const resp = await drive.files.create({
-    requestBody: { name: nome, parents: [pastaId], mimeType: "application/json" },
-    media: { mimeType: "application/json", body: stream },
-    fields: "id, webViewLink", supportsAllDrives: true
-  });
-  return resp.data;
-}
-
-// ── Snapshot completo das sessões ─────────────────────────────
-function montarSnapshotConversas(tipo, agora) {
-  return {
-    tipo,
-    geradoEm: agora.toISOString(),
-    geradoEmBR: agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-    totalSessoes: Object.keys(sessoes).length,
-    totalMensagens: Object.values(sessoes).reduce((acc, s) => acc + (s.historico?.length || 0), 0),
-    sessoes: Object.fromEntries(
-      Object.entries(sessoes).map(([tel, s]) => [tel, {
-        nome: s.nome || null,
-        modo: s.modo || "automatico",
-        pausado: s.pausado || false,
-        motivoPausa: s.motivoPausa || "",
-        statusProcesso: s.statusProcesso || "Novo contato",
-        unreadCount: s.unreadCount || 0,
-        totalMensagens: s.historico?.length || 0,
-        ultimaAnalise: s.ultimaAnalise || null,
-        curriculos: (Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : [])).map(cv => ({
-          filename: cv.filename || "",
-          driveLink: cv.driveLink || "",
-          pasta: cv.pasta || "",
-          analiseStatus: cv.analiseStatus || "",
-          recebidoEm: cv.recebidoEm || "",
-          sizeBytes: cv.sizeBytes || null
-        })),
-        historico: (s.historico || []).map(m => ({
-          role: m.role,
-          content: m.content,
-          timestampMs: m.timestampMs || m.timestamp || null,
-          horario: m.horario || m.horarioFormatado || null
-        }))
-      }])
-    )
-  };
-}
-
-// ── Função principal de backup ─────────────────────────────────
-async function fazerBackup(tipo = "diario") {
-  const drive = getDriveClient();
-  if (!drive) {
-    const msg = "Drive não disponível — verifique a variável GOOGLE_SERVICE_ACCOUNT_JSON no Railway.";
-    console.error("Backup:", msg);
-    return { ok: false, erro: msg };
-  }
-
-  const agora = new Date();
-  const dataHoje = agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
-    .split("/").reverse().join("-"); // 2026-06-14
-  const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const arquivosSalvos = [];
-
-  try {
-    const pastaDataId = await obterPastaData(drive, dataHoje);
-
-    // ── 1. Conversas / sessões ────────────────────────────────
-    try {
-      const snapshot = montarSnapshotConversas(tipo, agora);
-      const f = await uploadJsonDrive(drive, `conversas-${tipo}-${ts}.json`, snapshot, pastaDataId);
-      arquivosSalvos.push({ nome: `conversas-${tipo}-${ts}.json`, id: f.id });
-      console.log(`✅ Backup conversas salvo (${Object.keys(sessoes).length} sessões)`);
-    } catch (e) {
-      console.error("Backup conversas falhou:", e.message);
-    }
-
-    // ── 2. Dados do Google Sheets (candidatos + vagas) ────────
-    if (CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        const [rCands, rVagas, rConvSheets] = await Promise.allSettled([
-          axios.get(`${urlBase}?acao=candidatos`, { timeout: 20000 }),
-          axios.get(`${urlBase}?acao=vagas`, { timeout: 20000 }),
-          axios.get(`${urlBase}?acao=conversas`, { timeout: 20000 })
-        ]);
-
-        const sheetsSnap = {
-          geradoEm: agora.toISOString(),
-          candidatos: rCands.status === "fulfilled" ? (rCands.value.data?.candidatos || rCands.value.data || []) : null,
-          vagas: rVagas.status === "fulfilled" ? (rVagas.value.data?.vagas || rVagas.value.data || []) : null,
-          conversas: rConvSheets.status === "fulfilled" ? (rConvSheets.value.data?.sessoes || null) : null,
-          erros: {
-            candidatos: rCands.status === "rejected" ? rCands.reason?.message : null,
-            vagas: rVagas.status === "rejected" ? rVagas.reason?.message : null,
-            conversas: rConvSheets.status === "rejected" ? rConvSheets.reason?.message : null
-          }
-        };
-        const f2 = await uploadJsonDrive(drive, `sheets-${tipo}-${ts}.json`, sheetsSnap, pastaDataId);
-        arquivosSalvos.push({ nome: `sheets-${tipo}-${ts}.json`, id: f2.id });
-        console.log("✅ Backup Sheets salvo");
-      } catch (e) {
-        console.error("Backup Sheets falhou:", e.message);
-      }
-    }
-
-    // ── 3. Meta do backup ─────────────────────────────────────
-    const meta = {
-      tipo,
-      geradoEm: agora.toISOString(),
-      geradoEmBR: agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-      totalSessoes: Object.keys(sessoes).length,
-      arquivosSalvos,
-      pastaData: dataHoje,
-      versaoIndex: "index_novo.js — 14/06/2026"
-    };
-    await uploadJsonDrive(drive, `_meta-${tipo}-${ts}.json`, meta, pastaDataId);
-
-    const ts_BR = agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-    console.log(`✅ Backup COMPLETO (${tipo}) — ${ts_BR} — ${arquivosSalvos.length} arquivos na pasta ${dataHoje}`);
-
-    if (tipo === "diario")  ultimoBackupDiario  = agora;
-    if (tipo === "semanal") ultimoBackupSemanal = agora;
-    if (tipo === "manual")  ultimoBackupManual  = agora;
-
-    return { ok: true, arquivos: arquivosSalvos.length, pasta: `SEGURANÇA EFFECT / ${dataHoje}`, ts: ts_BR };
-
-  } catch (e) {
-    console.error(`Erro backup ${tipo}:`, e.message, e.stack?.slice(0, 300));
-    return { ok: false, erro: e.message };
-  }
-}
-
-// Backup diário — a cada 24h
-setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
-
-// Backup semanal — a cada 7 dias
-setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
-
-// Primeiro backup roda 5min após o servidor subir
-setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
-
-// Endpoint backup manual via Inbox
-app.post("/inbox/backup", async (req, res) => {
-  const resultado = await fazerBackup("manual");
-  return res.json({
-    ...resultado,
-    ultimoBackupDiario:  ultimoBackupDiario?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
-    ultimoBackupManual:  ultimoBackupManual?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null
-  });
-});
-
-// Endpoint de status do backup
-app.get("/inbox/backup/status", (req, res) => {
-  res.json({
-    ok: true,
-    ultimoBackupDiario:  ultimoBackupDiario?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
-    ultimoBackupManual:  ultimoBackupManual?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null,
-    totalSessoes: Object.keys(sessoes).length,
-    driveDisponivel: !!getDriveClient()
-  });
-});
-
-// ============================================================
 // ROTAS PRINCIPAIS
 // ============================================================
 
@@ -1169,125 +1015,8 @@ app.post("/webhook", async (req, res) => {
 // ============================================================
 
 app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
-app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
 app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
-
-// ─── DISC ASSESSMENT ───
-app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc.html")));
-
-app.post("/disc/submit", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || '');
-    const nome = String(req.body.nome || '').trim();
-    const vaga = String(req.body.vaga || '').trim();
-    const percentuaisNatural = req.body.percentuaisNatural || {};
-    const percentuaisAdaptado = req.body.percentuaisAdaptado || {};
-    const primarioNatural = req.body.primarioNatural || '';
-    const primarioAdaptado = req.body.primarioAdaptado || '';
-    const secundarioNatural = req.body.secundarioNatural || null;
-
-    const resultado = {
-      respondidoEm: new Date().toISOString(),
-      nome, vaga,
-      percentuaisNatural,
-      percentuaisAdaptado,
-      primario: primarioNatural,          // compatibilidade com inbox
-      primarioNatural,
-      primarioAdaptado,
-      secundario: secundarioNatural,
-      secundarioNatural
-    };
-
-    if (telefone && sessoes[telefone]) {
-      sessoes[telefone].discResult = resultado;
-      if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
-    }
-
-    await salvarDiscNoDrive(telefone, nome, resultado).catch(e => console.error('Erro DISC Drive:', e.message));
-
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('Erro /disc/submit:', e.message);
-    return res.json({ ok: false, erro: e.message });
-  }
-});
-
-app.get("/disc/resultado/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.json({ ok: false });
-  return res.json({ ok: true, resultado: sessao.discResult });
-});
-
-// Relatório visual completo (abre em nova aba pelo inbox)
-app.get("/disc/resultado-view/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
-  const d = sessao.discResult;
-  const nome = d.nome || sessao.nome || tel;
-  const pct = d.percentuais || {};
-  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5ff'};
-  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Analítico'};
-  const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC — ${nome}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:30px 20px;max-width:600px;margin:0 auto}
-  .card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,.09);margin-bottom:16px}
-  h1{font-size:20px;font-weight:800;color:#1e3a5f;margin-bottom:4px} .sub{font-size:11px;color:#a1a1aa;margin-bottom:20px}
-  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px} .bar-l{font-size:12px;font-weight:800;width:14px}
-  .bar-t{flex:1;background:#e8ecf1;border-radius:999px;height:14px;overflow:hidden} .bar-f{height:100%;border-radius:999px}
-  .bar-p{font-size:11px;font-weight:700;color:#a1a1aa;width:32px;text-align:right}
-  .sec-t{font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:16px}
-  p{font-size:12.5px;line-height:1.65;color:#374151} li{font-size:12.5px;line-height:1.65;color:#374151;margin-left:16px;margin-bottom:4px}
-  .logo{font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:20px}.logo span{color:#8ed1b2}
-  @media print{body{background:#fff}.card{box-shadow:none;border:1px solid #e5e7eb}}</style></head><body>
-  <div class="logo">Effect <span>Pessoas</span></div>
-  <div class="card">
-    <h1>${EMOJIS[d.primario]||''} ${NOMES[d.primario]||d.primario}${d.secundario?' / '+NOMES[d.secundario]:''}</h1>
-    <div class="sub">📋 Relatório DISC · ${nome} · ${new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
-    ${['D','I','S','C'].map(k=>`<div class="bar-row">
-      <div class="bar-l" style="color:${CORES[k]}">${k}</div>
-      <div class="bar-t"><div class="bar-f" style="width:${pct[k]||0}%;background:${CORES[k]}"></div></div>
-      <div class="bar-p">${pct[k]||0}%</div>
-    </div>`).join('')}
-  </div>
-  <button onclick="window.print()" style="background:#1e3a5f;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:16px">🖨️ Imprimir / Salvar PDF</button>
-  </body></html>`;
-  res.send(html);
-});
-
-async function salvarDiscNoDrive(telefone, nome, resultado) {
-  const drive = getDriveClient();
-  if (!drive) return;
-
-  // Garante pasta DISC-Resultados
-  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='DISC-Resultados' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: 'files(id)' });
-  let folderId;
-  if (busca.data.files?.length) {
-    folderId = busca.data.files[0].id;
-  } else {
-    const nova = await drive.files.create({
-      requestBody: { name: 'DISC-Resultados', mimeType: 'application/vnd.google-apps.folder', parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-      fields: 'id'
-    });
-    folderId = nova.data.id;
-  }
-
-  const { Readable } = require('stream');
-  const ts = new Date().toISOString().slice(0, 10);
-  const nomeArq = `DISC-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
-  const conteudo = JSON.stringify({ telefone, nome, ...resultado }, null, 2);
-
-  await drive.files.create({
-    requestBody: { name: nomeArq, parents: [folderId], mimeType: 'application/json' },
-    media: { mimeType: 'application/json', body: Readable.from(Buffer.from(conteudo, 'utf8')) },
-    fields: 'id'
-  });
-  console.log(`✅ DISC salvo no Drive: ${nomeArq}`);
-}
 app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
 app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
 app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
@@ -1366,20 +1095,21 @@ app.get("/inbox/sessoes", (req, res) => {
     lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
 
     const totalConversas = lista.length;
-    const totalNaoLidas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
+    const totalNaoLidasConversas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
     const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
 
     res.json({
       sessoes: dados,
+      total: totalConversas,
       totalConversas,
-      totalNaoLidas,
+      totalNaoLidasConversas,
       totalMensagensNaoLidas,
       novaConversaIniciaManual,
       atualizadoEm: new Date().toISOString(),
       atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
     });
   } catch (erro) {
-    res.json({ sessoes: {}, totalConversas: 0, totalNaoLidas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
+    res.json({ sessoes: {}, total: 0, totalConversas: 0, totalNaoLidasConversas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
   }
 });
 
@@ -1420,42 +1150,6 @@ app.post("/inbox/modo", async (req, res) => {
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
     return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
   } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
-});
-
-// ─── RESUMIR CONVERSA com IA ───
-app.post("/inbox/resumir", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    const hist = sessao.historico || [];
-    if (!hist.length) return res.json({ ok: false, erro: "Sem histórico para resumir" });
-
-    const ultimas = hist.slice(-30);
-    const transcript = ultimas.map(h => `${h.role === 'user' ? 'Candidato' : 'Lia'}: ${h.content || ''}`).join('\n');
-
-    const prompt = `Você é um assistente de RH. Com base no histórico de conversa abaixo, forneça um resumo estruturado e objetivo.
-
-HISTÓRICO:
-${transcript}
-
-Responda EXATAMENTE neste formato (sem markdown, sem asteriscos):
-Nome: [nome do candidato ou "não identificado"]
-Cidade/Bairro: [cidade e/ou bairro mencionado ou "não informado"]
-Vaga de interesse: [cargo ou vaga ou "não mencionado"]
-Experiência: [resumo breve da experiência ou "não informado"]
-Pendências: [o que ainda falta coletar ou confirmar — seja específico]
-Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "Aguardar envio de currículo", "Analisar perfil"]`;
-
-    const resumo = await chamarGeminiJSON(prompt).catch(() => chamarGemini(prompt));
-    if (!resumo) return res.json({ ok: false, erro: "IA não retornou resposta" });
-
-    const texto = typeof resumo === 'string' ? resumo : JSON.stringify(resumo, null, 2);
-    return res.json({ ok: true, resumo: texto });
-  } catch (erro) {
-    console.error("Erro /inbox/resumir:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
 });
 
 app.post("/inbox/enviar", async (req, res) => {
@@ -1841,7 +1535,7 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
       }
 
       const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
-      analise = await chamarGeminiJSON(prompt).catch(() => chamarClaudeJSON(prompt));
+      analise = await chamarClaudeJSON(prompt);
 
       if (vagaRH) {
         const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
@@ -1865,6 +1559,41 @@ Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perf
 📍 ${cidadeRH || "Serra/ES"}
 
 Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
+        }
+      }
+
+      // Força match por área para candidatos não-RH (logística, administrativo, operacional, etc.)
+      if (!vagaRH) {
+        const areaCv = detectarAreaCandidato(textoCurriculo);
+        if (areaCv) {
+          const vagaArea = buscarVagaDaArea(vagas, areaCv);
+          if (vagaArea) {
+            const cargoArea = campo(vagaArea, ["cargo", "Cargo", "CARGO"]);
+            const cidadeArea = campo(vagaArea, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
+            const idArea = campo(vagaArea, ["idVaga", "ID Vaga", "ID"]);
+            const semMatchArea = !analise.vagaInteresse
+              || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas")
+              || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas")
+              || normalizarTexto(analise.mensagemCandidato || "").includes("oportunidade em aberto");
+            if (semMatchArea) {
+              analise.vagaInteresse = cargoArea || analise.vagaInteresse;
+              analise.idVaga = idArea || analise.idVaga || "";
+              analise.cidade = analise.cidade || cidadeArea || "";
+              analise.areaInteresse = analise.areaInteresse || areaCv;
+              analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 70);
+              analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 70);
+              analise.classificacao = analise.classificacao || "Bom";
+              analise.motivoMatch = analise.motivoMatch || `Experiência/aderência com a área de ${areaCv}.`;
+              analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
+
+Analisei seu currículo e encontrei uma vaga com aderência ao seu perfil:
+
+📍 ${cargoArea}
+📍 ${cidadeArea || "ES"}
+
+Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
+            }
+          }
         }
       }
 
@@ -1968,18 +1697,58 @@ function textoDaVaga(vaga) {
 
 function filtrarVagasRelevantes(vagas, texto, historico) {
   const textoBusca = normalizarTexto(texto + " " + historico.map(h => h.content).join(" "));
+
+  // Detecta área e cidade do candidato uma vez só
+  const areaCandidato = detectarAreaCandidato(textoBusca);
+  const CIDADES_ES = ["linhares", "serra", "vitoria", "vila velha", "cariacica", "guarapari",
+                      "colatina", "cachoeiro", "aracruz", "viana", "fundao", "fundão",
+                      "santa teresa", "piuma", "piumã", "anchieta", "itapemirim", "marataizes", "marataízes"];
+
   const vagasComScore = vagas.map(vaga => {
     const textoVaga = textoDaVaga(vaga);
     let score = 0;
-    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => { if (textoVaga.includes(p)) score++; });
-    if (textoBusca.includes("linhares") && textoVaga.includes("linhares")) score += 50;
-    if (textoBusca.includes("limpeza") && textoVaga.includes("limpeza")) score += 30;
-    if (textoBusca.includes("diaria") && textoVaga.includes("diaria")) score += 30;
-    if (textoBusca.includes("servicos gerais") && textoVaga.includes("servicos gerais")) score += 30;
-    if (candidatoTemPerfilRH(textoBusca) && isRHVaga(vaga)) score += 80;
+
+    // Score base: sobreposição de palavras (4+ caracteres)
+    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => {
+      if (textoVaga.includes(p)) score++;
+    });
+
+    // Boost por área detectada do candidato
+    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
+      const boostsPorArea = {
+        rh: 80, logistica: 60, administrativo: 50, operacional: 50,
+        projetos: 50, alimentos: 50, limpeza: 50, vendas: 50
+      };
+      score += boostsPorArea[areaCandidato] || 40;
+    }
+
+    // Boost por cidade: candidato e vaga na mesma cidade
+    CIDADES_ES.forEach(cidade => {
+      if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 35;
+    });
+
+    // Boost extra quando área + cidade coincidem (candidato certo, local certo)
+    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
+      CIDADES_ES.forEach(cidade => {
+        if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 20;
+      });
+    }
+
     return { vaga, score };
   });
-  const filtradas = vagasComScore.filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(i => i.vaga);
+
+  const filtradas = vagasComScore
+    .filter(i => i.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(i => i.vaga);
+
+  // Fallback: se nenhuma vaga pontuou, tenta filtrar pelo menos pela área detectada
+  if (filtradas.length === 0 && areaCandidato) {
+    const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
+    if (porArea.length > 0) return porArea.slice(0, 8);
+  }
+
   return filtradas.length > 0 ? filtradas : vagas.slice(0, 8);
 }
 
@@ -2010,10 +1779,15 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
   const historicoCurto = sessao.historico.slice(-8).map(h => `${h.role}: ${h.content}`).join("\n");
   const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
   const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
-  const instrucaoCurriculo = ehLinhares ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.` : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
+  const areaDetectada = detectarAreaCandidato(textoConversa);
+  const instrucaoCurriculo = ehLinhares
+    ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
+    : areaDetectada
+    ? `COLETA DIRECIONADA — ÁREA: ${areaDetectada.toUpperCase()}:\n- O candidato demonstrou interesse ou experiência em ${areaDetectada}.\n- Priorize ofertar vagas da área de ${areaDetectada} disponíveis na lista de vagas.\n- Colete: nome, cidade/bairro, experiência na área, escolaridade, disponibilidade e currículo.\n- Se houver vaga compatível, apresente com cargo, local, regime, remuneração, benefícios, jornada e requisitos.\n- Se o currículo já foi recebido, confirme o interesse e informe os próximos passos.`
+    : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
   return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
 - Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
-- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área (ex: "tem vaga de garçom?", "auxiliar administrativo", "cozinheira", "rh") e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes. NÃO diga que vai confirmar com a equipe.\n- Só diga "não temos essa vaga no momento" se não houver nenhuma vaga compatível na lista abaixo.\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
+- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
 }
 
 function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
@@ -2030,34 +1804,6 @@ async function chamarClaudeJSON(prompt) {
     const match = texto.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     throw new Error("Claude não retornou JSON válido: " + texto);
-  }
-}
-
-// Versão JSON-only do Gemini — usada exclusivamente para análise de currículo
-async function chamarGeminiJSON(prompt) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) return null;
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const { default: axios2 } = await import("axios").catch(() => ({ default: require("axios") }));
-    const axiosFn = axios2 || require("axios");
-    const response = await axiosFn.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" }
-      },
-      { headers: { "Content-Type": "application/json" }, timeout: 45000 }
-    );
-    const texto = response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
-    if (!texto) throw new Error("Gemini retornou resposta vazia");
-    try { return JSON.parse(texto); }
-    catch (e) {
-      const match = texto.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-      throw new Error("GeminiJSON não retornou JSON válido: " + texto.slice(0, 200));
-    }
-  } catch (e) {
-    throw e;
   }
 }
 
@@ -2084,7 +1830,7 @@ async function chamarGemini(prompt, tentativa = 1) {
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 8192
+          maxOutputTokens: 1800
         }
       },
       {
@@ -2173,212 +1919,4 @@ async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao salvar análise:", e.message); }
-}
-
-async function confirmarInteresseNaPlanilha(telefone, analise) {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "confirmarInteresse", telefone, vagaInteresse: analise?.vagaInteresse || "", idVaga: analise?.idVaga || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao confirmar interesse:", e.message); }
-}
-
-function ehConfirmacaoInteresse(mensagem) {
-  const texto = normalizarTexto(mensagem);
-  return ["sim","tenho interesse","quero","quero participar","aceito","tenho sim","pode ser","tenho disponibilidade","tenho","ok"].some(p => texto === p || texto.includes(p));
-}
-
-async function enviarAlertaThiara(analise, telefone) {
-  try {
-    const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
-    const classificacao = String(analise.classificacao || "").toLowerCase();
-    if (score < 80 && !classificacao.includes("excelente")) return;
-    const destaque = score >= 90 || classificacao.includes("excelente") ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO" : "🚨 NOVO MATCH IDENTIFICADO";
-    const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta Thiara:", e.message); }
-}
-
-async function enviarAlertaInteresseThiara(analise, telefone) {
-  try {
-    const texto = `✅ CANDIDATO CONFIRMOU INTERESSE\n\n👤 ${analise?.nome || "Não identificado"}\n\n📌 Vaga:\n${analise?.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise?.cidade || "Não informada"}\n\n⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise?.classificacao || "Não informada"}\n\n📱 WhatsApp:\n+${telefone}\n\n✅ O candidato confirmou interesse na oportunidade.`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta interesse:", e.message); }
-}
-
-function formatarLista(texto) {
-  if (!texto) return "Não informado";
-  const partes = String(texto).split(/;|,|\n/).map(p => p.trim()).filter(Boolean).slice(0, 5);
-  return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
-}
-
-async function enviarMensagem(toOriginal, body) {
-  const to = limparTelefone(toOriginal);
-  try {
-    if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) return;
-    await axios.post(`https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-  } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
-}
-
-// ============================================================
-// TEMPLATE: envio de mensagem de modelo aprovado pela Meta
-// ============================================================
-async function enviarTemplate(telefoneOriginal, templateName, languageCode = "pt_BR", components = []) {
-  const to = limparTelefone(telefoneOriginal);
-  if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
-    throw new Error("META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados");
-  }
-  const payload = {
-    messaging_product: "whatsapp",
-    to,
-    type: "template",
-    template: {
-      name: templateName,
-      language: { code: languageCode },
-      ...(components.length > 0 ? { components } : {})
-    }
-  };
-console.log("[template-debug]", {
-  to,
-  phoneNumberId: CONFIG.PHONE_NUMBER_ID,
-  templateName,
-  languageCode,
-  payload: JSON.stringify(payload)
-});
-  
-  const resp = await axios.post(
-    `https://graph.facebook.com/v23.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
-    payload,
-    { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 }
-  );
-  return resp.data;
-}
-
-// ============================================================
-// REENGAJAMENTO — disparo em massa do template aprovado
-// ============================================================
-
-// Lista de todos os telefones elegíveis (memória + Sheets)
-async function coletarTelefonesReengajamento() {
-  const set = new Set();
-
-  // 1) Sessões em memória
-  for (const tel of Object.keys(sessoes)) {
-    const t = limparTelefone(tel);
-    if (t && t.length >= 10) set.add(t);
-  }
-
-  // 2) Candidatos da planilha (se VAGAS_URL configurado)
-  if (CONFIG.VAGAS_URL) {
-    try {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
-      const lista = r.data?.candidatos || r.data?.data || [];
-      for (const c of lista) {
-        const tel = limparTelefone(c.telefone || c.Telefone || c.whatsapp || c.Whatsapp || "");
-        if (tel && tel.length >= 10) set.add(tel);
-      }
-    } catch (e) {
-      console.error("reengajamento: erro ao buscar planilha:", e.message);
-    }
-  }
-
-  // Remove o próprio número da Effect e o de Thiara para não se auto-disparar
-  set.delete(limparTelefone(CONFIG.THIARA_WHATSAPP));
-  set.delete("5527992566126"); // número principal Effect
-
-  return Array.from(set);
-}
-
-// GET — quantos serão atingidos e histórico do último disparo
-let _ultimoDisparoMeta = null;
-
-app.get("/inbox/reengajamento/status", async (req, res) => {
-  try {
-    const telefones = await coletarTelefonesReengajamento();
-    res.json({
-      ok: true,
-      totalContatos: telefones.length,
-      ultimoDisparo: _ultimoDisparoMeta,
-      configurado: !!(CONFIG.META_ACCESS_TOKEN && CONFIG.PHONE_NUMBER_ID)
-    });
-  } catch (e) {
-    res.json({ ok: false, erro: e.message });
-  }
-});
-
-// POST — executa o disparo em massa
-app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  const { templateName = "effect_reengajamento_candidatos",
-        languageCode = "pt-BR", forceTelefones, limite } = req.body || {};
-
-  if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
-    return res.json({ ok: false, erro: "META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway." });
-  }
-
-  const telefones = forceTelefones?.length
-    ? forceTelefones.map(limparTelefone).filter(t => t.length >= 10)
-    : await coletarTelefonesReengajamento();
-  const telefonesParaDisparo = limite
-  ? telefones.slice(0, Number(limite))
-  : telefones;
-
-  if (!telefonesParaDisparo.length) {
-    return res.json({ ok: false, erro: "Nenhum contato encontrado para disparo." });
-  }
-
-  const resultados = { enviados: [], falhos: [], total: telefonesParaDisparo.length };
-  const DELAY_MS = 1200; // 1.2s entre envios para respeitar rate limit Meta
-
-  // Processa em background para não timeout no HTTP
-  res.json({ ok: true, total: telefonesParaDisparo.length, msg: "Disparo iniciado em background. Verifique /inbox/reengajamento/status para o resultado." });
-
-  (async () => {
-    for (const tel of telefonesParaDisparo) {
-      try {
-        await enviarTemplate(tel, templateName, languageCode);
-        resultados.enviados.push(tel);
-        console.log(`[reengajamento] ✅ enviado → ${tel}`);
-
-        // Garante sessão para quando o candidato responder
-        garantirSessao(tel);
-
-      } catch (e) {
-        const motivo = e.response?.data?.error?.message || e.message;
-        resultados.falhos.push({ tel, motivo });
-        console.error(`[reengajamento] ❌ falha → ${tel}: ${motivo}`);
-      }
-      await sleep(DELAY_MS);
-    }
-
-    _ultimoDisparoMeta = {
-      ts: agora(),
-      tsMs: Date.now(),
-      template: templateName,
-      total: telefonesParaDisparo.length,
-      enviados: resultados.enviados.length,
-      falhos: resultados.falhos.length,
-      detalhesFalhos: resultados.falhos.slice(0, 20) // primeiros 20 erros
-    };
-    console.log(`[reengajamento] ✅ concluído: ${resultados.enviados.length} enviados, ${resultados.falhos.length} falhos`);
-  })();
-});
-
-// POST — reengajamento de número específico
-app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
-  const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt-BR" } = req.body || {};
-  if (!telefone) return res.json({ ok: false, erro: "Telefone obrigatório." });
-  try {
-    const r = await enviarTemplate(telefone, templateName, languageCode);
-    garantirSessao(limparTelefone(telefone));
-    res.json({ ok: true, resultado: r });
-  } catch (e) {
-    res.json({ ok: false, erro: e.response?.data?.error?.message || e.message });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Lia rodando na porta ${PORT} — modo supervisor + Linhares via planilha ✅`);
-});
+    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAten
