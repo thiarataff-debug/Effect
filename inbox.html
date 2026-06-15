@@ -54,10 +54,28 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .sb-top{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
 .sb-title-row{display:flex;justify-content:space-between;align-items:center}
 .sb-title{font-weight:700;font-size:12px;color:var(--navy)}
-.sb-badges{display:flex;gap:5px}
+.sb-badges{display:flex;gap:5px;align-items:center}
 .badge{padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700}
 .badge-blue{background:var(--blue);color:#fff}
 .badge-red{background:#fee2e2;color:var(--red)}
+/* Botão selecionar */
+.btn-selecionar-all{padding:3px 8px;border-radius:7px;border:1px solid var(--border);background:transparent;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s}
+.btn-selecionar-all:hover,.btn-selecionar-all.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}
+/* Barra de ações em massa */
+.bulk-bar{display:flex;align-items:center;gap:6px;padding:7px 12px;background:#eef6ff;border-bottom:1px solid #bfdbfe;flex-shrink:0;flex-wrap:wrap}
+.bulk-count{font-size:11px;font-weight:700;color:var(--navy);flex:1;min-width:80px}
+.bulk-btn{padding:4px 9px;border-radius:6px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s}
+.bulk-btn-primary{background:var(--navy);color:#fff}
+.bulk-btn-primary:hover{background:var(--blue)}
+.bulk-btn-ghost{background:rgba(0,0,0,.07);color:var(--text)}
+.bulk-btn-ghost:hover{background:rgba(0,0,0,.13)}
+.bulk-btn-cancel{background:transparent;color:var(--muted);font-size:13px;padding:2px 6px}
+/* Checkbox nas cards */
+.conv-card.selecao-ativa{cursor:default}
+.conv-card.selecao-ativa:active{background:inherit}
+.card-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;cursor:pointer;background:#fff}
+.conv-card.selecionada .card-check{background:var(--navy);border-color:var(--navy);color:#fff;font-size:11px}
+.conv-card.selecionada{background:#e8f0fe}
 .search-box{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:6px 10px}
 .search-box input{border:none;background:transparent;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex:1}
 
@@ -322,7 +340,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 /* ── DROPDOWN MAIS ── */
 .ha-dropdown{position:relative;display:inline-block}
-.ha-dropdown-menu{display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:300;min-width:190px;padding:5px 0}
+.ha-dropdown-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;min-width:200px;padding:5px 0}
 .ha-dropdown-menu.show{display:block}
 .ha-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:background .1s}
 .ha-dropdown-item:hover{background:var(--bg)}
@@ -433,8 +451,69 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
     <button class="rbtn" id="btn-backup" onclick="fazerBackupManual()" title="Salvar backup agora no Google Drive">💾 Backup</button>
+    <button class="rbtn" id="btn-reengajamento" onclick="abrirReengajamento()" title="Disparar template de reengajamento em massa" style="background:rgba(31,165,240,0.15);color:#1fa5f0;border-color:rgba(31,165,240,0.3)">📢 Reengajamento</button>
   </div>
 </header>
+
+<!-- MODAL REENGAJAMENTO -->
+<div id="modal-reengajamento" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:'Montserrat',sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div>
+        <h3 style="font-size:16px;font-weight:700;margin:0">📢 Disparo em Massa — Reengajamento</h3>
+        <p style="font-size:11px;color:#a1a1aa;margin:4px 0 0">Template: <strong>effect_reengajamento_candidatos</strong></p>
+      </div>
+      <button onclick="fecharReengajamento()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#a1a1aa">✕</button>
+    </div>
+
+    <!-- Status -->
+    <div id="reeng-status-box" style="background:#f5f7fa;border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="text-align:center;min-width:70px">
+          <div style="font-size:26px;font-weight:800;color:#1fa5f0" id="reeng-total">—</div>
+          <div style="font-size:10px;color:#a1a1aa">Contatos</div>
+        </div>
+        <div style="flex:1;font-size:11px;color:#2a2a2b;line-height:1.7">
+          Todos os candidatos que já conversaram com a Lia serão atingidos:<br>
+          sessões ativas + contatos salvos no Google Sheets.<br>
+          <span style="color:#a1a1aa;font-size:10px" id="reeng-ultimo-disparo"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview da mensagem -->
+    <div style="background:#e7fbe6;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:11px;line-height:1.7;color:#2a2a2b;border-left:3px solid #25D366">
+      <strong style="font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.8px">Preview do template</strong><br><br>
+      Olá! Aqui é a Lia, da Effect. 💙<br><br>
+      Recentemente tivemos uma instabilidade temporária em nosso sistema, o que pode ter interrompido seu atendimento.<br><br>
+      Agora tudo já foi normalizado e gostaríamos muito de continuar nossa conversa.<br><br>
+      Caso ainda esteja em busca de uma oportunidade profissional, basta responder esta mensagem com um "Oi". 😊<br><br>
+      Será um prazer conhecer melhor o seu perfil e verificar vagas compatíveis com sua experiência.<br><br>
+      <span style="background:#fff;border:1px solid #ddd;border-radius:20px;padding:4px 14px;font-size:11px;color:#1fa5f0;font-weight:600">👍 Tenho interesse</span>
+    </div>
+
+    <!-- Log de resultado -->
+    <div id="reeng-log" style="display:none;background:#f5f7fa;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:#2a2a2b;max-height:100px;overflow-y:auto"></div>
+
+    <!-- Barra de progresso -->
+    <div id="reeng-progress-wrap" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;color:#a1a1aa;margin-bottom:6px" id="reeng-progress-txt">Disparando...</div>
+      <div style="background:#f5f7fa;border-radius:20px;height:8px;overflow:hidden">
+        <div id="reeng-progress-bar" style="height:100%;background:#1fa5f0;border-radius:20px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button id="reeng-btn-disparar" onclick="confirmarDisparo()" style="flex:1;padding:12px;background:#1fa5f0;color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        📤 Disparar para todos
+      </button>
+      <button onclick="fecharReengajamento()" style="padding:12px 18px;background:#f5f7fa;color:#2a2a2b;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:600;cursor:pointer">
+        Cancelar
+      </button>
+    </div>
+    <p style="font-size:10px;color:#a1a1aa;margin:10px 0 0;text-align:center">O disparo ocorre em background com intervalo de 1,2s entre envios para respeitar os limites da Meta.</p>
+  </div>
+</div>
 
 <!-- VIEW: INBOX -->
 <div class="app" id="view-inbox">
@@ -444,6 +523,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <div class="sb-title-row">
         <span class="sb-title">💬 Conversas</span>
         <div class="sb-badges">
+          <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()">☑ Selecionar</button>
           <span class="badge badge-red" id="badge-novas" style="display:none">0</span>
           <span class="badge badge-blue" id="badge-total">0</span>
         </div>
@@ -462,6 +542,14 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <button class="ftab" onclick="setTab(this,'curriculos')">📄 CVs <span class="ftab-count" id="cnt-curriculos">0</span></button>
       <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
       <button class="ftab" onclick="setTab(this,'arquivadas')">📦 Arquivadas <span class="ftab-count" id="cnt-arquivadas">0</span></button>
+    </div>
+    <div class="bulk-bar" id="bulk-bar" style="display:none">
+      <span class="bulk-count" id="bulk-count">0 selecionadas</span>
+      <button class="bulk-btn bulk-btn-ghost" onclick="selecionarTodasVissiveis()">Todas</button>
+      <button class="bulk-btn bulk-btn-ghost" onclick="desselecionarTodas()">Nenhuma</button>
+      <button class="bulk-btn bulk-btn-primary" onclick="bulkArquivar()">📦 Arquivar</button>
+      <button class="bulk-btn bulk-btn-ghost" onclick="bulkMarcarLidas()">✅ Lidas</button>
+      <button class="bulk-btn bulk-btn-cancel" onclick="cancelarSelecao()" title="Cancelar seleção">✕</button>
     </div>
     <div class="conv-list" id="conv-list"><div class="empty">Carregando...</div></div>
   </div>
@@ -492,7 +580,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
           <button class="ha-btn" id="btn-disc" onclick="abrirDiscCandidato()" title="Enviar link DISC ou ver resultado" style="background:#dbeafe;color:#1e40af;font-weight:700">📊 DISC</button>
           <!-- Dropdown Mais -->
           <div class="ha-dropdown" id="dropdown-mais">
-            <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event)">⋯ Mais</button>
+            <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event,this)">⋯ Mais</button>
             <div class="ha-dropdown-menu" id="dropdown-mais-menu">
               <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
               <div class="ha-dropdown-item" onclick="abrirModalSlots();fecharDropdownMais()"><span class="di-icon">🕐</span> Oferecer Horários</div>
@@ -1294,47 +1382,46 @@ const horaAtual = agoraSP.getHours()*60+agoraSP.getMinutes();
 
 
 function textoHoraFallbackSessao(s, ultima){
-  const candidatos = [
+  // Limite: só aceita timestamps dentro de ±30 dias (evita "horários malucos")
+  const agora = Date.now();
+  const LIMITE_PASSADO = agora - 30 * 24 * 60 * 60 * 1000;
+  const LIMITE_FUTURO  = agora + 10 * 60 * 1000;
+
+  function msValido(ms) {
+    return ms && ms > LIMITE_PASSADO && ms <= LIMITE_FUTURO;
+  }
+  function formatarMs(ms) {
+    return new Date(ms).toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+    });
+  }
+
+  // Candidatos numéricos/ISO primeiro (mais confiáveis)
+  const candidatosMs = [
+    s?.lastMessageAtMs,
+    ultima?.timestampMs,
+    ultima?.timestampISO,
+    ultima?.timestamp,
     s?.dataWhatsapp,
     s?.formattedLastMessageAt,
     s?.lastMessageAt,
-    s?.lastMessageAtMs,
-    ultima?.horarioFormatado,
-    ultima?.timestampMs,
-    ultima?.timestampISO,
-    ultima?.timestamp
   ];
+  for (const c of candidatosMs) {
+    if (!c) continue;
+    const ms = tsParaMs(c);
+    if (msValido(ms)) return formatarMs(ms);
+  }
 
-  for (const c of candidatos) {
+  // Candidatos de texto puro (horario formatado, ex: "09:02")
+  const candidatosTexto = [
+    ultima?.horarioFormatado,
+    ultima?.horario,
+    s?.horarioUltimaMensagem
+  ];
+  for (const c of candidatosTexto) {
     const valor = String(c || '').trim();
-
-    if (!valor || valor === 'Invalid Date' || valor === 'NaN' || valor === '--:--' || valor === '—') continue;
-
-    if (/^\d{2}:\d{2}$/.test(valor)) return valor;
-
-    const n = Number(valor);
-    if (Number.isFinite(n) && n > 0) {
-      const ms = n < 10000000000 ? n * 1000 : n;
-      const d = new Date(ms);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'America/Sao_Paulo'
-        });
-      }
-    }
-
-    const d = new Date(valor);
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'America/Sao_Paulo'
-      });
-    }
-
-    return valor;
+    if (!valor || valor === 'Invalid Date' || valor === 'NaN' || valor === '--:--' || valor === '—' || valor === '0') continue;
+    if (/^\d{1,2}:\d{2}$/.test(valor)) return valor; // "09:02" — sem data, usa direto
   }
 
   return '';
@@ -1370,16 +1457,23 @@ function formatarHora(ts){
 function atividadeMsSessao(s, idxFallback=0){
   const hist = s?.historico || [];
 
-  // Prioriza SOMENTE o histórico real das mensagens
+  // 1) Tenta extrair timestamp válido do histórico (mais recente primeiro)
   for(let i=hist.length-1;i>=0;i--){
     const ms = tsParaMs(obterTimestampMsg(hist[i]));
-    if(ms && ms > 0){
-      return ms;
-    }
+    if(ms && ms > 0) return ms;
   }
 
-  // Se não houver histórico com timestamp válido
-  return 0;
+  // 2) Fallback: lastMessageAtMs gravado na sessão
+  const fb1 = tsParaMs(s?.lastMessageAtMs);
+  if(fb1 > 0) return fb1;
+
+  // 3) Fallback: dataWhatsapp ou formattedLastMessageAt
+  const fb2 = tsParaMs(s?.dataWhatsapp || s?.formattedLastMessageAt || s?.lastMessageAt);
+  if(fb2 > 0) return fb2;
+
+  // 4) Se ainda não há timestamp real, usa a posição do array como desempate
+  //    (garante que pelo menos a ordem de chegada seja preservada)
+  return idxFallback > 0 ? -idxFallback : 0;
 }
 
 function compatInfo(score){
@@ -1471,10 +1565,19 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
     const alerta24=isAlerta24h(tel,s);
     const humano=precisaHumano(tel,s);
 
-    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}${alerta24&&!isActive?' alerta24h':''}${humano&&!isActive?' precisa-humano':''}`;
+    const isSel = selecionadas.has(tel);
+    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}${alerta24&&!isActive?' alerta24h':''}${humano&&!isActive?' precisa-humano':''}${modoSelecao?' selecao-ativa':''}${isSel?' selecionada':''}`;
 
-    return `<div class="${cardClass}" onclick="abrirConversa('${tel}')">
-      <div class="avatar ${avClass}">${avContent}</div>
+    const onclickHandler = modoSelecao
+      ? `toggleSelecionada('${tel}',event)`
+      : `abrirConversa('${tel}')`;
+
+    const avatarOrCheck = modoSelecao
+      ? `<div class="card-check" onclick="toggleSelecionada('${tel}',event)">${isSel?'✓':''}</div>`
+      : `<div class="avatar ${avClass}">${avContent}</div>`;
+
+    return `<div class="${cardClass}" data-tel="${tel}" onclick="${onclickHandler}">
+      ${avatarOrCheck}
       <div class="conv-info">
         <div class="conv-name-row">
           <div class="conv-name">${nome}</div>
@@ -2533,18 +2636,93 @@ async function fazerBackupManual(){
     const r=await fetch(`${API}/inbox/backup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
     const d=await r.json();
     if(d.ok){
-      toast('💾 Backup salvo no Google Drive!','success');
+      const info=d.pasta?` · ${d.pasta}`:'';
+      const arqs=d.arquivos?` (${d.arquivos} arquivos)`:'';
+      toast(`💾 Backup salvo! SEGURANÇA EFFECT${info}${arqs}`,'success');
       if(btn)btn.textContent='✅ Backup OK';
-      setTimeout(()=>{if(btn){btn.textContent='💾 Backup';btn.disabled=false;}},3000);
+      setTimeout(()=>{if(btn){btn.textContent='💾 Backup';btn.disabled=false;}},4000);
     }else{
-      toast('Erro no backup — verifique logs do Railway','error');
-      if(btn){btn.textContent='💾 Backup';btn.disabled=false;}
+      const motivo=d.erro||'Drive indisponível — verifique GOOGLE_SERVICE_ACCOUNT_JSON no Railway';
+      toast(`❌ Backup falhou: ${motivo}`,'error');
+      console.error('Backup erro:', motivo);
+      if(btn){btn.textContent='⚠️ Backup';btn.disabled=false;}
+      setTimeout(()=>{if(btn)btn.textContent='💾 Backup';},5000);
     }
   }catch(e){
-    toast('Erro de conexão no backup','error');
+    toast(`❌ Erro de conexão: ${e.message}`,'error');
     if(btn){btn.textContent='💾 Backup';btn.disabled=false;}
   }
 }
+// ===== REENGAJAMENTO EM MASSA =====
+async function abrirReengajamento(){
+  const modal=document.getElementById('modal-reengajamento');
+  modal.style.display='flex';
+  // Carregar status
+  try{
+    const r=await fetch(`${API}/inbox/reengajamento/status`);
+    const d=await r.json();
+    document.getElementById('reeng-total').textContent=d.totalContatos||'0';
+    const ul=document.getElementById('reeng-ultimo-disparo');
+    if(d.ultimoDisparo){
+      ul.textContent=`Último disparo: ${d.ultimoDisparo.ts} — ${d.ultimoDisparo.enviados} enviados, ${d.ultimoDisparo.falhos} falhos`;
+    } else {
+      ul.textContent='Nenhum disparo realizado ainda.';
+    }
+    if(!d.configurado){
+      document.getElementById('reeng-btn-disparar').disabled=true;
+      document.getElementById('reeng-log').style.display='block';
+      document.getElementById('reeng-log').textContent='⚠️ META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway.';
+    }
+  }catch(e){
+    document.getElementById('reeng-total').textContent='?';
+  }
+}
+
+function fecharReengajamento(){
+  document.getElementById('modal-reengajamento').style.display='none';
+  // Reset UI
+  document.getElementById('reeng-progress-wrap').style.display='none';
+  document.getElementById('reeng-log').style.display='none';
+  const btn=document.getElementById('reeng-btn-disparar');
+  btn.disabled=false;btn.textContent='📤 Disparar para todos';
+}
+
+async function confirmarDisparo(){
+  const total=document.getElementById('reeng-total').textContent;
+  if(!confirm(`Confirma o disparo do template para ${total} contatos?\n\nOs candidatos receberão a mensagem de reengajamento da Lia.`)) return;
+  const btn=document.getElementById('reeng-btn-disparar');
+  btn.disabled=true;btn.textContent='⏳ Disparando...';
+  document.getElementById('reeng-progress-wrap').style.display='block';
+  document.getElementById('reeng-progress-bar').style.width='5%';
+  document.getElementById('reeng-progress-txt').textContent='Iniciando disparo em background...';
+  document.getElementById('reeng-log').style.display='none';
+  try{
+    const r=await fetch(`${API}/inbox/reengajamento/disparar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const d=await r.json();
+    if(d.ok){
+      document.getElementById('reeng-progress-bar').style.width='100%';
+      document.getElementById('reeng-progress-txt').textContent=`✅ Disparo iniciado para ${d.total} contatos. Aguarde alguns minutos.`;
+      document.getElementById('reeng-log').style.display='block';
+      document.getElementById('reeng-log').innerHTML=`✅ Disparo em andamento para <strong>${d.total}</strong> contatos com intervalo de 1,2s.<br>Os candidatos receberão o template agora. Quando responderem, a Lia assumirá a conversa automaticamente.<br><br><em>Feche este painel e acompanhe as respostas no Inbox.</em>`;
+      btn.textContent='✅ Disparado!';
+      // Recarrega status após 5s
+      setTimeout(()=>abrirReengajamento(),5000);
+    } else {
+      document.getElementById('reeng-progress-wrap').style.display='none';
+      document.getElementById('reeng-log').style.display='block';
+      document.getElementById('reeng-log').textContent='❌ Erro: '+(d.erro||'Verifique as configurações.');
+      btn.disabled=false;btn.textContent='📤 Disparar para todos';
+      toast('❌ Erro no disparo: '+(d.erro||'verifique Railway'),'error');
+    }
+  }catch(e){
+    document.getElementById('reeng-progress-wrap').style.display='none';
+    document.getElementById('reeng-log').style.display='block';
+    document.getElementById('reeng-log').textContent='❌ Erro de conexão: '+e.message;
+    btn.disabled=false;btn.textContent='📤 Disparar para todos';
+    toast('❌ Erro de conexão: '+e.message,'error');
+  }
+}
+
 async function toggleNovasManual(){
   const novo=!novaConversaIniciaManual;
   try{
@@ -3014,10 +3192,24 @@ function usarSlotsNoChat(){
 }
 
 // ─── DROPDOWN MAIS ───
-function toggleDropdownMais(e){
+function toggleDropdownMais(e, btn){
   e.stopPropagation();
-  const m=document.getElementById('dropdown-mais-menu');
-  m.classList.toggle('show');
+  const menu = document.getElementById('dropdown-mais-menu');
+  if(menu.classList.contains('show')){
+    menu.classList.remove('show');
+    return;
+  }
+  // Posiciona o menu usando position:fixed para evitar clipping por overflow:hidden
+  btn = btn || e.currentTarget || e.target;
+  const rect = btn.getBoundingClientRect();
+  const menuW = 210;
+  let left = rect.left;
+  // Se sair pela direita, alinha pela borda direita do botão
+  if(left + menuW > window.innerWidth - 8) left = rect.right - menuW;
+  if(left < 8) left = 8;
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = left + 'px';
+  menu.classList.add('show');
 }
 function fecharDropdownMais(){
   document.getElementById('dropdown-mais-menu').classList.remove('show');
@@ -3027,6 +3219,100 @@ document.addEventListener('click',function(e){
     fecharDropdownMais();
   }
 });
+
+// ─── SELEÇÃO EM MASSA ───
+let modoSelecao = false;
+let selecionadas = new Set();
+
+function toggleModoSelecao(){
+  modoSelecao = !modoSelecao;
+  selecionadas.clear();
+  const btn = document.getElementById('btn-selecionar-all');
+  const bar = document.getElementById('bulk-bar');
+  if(modoSelecao){
+    btn.classList.add('ativo');
+    btn.textContent = '✕ Cancelar';
+    bar.style.display = 'flex';
+  } else {
+    cancelarSelecao();
+  }
+  renderLista();
+}
+
+function cancelarSelecao(){
+  modoSelecao = false;
+  selecionadas.clear();
+  const btn = document.getElementById('btn-selecionar-all');
+  if(btn){ btn.classList.remove('ativo'); btn.textContent = '☑ Selecionar'; }
+  const bar = document.getElementById('bulk-bar');
+  if(bar) bar.style.display = 'none';
+  renderLista();
+}
+
+function toggleSelecionada(tel, e){
+  e.stopPropagation();
+  if(selecionadas.has(tel)) selecionadas.delete(tel);
+  else selecionadas.add(tel);
+  atualizarBulkCount();
+  // atualiza só o card clicado para evitar re-render completo
+  const card = document.querySelector(`.conv-card[data-tel="${tel}"]`);
+  if(card){
+    card.classList.toggle('selecionada', selecionadas.has(tel));
+    const chk = card.querySelector('.card-check');
+    if(chk) chk.textContent = selecionadas.has(tel) ? '✓' : '';
+  }
+}
+
+function atualizarBulkCount(){
+  const el = document.getElementById('bulk-count');
+  if(el) el.textContent = selecionadas.size + (selecionadas.size === 1 ? ' selecionada' : ' selecionadas');
+}
+
+function selecionarTodasVissiveis(){
+  // Seleciona todos os cards visíveis no DOM
+  document.querySelectorAll('.conv-card[data-tel]').forEach(c => selecionadas.add(c.dataset.tel));
+  atualizarBulkCount();
+  renderLista();
+}
+
+function desselecionarTodas(){
+  selecionadas.clear();
+  atualizarBulkCount();
+  renderLista();
+}
+
+async function bulkArquivar(){
+  if(!selecionadas.size){ toast('Nenhuma conversa selecionada','error'); return; }
+  const n = selecionadas.size;
+  selecionadas.forEach(tel => {
+    const s = todasSessoes[tel];
+    if(s){ const hist=s.historico||[]; setMeta(tel,{ultimaMsgVista:hist.length}); }
+    arquivadas[tel] = true;
+    if(sessaoAtual === tel){
+      sessaoAtual = null;
+      document.getElementById('chat-active').style.display='none';
+      document.getElementById('chat-empty').style.display='flex';
+      document.getElementById('right-panel').style.display='none';
+    }
+  });
+  salvarLocal();
+  cancelarSelecao();
+  renderLista();
+  toast(`📦 ${n} conversa${n>1?'s':''} arquivada${n>1?'s':''}`, 'success');
+}
+
+function bulkMarcarLidas(){
+  if(!selecionadas.size){ toast('Nenhuma conversa selecionada','error'); return; }
+  const n = selecionadas.size;
+  selecionadas.forEach(tel => {
+    const s = todasSessoes[tel];
+    if(s){ const hist=s.historico||[]; setMeta(tel,{ultimaMsgVista:hist.length}); }
+  });
+  salvarLocal();
+  cancelarSelecao();
+  renderLista();
+  toast(`✅ ${n} conversa${n>1?'s':''} marcada${n>1?'s':''} como lida${n>1?'s':''}`, 'success');
+}
 
 // ─── UTILS ───
 function filtrarLista(v){busca=v;renderLista();}
