@@ -2303,7 +2303,7 @@ app.get("/inbox/reengajamento/status", async (req, res) => {
 
 // POST — executa o disparo em massa
 app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones } = req.body || {};
+  const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
 
   if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
     return res.json({ ok: false, erro: "META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway." });
@@ -2312,19 +2312,22 @@ app.post("/inbox/reengajamento/disparar", async (req, res) => {
   const telefones = forceTelefones?.length
     ? forceTelefones.map(limparTelefone).filter(t => t.length >= 10)
     : await coletarTelefonesReengajamento();
+  const telefonesParaDisparo = limite
+  ? telefones.slice(0, Number(limite))
+  : telefones;
 
-  if (!telefones.length) {
+  if (!telefonesParaDisparo.length) {
     return res.json({ ok: false, erro: "Nenhum contato encontrado para disparo." });
   }
 
-  const resultados = { enviados: [], falhos: [], total: telefones.length };
+  const resultados = { enviados: [], falhos: [], total: telefonesParaDisparo.length };
   const DELAY_MS = 1200; // 1.2s entre envios para respeitar rate limit Meta
 
   // Processa em background para não timeout no HTTP
-  res.json({ ok: true, total: telefones.length, msg: "Disparo iniciado em background. Verifique /inbox/reengajamento/status para o resultado." });
+  res.json({ ok: true, total: telefonesParaDisparo.length, msg: "Disparo iniciado em background. Verifique /inbox/reengajamento/status para o resultado." });
 
   (async () => {
-    for (const tel of telefones) {
+    for (const tel of telefonesParaDisparo) {
       try {
         await enviarTemplate(tel, templateName, languageCode);
         resultados.enviados.push(tel);
@@ -2345,7 +2348,7 @@ app.post("/inbox/reengajamento/disparar", async (req, res) => {
       ts: agora(),
       tsMs: Date.now(),
       template: templateName,
-      total: telefones.length,
+      total: telefonesParaDisparo.length,
       enviados: resultados.enviados.length,
       falhos: resultados.falhos.length,
       detalhesFalhos: resultados.falhos.slice(0, 20) // primeiros 20 erros
