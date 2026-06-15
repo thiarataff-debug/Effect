@@ -2241,7 +2241,7 @@ async function enviarTemplate(telefoneOriginal, templateName, languageCode = "pt
     }
   };
   const resp = await axios.post(
-    `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
+    `https://graph.facebook.com/v23.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
     payload,
     { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 }
   );
