@@ -1,3 +1,7 @@
+https://raw.githubusercontent.com/thiarataff-debug/Effect/main/index.js
+→ https://raw.githubusercontent.com/thiarataff-debug/Effect/main/index.js
+Content-Type: text/plain; charset=utf-8
+
 // VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
 // INDEX CONSOLIDADO — 10/06/2026
 // CORREÇÃO: horário real das mensagens recebido pelo timestamp do WhatsApp — versão Gemini
@@ -18,6 +22,7 @@ const { google } = require("googleapis");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
+app.use((req, res, next) => { res.header("Access-Control-Allow-Origin", "*"); res.header("Access-Control-Allow-Headers", "Content-Type, Authorization"); res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); if (req.method === "OPTIONS") return res.sendStatus(200); next(); });
 
 const PORT = process.env.PORT || 3000;
 const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
@@ -308,67 +313,16 @@ const AREA_SYNONYMS = {
     "r&s", "rs", "treinamento", "endomarketing", "clima", "cultura",
     "administracao de pessoal", "administração de pessoal",
     "analista administrativo rh", "administrativo rh", "carreira", "remuneracao", "remuneração"
-  ],
-  logistica: [
-    "logistica", "logístico", "logistica", "auxiliar de logistica", "assistente de logistica",
-    "operador de logistica", "estoque", "almoxarifado", "expedicao", "expedição",
-    "armazem", "armazém", "separacao", "separação", "conferente", "inventario", "inventário",
-    "carga e descarga", "carregamento", "descarga", "empilhadeira", "paletizacao", "paletização",
-    "supply chain", "cadeia de suprimentos", "transportadora", "frota", "deposito", "depósito"
-  ],
-  administrativo: [
-    "administrativo", "administracao", "administração", "assistente administrativo",
-    "auxiliar administrativo", "secretaria", "secretario", "secretária", "recepcao", "recepção",
-    "recepcionista", "backoffice", "back office", "suporte administrativo", "rotinas administrativas",
-    "digitacao", "digitação", "financeiro", "contas a pagar", "contas a receber",
-    "faturamento", "cobranca", "cobrança", "tesouraria", "fiscal", "notas fiscais",
-    "sesmt", "seguranca do trabalho", "segurança do trabalho", "meio ambiente"
-  ],
-  operacional: [
-    "operacional", "operacoes", "operações", "producao", "produção", "operador",
-    "auxiliar de producao", "auxiliar de produção", "linha de producao", "linha de produção",
-    "montagem", "embalagem", "qualidade", "controle de qualidade", "manutencao", "manutenção",
-    "tecnico", "técnico", "operador de maquina", "operador de máquina", "trainee operacoes", "trainee de operacoes"
-  ],
-  projetos: [
-    "projetos", "assistente de projetos", "analista de projetos", "gerente de projetos",
-    "pmo", "engenharia", "engenheiro", "engenheira", "analista", "tecnico de campo",
-    "tecnico de projetos", "vistoriador", "instalacao", "instalação", "obras", "construcao", "construção"
-  ],
-  alimentos: [
-    "garcom", "garçom", "garconete", "garçonete", "barman", "bartender",
-    "cozinha", "cozinheiro", "cozinheira", "auxiliar de cozinha", "ajudante de cozinha",
-    "pizzaiolo", "churrasco", "chefe de cozinha", "sous chef", "confeiteiro", "confeitaria",
-    "atendente de restaurante", "atendente de bar", "restaurante", "buffet", "lanchonete",
-    "padeiro", "panificacao", "panificação", "sorvete", "sorveteria", "chapa"
-  ],
-  limpeza: [
-    "limpeza", "servicos gerais", "serviços gerais", "faxina", "faxineira", "faxineiro",
-    "zelador", "zeladora", "auxiliar de limpeza", "copeira", "copeiro",
-    "lavanderia", "higienizacao", "higienização", "portaria", "porteiro", "vigilancia", "vigilância",
-    "diaria", "diária"
-  ],
-  vendas: [
-    "vendas", "vendedor", "vendedora", "comercial", "representante", "consultor de vendas",
-    "atendimento ao cliente", "atendente", "balconista", "caixa", "promotor", "promotora",
-    "televendas", "telemarketing", "call center", "sdr"
   ]
 };
 
-// Verifica se texto contém sinônimo de uma área específica
-function contemSinonimoArea(texto = "", area) {
-  const clean = normalizarTexto(texto);
-  return (AREA_SYNONYMS[area] || []).some(term => clean.includes(normalizarTexto(term)));
-}
-
-// Mantido para compatibilidade com código existente
 function contemSinonimoRH(texto = "") {
-  return contemSinonimoArea(texto, "rh");
+  const clean = normalizarTexto(texto);
+  return AREA_SYNONYMS.rh.some(term => clean.includes(normalizarTexto(term)));
 }
 
-// Retorna texto consolidado de uma vaga para matching
-function textoDaVagaParaArea(vaga) {
-  return normalizarTexto([
+function isRHVaga(vaga) {
+  return contemSinonimoRH([
     campo(vaga, ["cargo", "Cargo", "CARGO"]),
     campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
     campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
@@ -378,34 +332,12 @@ function textoDaVagaParaArea(vaga) {
   ].join(" "));
 }
 
-function isVagaDaArea(vaga, area) {
-  return contemSinonimoArea(textoDaVagaParaArea(vaga), area);
-}
-
-function isRHVaga(vaga) {
-  return isVagaDaArea(vaga, "rh");
-}
-
-function candidatoTemPerfilArea(texto = "", area) {
-  return contemSinonimoArea(texto, area);
-}
-
 function candidatoTemPerfilRH(texto = "") {
-  return candidatoTemPerfilArea(texto, "rh");
-}
-
-function buscarVagaDaArea(vagas = [], area) {
-  return vagas.find(v => vagaEstaAtiva(v) && isVagaDaArea(v, area));
+  return contemSinonimoRH(texto);
 }
 
 function buscarVagaRH(vagas = []) {
-  return buscarVagaDaArea(vagas, "rh");
-}
-
-// Detecta área principal do candidato a partir do texto
-function detectarAreaCandidato(texto = "") {
-  const areas = ["logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
-  return areas.find(area => candidatoTemPerfilArea(texto, area)) || null;
+  return vagas.find(v => vagaEstaAtiva(v) && isRHVaga(v));
 }
 
 // ============================================================
@@ -1562,41 +1494,6 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
         }
       }
 
-      // Força match por área para candidatos não-RH (logística, administrativo, operacional, etc.)
-      if (!vagaRH) {
-        const areaCv = detectarAreaCandidato(textoCurriculo);
-        if (areaCv) {
-          const vagaArea = buscarVagaDaArea(vagas, areaCv);
-          if (vagaArea) {
-            const cargoArea = campo(vagaArea, ["cargo", "Cargo", "CARGO"]);
-            const cidadeArea = campo(vagaArea, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-            const idArea = campo(vagaArea, ["idVaga", "ID Vaga", "ID"]);
-            const semMatchArea = !analise.vagaInteresse
-              || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("oportunidade em aberto");
-            if (semMatchArea) {
-              analise.vagaInteresse = cargoArea || analise.vagaInteresse;
-              analise.idVaga = idArea || analise.idVaga || "";
-              analise.cidade = analise.cidade || cidadeArea || "";
-              analise.areaInteresse = analise.areaInteresse || areaCv;
-              analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 70);
-              analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 70);
-              analise.classificacao = analise.classificacao || "Bom";
-              analise.motivoMatch = analise.motivoMatch || `Experiência/aderência com a área de ${areaCv}.`;
-              analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
-
-Analisei seu currículo e encontrei uma vaga com aderência ao seu perfil:
-
-📍 ${cargoArea}
-📍 ${cidadeArea || "ES"}
-
-Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
-            }
-          }
-        }
-      }
-
       if (cvSalvo) {
         cvSalvo.analiseStatus = "analisado";
         analise.curriculoDriveLink = cvSalvo.driveLink || null;
@@ -1697,58 +1594,18 @@ function textoDaVaga(vaga) {
 
 function filtrarVagasRelevantes(vagas, texto, historico) {
   const textoBusca = normalizarTexto(texto + " " + historico.map(h => h.content).join(" "));
-
-  // Detecta área e cidade do candidato uma vez só
-  const areaCandidato = detectarAreaCandidato(textoBusca);
-  const CIDADES_ES = ["linhares", "serra", "vitoria", "vila velha", "cariacica", "guarapari",
-                      "colatina", "cachoeiro", "aracruz", "viana", "fundao", "fundão",
-                      "santa teresa", "piuma", "piumã", "anchieta", "itapemirim", "marataizes", "marataízes"];
-
   const vagasComScore = vagas.map(vaga => {
     const textoVaga = textoDaVaga(vaga);
     let score = 0;
-
-    // Score base: sobreposição de palavras (4+ caracteres)
-    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => {
-      if (textoVaga.includes(p)) score++;
-    });
-
-    // Boost por área detectada do candidato
-    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
-      const boostsPorArea = {
-        rh: 80, logistica: 60, administrativo: 50, operacional: 50,
-        projetos: 50, alimentos: 50, limpeza: 50, vendas: 50
-      };
-      score += boostsPorArea[areaCandidato] || 40;
-    }
-
-    // Boost por cidade: candidato e vaga na mesma cidade
-    CIDADES_ES.forEach(cidade => {
-      if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 35;
-    });
-
-    // Boost extra quando área + cidade coincidem (candidato certo, local certo)
-    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
-      CIDADES_ES.forEach(cidade => {
-        if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 20;
-      });
-    }
-
+    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => { if (textoVaga.includes(p)) score++; });
+    if (textoBusca.includes("linhares") && textoVaga.includes("linhares")) score += 50;
+    if (textoBusca.includes("limpeza") && textoVaga.includes("limpeza")) score += 30;
+    if (textoBusca.includes("diaria") && textoVaga.includes("diaria")) score += 30;
+    if (textoBusca.includes("servicos gerais") && textoVaga.includes("servicos gerais")) score += 30;
+    if (candidatoTemPerfilRH(textoBusca) && isRHVaga(vaga)) score += 80;
     return { vaga, score };
   });
-
-  const filtradas = vagasComScore
-    .filter(i => i.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
-    .map(i => i.vaga);
-
-  // Fallback: se nenhuma vaga pontuou, tenta filtrar pelo menos pela área detectada
-  if (filtradas.length === 0 && areaCandidato) {
-    const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
-    if (porArea.length > 0) return porArea.slice(0, 8);
-  }
-
+  const filtradas = vagasComScore.filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(i => i.vaga);
   return filtradas.length > 0 ? filtradas : vagas.slice(0, 8);
 }
 
@@ -1779,12 +1636,7 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
   const historicoCurto = sessao.historico.slice(-8).map(h => `${h.role}: ${h.content}`).join("\n");
   const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
   const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
-  const areaDetectada = detectarAreaCandidato(textoConversa);
-  const instrucaoCurriculo = ehLinhares
-    ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
-    : areaDetectada
-    ? `COLETA DIRECIONADA — ÁREA: ${areaDetectada.toUpperCase()}:\n- O candidato demonstrou interesse ou experiência em ${areaDetectada}.\n- Priorize ofertar vagas da área de ${areaDetectada} disponíveis na lista de vagas.\n- Colete: nome, cidade/bairro, experiência na área, escolaridade, disponibilidade e currículo.\n- Se houver vaga compatível, apresente com cargo, local, regime, remuneração, benefícios, jornada e requisitos.\n- Se o currículo já foi recebido, confirme o interesse e informe os próximos passos.`
-    : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
+  const instrucaoCurriculo = ehLinhares ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.` : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`;
   return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
 - Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
 - Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
