@@ -2707,6 +2707,33 @@ function fecharReengajamento(){
   btn.disabled=false;btn.textContent='📤 Disparar para todos';
 }
 
+  }
+ 
+async function carregarReengajamentoInfo(){
+  try{
+    const resp = await fetch("/inbox/reengajamento/status");
+    const data = await resp.json();
+
+    const totalEl = document.getElementById("reeng-total");
+    const ultimoEl = document.getElementById("reeng-ultimo-disparo");
+
+    if(totalEl) totalEl.textContent = data.totalContatos ?? "—";
+
+    if(ultimoEl){
+      if(data.ultimoDisparo){
+        ultimoEl.textContent =
+          `Último disparo: ${data.ultimoDisparo.ts || ""} — ` +
+          `${data.ultimoDisparo.enviados || 0} enviados, ` +
+          `${data.ultimoDisparo.falhos || 0} falhos.`;
+      }else{
+        ultimoEl.textContent = "Nenhum disparo realizado ainda.";
+      }
+    }
+  }catch(e){
+    console.error("Erro carregarReengajamentoInfo:", e);
+  }
+}
+
 async function confirmarDisparo(){
   const escolhido = document.querySelector('input[name="reeng-limite"]:checked')?.value || "10";
   const limite = escolhido === "todos" ? null : Number(escolhido);
