@@ -1,4 +1,4 @@
-https://raw.githubusercontent.com/thiarataff-debug/Effect/main/index.js
+//https://raw.githubusercontent.com/thiarataff-debug/Effect/main/index.js
 → https://raw.githubusercontent.com/thiarataff-debug/Effect/main/index.js
 Content-Type: text/plain; charset=utf-8
 
