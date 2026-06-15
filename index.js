@@ -878,94 +878,192 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 // ============================================================
-// BACKUP AUTOMÁTICO (DIÁRIO + SEMANAL) → Google Drive
+// BACKUP AUTOMÁTICO — SEGURANÇA EFFECT
+// Estrutura: SEGURANÇA EFFECT / 2026-06-14 / arquivos
 // ============================================================
 
 let ultimoBackupDiario = null;
 let ultimoBackupSemanal = null;
+let ultimoBackupManual = null;
+let pastaSegurancaId = null; // ID da pasta raiz "SEGURANÇA EFFECT"
 
+const { Readable } = require("stream");
+
+// ── Helpers de pasta ──────────────────────────────────────────
+async function obterOuCriarPasta(drive, nome, parentId) {
+  const nomeSeg = nome.replace(/'/g, "\\'");
+  const q = `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeSeg}' and trashed=false`;
+  const busca = await drive.files.list({ q, fields: "files(id)", supportsAllDrives: true, includeItemsFromAllDrives: true });
+  if (busca.data.files?.length) return busca.data.files[0].id;
+  const nova = await drive.files.create({
+    requestBody: { name: nome, mimeType: "application/vnd.google-apps.folder", parents: [parentId] },
+    fields: "id", supportsAllDrives: true
+  });
+  return nova.data.id;
+}
+
+async function obterPastaSeguranca(drive) {
+  if (pastaSegurancaId) return pastaSegurancaId;
+  pastaSegurancaId = await obterOuCriarPasta(drive, "SEGURANÇA EFFECT", CONFIG.DRIVE_ROOT_FOLDER_ID);
+  return pastaSegurancaId;
+}
+
+async function obterPastaData(drive, data) {
+  // data no formato "2026-06-14"
+  const rootId = await obterPastaSeguranca(drive);
+  return await obterOuCriarPasta(drive, data, rootId);
+}
+
+// ── Upload de arquivo JSON no Drive ──────────────────────────
+async function uploadJsonDrive(drive, nome, conteudo, pastaId) {
+  const buf = Buffer.from(JSON.stringify(conteudo, null, 2), "utf8");
+  const stream = Readable.from(buf);
+  const resp = await drive.files.create({
+    requestBody: { name: nome, parents: [pastaId], mimeType: "application/json" },
+    media: { mimeType: "application/json", body: stream },
+    fields: "id, webViewLink", supportsAllDrives: true
+  });
+  return resp.data;
+}
+
+// ── Snapshot completo das sessões ─────────────────────────────
+function montarSnapshotConversas(tipo, agora) {
+  return {
+    tipo,
+    geradoEm: agora.toISOString(),
+    geradoEmBR: agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    totalSessoes: Object.keys(sessoes).length,
+    totalMensagens: Object.values(sessoes).reduce((acc, s) => acc + (s.historico?.length || 0), 0),
+    sessoes: Object.fromEntries(
+      Object.entries(sessoes).map(([tel, s]) => [tel, {
+        nome: s.nome || null,
+        modo: s.modo || "automatico",
+        pausado: s.pausado || false,
+        motivoPausa: s.motivoPausa || "",
+        statusProcesso: s.statusProcesso || "Novo contato",
+        unreadCount: s.unreadCount || 0,
+        totalMensagens: s.historico?.length || 0,
+        ultimaAnalise: s.ultimaAnalise || null,
+        curriculos: (Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : [])).map(cv => ({
+          filename: cv.filename || "",
+          driveLink: cv.driveLink || "",
+          pasta: cv.pasta || "",
+          analiseStatus: cv.analiseStatus || "",
+          recebidoEm: cv.recebidoEm || "",
+          sizeBytes: cv.sizeBytes || null
+        })),
+        historico: (s.historico || []).map(m => ({
+          role: m.role,
+          content: m.content,
+          timestampMs: m.timestampMs || m.timestamp || null,
+          horario: m.horario || m.horarioFormatado || null
+        }))
+      }])
+    )
+  };
+}
+
+// ── Função principal de backup ─────────────────────────────────
 async function fazerBackup(tipo = "diario") {
   const drive = getDriveClient();
-  if (!drive) { console.warn("Backup: Drive não disponível."); return false; }
+  if (!drive) {
+    const msg = "Drive não disponível — verifique a variável GOOGLE_SERVICE_ACCOUNT_JSON no Railway.";
+    console.error("Backup:", msg);
+    return { ok: false, erro: msg };
+  }
+
+  const agora = new Date();
+  const dataHoje = agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
+    .split("/").reverse().join("-"); // 2026-06-14
+  const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const arquivosSalvos = [];
 
   try {
-    // Garante pasta "Backups" dentro da pasta raiz do Drive
-    const nomeBackupFolder = "Backups-Lia";
-    let backupFolderId = null;
+    const pastaDataId = await obterPastaData(drive, dataHoje);
 
-    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeBackupFolder}' and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)" });
-    if (busca.data.files?.length) {
-      backupFolderId = busca.data.files[0].id;
-    } else {
-      const nova = await drive.files.create({
-        requestBody: { name: nomeBackupFolder, mimeType: "application/vnd.google-apps.folder", parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-        fields: "id"
-      });
-      backupFolderId = nova.data.id;
+    // ── 1. Conversas / sessões ────────────────────────────────
+    try {
+      const snapshot = montarSnapshotConversas(tipo, agora);
+      const f = await uploadJsonDrive(drive, `conversas-${tipo}-${ts}.json`, snapshot, pastaDataId);
+      arquivosSalvos.push({ nome: `conversas-${tipo}-${ts}.json`, id: f.id });
+      console.log(`✅ Backup conversas salvo (${Object.keys(sessoes).length} sessões)`);
+    } catch (e) {
+      console.error("Backup conversas falhou:", e.message);
     }
 
-    // Monta snapshot
-    const agora = new Date();
-    const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const snapshot = {
+    // ── 2. Dados do Google Sheets (candidatos + vagas) ────────
+    if (CONFIG.VAGAS_URL) {
+      try {
+        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+        const [rCands, rVagas, rConvSheets] = await Promise.allSettled([
+          axios.get(`${urlBase}?acao=candidatos`, { timeout: 20000 }),
+          axios.get(`${urlBase}?acao=vagas`, { timeout: 20000 }),
+          axios.get(`${urlBase}?acao=conversas`, { timeout: 20000 })
+        ]);
+
+        const sheetsSnap = {
+          geradoEm: agora.toISOString(),
+          candidatos: rCands.status === "fulfilled" ? (rCands.value.data?.candidatos || rCands.value.data || []) : null,
+          vagas: rVagas.status === "fulfilled" ? (rVagas.value.data?.vagas || rVagas.value.data || []) : null,
+          conversas: rConvSheets.status === "fulfilled" ? (rConvSheets.value.data?.sessoes || null) : null,
+          erros: {
+            candidatos: rCands.status === "rejected" ? rCands.reason?.message : null,
+            vagas: rVagas.status === "rejected" ? rVagas.reason?.message : null,
+            conversas: rConvSheets.status === "rejected" ? rConvSheets.reason?.message : null
+          }
+        };
+        const f2 = await uploadJsonDrive(drive, `sheets-${tipo}-${ts}.json`, sheetsSnap, pastaDataId);
+        arquivosSalvos.push({ nome: `sheets-${tipo}-${ts}.json`, id: f2.id });
+        console.log("✅ Backup Sheets salvo");
+      } catch (e) {
+        console.error("Backup Sheets falhou:", e.message);
+      }
+    }
+
+    // ── 3. Meta do backup ─────────────────────────────────────
+    const meta = {
       tipo,
       geradoEm: agora.toISOString(),
+      geradoEmBR: agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
       totalSessoes: Object.keys(sessoes).length,
-      sessoes: Object.fromEntries(
-        Object.entries(sessoes).map(([tel, s]) => [tel, {
-          nome: s.nome,
-          modo: s.modo,
-          pausado: s.pausado,
-          motivoPausa: s.motivoPausa,
-          totalMensagens: s.historico?.length || 0,
-          ultimaMensagem: s.historico?.slice(-1)[0]?.content?.slice(0, 100) || "",
-          ultimaAnalise: s.ultimaAnalise || null,
-          historico: s.historico || []
-        }])
-      )
+      arquivosSalvos,
+      pastaData: dataHoje,
+      versaoIndex: "index_novo.js — 14/06/2026"
     };
+    await uploadJsonDrive(drive, `_meta-${tipo}-${ts}.json`, meta, pastaDataId);
 
-    const { Readable } = require("stream");
-    const conteudo = JSON.stringify(snapshot, null, 2);
-    const stream = Readable.from(Buffer.from(conteudo, "utf8"));
+    const ts_BR = agora.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    console.log(`✅ Backup COMPLETO (${tipo}) — ${ts_BR} — ${arquivosSalvos.length} arquivos na pasta ${dataHoje}`);
 
-    await drive.files.create({
-      requestBody: {
-        name: `backup-${tipo}-${ts}.json`,
-        parents: [backupFolderId],
-        mimeType: "application/json"
-      },
-      media: { mimeType: "application/json", body: stream },
-      fields: "id"
-    });
-
-    console.log(`✅ Backup ${tipo} salvo no Drive — ${ts} — ${Object.keys(sessoes).length} sessões`);
-    if (tipo === "diario") ultimoBackupDiario = agora;
+    if (tipo === "diario")  ultimoBackupDiario  = agora;
     if (tipo === "semanal") ultimoBackupSemanal = agora;
-    return true;
+    if (tipo === "manual")  ultimoBackupManual  = agora;
+
+    return { ok: true, arquivos: arquivosSalvos.length, pasta: `SEGURANÇA EFFECT / ${dataHoje}`, ts: ts_BR };
+
   } catch (e) {
-    console.error(`Erro backup ${tipo}:`, e.message);
-    return false;
+    console.error(`Erro backup ${tipo}:`, e.message, e.stack?.slice(0, 300));
+    return { ok: false, erro: e.message };
   }
 }
 
-// Backup diário — executa a cada 24h
+// Backup diário — a cada 24h
 setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
 
-// Backup semanal — executa a cada 7 dias
+// Backup semanal — a cada 7 dias
 setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
 
-// Primeiro backup diário roda 5min após o servidor subir
+// Primeiro backup roda 5min após o servidor subir
 setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
 
-// Endpoint para backup manual via Inbox
+// Endpoint backup manual via Inbox
 app.post("/inbox/backup", async (req, res) => {
-  const ok = await fazerBackup("manual");
+  const resultado = await fazerBackup("manual");
   return res.json({
-    ok,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null
+    ...resultado,
+    ultimoBackupDiario:  ultimoBackupDiario?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
+    ultimoBackupSemanal: ultimoBackupSemanal?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
+    ultimoBackupManual:  ultimoBackupManual?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null
   });
 });
 
@@ -973,9 +1071,11 @@ app.post("/inbox/backup", async (req, res) => {
 app.get("/inbox/backup/status", (req, res) => {
   res.json({
     ok: true,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null,
-    totalSessoes: Object.keys(sessoes).length
+    ultimoBackupDiario:  ultimoBackupDiario?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null,
+    ultimoBackupSemanal: ultimoBackupSemanal?.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) || null,
+    ultimoBackupManual:  ultimoBackupManual?.toLocaleString("pt-BR",  { timeZone: "America/Sao_Paulo" }) || null,
+    totalSessoes: Object.keys(sessoes).length,
+    driveDisponivel: !!getDriveClient()
   });
 });
 
@@ -1078,8 +1178,7 @@ app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc
 
 app.post("/disc/submit", async (req, res) => {
   try {
-    const _rawTel = String(req.body.telefone || '');
-    const telefone = _rawTel === 'interno' ? 'interno' : limparTelefone(_rawTel);
+    const telefone = limparTelefone(req.body.telefone || '');
     const nome = String(req.body.nome || '').trim();
     const vaga = String(req.body.vaga || '').trim();
     const percentuaisNatural = req.body.percentuaisNatural || {};
@@ -1100,11 +1199,7 @@ app.post("/disc/submit", async (req, res) => {
       secundarioNatural
     };
 
-    // Garante que sessão 'interno' existe mesmo sem conversa prévia
-    if (telefone) {
-      if (!sessoes[telefone]) {
-        sessoes[telefone] = { historico: [], nome: null, modo: 'automatico', pausado: false, motivoPausa: '' };
-      }
+    if (telefone && sessoes[telefone]) {
       sessoes[telefone].discResult = resultado;
       if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
     }
@@ -1119,8 +1214,7 @@ app.post("/disc/submit", async (req, res) => {
 });
 
 app.get("/disc/resultado/:telefone", (req, res) => {
-  const _rawTelRes = req.params.telefone;
-  const tel = _rawTelRes === 'interno' ? 'interno' : limparTelefone(_rawTelRes);
+  const tel = limparTelefone(req.params.telefone);
   const sessao = sessoes[tel];
   if (!sessao?.discResult) return res.json({ ok: false });
   return res.json({ ok: true, resultado: sessao.discResult });
@@ -2127,6 +2221,151 @@ async function enviarMensagem(toOriginal, body) {
     await axios.post(`https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
   } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
 }
+
+// ============================================================
+// TEMPLATE: envio de mensagem de modelo aprovado pela Meta
+// ============================================================
+async function enviarTemplate(telefoneOriginal, templateName, languageCode = "pt_BR", components = []) {
+  const to = limparTelefone(telefoneOriginal);
+  if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
+    throw new Error("META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados");
+  }
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+      ...(components.length > 0 ? { components } : {})
+    }
+  };
+  const resp = await axios.post(
+    `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
+    payload,
+    { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 }
+  );
+  return resp.data;
+}
+
+// ============================================================
+// REENGAJAMENTO — disparo em massa do template aprovado
+// ============================================================
+
+// Lista de todos os telefones elegíveis (memória + Sheets)
+async function coletarTelefonesReengajamento() {
+  const set = new Set();
+
+  // 1) Sessões em memória
+  for (const tel of Object.keys(sessoes)) {
+    const t = limparTelefone(tel);
+    if (t && t.length >= 10) set.add(t);
+  }
+
+  // 2) Candidatos da planilha (se VAGAS_URL configurado)
+  if (CONFIG.VAGAS_URL) {
+    try {
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
+      const lista = r.data?.candidatos || r.data?.data || [];
+      for (const c of lista) {
+        const tel = limparTelefone(c.telefone || c.Telefone || c.whatsapp || c.Whatsapp || "");
+        if (tel && tel.length >= 10) set.add(tel);
+      }
+    } catch (e) {
+      console.error("reengajamento: erro ao buscar planilha:", e.message);
+    }
+  }
+
+  // Remove o próprio número da Effect e o de Thiara para não se auto-disparar
+  set.delete(limparTelefone(CONFIG.THIARA_WHATSAPP));
+  set.delete("5527992566126"); // número principal Effect
+
+  return Array.from(set);
+}
+
+// GET — quantos serão atingidos e histórico do último disparo
+let _ultimoDisparoMeta = null;
+
+app.get("/inbox/reengajamento/status", async (req, res) => {
+  try {
+    const telefones = await coletarTelefonesReengajamento();
+    res.json({
+      ok: true,
+      totalContatos: telefones.length,
+      ultimoDisparo: _ultimoDisparoMeta,
+      configurado: !!(CONFIG.META_ACCESS_TOKEN && CONFIG.PHONE_NUMBER_ID)
+    });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// POST — executa o disparo em massa
+app.post("/inbox/reengajamento/disparar", async (req, res) => {
+  const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones } = req.body || {};
+
+  if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
+    return res.json({ ok: false, erro: "META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway." });
+  }
+
+  const telefones = forceTelefones?.length
+    ? forceTelefones.map(limparTelefone).filter(t => t.length >= 10)
+    : await coletarTelefonesReengajamento();
+
+  if (!telefones.length) {
+    return res.json({ ok: false, erro: "Nenhum contato encontrado para disparo." });
+  }
+
+  const resultados = { enviados: [], falhos: [], total: telefones.length };
+  const DELAY_MS = 1200; // 1.2s entre envios para respeitar rate limit Meta
+
+  // Processa em background para não timeout no HTTP
+  res.json({ ok: true, total: telefones.length, msg: "Disparo iniciado em background. Verifique /inbox/reengajamento/status para o resultado." });
+
+  (async () => {
+    for (const tel of telefones) {
+      try {
+        await enviarTemplate(tel, templateName, languageCode);
+        resultados.enviados.push(tel);
+        console.log(`[reengajamento] ✅ enviado → ${tel}`);
+
+        // Garante sessão para quando o candidato responder
+        garantirSessao(tel);
+
+      } catch (e) {
+        const motivo = e.response?.data?.error?.message || e.message;
+        resultados.falhos.push({ tel, motivo });
+        console.error(`[reengajamento] ❌ falha → ${tel}: ${motivo}`);
+      }
+      await sleep(DELAY_MS);
+    }
+
+    _ultimoDisparoMeta = {
+      ts: agora(),
+      tsMs: Date.now(),
+      template: templateName,
+      total: telefones.length,
+      enviados: resultados.enviados.length,
+      falhos: resultados.falhos.length,
+      detalhesFalhos: resultados.falhos.slice(0, 20) // primeiros 20 erros
+    };
+    console.log(`[reengajamento] ✅ concluído: ${resultados.enviados.length} enviados, ${resultados.falhos.length} falhos`);
+  })();
+});
+
+// POST — reengajamento de número específico
+app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
+  const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
+  if (!telefone) return res.json({ ok: false, erro: "Telefone obrigatório." });
+  try {
+    const r = await enviarTemplate(telefone, templateName, languageCode);
+    garantirSessao(limparTelefone(telefone));
+    res.json({ ok: true, resultado: r });
+  } catch (e) {
+    res.json({ ok: false, erro: e.response?.data?.error?.message || e.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Lia rodando na porta ${PORT} — modo supervisor + Linhares via planilha ✅`);
