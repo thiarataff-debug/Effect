@@ -2311,7 +2311,8 @@ app.get("/inbox/reengajamento/status", async (req, res) => {
 
 // POST — executa o disparo em massa
 app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
+  const { templateName = "effect_reengajamento_candidatos",
+        languageCode = "pt-BR", forceTelefones, limite } = req.body || {};
 
   if (!CONFIG.META_ACCESS_TOKEN || !CONFIG.PHONE_NUMBER_ID) {
     return res.json({ ok: false, erro: "META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway." });
@@ -2367,7 +2368,7 @@ app.post("/inbox/reengajamento/disparar", async (req, res) => {
 
 // POST — reengajamento de número específico
 app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
-  const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
+  const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt-BR" } = req.body || {};
   if (!telefone) return res.json({ ok: false, erro: "Telefone obrigatório." });
   try {
     const r = await enviarTemplate(telefone, templateName, languageCode);
