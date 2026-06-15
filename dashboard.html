@@ -1177,7 +1177,9 @@ async function loadData(){
     }
     if(r3.status==='fulfilled'){
       const raw=r3.value;
-      sessoesData=Array.isArray(raw)?raw:Object.values(raw||{});
+      // /inbox/sessoes retorna {sessoes:{tel:obj,...}, totalConversas, ...}
+      const src=raw?.sessoes||raw;
+      sessoesData=Array.isArray(src)?src:Object.values(src||{});
     }
     linkarCandidatos();
     atualizarBadges();
@@ -1592,8 +1594,8 @@ function renderInboxLia(){
   }
   document.getElementById('lia-inbox-list').innerHTML=recent.map(s=>{
     const nome=s.nome||s.candidato||s.telefone||'Candidato';
-    const ultimaMsg=s.historico?.slice(-1)[0]?.mensagem||s.ultimaMensagem||'';
-    const vaga=s.vagaInteresse||s.cargo||'';
+    const ultimaMsg=s.lastMessage||s.historico?.slice(-1)[0]?.content||s.historico?.slice(-1)[0]?.mensagem||s.ultimaMensagem||'';
+    const vaga=s.vagaInteresse||s.ultimaAnalise?.vagaInteresse||s.cargo||'';
     const cor=corPorNome(nome);
     const hora=s.lastMessageAtMs?new Date(s.lastMessageAtMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'—';
     return `<div style="background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border:1px solid rgba(0,0,0,0.07);display:flex;gap:12px;align-items:flex-start">
