@@ -2240,6 +2240,14 @@ async function enviarTemplate(telefoneOriginal, templateName, languageCode = "pt
       ...(components.length > 0 ? { components } : {})
     }
   };
+console.log("[template-debug]", {
+  to,
+  phoneNumberId: CONFIG.PHONE_NUMBER_ID,
+  templateName,
+  languageCode,
+  payload: JSON.stringify(payload)
+});
+  
   const resp = await axios.post(
     `https://graph.facebook.com/v23.0/${CONFIG.PHONE_NUMBER_ID}/messages`,
     payload,
