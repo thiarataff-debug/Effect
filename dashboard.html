@@ -401,38 +401,38 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-briefcase" style="color:var(--green)"></i></div>
           <div class="kpi-label">Vagas Ativas</div>
-          <div class="kpi-value">8</div>
-          <div class="kpi-sub kpi-up">↑ 2 este mês</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(31,165,240,.1)"><i class="fas fa-users" style="color:var(--blue)"></i></div>
           <div class="kpi-label">Em Processo</div>
-          <div class="kpi-value">34</div>
-          <div class="kpi-sub kpi-up">↑ 8 essa semana</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(244,175,161,.15)"><i class="fas fa-hourglass-half" style="color:var(--salmon)"></i></div>
           <div class="kpi-label">Ag. Resposta</div>
-          <div class="kpi-value">12</div>
-          <div class="kpi-sub kpi-dn">↑ cliente pendente</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(123,142,96,.15)"><i class="fas fa-check-circle" style="color:var(--sage)"></i></div>
           <div class="kpi-label">Contratados</div>
-          <div class="kpi-value">5</div>
-          <div class="kpi-sub kpi-up">↑ anterior: 3</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-percent" style="color:var(--green)"></i></div>
           <div class="kpi-label">Taxa Aprovação</div>
-          <div class="kpi-value">68%</div>
-          <div class="kpi-sub kpi-up">↑ meta: 60%</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon" style="background:rgba(161,161,170,.15)"><i class="fas fa-clock" style="color:var(--gray)"></i></div>
           <div class="kpi-label">Tempo Médio</div>
-          <div class="kpi-value">18d</div>
-          <div class="kpi-sub kpi-dn">meta: 15d</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
       </div>
 
@@ -1099,33 +1099,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
 </div>
 
 <script>
-// ===== DISC CONFIG =====
-const discCores = {D:'#e74c3c',I:'#f39c12',S:'#27ae60',C:'#2980b9'};
-const discNomes = {D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
-const discEmojis = {D:'⚡',I:'🌟',S:'🤝',C:'📐'};
-
-// DISC profiles (populated from assessments; used as lookup cache)
-const discCandidatos = {
-  'Tayme Oliveira':   {D:12,I:20,S:48,C:20,prim:'S',desc:'Estável, colaborativa, prefere rotina e suporte à equipe.'},
-  'Elisabete Santos': {D:22,I:35,S:28,C:15,prim:'I',desc:'Comunicativa, persuasiva, entusiasta. Alta habilidade relacional.'},
-  'Carlos Menezes':   {D:18,I:15,S:42,C:25,prim:'S',desc:'Paciente, organizado, comprometido com processos.'},
-  'Marcos Ferreira':  {D:30,I:25,S:30,C:15,prim:'D',desc:'Proativo, orientado a resultados, boa energia para metas.'},
-  'Juliana Rocha':    {D:20,I:38,S:25,C:17,prim:'I',desc:'Extrovertida, engaja bem com equipe, comunicação clara.'},
-  'Fernanda Lima':    {D:28,I:22,S:30,C:20,prim:'D',desc:'Liderança natural, analítica, foco em entrega e resultados.'},
-  'Paulo Drummond':   {D:15,I:18,S:35,C:32,prim:'C',desc:'Analítico, metódico, alto padrão de qualidade.'},
-  'Roberto Nunes':    {D:38,I:20,S:22,C:20,prim:'D',desc:'Executivo assertivo, decisivo, orientado a estratégia.'},
-};
-
-// DISC ideal por tipo de cargo (keyword → profile)
-const discVagasConfig = {
-  'Analista Administrativo': {D:15,I:20,S:45,C:20,prim:'S',desc:'Exige estabilidade para rotinas, atenção a detalhes (C) e boa relação interpessoal (I).'},
-  'Assistente de Logística': {D:25,I:20,S:40,C:15,prim:'S',desc:'Requer constância (S) e pró-atividade (D) para resolver imprevistos operacionais.'},
-  'Coordenador de RH':       {D:30,I:25,S:25,C:20,prim:'D',desc:'Requer liderança (D), influência com equipes (I) e visão estratégica de pessoas.'},
-  'Gerente Financeiro':      {D:40,I:15,S:20,C:25,prim:'D',desc:'Assertividade (D) e rigor analítico (C) para tomada de decisão com dados.'},
-  'Marketing Digital':       {D:18,I:45,S:20,C:17,prim:'I',desc:'Criatividade, comunicação e capacidade de engajar públicos (I). Ritmo acelerado.'},
-  'Recepcionista':           {D:10,I:30,S:45,C:15,prim:'S',desc:'Estabilidade, paciência e boa relação interpessoal para atendimento ao público.'},
-  '_default':                {D:25,I:25,S:25,C:25,prim:'S',desc:'Perfil balanceado — análise DISC a ser definida para este cargo.'},
-};
 
 const etapas = ['Não Planejada','Divulgação','Triagem','Entrevista RH','Teste Prático','Entrevista Cliente','Proposta','Admissão','Contratado'];
 const etapaCores = {'Não Planejada':'#a1a1aa','Divulgação':'#1fa5f0','Triagem':'#f5c518','Entrevista RH':'#f4afa1','Teste Prático':'#b07fe8','Entrevista Cliente':'#8ed1b2','Proposta':'#7b8e60','Admissão':'#f5a623','Contratado':'#2a2a2b'};
