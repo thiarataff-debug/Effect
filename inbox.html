@@ -503,9 +503,19 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       </div>
     </div>
 
+    <div style="margin-bottom:14px;background:#f8fafc;border-radius:10px;padding:12px;font-size:12px">
+      <div style="font-weight:700;margin-bottom:8px;color:#2a2a2b">Quantidade para disparar:</div>
+
+      <label style="display:block;margin:4px 0;cursor:pointer"><input type="radio" name="reeng-limite" value="10" checked> 10 contatos</label>
+      <label style="display:block;margin:4px 0;cursor:pointer"><input type="radio" name="reeng-limite" value="25"> 25 contatos</label>
+      <label style="display:block;margin:4px 0;cursor:pointer"><input type="radio" name="reeng-limite" value="50"> 50 contatos</label>
+      <label style="display:block;margin:4px 0;cursor:pointer"><input type="radio" name="reeng-limite" value="100"> 100 contatos</label>
+      <label style="display:block;margin:4px 0;cursor:pointer"><input type="radio" name="reeng-limite" value="todos"> Todos</label>
+    </div>
+
     <div style="display:flex;gap:8px">
       <button id="reeng-btn-disparar" onclick="confirmarDisparo()" style="flex:1;padding:12px;background:#1fa5f0;color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
-        📤 Disparar para todos
+        📤 Disparar lote
       </button>
       <button onclick="fecharReengajamento()" style="padding:12px 18px;background:#f5f7fa;color:#2a2a2b;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:600;cursor:pointer">
         Cancelar
@@ -2688,38 +2698,71 @@ function fecharReengajamento(){
 }
 
 async function confirmarDisparo(){
-  const total=document.getElementById('reeng-total').textContent;
-  if(!confirm(`Confirma o disparo do template para ${total} contatos?\n\nOs candidatos receberão a mensagem de reengajamento da Lia.`)) return;
-  const btn=document.getElementById('reeng-btn-disparar');
-  btn.disabled=true;btn.textContent='⏳ Disparando...';
-  document.getElementById('reeng-progress-wrap').style.display='block';
-  document.getElementById('reeng-progress-bar').style.width='5%';
-  document.getElementById('reeng-progress-txt').textContent='Iniciando disparo em background...';
-  document.getElementById('reeng-log').style.display='none';
+  const escolhido = document.querySelector('input[name="reeng-limite"]:checked')?.value || "10";
+  const limite = escolhido === "todos" ? null : Number(escolhido);
+  const totalTela = document.getElementById("reeng-total")?.textContent || "0";
+
+  const confirma = confirm(
+    `Você está prestes a disparar o template de reengajamento.\n\n` +
+    `Quantidade escolhida: ${limite || "todos"} contatos\n` +
+    `Total disponível: ${totalTela} contatos\n\n` +
+    `Deseja continuar?`
+  );
+  if(!confirma) return;
+
+  const btn = document.getElementById("reeng-btn-disparar");
+  const log = document.getElementById("reeng-log");
+  const progressWrap = document.getElementById("reeng-progress-wrap");
+  const progressTxt = document.getElementById("reeng-progress-txt");
+  const progressBar = document.getElementById("reeng-progress-bar");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Disparando...";
+  if(log){
+    log.style.display = "block";
+    log.innerHTML = "Iniciando disparo...";
+  }
+  if(progressWrap) progressWrap.style.display = "block";
+  if(progressTxt) progressTxt.textContent = "Disparo iniciado...";
+  if(progressBar) progressBar.style.width = "10%";
+
   try{
-    const r=await fetch(`${API}/inbox/reengajamento/disparar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-    const d=await r.json();
-    if(d.ok){
-      document.getElementById('reeng-progress-bar').style.width='100%';
-      document.getElementById('reeng-progress-txt').textContent=`✅ Disparo iniciado para ${d.total} contatos. Aguarde alguns minutos.`;
-      document.getElementById('reeng-log').style.display='block';
-      document.getElementById('reeng-log').innerHTML=`✅ Disparo em andamento para <strong>${d.total}</strong> contatos com intervalo de 1,2s.<br>Os candidatos receberão o template agora. Quando responderem, a Lia assumirá a conversa automaticamente.<br><br><em>Feche este painel e acompanhe as respostas no Inbox.</em>`;
-      btn.textContent='✅ Disparado!';
-      // Recarrega status após 5s
-      setTimeout(()=>abrirReengajamento(),5000);
-    } else {
-      document.getElementById('reeng-progress-wrap').style.display='none';
-      document.getElementById('reeng-log').style.display='block';
-      document.getElementById('reeng-log').textContent='❌ Erro: '+(d.erro||'Verifique as configurações.');
-      btn.disabled=false;btn.textContent='📤 Disparar para todos';
-      toast('❌ Erro no disparo: '+(d.erro||'verifique Railway'),'error');
+    const r = await fetch("/inbox/reengajamento/disparar", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        templateName: "effect_reengajamento_candidatos",
+        languageCode: "pt_BR",
+        limite
+      })
+    });
+
+    const data = await r.json();
+
+    if(!data.ok){
+      throw new Error(data.erro || "Erro ao disparar reengajamento.");
     }
+
+    if(progressBar) progressBar.style.width = "100%";
+    if(progressTxt) progressTxt.textContent = "Disparo enviado para execução em background.";
+
+    if(log){
+      log.innerHTML =
+        `✅ Disparo iniciado.<br>` +
+        `📌 Contatos programados: ${data.total || limite || "todos"}<br>` +
+        `⏱️ O envio continuará em background.`;
+    }
+
+    btn.textContent = "✅ Disparo iniciado";
+    toast("Reengajamento iniciado com sucesso.","success");
+    carregarReengajamentoInfo();
   }catch(e){
-    document.getElementById('reeng-progress-wrap').style.display='none';
-    document.getElementById('reeng-log').style.display='block';
-    document.getElementById('reeng-log').textContent='❌ Erro de conexão: '+e.message;
-    btn.disabled=false;btn.textContent='📤 Disparar para todos';
-    toast('❌ Erro de conexão: '+e.message,'error');
+    if(log) log.innerHTML = `❌ Erro: ${e.message}`;
+    if(progressTxt) progressTxt.textContent = "Erro no disparo.";
+    if(progressBar) progressBar.style.width = "0%";
+    btn.disabled = false;
+    btn.textContent = "📤 Disparar lote";
+    toast("Erro no reengajamento: " + e.message,"error");
   }
 }
 
