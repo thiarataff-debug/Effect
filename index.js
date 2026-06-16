@@ -280,7 +280,9 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     lastMessageAtMs,
     dataWhatsapp: formatarDataWhatsApp(lastMessageAtMs),
     formattedLastMessageAt: formatarDataWhatsApp(lastMessageAtMs),
-    unreadCount
+    unreadCount,
+    semResposta: ultima?.role === "user", // candidato aguardando resposta
+    raiox: Array.isArray(sessao?.raiox) ? sessao.raiox.slice(-5) : []
   };
 }
 
@@ -1480,7 +1482,11 @@ app.get("/inbox/curriculo/:telefone", (req, res) => {
     let buffer = null;
     if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
     else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
-    if (!buffer) return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
+    if (!buffer) {
+      // Redireciona para o Drive se o arquivo local sumiu (ex: reinício do Railway)
+      if (cv.driveLink) return res.redirect(cv.driveLink);
+      return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
+    }
     const inline = req.query.inline === "1" || req.query.inline === "true";
     res.set("Content-Type", cv.mimeType || "application/octet-stream");
     res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
@@ -1725,6 +1731,26 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     return resposta;
   }
   const vagas = await buscarVagas();
+
+  // RAIO-X: registra diagnóstico da busca de vagas para cada mensagem
+  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagem, sessao.historico);
+  const areaDetectada = detectarAreaCandidato(normalizarTexto(mensagem + " " + (sessao.historico||[]).slice(-4).map(h=>h.content||"").join(" ")));
+  const raiox = {
+    ts: new Date().toISOString(),
+    mensagem: mensagem.slice(0, 100),
+    totalVagasDisp: vagas.length,
+    vagasFiltradasQtd: vagasFiltradas.length,
+    areaDetectada: areaDetectada || "nenhuma",
+    vagasEncontradas: vagasFiltradas.slice(0,3).map(v => campo(v,["cargo","Cargo"]) + " / " + campo(v,["cidade","Cidade/Bairro","Cidade"]))
+  };
+  if (!sessao.raiox) sessao.raiox = [];
+  sessao.raiox = [...sessao.raiox.slice(-9), raiox]; // guarda os 10 mais recentes
+  if (vagas.length === 0) {
+    console.warn(`RAIO-X VAGAS — ${telefone}: lista de vagas VAZIA ao processar mensagem. Cache: ${vagasCache.length} vagas em cache.`);
+  } else if (vagasFiltradas.length === 0) {
+    console.warn(`RAIO-X VAGAS — ${telefone}: ${vagas.length} vagas disponíveis mas NENHUMA filtrada. Área: ${areaDetectada||"não detectada"}`);
+  }
+
   const prompt = montarPromptConversa(sessao, mensagem, vagas);
   const resposta = await chamarClaudeTexto(prompt);
 
@@ -1903,22 +1929,23 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
 
 
 async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
+  // ETAPA 1: Baixa o arquivo binário. Se falhar aqui, nada pode ser salvo — erro real.
   const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
   const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 30000 });
   const buffer = Buffer.from(arquivo.data);
   const filename = filenameOriginal || "curriculo";
   const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
-  let texto = "";
 
-  // A leitura automática só é obrigatória para análise. O salvamento do arquivo não depende dela.
+  // ETAPA 2: Extrai texto para análise — erro aqui NÃO impede o salvamento do arquivo.
+  let texto = "";
   const ehPdf = /pdf/i.test(mimeType) || /\.pdf$/i.test(filename);
   if (ehPdf) {
     try {
       const pdfData = await pdfParse(buffer);
       texto = String(pdfData.text || "").slice(0, 12000);
     } catch (e) {
-      console.error("PDF salvo, mas leitura automática falhou:", e.message);
-      texto = "";
+      console.error("PDF baixado e salvo, mas leitura do texto falhou:", e.message);
+      texto = ""; // currículo fica salvo mesmo sem texto
     }
   }
 
@@ -1941,15 +1968,32 @@ function vagaEstaAtiva(vaga) {
   return !["encerrada","cancelada","inativa","suspensa","fechada","finalizada"].includes(status);
 }
 
+// Cache de vagas — evita retornar lista vazia quando o Sheets está lento ou fora
+let vagasCache = [];
+let vagasCacheTs = 0;
+const VAGAS_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 async function buscarVagas() {
+  // Se o cache ainda é válido, usa sem bater no Sheets
+  if (vagasCache.length && (Date.now() - vagasCacheTs) < VAGAS_CACHE_TTL) {
+    return vagasCache;
+  }
   try {
     const vagasSheets = [];
     if (CONFIG.VAGAS_URL) {
       const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
       if (r.data?.vagas) vagasSheets.push(...r.data.vagas.filter(vagaEstaAtiva));
     }
-    return vagasSheets;
-  } catch (e) { console.error("Erro buscarVagas:", e.message); return []; }
+    if (vagasSheets.length) {
+      vagasCache = vagasSheets;
+      vagasCacheTs = Date.now();
+    }
+    // Se Sheets retornou vazio mas temos cache, usa o cache (evita "não temos vagas" falso)
+    return vagasSheets.length ? vagasSheets : vagasCache;
+  } catch (e) {
+    console.error("Erro buscarVagas:", e.message);
+    return vagasCache; // usa cache antigo em vez de retornar []
+  }
 }
 
 function primeiroNome(nome) { return String(nome || "").trim().split(/\s+/)[0]; }
