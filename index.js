@@ -879,7 +879,7 @@ async function carregarSessoesDoSheets() {
         curriculos: curriculosMesclados,
         curriculo: curriculosMesclados[0] || existente.curriculo || null,
         ultimaAnalise: existente.ultimaAnalise || sessao.ultimaAnalise || null,
-        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo contato"
+        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo"
       };
 
       if (pausado) atendimentosManuais.add(tel);
@@ -1494,7 +1494,7 @@ app.post("/inbox/status", async (req, res) => {
     if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
 
     const sessao = garantirSessao(telefone);
-    sessao.statusProcesso = status || sessao.statusProcesso || "Novo contato";
+    sessao.statusProcesso = status || sessao.statusProcesso || "Novo";
     if (prioritario) sessao.motivoPausa = "Prioritário";
 
     if (CONFIG.VAGAS_URL && status) {
