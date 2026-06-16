@@ -1783,44 +1783,72 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
   let cvSalvo = null;
 
   try {
-    const { texto: textoCurriculo, buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarELerPdf(documento.id, documento.filename, documento.mime_type || documento.mimeType);
+    // ══════════════════════════════════════════════════════
+    // PASSO 1 — DOWNLOAD DO BINÁRIO
+    // Se isso falhar, é problema real (Meta API fora). Nada pode ser feito.
+    // ══════════════════════════════════════════════════════
+    const { buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarArquivo(documento.id, documento.filename, documento.mime_type || documento.mimeType);
 
-    // 1) RECEBIMENTO/SALVAMENTO DO CURRÍCULO — independente da IA e do Drive.
-    if (arquivoBuffer) {
-      const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
-      cvSalvo = registrarCurriculoNaSessao(sessao, {
-        mediaId: documento.id || null,
-        base64: arquivoBuffer.toString("base64"),
-        localPath: localInfo.localPath || "",
-        localFilename: localInfo.localFilename || "",
-        filename: arquivoNome || `curriculo_${telefone}`,
-        mimeType,
-        sizeBytes,
-        recebidoEmMs,
-        recebidoEm: new Date(recebidoEmMs).toISOString(),
-        analiseStatus: "recebido"
-      });
-      sessao.curriculo = cvSalvo;
-      console.log(`CV SALVO NO INBOX — ${telefone} — ${cvSalvo.filename} — currículos na sessão: ${Array.isArray(sessao.curriculos) ? sessao.curriculos.length : 1}`);
-
-      // Tenta subir no Drive mesmo se a IA estiver fora. Não pode bloquear o recebimento.
+    // ══════════════════════════════════════════════════════
+    // PASSO 2 — SALVAR NO GOOGLE DRIVE IMEDIATAMENTE
+    // Isso é feito ANTES de qualquer análise. É o armazenamento permanente.
+    // Se falhar, tenta mais 2 vezes com delay crescente antes de desistir.
+    // ══════════════════════════════════════════════════════
+    let driveLink = null;
+    let drivePasta = null;
+    for (let tentDrive = 1; tentDrive <= 3; tentDrive++) {
       try {
-        const driveInfo = await uploadCurriculoDrive(arquivoBuffer, cvSalvo.filename, "Currículos Recebidos", telefone, mimeType);
-        if (driveInfo) {
-          cvSalvo.driveLink = driveInfo.link;
-          cvSalvo.pasta = driveInfo.pasta;
-          sessao.curriculo = cvSalvo;
+        const driveInfo = await uploadCurriculoDrive(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, "Currículos Recebidos", telefone, mimeType);
+        if (driveInfo?.link) {
+          driveLink = driveInfo.link;
+          drivePasta = driveInfo.pasta;
+          console.log(`✅ CV NO DRIVE (tentativa ${tentDrive}) — ${telefone} — ${driveLink}`);
+          break;
         }
       } catch (e) {
-        console.error(`Currículo de ${telefone}: upload no Drive falhou, mas arquivo ficou salvo no Inbox:`, e.message);
-        if (cvSalvo) cvSalvo.analiseStatus = "drive_indisponivel";
+        console.error(`Drive tentativa ${tentDrive}/3 falhou: ${e.message}`);
+        if (tentDrive < 3) await sleep(2000 * tentDrive);
       }
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+    }
+    if (!driveLink) {
+      console.error(`⚠️ CV NÃO SALVO NO DRIVE após 3 tentativas — ${telefone} | ${arquivoNome}`);
+      await enviarAlertaSimplesThiara(telefone, "🔥 CURRÍCULO NÃO FOI SALVO NO DRIVE", `Arquivo: ${arquivoNome || "desconhecido"}`);
     }
 
-    // Se não houver texto legível, ainda assim o currículo fica salvo e abrindo.
+    // ══════════════════════════════════════════════════════
+    // PASSO 3 — REGISTRAR NA SESSÃO E SALVAR NO SHEETS
+    // Agora com driveLink já disponível. Registro permanente.
+    // ══════════════════════════════════════════════════════
+    const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
+    cvSalvo = registrarCurriculoNaSessao(sessao, {
+      mediaId: documento.id || null,
+      base64: arquivoBuffer.toString("base64"),
+      localPath: localInfo.localPath || "",
+      localFilename: localInfo.localFilename || "",
+      filename: arquivoNome || `curriculo_${telefone}`,
+      mimeType,
+      sizeBytes,
+      recebidoEmMs,
+      recebidoEm: new Date(recebidoEmMs).toISOString(),
+      driveLink,
+      pasta: drivePasta,
+      analiseStatus: driveLink ? "salvo_drive" : "drive_indisponivel"
+    });
+    sessao.curriculo = cvSalvo;
+    console.log(`CV REGISTRADO — ${telefone} — Drive: ${driveLink ? "✅" : "❌"} — Local: ${localInfo.localPath ? "✅" : "❌"}`);
+
+    // Salva no Sheets imediatamente com driveLink. Se o servidor reiniciar agora, o link está lá.
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+
+    // ══════════════════════════════════════════════════════
+    // PASSO 4 — EXTRAIR TEXTO PARA ANÁLISE (opcional)
+    // Falha aqui não afeta o que já foi salvo.
+    // ══════════════════════════════════════════════════════
+    const textoCurriculo = await extrairTextoPdf(arquivoBuffer, arquivoNome, mimeType);
+
+    // Se não houver texto legível, currículo está salvo no Drive — só avisa.
     if (!textoCurriculo || textoCurriculo.length < 50) {
-      if (cvSalvo) cvSalvo.analiseStatus = "sem_texto";
+      if (cvSalvo) cvSalvo.analiseStatus = cvSalvo.analiseStatus === "salvo_drive" ? "salvo_drive_sem_texto" : cvSalvo.analiseStatus;
       await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
       return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática não conseguiu ler o conteúdo do arquivo, mas ele ficou salvo para avaliação da equipe. 💙";
     }
@@ -1928,28 +1956,34 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
 }
 
 
-async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
-  // ETAPA 1: Baixa o arquivo binário. Se falhar aqui, nada pode ser salvo — erro real.
+// Apenas faz o download do arquivo. Não tenta parsear. Mais rápido e nunca bloqueia o salvamento.
+async function baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal = "") {
   const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
   const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 30000 });
   const buffer = Buffer.from(arquivo.data);
   const filename = filenameOriginal || "curriculo";
   const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
+  return { buffer, filename, mimeType, sizeBytes: buffer.length };
+}
 
-  // ETAPA 2: Extrai texto para análise — erro aqui NÃO impede o salvamento do arquivo.
-  let texto = "";
+// Extrai texto do PDF para análise. Totalmente opcional — falha aqui não afeta o salvamento.
+async function extrairTextoPdf(buffer, filename, mimeType) {
   const ehPdf = /pdf/i.test(mimeType) || /\.pdf$/i.test(filename);
-  if (ehPdf) {
-    try {
-      const pdfData = await pdfParse(buffer);
-      texto = String(pdfData.text || "").slice(0, 12000);
-    } catch (e) {
-      console.error("PDF baixado e salvo, mas leitura do texto falhou:", e.message);
-      texto = ""; // currículo fica salvo mesmo sem texto
-    }
+  if (!ehPdf) return "";
+  try {
+    const pdfData = await pdfParse(buffer);
+    return String(pdfData.text || "").slice(0, 12000);
+  } catch (e) {
+    console.error("Leitura do texto do PDF falhou (arquivo já salvo no Drive):", e.message);
+    return "";
   }
+}
 
-  return { texto, buffer, filename, mimeType, sizeBytes: buffer.length };
+// Mantida para compatibilidade, mas processarCurriculo usa as funções separadas agora.
+async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
+  const { buffer, filename, mimeType, sizeBytes } = await baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal);
+  const texto = await extrairTextoPdf(buffer, filename, mimeType);
+  return { texto, buffer, filename, mimeType, sizeBytes };
 }
 
 
