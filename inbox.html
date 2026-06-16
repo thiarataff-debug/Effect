@@ -79,12 +79,21 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .search-box{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:6px 10px}
 .search-box input{border:none;background:transparent;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex:1}
 
-.ftabs{display:flex;gap:2px;padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;flex-wrap:wrap}
-.ftab{padding:4px 9px;border-radius:10px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:var(--bg);color:var(--muted);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:3px}
+.ftabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:nowrap}
+.ftab{padding:5px 11px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:4px}
 .ftab.active{background:var(--navy);color:#fff}
 .ftab:hover:not(.active){background:var(--border);color:var(--text)}
-.ftab-count{background:rgba(0,0,0,.15);border-radius:8px;padding:0 4px;font-size:9px}
-.ftab.active .ftab-count{background:rgba(255,255,255,.25)}
+.ftab-count{font-weight:800;font-size:10px}
+.ftab.active .ftab-count{color:rgba(255,255,255,.85)}
+/* Dropdown abas extras */
+.ftab-mais-wrap{position:relative;margin-left:auto}
+.ftab-mais-wrap .ftab{background:var(--bg);color:var(--muted);padding:5px 10px}
+.ftab-mais-menu{display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px;flex-direction:column;gap:2px}
+.ftab-mais-menu.show{display:flex}
+.ftab-mais-item{padding:7px 12px;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .1s}
+.ftab-mais-item:hover{background:var(--bg)}
+.ftab-mais-item.active{background:var(--navy);color:#fff}
+.ftab-mais-cnt{font-size:10px;font-weight:700;opacity:.65}
 
 .conv-list{flex:1;height:0;min-height:0;overflow-y:scroll;overflow-x:hidden;padding-bottom:24px;overscroll-behavior:contain}
 /* Card estilo WhatsApp */
@@ -573,18 +582,31 @@ font-family:'Montserrat',sans-serif
       </div>
     </div>
     <div class="ftabs">
-      <button class="ftab active" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
-      <button class="ftab ftab-red" onclick="setTab(this,'aguardando-effect')">🔴 Aguard. Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
-      <button class="ftab ftab-green" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
-      <button class="ftab ftab-yellow" onclick="setTab(this,'aguardando-candidato')">🟡 Aguard. Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
-      <button class="ftab" onclick="setTab(this,'atencao')">⭐ Prioritário <span class="ftab-count" id="cnt-atencao">0</span></button>
-      <button class="ftab" onclick="setTab(this,'novas')">🔵 N.lidas <span class="ftab-count" id="cnt-novas">0</span></button>
-      <button class="ftab" onclick="setTab(this,'manual')">👩 Laura <span class="ftab-count" id="cnt-manual">0</span></button>
-      <button class="ftab" onclick="setTab(this,'lia')">🤖 Lia <span class="ftab-count" id="cnt-lia">0</span></button>
-      <button class="ftab" onclick="setTab(this,'curriculos')">📄 CVs <span class="ftab-count" id="cnt-curriculos">0</span></button>
-      <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
-      <button class="ftab" onclick="setTab(this,'arquivadas')">📦 Arquivadas <span class="ftab-count" id="cnt-arquivadas">0</span></button>
-      <button class="ftab" onclick="setTab(this,'prstatus')" id="tab-prstatus">📌 Por Status</button>
+      <button class="ftab active" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <button class="ftab ftab-red" id="ftab-aguardando-effect" onclick="setTab(this,'aguardando-effect')">🔴 Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
+      <button class="ftab ftab-green" id="ftab-novos" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
+      <button class="ftab ftab-yellow" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')">🟡 Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
+      <!-- contadores ocultos das abas extras -->
+      <span style="display:none" id="cnt-atencao">0</span>
+      <span style="display:none" id="cnt-novas">0</span>
+      <span style="display:none" id="cnt-manual">0</span>
+      <span style="display:none" id="cnt-lia">0</span>
+      <span style="display:none" id="cnt-curriculos">0</span>
+      <span style="display:none" id="cnt-retornar">0</span>
+      <span style="display:none" id="cnt-arquivadas">0</span>
+      <div class="ftab-mais-wrap">
+        <button class="ftab" onclick="toggleMaisAbas(event)">⋯ Mais</button>
+        <div class="ftab-mais-menu" id="ftab-mais-menu">
+          <div class="ftab-mais-item" id="ftabm-atencao" onclick="setTabMais('atencao','ftabm-atencao')">⭐ Prioritário <span class="ftab-mais-cnt" id="cntm-atencao">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-novas" onclick="setTabMais('novas','ftabm-novas')">🔵 N.lidas <span class="ftab-mais-cnt" id="cntm-novas">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-manual" onclick="setTabMais('manual','ftabm-manual')">👩 Laura <span class="ftab-mais-cnt" id="cntm-manual">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-lia" onclick="setTabMais('lia','ftabm-lia')">🤖 Lia <span class="ftab-mais-cnt" id="cntm-lia">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-curriculos" onclick="setTabMais('curriculos','ftabm-curriculos')">📄 CVs <span class="ftab-mais-cnt" id="cntm-curriculos">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-retornar" onclick="setTabMais('retornar','ftabm-retornar')">📌 Retornar <span class="ftab-mais-cnt" id="cntm-retornar">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-arquivadas" onclick="setTabMais('arquivadas','ftabm-arquivadas')">📦 Arquivadas <span class="ftab-mais-cnt" id="cntm-arquivadas">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-prstatus" onclick="setTabMais('prstatus','ftabm-prstatus')">📌 Por Status</div>
+        </div>
+      </div>
     </div>
     <div class="status-filter-bar" id="status-filter-bar"></div>
     <div class="bulk-bar" id="bulk-bar" style="display:none">
@@ -613,20 +635,20 @@ font-family:'Montserrat',sans-serif
           <div class="chat-meta" id="ch-meta">—</div>
         </div>
         <div class="header-actions">
-          <!-- Primários: sempre visíveis -->
+          <!-- 4 primários sempre visíveis -->
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
-          <button class="ha-btn ha-ghost" onclick="arquivarConversa()" title="Arquivar — oculta da caixa principal; volta ao responder">📁 Arquivar</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status e usar mensagens padrão">📌 Status</button>
           <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
           <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
-          <button class="ha-btn btn-template" id="btn-template" onclick="abrirModalTemplate()" style="display:none" title="Enviar template de retomada (conversa parada >24h)">📤 Template</button>
-          <button class="ha-btn" id="btn-disc" onclick="abrirDiscCandidato()" title="Enviar link DISC ou ver resultado" style="background:#dbeafe;color:#1e40af;font-weight:700">📊 DISC</button>
-          <!-- Dropdown Mais -->
+          <!-- Dropdown Mais — tudo o que é secundário -->
           <div class="ha-dropdown" id="dropdown-mais">
             <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event,this)">⋯ Mais</button>
             <div class="ha-dropdown-menu" id="dropdown-mais-menu">
+              <div class="ha-dropdown-item" onclick="arquivarConversa();fecharDropdownMais()"><span class="di-icon">📁</span> Arquivar</div>
+              <div class="ha-dropdown-item" onclick="abrirModalEntrevista();fecharDropdownMais()"><span class="di-icon">📅</span> Entrevista</div>
+              <div class="ha-dropdown-item" onclick="abrirDiscCandidato();fecharDropdownMais()"><span class="di-icon">📊</span> DISC</div>
+              <div class="ha-dropdown-item" id="item-template" onclick="abrirModalTemplate();fecharDropdownMais()" style="display:none"><span class="di-icon">📤</span> Template</div>
               <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
               <div class="ha-dropdown-item" onclick="abrirModalSlots();fecharDropdownMais()"><span class="di-icon">🕐</span> Oferecer Horários</div>
               <div class="ha-separator"></div>
@@ -1565,6 +1587,7 @@ function renderLista(){
 
   const all=Object.entries(todasSessoes);
   document.getElementById('cnt-todas').textContent=all.length;
+  setTimeout(syncMaisContadores,0);
   document.getElementById('cnt-novos').textContent=all.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
   document.getElementById('cnt-aguardando-effect').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
   document.getElementById('cnt-aguardando-candidato').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
@@ -1683,7 +1706,7 @@ function abrirConversa(tel){
   atualizarBotaoRetornar();
   aplicarModoVisual(isManual?'manual':'lia');
   // Template button: aparece apenas em conversas com +24h sem resposta do candidato
-  const btnTpl=document.getElementById('btn-template');
+  const btnTpl=document.getElementById('item-template');
   if(btnTpl)btnTpl.style.display=isAlerta24h(tel,s)?'inline-flex':'none';
   renderQuickReplies();
   renderMsgs(s);
@@ -3452,6 +3475,44 @@ function bulkMarcarLidas(){
 
 // ─── UTILS ───
 function filtrarLista(v){busca=v;renderLista();}
+function toggleMaisAbas(e){
+  e.stopPropagation();
+  const m=document.getElementById('ftab-mais-menu');
+  m.classList.toggle('show');
+  // fechar ao clicar fora
+  if(m.classList.contains('show')){
+    setTimeout(()=>document.addEventListener('click',function h(){m.classList.remove('show');document.removeEventListener('click',h);}),0);
+  }
+}
+function setTabMais(t,id){
+  // desmarca todos os items do menu
+  document.querySelectorAll('.ftab-mais-item').forEach(x=>x.classList.remove('active'));
+  // desmarca tabs principais
+  document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById(id);
+  if(el) el.classList.add('active');
+  document.getElementById('ftab-mais-menu').classList.remove('show');
+  tab=t;
+  const bar=document.getElementById('status-filter-bar');
+  if(t==='prstatus'){
+    if(!statusFiltro) statusFiltro=null;
+    renderStatusFilterBar();
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+    statusFiltro=null;
+  }
+  renderLista();
+}
+// Sincroniza contadores do menu com os spans ocultos
+function syncMaisContadores(){
+  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas'};
+  Object.entries(map).forEach(([k,id])=>{
+    const src=document.getElementById('cnt-'+k);
+    const dst=document.getElementById(id);
+    if(src&&dst) dst.textContent=src.textContent;
+  });
+}
 function setTab(el,t){
   tab=t;
   document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));
