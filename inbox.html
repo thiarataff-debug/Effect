@@ -367,6 +367,25 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .rbtn-pausar:hover{background:rgba(220,38,38,1)!important}
 .ha-btn.btn-template{background:#d97706;color:#fff}
 .ha-btn.btn-template:hover{opacity:.88}
+.ha-prioritario-ativo{background:#f4afa1!important;color:#7b1d1d!important;box-shadow:0 0 0 2px #f4afa1!important}
+.ha-prioritario-ativo:hover{background:#f09080!important}
+/* Sub-filtro de status */
+.status-filter-bar{display:none;flex-wrap:wrap;gap:4px;padding:6px 10px 8px;border-bottom:1px solid var(--border);background:#f9fafb;flex-shrink:0}
+.status-filter-bar.show{display:flex}
+.spill{padding:3px 9px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.spill:hover{border-color:var(--navy);color:var(--navy)}
+.spill.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}
+/* Filas coloridas */
+.ftab-green{color:#065f46!important}
+.ftab-green.active{background:#8ed1b2!important;color:#064e3b!important}
+.ftab-yellow{color:#92400e!important}
+.ftab-yellow.active{background:#fbbf24!important;color:#78350f!important}
+.ftab-red{color:#991b1b!important}
+.ftab-red.active{background:#dc2626!important;color:#fff!important}
+/* Card com alerta de 2h */
+.conv-card.alerta-2h{border-left:3px solid #dc2626!important;background:#fff5f5}
+.conv-card.alerta-2h .conv-name{color:#991b1b}
+.conv-card.alerta-2h .alerta-tempo{font-size:9px;font-weight:700;color:#dc2626;margin-top:1px}
 
 /* ── CALENDÁRIO ── */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -555,6 +574,9 @@ font-family:'Montserrat',sans-serif
     </div>
     <div class="ftabs">
       <button class="ftab active" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <button class="ftab ftab-red" onclick="setTab(this,'aguardando-effect')">🔴 Aguard. Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
+      <button class="ftab ftab-green" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
+      <button class="ftab ftab-yellow" onclick="setTab(this,'aguardando-candidato')">🟡 Aguard. Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
       <button class="ftab" onclick="setTab(this,'atencao')">⭐ Prioritário <span class="ftab-count" id="cnt-atencao">0</span></button>
       <button class="ftab" onclick="setTab(this,'novas')">🔵 N.lidas <span class="ftab-count" id="cnt-novas">0</span></button>
       <button class="ftab" onclick="setTab(this,'manual')">👩 Laura <span class="ftab-count" id="cnt-manual">0</span></button>
@@ -562,7 +584,9 @@ font-family:'Montserrat',sans-serif
       <button class="ftab" onclick="setTab(this,'curriculos')">📄 CVs <span class="ftab-count" id="cnt-curriculos">0</span></button>
       <button class="ftab" onclick="setTab(this,'retornar')">📌 Retornar <span class="ftab-count" id="cnt-retornar">0</span></button>
       <button class="ftab" onclick="setTab(this,'arquivadas')">📦 Arquivadas <span class="ftab-count" id="cnt-arquivadas">0</span></button>
+      <button class="ftab" onclick="setTab(this,'prstatus')" id="tab-prstatus">📌 Por Status</button>
     </div>
+    <div class="status-filter-bar" id="status-filter-bar"></div>
     <div class="bulk-bar" id="bulk-bar" style="display:none">
       <span class="bulk-count" id="bulk-count">0 selecionadas</span>
       <button class="bulk-btn bulk-btn-ghost" onclick="selecionarTodasVissiveis()">Todas</button>
@@ -594,6 +618,7 @@ font-family:'Montserrat',sans-serif
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
           <button class="ha-btn ha-ghost" onclick="arquivarConversa()" title="Arquivar — oculta da caixa principal; volta ao responder">📁 Arquivar</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status e usar mensagens padrão">📌 Status</button>
+          <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
           <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Entrevista</button>
           <button class="ha-btn btn-template" id="btn-template" onclick="abrirModalTemplate()" style="display:none" title="Enviar template de retomada (conversa parada >24h)">📤 Template</button>
@@ -850,7 +875,7 @@ const QUICK_REPLIES = [
   "Pode me enviar seu currículo?",
   "Qual o seu bairro?",
   "Você tem experiência na área?",
-  "Vou encaminhar para análise 💙",
+  "Vamos analisar seu currículo e em breve retornaremos 💙",
   "Aguardo seu retorno!",
   "Qual vaga te interessa?"
 ];
@@ -1018,6 +1043,7 @@ let rpTab = 'perfil';
 let entrevistas = {}; // {telefone: [{data,hora,tipo,responsavel,obs,status,id}]}
 let notas = {}; // {telefone: [{texto, ts}]}
 let statusMap = {}; // {telefone: string}
+let statusFiltro = null; // status selecionado no filtro "Por Status"
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
 let arquivadas = {}; // {telefone: true}
@@ -1510,6 +1536,9 @@ function renderLista(){
   let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
     const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
     if(!mb)return false;
+    if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
+    if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
+    if(tab==='aguardando-effect'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
     if(tab==='lia')return!(s.modo==='manual'||s.pausado===true);
@@ -1521,6 +1550,7 @@ function renderLista(){
 );
     if(tab==='retornar')return !!marcadosRetorno[tel];
     if(tab==='arquivadas')return !!arquivadas[tel];
+    if(tab==='prstatus')return statusFiltro ? (statusMap[tel]||'Novo contato')===statusFiltro : true;
     return !arquivadas[tel]; // Arquivadas ficam ocultas da lista principal
   });
 
@@ -1535,6 +1565,9 @@ function renderLista(){
 
   const all=Object.entries(todasSessoes);
   document.getElementById('cnt-todas').textContent=all.length;
+  document.getElementById('cnt-novos').textContent=all.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
+  document.getElementById('cnt-aguardando-effect').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
+  document.getElementById('cnt-aguardando-candidato').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
   document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
@@ -1563,6 +1596,10 @@ all.filter(([t,s])=>
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
     const isActive=sessaoAtual===tel;
+    const agora2h=Date.now();
+    const lastMs=Number(s.lastMessageAtMs||0);
+    const duasHorasMs=2*60*60*1000;
+    const ehAlerta2h=(s.lastMessageRole==='user')&&lastMs&&(agora2h-lastMs>duasHorasMs);
     const atvMs=atividadeMsSessao(s);
     const horaFallback = textoHoraFallbackSessao(s, ultima);
 const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:false, ms:0 };
@@ -1586,11 +1623,12 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
     const humano=precisaHumano(tel,s);
 
     const isSel = selecionadas.has(tel);
-    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}${alerta24&&!isActive?' alerta24h':''}${humano&&!isActive?' precisa-humano':''}${modoSelecao?' selecao-ativa':''}${isSel?' selecionada':''}`;
+    let cardClass=`conv-card${isActive?' active':''}${isManual&&!isActive?' manual':''}${aten&&!isActive?' atencao':''}${naoLidas>0?' unread':''}${alerta24&&!isActive?' alerta24h':''}${humano&&!isActive?' precisa-humano':''}${modoSelecao?' selecao-ativa':''}${isSel?' selecionada':''}${!isActive&&ehAlerta2h?' alerta-2h':''}`;
 
     const onclickHandler = modoSelecao
       ? `toggleSelecionada('${tel}',event)`
       : `abrirConversa('${tel}')`;
+    const classeAlerta=ehAlerta2h?' alerta-2h':'';
 
     const avatarOrCheck = modoSelecao
       ? `<div class="card-check" onclick="toggleSelecionada('${tel}',event)">${isSel?'✓':''}</div>`
@@ -1652,6 +1690,7 @@ function abrirConversa(tel){
   setMeta(tel,{ultimaMsgVista:hist.length});
   renderLista();
   renderPainelDireito();
+  atualizarBtnPrioritario(isAtencao(s));
 }
 
 // ─── RENDER MENSAGENS ───
@@ -2449,9 +2488,26 @@ function togglePrioritario(){
   if(atual){s.motivoPausa='';}
   else{s.motivoPausa='Prioritário';}
   registrarIntervencao('Thiara',atual?'Removeu prioridade':'Marcou como prioritário','');
+  atualizarBtnPrioritario(!atual);
   salvarLocal();renderLista();renderPainelDireito();abrirConversa(sessaoAtual);
   fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status:statusMap[sessaoAtual]||'Novo contato',prioritario:!atual})}).catch(()=>{});
   toast(atual?'Prioridade removida':'⭐ Candidato prioritário','success');
+}
+
+function atualizarBtnPrioritario(ativo){
+  const btn=document.getElementById('btn-prioritario');
+  if(!btn)return;
+  if(ativo){
+    btn.classList.remove('ha-ghost');
+    btn.classList.add('ha-prioritario-ativo');
+    btn.textContent='⭐ Prioritário ✓';
+    btn.title='Remover prioridade';
+  } else {
+    btn.classList.remove('ha-prioritario-ativo');
+    btn.classList.add('ha-ghost');
+    btn.textContent='⭐ Prioritário';
+    btn.title='Marcar como prioritário';
+  }
 }
 
 function abrirModalObs(){
@@ -3396,7 +3452,36 @@ function bulkMarcarLidas(){
 
 // ─── UTILS ───
 function filtrarLista(v){busca=v;renderLista();}
-function setTab(el,t){tab=t;document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderLista();}
+function setTab(el,t){
+  tab=t;
+  document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  const bar=document.getElementById('status-filter-bar');
+  if(t==='prstatus'){
+    if(!statusFiltro) statusFiltro=null;
+    renderStatusFilterBar();
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+    statusFiltro=null;
+  }
+  renderLista();
+}
+function renderStatusFilterBar(){
+  const bar=document.getElementById('status-filter-bar');
+  const all=Object.entries(todasSessoes||{});
+  bar.innerHTML=STATUS_LIST.map(st=>{
+    const count=all.filter(([t,s])=>(statusMap[t]||'Novo contato')===st).length;
+    if(count===0)return '';
+    const ativo=statusFiltro===st;
+    return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
+  }).filter(Boolean).join('');
+}
+function selecionarStatusFiltro(st){
+  statusFiltro = statusFiltro===st ? null : st; // toggle
+  renderStatusFilterBar();
+  renderLista();
+}
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 function atualizarTitulo(){
