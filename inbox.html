@@ -79,7 +79,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .search-box{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:6px 10px}
 .search-box input{border:none;background:transparent;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex:1}
 
-.ftabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:nowrap}
+.ftabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
+.ftab-red{border-color:#dc2626;color:#dc2626}.ftab-red.active{background:#dc2626;color:#fff}
+.ftab-green{border-color:#16a34a;color:#16a34a}.ftab-green.active{background:#16a34a;color:#fff}
+.ftab-yellow{border-color:#ca8a04;color:#92400e}.ftab-yellow.active{background:#fef08a;color:#92400e;border-color:#ca8a04}
 .ftab{padding:5px 11px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:4px}
 .ftab.active{background:var(--navy);color:#fff}
 .ftab:hover:not(.active){background:var(--border);color:var(--text)}
@@ -351,7 +354,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 /* ── DROPDOWN MAIS ── */
 .ha-dropdown{position:relative;display:inline-block}
-.ha-dropdown-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;min-width:200px;padding:5px 0}
+.ha-dropdown-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;min-width:200px;padding:5px 0;max-height:calc(100vh - 120px);overflow-y:auto}
 .ha-dropdown-menu.show{display:block}
 .ha-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:background .1s}
 .ha-dropdown-item:hover{background:var(--bg)}
@@ -397,6 +400,13 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .conv-card.alerta-2h{border-left:3px solid #dc2626!important;background:#fff5f5}
 .conv-card.alerta-2h .conv-name{color:#991b1b}
 .conv-card.alerta-2h .alerta-tempo{font-size:9px;font-weight:700;color:#dc2626;margin-top:1px}
+/* Badge de status no card */
+.status-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-top:2px;letter-spacing:.2px}
+.status-badge.st-novo{background:#dbeafe;color:#1e40af}
+.status-badge.st-em_atendimento{background:#dcfce7;color:#166534}
+.status-badge.st-aguard_candidato{background:#fef9c3;color:#854d0e}
+.status-badge.st-aguard_recrutador{background:#ffedd5;color:#9a3412}
+.status-badge.st-finalizado{background:#f3f4f6;color:#6b7280}
 
 /* ── CALENDÁRIO ── */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -434,11 +444,9 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .horario-chip:hover{border-color:var(--red)}
 .horario-chip .del{color:var(--red);font-size:13px;line-height:1}
 
-/* ── Grupos de botões no header ── */
-.ha-group{display:flex;flex-direction:column;align-items:center;gap:3px}
-.ha-group-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
-.ha-group-sep{width:1px;background:var(--border);height:36px;margin:0 4px;flex-shrink:0}
-/* ── Rótulos nas abas laterais ── */
+/* ── Divisor entre grupos de botões no header ── */
+.ha-divider{display:inline-block;width:1px;background:var(--border);height:22px;margin:0 6px;align-self:center;flex-shrink:0}
+/* ── Rótulo FILA nas abas laterais ── */
 .ftab-group-label{display:block;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 4px 2px;width:100%}
 </style>
 </head>
@@ -591,12 +599,11 @@ font-family:'Montserrat',sans-serif
       </div>
     </div>
     <div class="ftabs">
-      <span class="ftab-group-label">📋 Fila</span>
-      <button class="ftab active" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
       <button class="ftab ftab-red" id="ftab-aguardando-effect" onclick="setTab(this,'aguardando-effect')">🔴 Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
       <button class="ftab ftab-green" id="ftab-novos" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
       <button class="ftab ftab-yellow" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')">🟡 Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
-      <span class="ftab-group-label" style="margin-top:4px">🔎 Mais filtros</span>
+      <button class="ftab active" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+
       <!-- contadores ocultos das abas extras -->
       <span style="display:none" id="cnt-atencao">0</span>
       <span style="display:none" id="cnt-novas">0</span>
@@ -646,19 +653,15 @@ font-family:'Montserrat',sans-serif
           <div class="chat-meta" id="ch-meta">—</div>
         </div>
         <div class="header-actions">
-          <div class="ha-group">
-            <span class="ha-group-label">🤖 Bot</span>
-            <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">Lia</button>
-            <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
-          </div>
-          <div class="ha-group-sep"></div>
-          <div class="ha-group">
-            <span class="ha-group-label">👤 Candidato</span>
-            <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Vaga</button>
-            <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
-            <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
-          </div>
-          <div class="ha-group-sep"></div>
+          <!-- Grupo Bot -->
+          <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
+          <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
+          <span class="ha-divider"></span>
+          <!-- Grupo Candidato -->
+          <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
+          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
+          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
+          <span class="ha-divider"></span>
           <!-- Dropdown Mais — tudo o que é secundário -->
           <div class="ha-dropdown" id="dropdown-mais">
             <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event,this)">⋯ Mais</button>
@@ -962,114 +965,34 @@ const STATUS_LIST = [
 
 const STATUS_ATALHOS = [
   {
-    id: 'curriculo',
-    label: '📄 Currículo Recebido',
-    status: 'Currículo recebido',
-    msg: `Recebemos seu currículo com sucesso e ele já foi encaminhado para análise.
-
-Caso seu perfil seja compatível com alguma oportunidade, entraremos em contato pelos próximos dias.
-
-Agradecemos seu interesse!`
+    id: 'novo',
+    label: '🔵 Novo',
+    status: 'Novo',
+    msg: ``
   },
   {
-    id: 'contato',
-    label: '📞 Tentativa de Contato',
-    status: 'Tentativa de contato',
-    msg: `Olá!
-
-Tentamos contato referente ao seu processo seletivo.
-
-Quando possível, por favor, nos retorne para darmos continuidade.`
+    id: 'em_atendimento',
+    label: '🟢 Em atendimento',
+    status: 'Em atendimento',
+    msg: ``
   },
   {
-    id: 'aguardando',
-    label: '⏳ Aguardando Retorno',
+    id: 'aguard_candidato',
+    label: '🟡 Aguardando candidato',
     status: 'Aguardando candidato',
-    msg: `Perfeito!
-
-Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.`
+    msg: `Perfeito! Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.`
   },
   {
-    id: 'aprovado_ent',
-    label: '🟢 Aprovado para Entrevista',
-    status: 'Aprovado para entrevista',
-    msg: `Seu perfil foi aprovado para a próxima etapa do processo seletivo.
-
-Gostaria de confirmar sua disponibilidade para participação na entrevista?`
+    id: 'aguard_recrutador',
+    label: '🟠 Aguardando recrutador',
+    status: 'Aguardando recrutador',
+    msg: ``
   },
   {
-    id: 'cliente',
-    label: '📤 Encaminhado ao Cliente',
-    status: 'Encaminhado ao cliente',
-    msg: `Seu perfil foi encaminhado para avaliação do gestor responsável pela vaga.
-
-Assim que tivermos um retorno, entraremos em contato.`
-  },
-  {
-    id: 'gestor',
-    label: '🏢 Entrevista com Gestor',
-    status: 'Entrevista com gestor',
-    msg: `Parabéns!
-
-Você foi selecionado(a) para participar da entrevista com o gestor responsável pela vaga.
-
-Em breve enviaremos os detalhes da entrevista.`
-  },
-  {
-    id: 'video',
-    label: '📹 Solicitar Vídeo',
-    status: 'Solicitar vídeo',
-    msg: `Para seguirmos com sua candidatura, pedimos que grave um vídeo curto, de 1 a 2 minutos, se apresentando e contando brevemente sobre sua experiência profissional.
-
-Pode enviar por aqui mesmo.`
-  },
-  {
-    id: 'docs',
-    label: '📄 Solicitar Documentos',
-    status: 'Solicitar documentos',
-    msg: `Para continuidade do processo, por favor envie os documentos solicitados para conferência cadastral.
-
-Assim que recebermos a documentação, seguiremos com as próximas etapas.`
-  },
-  {
-    id: 'admitido',
-    label: '🎉 Admitido',
-    status: 'Admitido',
-    msg: `Parabéns!
-
-Temos a satisfação de informar que você foi aprovado(a) no processo seletivo.
-
-Em breve você receberá as orientações referentes à sua admissão.
-
-Desejamos muito sucesso nessa nova etapa!`
-  },
-  {
-    id: 'reprovado',
-    label: '❌ Reprovado',
-    status: 'Reprovado',
-    msg: `Agradecemos sua participação no processo seletivo.
-
-Neste momento seguiremos com outros perfis mais aderentes à vaga em questão.
-
-Manteremos seu currículo em nosso banco de talentos para futuras oportunidades compatíveis.
-
-Desejamos muito sucesso em sua trajetória profissional!`
-  },
-  {
-    id: 'faltou',
-    label: '🚫 Não Compareceu',
-    status: 'Não compareceu',
-    msg: `Identificamos sua ausência na entrevista agendada.
-
-Caso ainda tenha interesse na oportunidade, responda esta mensagem para verificarmos a possibilidade de reagendamento.`
-  },
-  {
-    id: 'reagendar',
-    label: '🔄 Reagendar Entrevista',
-    status: 'Reagendar entrevista',
-    msg: `Recebemos sua solicitação de reagendamento.
-
-Em breve retornaremos com uma nova data e horário para a entrevista.`
+    id: 'finalizado',
+    label: '⚫ Finalizado',
+    status: 'Finalizado',
+    msg: `Obrigado pelo seu contato! Seu processo foi finalizado. Qualquer dúvida, estamos à disposição.`
   }
 ];
 
@@ -1212,18 +1135,25 @@ async function carregarSessoes(){
       }
     });
 
-    // Auto-desarquivar quando candidato manda nova mensagem
+    // Auto-desarquivar e auto-status quando candidato manda nova mensagem
     Object.entries(novas).forEach(([tel,s])=>{
-      if(arquivadas[tel]){
-        const hist=s.historico||[];
-        const ultima=hist[hist.length-1];
-        if(ultima&&ultima.role==='user'){
-          const msUltima=tsParaMs(obterTimestampMsg(ultima));
-          const agora=Date.now();
-          if(msUltima&&(agora-msUltima)<5*60*1000){ // mensagem nova (últimos 5 min)
-            delete arquivadas[tel];
-            salvarLocal();
-          }
+      const hist=s.historico||[];
+      const ultima=hist[hist.length-1];
+      const msUltima=ultima?tsParaMs(obterTimestampMsg(ultima)):0;
+      const agora=Date.now();
+      const msgNova=msUltima&&(agora-msUltima)<5*60*1000;
+
+      if(arquivadas[tel]&&ultima&&ultima.role==='user'&&msgNova){
+        delete arquivadas[tel];
+        salvarLocal();
+      }
+
+      // Auto-status: candidato respondeu → Aguardando recrutador
+      if(ultima&&ultima.role==='user'&&msgNova){
+        const stAtual=statusMap[tel]||'Novo';
+        if(stAtual!=='Finalizado'&&stAtual!=='Aguardando recrutador'){
+          statusMap[tel]='Aguardando recrutador';
+          salvarLocal();
         }
       }
     });
@@ -1632,7 +1562,7 @@ all.filter(([t,s])=>
     const hist=ordenarHistorico(s.historico||[]);
     const ultima=hist[hist.length-1];
     const nome=s.nome||telDisplay(tel);
-    const statusAtual=statusMap[tel]||'Novo contato';
+    const statusAtual=statusMap[tel]||'Novo';
     const isManual=s.modo==='manual'||s.pausado===true;
     const aten=isAtencao(s);
     const naoLidas=contarNaoLidas(tel,s);
@@ -1641,6 +1571,7 @@ all.filter(([t,s])=>
     const lastMs=Number(s.lastMessageAtMs||0);
     const duasHorasMs=2*60*60*1000;
     const ehAlerta2h=(s.lastMessageRole==='user')&&lastMs&&(agora2h-lastMs>duasHorasMs);
+    const statusBadgeClass=({'Novo':'st-novo','Em atendimento':'st-em_atendimento','Aguardando candidato':'st-aguard_candidato','Aguardando recrutador':'st-aguard_recrutador','Finalizado':'st-finalizado'})[statusAtual]||'st-novo';
     const atvMs=atividadeMsSessao(s);
     const horaFallback = textoHoraFallbackSessao(s, ultima);
 const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:false, ms:0 };
@@ -1690,7 +1621,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:fa
           ${humano?'<span class="cc cc-humano">🆘 Precisa humano</span>':''}
           ${alerta24?'<span class="cc cc-warning">⚠️ +24h sem resposta</span>':''}
           ${s.discResult?`<span class="cc cc-disc-${s.discResult.primario}">📊 ${s.discResult.primario}${s.discResult.secundario?'/'+s.discResult.secundario:''}</span>`:''}
-          ${statusAtual?`<span class="cc cc-gray">📌 ${statusAtual}</span>`:''}
+          ${statusAtual?`<span class="status-badge ${statusBadgeClass}">${statusAtual}</span>`:''}
           ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
@@ -2239,6 +2170,11 @@ async function enviarMsg(){
       todasSessoes[telefoneAtual].historico.push(eventoLocal);
       todasSessoes[telefoneAtual].lastMessage=texto;
       todasSessoes[telefoneAtual].lastMessageRole='assistant';
+      // Auto-status: se status for Novo ou Aguardando recrutador, move para Em atendimento
+      if(!statusMap[telefoneAtual]||statusMap[telefoneAtual]==='Aguardando recrutador'||statusMap[telefoneAtual]==='Novo'){
+        statusMap[telefoneAtual]='Em atendimento';
+        salvarLocal();
+      }
       todasSessoes[telefoneAtual].lastMessageAtMs=eventoLocal.timestampMs;
       todasSessoes[telefoneAtual].unreadCount=0;
       todasSessoes[telefoneAtual].modo='manual';
@@ -3377,15 +3313,21 @@ function toggleDropdownMais(e, btn){
     menu.classList.remove('show');
     return;
   }
-  // Posiciona o menu usando position:fixed para evitar clipping por overflow:hidden
   btn = btn || e.currentTarget || e.target;
   const rect = btn.getBoundingClientRect();
   const menuW = 210;
+  const menuH = Math.min(420, window.innerHeight - 120);
   let left = rect.left;
-  // Se sair pela direita, alinha pela borda direita do botão
   if(left + menuW > window.innerWidth - 8) left = rect.right - menuW;
   if(left < 8) left = 8;
-  menu.style.top = (rect.bottom + 4) + 'px';
+  // Se o menu sair pela base da tela, abre ACIMA do botão
+  let top;
+  if(rect.bottom + menuH > window.innerHeight - 8){
+    top = Math.max(8, rect.top - menuH - 4);
+  } else {
+    top = rect.bottom + 4;
+  }
+  menu.style.top = top + 'px';
   menu.style.left = left + 'px';
   menu.classList.add('show');
 }
