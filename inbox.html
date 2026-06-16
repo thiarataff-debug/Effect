@@ -1799,7 +1799,7 @@ function renderPainelPerfil(s){
   const div=document.getElementById('rp-body');
   const anal=s.ultimaAnalise||{};
   const compat=compatInfo(anal.scoreVaga||anal.scoreGeral);
-  const st=statusMap[sessaoAtual]||'Novo contato';
+  const st=statusMap[sessaoAtual]||'Novo';
   const hist=s.historico||[];
   const primeiraMsgTs=obterTimestampMsg(hist[0])||'';
   const tel=sessaoAtual;
@@ -1809,7 +1809,7 @@ function renderPainelPerfil(s){
   div.innerHTML=`
   <div class="rp-section">
     <div class="rp-section-title">📋 Status do Processo</div>
-    <select class="status-select" onchange="atualizarStatus(this.value)">${STATUS_LIST.map(st2=>`<option ${st===st2?'selected':''}>${st2}</option>`).join('')}</select>
+    <select class="status-select" onchange="atualizarStatus(this.value)">${['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st2=>`<option ${st===st2?'selected':''}>${st2}</option>`).join('')}</select>
   </div>
   ${anal.nome?`
   <div class="rp-section">
@@ -3492,8 +3492,8 @@ function setTab(el,t){
 function renderStatusFilterBar(){
   const bar=document.getElementById('status-filter-bar');
   const all=Object.entries(todasSessoes||{});
-  bar.innerHTML=STATUS_LIST.map(st=>{
-    const count=all.filter(([t,s])=>(statusMap[t]||'Novo contato')===st).length;
+  bar.innerHTML=['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st=>{
+    const count=all.filter(([t,s])=>(statusMap[t]||'Novo')===st).length;
     if(count===0)return '';
     const ativo=statusFiltro===st;
     return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
