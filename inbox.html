@@ -189,6 +189,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .mbubble.candidato .bubble-time{color:#667781}
 
 .quick-bar{padding:6px 14px 0;background:#f0f2f5;display:flex;gap:5px;overflow-x:auto;flex-shrink:0}
+.qcat-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;align-self:center;padding:0 2px}
+.qcat-sep{display:inline-block;width:1px;background:var(--border);height:22px;margin:0 6px;align-self:center;flex-shrink:0}
 .qbtn{padding:5px 11px;border-radius:12px;border:1px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:10px;cursor:pointer;white-space:nowrap;color:var(--navy);font-weight:600;flex-shrink:0}
 .qbtn:hover{background:var(--bg);border-color:var(--blue)}
 
@@ -431,6 +433,13 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .horario-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;margin:3px;transition:border .15s}
 .horario-chip:hover{border-color:var(--red)}
 .horario-chip .del{color:var(--red);font-size:13px;line-height:1}
+
+/* ── Grupos de botões no header ── */
+.ha-group{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ha-group-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.ha-group-sep{width:1px;background:var(--border);height:36px;margin:0 4px;flex-shrink:0}
+/* ── Rótulos nas abas laterais ── */
+.ftab-group-label{display:block;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 4px 2px;width:100%}
 </style>
 </head>
 <body>
@@ -582,10 +591,12 @@ font-family:'Montserrat',sans-serif
       </div>
     </div>
     <div class="ftabs">
+      <span class="ftab-group-label">📋 Fila</span>
       <button class="ftab active" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
       <button class="ftab ftab-red" id="ftab-aguardando-effect" onclick="setTab(this,'aguardando-effect')">🔴 Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
       <button class="ftab ftab-green" id="ftab-novos" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
       <button class="ftab ftab-yellow" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')">🟡 Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
+      <span class="ftab-group-label" style="margin-top:4px">🔎 Mais filtros</span>
       <!-- contadores ocultos das abas extras -->
       <span style="display:none" id="cnt-atencao">0</span>
       <span style="display:none" id="cnt-novas">0</span>
@@ -635,12 +646,19 @@ font-family:'Montserrat',sans-serif
           <div class="chat-meta" id="ch-meta">—</div>
         </div>
         <div class="header-actions">
-          <!-- 4 primários sempre visíveis -->
-          <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
-          <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
-          <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
-          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
+          <div class="ha-group">
+            <span class="ha-group-label">🤖 Bot</span>
+            <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">Lia</button>
+            <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
+          </div>
+          <div class="ha-group-sep"></div>
+          <div class="ha-group">
+            <span class="ha-group-label">👤 Candidato</span>
+            <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Vaga</button>
+            <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
+            <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
+          </div>
+          <div class="ha-group-sep"></div>
           <!-- Dropdown Mais — tudo o que é secundário -->
           <div class="ha-dropdown" id="dropdown-mais">
             <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event,this)">⋯ Mais</button>
@@ -804,13 +822,16 @@ font-family:'Montserrat',sans-serif
 </div>
 
 <!-- MODAL: STATUS RÁPIDO -->
-<div class="modal-overlay" id="modal-status-rapido">
-  <div class="modal" style="width:520px">
-    <div class="modal-title">📌 Atualizar status do candidato</div>
+<div class="modal-overlay" id="modal-status-rapido" onclick="fecharModalOverlay(event,'modal-status-rapido')">
+  <div class="modal" style="width:520px;max-height:85vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title" style="margin-bottom:0">📌 Atualizar status do candidato</div>
+      <button onclick="fecharModal('modal-status-rapido')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px" title="Fechar">✕</button>
+    </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
       Escolha o status. O sistema pergunta se deseja enviar a mensagem padrão ou apenas atualizar o processo.
     </div>
-    <div id="status-grid" class="corrigir-grid"></div>
+    <div id="status-grid" class="corrigir-grid" style="overflow-y:auto;flex:1"></div>
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-status-rapido')">Fechar</button>
     </div>
@@ -894,12 +915,9 @@ const NOME_MANUAL = "Laura";
 const ASSINATURA = `\n\n— ${NOME_MANUAL}, Equipe Effect 💙`;
 
 const QUICK_REPLIES = [
-  "Pode me enviar seu currículo?",
-  "Qual o seu bairro?",
-  "Você tem experiência na área?",
-  "Vamos analisar seu currículo e em breve retornaremos 💙",
-  "Aguardo seu retorno!",
-  "Qual vaga te interessa?"
+  "Olá! Pode me reencaminhar seu currículo?",
+  "Olá! Pode me encaminhar um currículo?",
+  "Vamos analisar seu currículo e em breve retornaremos! 💙"
 ];
 
 // ── HELPERS FASE 1 ──────────────────────────────────────────────
@@ -2273,7 +2291,7 @@ async function enviarMsg(){
 
 // ─── QUICK REPLIES ───
 function renderQuickReplies(){
-  document.getElementById('quick-bar').innerHTML=QUICK_REPLIES.map(q=>`<button class="qbtn" onclick="usarQuick('${q.replace(/'/g,"\\'")}');">${q.length>35?q.slice(0,35)+'…':q}</button>`).join('');
+  document.getElementById('quick-bar').innerHTML=QUICK_REPLIES.map(q=>`<button class="qbtn" onclick="usarQuick('${q.replace(/'/g,"\\'")}');">${q.length>45?q.slice(0,45)+'…':q}</button>`).join('');
 }
 function usarQuick(t){const i=document.getElementById('msg-input');i.value=t;autoResize(i);i.focus();}
 
@@ -2719,6 +2737,7 @@ function enviarCorrecao(){
 
 // ─── MODAL ───
 function fecharModal(id){document.getElementById(id).classList.remove('show');}
+function fecharModalOverlay(e,id){if(e.target===document.getElementById(id))fecharModal(id);}
 
 // ─── PAUSAR/REATIVAR TODAS (emergência) ───
 let novaConversaIniciaManual=false;
@@ -3549,6 +3568,15 @@ function atualizarTitulo(){
   const n=Object.entries(todasSessoes).filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.title=n>0?`(${n}) Effect Lia Inbox`:'Effect — Lia Inbox';
 }
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && el.classList.contains('show')) el.classList.remove('show');
+    });
+  }
+});
 </script>
 </body>
 </html>
