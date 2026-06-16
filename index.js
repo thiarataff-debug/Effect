@@ -34,7 +34,8 @@ const CONFIG = {
   VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
   VAGAS_URL: process.env.VAGAS_URL,
   THIARA_WHATSAPP: "5527997925288",
-  DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "1-N6OjCjfdpaPCxvkXFjoMtU3UlksifTH",
+  DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD",
+  DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON
 };
 
@@ -508,63 +509,35 @@ async function obterOuCriarPastaCargo(drive, cargo) {
 }
 
 async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType = 'application/octet-stream') {
-  try {
-    const drive = getDriveClient();
-    if (!drive) { console.log("Drive não configurado — pulando upload"); return null; }
+  // Usa Apps Script rodando como a conta da Thiara — sem problema de quota de conta de serviço
+  const scriptUrl = CONFIG.DRIVE_SCRIPT_URL;
+  if (!scriptUrl) { console.error("DRIVE_SCRIPT_URL não configurado"); return null; }
 
-    const folderId = await obterOuCriarPastaCargo(drive, cargo);
+  const nomeFinal = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
+  const base64 = buffer.toString("base64");
 
-    // Nome final: telefone + nome do arquivo, evita sobrescrever
-    const nomeFinal = `${telefone}_${filename}`.replace(/[\\/:*?"<>|]/g, "-");
-
-    const { Readable } = require("stream");
-    const stream = Readable.from(buffer);
-
-    const resp = await drive.files.create({
-      requestBody: {
-        name: nomeFinal,
-        parents: [folderId]
-      },
-      media: {
-        mimeType: mimeType || 'application/octet-stream',
-        body: stream
-      },
-      fields: "id, webViewLink, webContentLink",
-      supportsAllDrives: true
-    });
-
-    // Torna o arquivo acessível por link (qualquer pessoa com o link pode visualizar)
+  for (let tent = 1; tent <= 3; tent++) {
     try {
-      await drive.permissions.create({
-        fileId: resp.data.id,
-        requestBody: { role: "reader", type: "anyone" },
-        supportsAllDrives: true
-      });
-    } catch (e) { console.error("Erro ao definir permissão pública do CV:", e.message); }
+      const r = await axios.post(scriptUrl, {
+        base64,
+        filename: nomeFinal,
+        mimeType: mimeType || "application/octet-stream",
+        folderId: CONFIG.DRIVE_ROOT_FOLDER_ID,
+        subfolder: cargo || "Currículos Recebidos"
+      }, { timeout: 30000 });
 
-    return { fileId: resp.data.id, link: resp.data.webViewLink, pasta: nomePastaCargo(cargo) };
-  } catch (e) {
-    console.error("uploadCurriculoDrive falhou (1ª tentativa):", JSON.stringify(e.response?.data || e.message));
-    await new Promise(r => setTimeout(r, 3000));
-    try {
-      const drive2 = getDriveClient();
-      if (!drive2) { console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename}`); return null; }
-      const folderId2 = await obterOuCriarPastaCargo(drive2, cargo);
-      const nomeFinal2 = `${telefone}_${filename}`.replace(/[\/\\:*?"<>|]/g, "-");
-      const { Readable: Readable2 } = require("stream");
-      const resp2 = await drive2.files.create({
-        requestBody: { name: nomeFinal2, parents: [folderId2] },
-        media: { mimeType: mimeType || "application/octet-stream", body: Readable2.from(buffer) },
-        fields: "id, webViewLink", supportsAllDrives: true
-      });
-      try { await drive2.permissions.create({ fileId: resp2.data.id, requestBody: { role: "reader", type: "anyone" }, supportsAllDrives: true }); } catch(pe){}
-      console.log(`✅ Currículo salvo no Drive (retry): ${telefone} | ${filename}`);
-      return { fileId: resp2.data.id, link: resp2.data.webViewLink, pasta: nomePastaCargo(cargo) };
-    } catch (e2) {
-      console.error(`⚠️ CURRÍCULO NÃO SALVO NO DRIVE: ${telefone} | ${filename} | ${e2.message}`);
-      return null;
+      if (r.data?.ok && r.data?.link) {
+        console.log(`✅ CV NO DRIVE via Apps Script (tent ${tent}): ${telefone} | ${r.data.link}`);
+        return { link: r.data.link, fileId: r.data.id, pasta: cargo };
+      }
+      console.error(`Drive Script tentativa ${tent}: resposta sem link —`, r.data);
+    } catch (e) {
+      console.error(`Drive Script tentativa ${tent} falhou: ${e.message}`);
+      if (tent < 3) await new Promise(res => setTimeout(res, 2000 * tent));
     }
   }
+  console.error(`⚠️ CV NÃO SALVO NO DRIVE após 3 tentativas via Script — ${telefone} | ${filename}`);
+  return null;
 }
 
 
