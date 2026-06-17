@@ -1504,7 +1504,8 @@ function compatInfo(score){
 function renderLista(){
   const lista=document.getElementById('conv-list');
   let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
-    const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
+    const _b=busca.toLowerCase();
+    const mb=!busca||(s.nome||'').toLowerCase().includes(_b)||tel.includes(busca)||(s.historico||[]).some(h=>(h.content||'').toLowerCase().includes(_b))||(s.vagaInteresse||s.vaga||'').toLowerCase().includes(_b)||(s.cidade||'').toLowerCase().includes(_b)||(s.areaInteresse||'').toLowerCase().includes(_b);
     if(!mb)return false;
     if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
     if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
