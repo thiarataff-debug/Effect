@@ -599,14 +599,15 @@ font-family:'Montserrat',sans-serif
       </div>
     </div>
     <div class="ftabs">
-      <button class="ftab ftab-red" id="ftab-aguardando-effect" onclick="setTab(this,'aguardando-effect')">🔴 Effect <span class="ftab-count" id="cnt-aguardando-effect">0</span></button>
-      <button class="ftab ftab-green" id="ftab-novos" onclick="setTab(this,'novos')">🟢 Novos <span class="ftab-count" id="cnt-novos">0</span></button>
-      <button class="ftab ftab-yellow" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')">🟡 Candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
-      <button class="ftab active" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <button class="ftab ftab-blue active" id="ftab-novas" onclick="setTab(this,'novas')">🔵 Não Lidas <span class="ftab-count" id="cnt-novas">0</span></button>
+      <button class="ftab" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <!-- contadores mantidos para compatibilidade -->
+      <span style="display:none" id="cnt-novos">0</span>
+      <span style="display:none" id="cnt-aguardando-effect">0</span>
+      <span style="display:none" id="cnt-aguardando-candidato">0</span>
 
       <!-- contadores ocultos das abas extras -->
       <span style="display:none" id="cnt-atencao">0</span>
-      <span style="display:none" id="cnt-novas">0</span>
       <span style="display:none" id="cnt-manual">0</span>
       <span style="display:none" id="cnt-lia">0</span>
       <span style="display:none" id="cnt-curriculos">0</span>
@@ -616,7 +617,9 @@ font-family:'Montserrat',sans-serif
         <button class="ftab" onclick="toggleMaisAbas(event)">⋯ Mais</button>
         <div class="ftab-mais-menu" id="ftab-mais-menu">
           <div class="ftab-mais-item" id="ftabm-atencao" onclick="setTabMais('atencao','ftabm-atencao')">⭐ Prioritário <span class="ftab-mais-cnt" id="cntm-atencao">0</span></div>
-          <div class="ftab-mais-item" id="ftabm-novas" onclick="setTabMais('novas','ftabm-novas')">🔵 N.lidas <span class="ftab-mais-cnt" id="cntm-novas">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-aguardando-effect" onclick="setTabMais('aguardando-effect','ftabm-aguardando-effect')">🔴 Effect <span class="ftab-mais-cnt" id="cntm-aguardando-effect">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-novos" onclick="setTabMais('novos','ftabm-novos')">🟢 Novos <span class="ftab-mais-cnt" id="cntm-novos">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-aguardando-candidato" onclick="setTabMais('aguardando-candidato','ftabm-aguardando-candidato')">🟡 Candidato <span class="ftab-mais-cnt" id="cntm-aguardando-candidato">0</span></div>
           <div class="ftab-mais-item" id="ftabm-manual" onclick="setTabMais('manual','ftabm-manual')">👩 Laura <span class="ftab-mais-cnt" id="cntm-manual">0</span></div>
           <div class="ftab-mais-item" id="ftabm-lia" onclick="setTabMais('lia','ftabm-lia')">🤖 Lia <span class="ftab-mais-cnt" id="cntm-lia">0</span></div>
           <div class="ftab-mais-item" id="ftabm-curriculos" onclick="setTabMais('curriculos','ftabm-curriculos')">📄 CVs <span class="ftab-mais-cnt" id="cntm-curriculos">0</span></div>
@@ -1386,9 +1389,8 @@ const horaAtual = agoraSP.getHours()*60+agoraSP.getMinutes();
         const total=h*60+min;
         // Se for hora solta muito futura no dia, não confia.
         // Mantém vazio para não mostrar horário louco.
-        if(total<=horaAtual+10){
-          return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-        }
+        // FIX: sempre mostra o horário — não filtra por hora do dia (msgs antigas ficavam sem hora)
+        return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
       }
     }
   }
@@ -1400,7 +1402,7 @@ const horaAtual = agoraSP.getHours()*60+agoraSP.getMinutes();
 function textoHoraFallbackSessao(s, ultima){
   // Limite: só aceita timestamps dentro de ±30 dias (evita "horários malucos")
   const agora = Date.now();
-  const LIMITE_PASSADO = agora - 30 * 24 * 60 * 60 * 1000;
+  const LIMITE_PASSADO = agora - 730 * 24 * 60 * 60 * 1000; // 2 anos
   const LIMITE_FUTURO  = agora + 10 * 60 * 1000;
 
   function msValido(ms) {
@@ -1504,8 +1506,7 @@ function compatInfo(score){
 function renderLista(){
   const lista=document.getElementById('conv-list');
   let entries=Object.entries(todasSessoes).map((item,idx)=>[item[0],item[1],idx]).filter(([tel,s])=>{
-    const _b=busca.toLowerCase();
-    const mb=!busca||(s.nome||'').toLowerCase().includes(_b)||tel.includes(busca)||(s.historico||[]).some(h=>(h.content||'').toLowerCase().includes(_b))||(s.vagaInteresse||s.vaga||'').toLowerCase().includes(_b)||(s.cidade||'').toLowerCase().includes(_b)||(s.areaInteresse||'').toLowerCase().includes(_b);
+    const mb=!busca||(s.nome||'').toLowerCase().includes(busca.toLowerCase())||tel.includes(busca);
     if(!mb)return false;
     if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
     if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
