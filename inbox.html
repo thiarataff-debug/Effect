@@ -449,8 +449,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 /* ── Rótulo FILA nas abas laterais ── */
 .ftab-group-label{display:block;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 4px 2px;width:100%}
 /* ── Pipeline de Status ── */
-.pipeline-bar{display:flex;flex-wrap:wrap;gap:5px;padding:7px 12px;background:#f8fafc;border-bottom:1px solid var(--border);flex-shrink:0}
-.pl-btn{flex-shrink:0;border:none;border-radius:5px;padding:4px 9px;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap;color:#fff}
+.pipeline-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;padding:7px 12px;background:#f8fafc;border-bottom:1px solid var(--border);flex-shrink:0}
+.pl-btn{border:none;border-radius:5px;padding:5px 4px;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis}
 .pl-btn:hover{opacity:.82}.pl-btn.ativo{outline:2px solid #1e293b;outline-offset:1px}
 </style>
 </head>
@@ -3674,3 +3674,4 @@ document.addEventListener('keydown',function(e){
 </script>
 </body>
 </html>
+  
