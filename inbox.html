@@ -721,7 +721,6 @@ font-family:'Montserrat',sans-serif
       <div class="rp-tab active" onclick="setRpTab(this,'perfil')">👤 Perfil</div>
       <div class="rp-tab" onclick="setRpTab(this,'entrevista')">📅 Entrevista</div>
       <div class="rp-tab" onclick="setRpTab(this,'notas')">📝 Notas</div>
-      <div class="rp-tab" onclick="setRpTab(this,'historico')">📋 Histórico</div>
     </div>
     <div class="rp-body" id="rp-body">
       <div class="empty">Selecione uma conversa</div>
@@ -1856,7 +1855,7 @@ function renderPainelPerfil(s){
   div.innerHTML=`
   <div class="rp-section">
     <div class="rp-section-title">📋 Status do Processo</div>
-    <select class="status-select" onchange="atualizarStatus(this.value)">${['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st2=>`<option ${st===st2?'selected':''}>${st2}</option>`).join('')}</select>
+    <div style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)}">${st||'Novo'}</div>
   </div>
   ${anal.nome?`
   <div class="rp-section">
@@ -2119,6 +2118,8 @@ function atualizarStatus(val){
 
 // ── Pipeline de Status (botões rápidos) ──
 const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
+const PIPELINE_CORES={'Triado':'#64748b','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
+function corStatusPipeline(status){return PIPELINE_CORES[status]||'#94a3b8';}
 async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
   statusMap[sessaoAtual]=status;
@@ -3674,4 +3675,3 @@ document.addEventListener('keydown',function(e){
 </script>
 </body>
 </html>
-  
