@@ -1930,13 +1930,22 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
 
 
 // Apenas faz o download do arquivo. Não tenta parsear. Mais rápido e nunca bloqueia o salvamento.
-async function baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal = "") {
-  const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
-  const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 30000 });
-  const buffer = Buffer.from(arquivo.data);
-  const filename = filenameOriginal || "curriculo";
-  const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
-  return { buffer, filename, mimeType, sizeBytes: buffer.length };
+async function baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal = "", tentativa = 1) {
+  try {
+    const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
+    const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 45000 });
+    const buffer = Buffer.from(arquivo.data);
+    const filename = filenameOriginal || "curriculo";
+    const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
+    return { buffer, filename, mimeType, sizeBytes: buffer.length };
+  } catch (e) {
+    if (tentativa < 3) {
+      console.error(`baixarArquivo tentativa ${tentativa} falhou: ${e.message} — retentando...`);
+      await sleep(2000 * tentativa);
+      return baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal, tentativa + 1);
+    }
+    throw e;
+  }
 }
 
 // Extrai texto do PDF para análise. Totalmente opcional — falha aqui não afeta o salvamento.
