@@ -115,7 +115,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .conv-card.active{background:#e8f4fd}
 .conv-card.unread .conv-name{font-weight:700;color:#111}
 .conv-card.unread .conv-preview{color:#111;font-weight:500}
-.conv-card.manual{border-left:3px solid var(--laura)}
+.conv-card.manual{border-left:4px solid #7c3aed;background:#f5f3ff}
 .conv-card.atencao{border-left:3px solid var(--red)}
 /* Avatar exato do WhatsApp — 48px círculo */
 .avatar{
@@ -124,7 +124,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   font-weight:700;font-size:18px;color:#fff;
   flex-shrink:0;
 }
-.av-auto{background:#1e3a5f}.av-manual{background:var(--laura)}.av-atencao{background:#e53935}
+.av-auto{background:#1e3a5f}.av-manual{background:#7c3aed}.av-atencao{background:#e53935}
 /* Área de texto — cresce, nunca vaza */
 .conv-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 /* Linha 1: nome + hora */
@@ -145,7 +145,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 /* Chips menores embaixo */
 .conv-chips{display:flex;gap:3px;flex-wrap:wrap;margin-top:1px}
 .cc{padding:2px 5px;border-radius:6px;font-size:9px;font-weight:700}
-.cc-blue{background:#dbeafe;color:#1d4ed8}.cc-pink{background:#fde8e4;color:#b04a38}
+.cc-blue{background:#dbeafe;color:#1d4ed8}.cc-pink{background:#ede9fe;color:#5b21b6}
 .cc-gray{background:#f3f4f6;color:var(--muted)}.cc-yellow{background:#fef9c3;color:#92400e}
 .cc-red{background:#fee2e2;color:var(--red)}.cc-green{background:#d1fae5;color:#065f46}
 .cc-purple{background:#ede9fe;color:#5b21b6}
@@ -496,6 +496,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" style="background:#f59e0b;color:#fff;font-weight:700" onclick="assumirTodasParaLaura()" title="Assumir todas as conversas ativas para Laura">👩 Assumir Todas p/ Laura</button>
     <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
+    <button class="rbtn" style="background:#4f46e5;color:#fff;font-weight:700" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis">📋 Vagas</button>
     <button class="rbtn" id="btn-backup" onclick="fazerBackupManual()" title="Salvar backup agora no Google Drive">💾 Backup</button>
     <button class="rbtn" id="btn-reengajamento" onclick="abrirReengajamento()" title="Disparar template de reengajamento em massa" style="background:rgba(31,165,240,0.15);color:#1fa5f0;border-color:rgba(31,165,240,0.3)">📢 Reengajamento</button>
   </div>
@@ -663,6 +664,7 @@ font-family:'Montserrat',sans-serif
           <span class="ha-divider"></span>
           <!-- Grupo Candidato -->
           <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
+          <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
           <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
           <span class="ha-divider"></span>
@@ -786,6 +788,27 @@ font-family:'Montserrat',sans-serif
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-corrigir')">Cancelar</button>
       <button class="modal-btn modal-confirm" onclick="enviarCorrecao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- PAINEL: TODAS AS VAGAS (referência para modo manual) -->
+<div class="modal-overlay" id="painel-vagas-ref" onclick="if(event.target===this)fecharModal('painel-vagas-ref')">
+  <div class="modal" style="width:620px;max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📋 Vagas Disponíveis</span>
+      <button onclick="fecharModal('painel-vagas-ref')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div class="search-box" style="margin-bottom:10px">
+      <span style="color:var(--muted);font-size:11px">🔍</span>
+      <input type="text" id="pv-busca" placeholder="Buscar por cargo, cidade ou área..." oninput="renderPainelVagas(this.value)" style="font-size:12px">
+    </div>
+    <div id="pv-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px">
+      <div class="empty">Carregando vagas...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('painel-vagas-ref')">Fechar</button>
     </div>
   </div>
 </div>
@@ -2261,6 +2284,74 @@ function atualizarBotaoRetornar(){
 
 // ─── ENVIAR VAGA (RESPOSTA RÁPIDA) ───
 let vagasCache=null;
+
+async function abrirPainelVagas(){
+  document.getElementById('painel-vagas-ref').classList.add('show');
+  document.getElementById('pv-busca').value='';
+  if(!vagasCache){
+    try{
+      const r=await fetch(`${API}/vagas`);
+      const d=await r.json();
+      vagasCache=(d.vagas||[]).filter(v=>{
+        const st=(v.status||v.Status||'').toLowerCase();
+        return !['encerrada','cancelada','inativa','suspensa','fechada','finalizada'].includes(st);
+      });
+    }catch(e){vagasCache=[];}
+  }
+  renderPainelVagas('');
+}
+
+function renderPainelVagas(busca){
+  const div=document.getElementById('pv-lista');
+  if(!vagasCache||!vagasCache.length){div.innerHTML='<div class="empty">Nenhuma vaga ativa encontrada</div>';return;}
+  const b=(busca||'').toLowerCase().trim();
+  const lista=vagasCache.filter(v=>{
+    if(!b)return true;
+    const txt=[v.cargo||v.Cargo||'',v.cidade||v.Cidade||'',v.area||v.Área||v['Área/Setor']||'',v.palavrasChave||v['Palavras-chave']||''].join(' ').toLowerCase();
+    return txt.includes(b);
+  });
+  if(!lista.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada para "'+busca+'"</div>';return;}
+  div.innerHTML=lista.map((v,i)=>{
+    const cargo=v.cargo||v.Cargo||'Sem cargo';
+    const cidade=v.cidade||v.Cidade||v['Cidade/Bairro']||'—';
+    const salario=v.salario||v.Salário||v['Salário Base']||'—';
+    const beneficios=v.beneficios||v.Benefícios||'';
+    const jornada=v.horario||v.Horário||v.escala||v.Escala||'—';
+    const req=v.requisitoObrigatorio||v['Requisito Obrigatório']||'';
+    const perfil=v.perfilResumido||v['Perfil Resumido']||'';
+    const idVaga=v.idVaga||v['ID Vaga']||v.ID||'';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <div style="font-weight:700;font-size:13px;color:#1e3a5f">${cargo}</div>
+          ${idVaga?`<div style="font-size:10px;color:var(--muted)">ID: ${idVaga}</div>`:''}
+        </div>
+        <button onclick="usarVagaRef(${vagasCache.indexOf(v)})" style="background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">📤 Enviar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:#374151">
+        <div>📍 ${cidade}</div>
+        <div>💰 ${salario}</div>
+        ${jornada&&jornada!=='—'?`<div>🕐 ${jornada}</div>`:''}
+        ${beneficios?`<div>✅ ${beneficios.slice(0,50)}${beneficios.length>50?'...':''}</div>`:''}
+      </div>
+      ${req?`<div style="margin-top:6px;font-size:10px;color:#b45309;background:#fef3c7;border-radius:5px;padding:3px 7px">⚠️ Requisito: ${req}</div>`:''}
+      ${perfil?`<div style="margin-top:5px;font-size:10px;color:var(--muted)">${perfil.slice(0,120)}${perfil.length>120?'...':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function usarVagaRef(idx){
+  const v=vagasCache[idx];
+  if(!v)return;
+  fecharModal('painel-vagas-ref');
+  // abre o modal de envio com essa vaga pré-selecionada
+  abrirModalVagas().then(()=>{
+    const busca=v.cargo||v.Cargo||'';
+    const el=document.getElementById('vaga-busca');
+    if(el){el.value=busca;renderListaVagas(busca);}
+  }).catch(()=>{});
+}
+
 async function abrirModalVagas(){
   document.getElementById('modal-vagas').classList.add('show');
   document.getElementById('vaga-busca').value='';
