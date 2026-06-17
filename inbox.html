@@ -448,6 +448,11 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .ha-divider{display:inline-block;width:1px;background:var(--border);height:22px;margin:0 6px;align-self:center;flex-shrink:0}
 /* ── Rótulo FILA nas abas laterais ── */
 .ftab-group-label{display:block;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 4px 2px;width:100%}
+/* ── Pipeline de Status ── */
+.pipeline-bar{display:flex;gap:5px;padding:6px 12px;background:#f8fafc;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.pipeline-bar::-webkit-scrollbar{height:3px}.pipeline-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.pl-btn{flex-shrink:0;border:none;border-radius:5px;padding:4px 9px;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap;color:#fff}
+.pl-btn:hover{opacity:.82}.pl-btn.ativo{outline:2px solid #1e293b;outline-offset:1px}
 </style>
 </head>
 <body>
@@ -492,7 +497,6 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
-    <button class="rbtn rbtn-pausar" onclick="pausarTodas()" title="Colocar TODAS as conversas em modo Manual">⏸️ Pausar Todas</button>
     <button class="rbtn" style="background:#f59e0b;color:#fff;font-weight:700" onclick="assumirTodasParaLaura()" title="Assumir todas as conversas ativas para Laura">👩 Assumir Todas p/ Laura</button>
     <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
@@ -663,7 +667,7 @@ font-family:'Montserrat',sans-serif
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
           <span class="ha-divider"></span>
           <!-- Grupo Candidato -->
-          <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Ofertar vaga ao candidato" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Ofertar vaga</button>
+          <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Direcionar candidato para vaga" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Direcionar para vaga</button>
           <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
           <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
           <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
@@ -679,11 +683,6 @@ font-family:'Montserrat',sans-serif
               <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
               <div class="ha-dropdown-item" onclick="abrirModalSlots();fecharDropdownMais()"><span class="di-icon">🕐</span> Oferecer Horários</div>
               <div class="ha-separator"></div>
-              <div class="ha-dropdown-item" onclick="abrirModalVagas();fecharDropdownMais()"><span class="di-icon">📋</span> Enviar Vaga</div>
-              <div class="ha-dropdown-item" onclick="abrirModalEncaminhar();fecharDropdownMais()"><span class="di-icon">🎯</span> Encaminhar</div>
-              <div class="ha-dropdown-item" onclick="abrirModalObs();fecharDropdownMais()"><span class="di-icon">📝</span> Observação</div>
-              <div class="ha-dropdown-item" onclick="abrirCurriculoInbox();fecharDropdownMais()"><span class="di-icon">📎</span> Ver Currículo</div>
-              <div class="ha-separator"></div>
               <div class="ha-dropdown-item" onclick="toggleRetornar();fecharDropdownMais()" id="item-retornar"><span class="di-icon">📌</span> Marcar p/ Retornar</div>
               <div class="ha-dropdown-item" onclick="marcarNaoLida();fecharDropdownMais()"><span class="di-icon">🔵</span> Marcar Não Lida</div>
             </div>
@@ -692,6 +691,20 @@ font-family:'Montserrat',sans-serif
       </div>
       <div class="status-banner sb-manual" id="banner-manual">👩 <strong>Laura</strong> está respondendo — assinatura automática ativa.</div>
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
+      <!-- Pipeline de Status -->
+      <div class="pipeline-bar" id="pipeline-bar">
+        <button class="pl-btn" style="background:#64748b" onclick="definirStatusPipeline('Triado')">TRIADO</button>
+        <button class="pl-btn" style="background:#3b82f6" onclick="definirStatusPipeline('Em Vaga')">EM VAGA</button>
+        <button class="pl-btn" style="background:#f59e0b" onclick="definirStatusPipeline('Entrevista Agendada')">ENTREVISTA AGENDADA</button>
+        <button class="pl-btn" style="background:#22c55e" onclick="definirStatusPipeline('Aprovado 1ª Etapa')">APROVADO 1ª ETAPA</button>
+        <button class="pl-btn" style="background:#ef4444" onclick="definirStatusPipeline('Reprovado 1ª Etapa')">REPROVADO 1ª ETAPA</button>
+        <button class="pl-btn" style="background:#f97316" onclick="definirStatusPipeline('Entrevista Gestor Agendada')">ENTREVISTA GESTOR AGENDADA</button>
+        <button class="pl-btn" style="background:#8b5cf6" onclick="definirStatusPipeline('Em Teste')">EM TESTE</button>
+        <button class="pl-btn" style="background:#16a34a" onclick="definirStatusPipeline('Aprovado Gestor')">APROVADO GESTOR</button>
+        <button class="pl-btn" style="background:#dc2626" onclick="definirStatusPipeline('Reprovado Gestor')">REPROVADO GESTOR</button>
+        <button class="pl-btn" style="background:#0d9488" onclick="definirStatusPipeline('Em Admissão')">EM ADMISSÃO</button>
+        <button class="pl-btn" style="background:#6b7280" onclick="definirStatusPipeline('Banco de Talentos')">BANCO DE TALENTOS</button>
+      </div>
       <div class="messages" id="messages"></div>
       <div class="quick-bar" id="quick-bar"></div>
       <div class="input-area">
@@ -1697,6 +1710,7 @@ function abrirConversa(tel){
   renderLista();
   renderPainelDireito();
   atualizarBtnPrioritario(isAtencao(s));
+  atualizarPipelineAtivo(statusMap[tel]||'');
 }
 
 // ─── RENDER MENSAGENS ───
@@ -2102,6 +2116,28 @@ function atualizarStatus(val){
   registrarIntervencao('Thiara','Status alterado',`→ ${val}`);
   renderLista();
   toast(`Status: ${val}`,'success');
+}
+
+// ── Pipeline de Status (botões rápidos) ──
+const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
+async function definirStatusPipeline(status){
+  if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+  statusMap[sessaoAtual]=status;
+  salvarLocal();
+  registrarIntervencao('Thiara','Status (pipeline)',status);
+  atualizarPipelineAtivo(status);
+  renderLista();
+  toast(`📌 ${status}`,'success');
+  try{
+    await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:false})});
+  }catch(e){}
+}
+function atualizarPipelineAtivo(statusAtual){
+  document.querySelectorAll('#pipeline-bar .pl-btn').forEach(btn=>{
+    const s=btn.textContent.trim();
+    const match=PIPELINE_STATUSES.find(p=>p.toUpperCase()===s||(statusAtual&&p===statusAtual&&btn.getAttribute('onclick').includes(p)));
+    btn.classList.toggle('ativo',match&&match===statusAtual);
+  });
 }
 
 // ─── MODO LIA/MANUAL ───
