@@ -2290,7 +2290,7 @@ async function abrirPainelVagas(){
   document.getElementById('pv-busca').value='';
   if(!vagasCache){
     try{
-      const r=await fetch(`${API}/vagas`);
+      const r=await fetch(`${API}/sheets/vagas`);
       const d=await r.json();
       vagasCache=(d.vagas||[]).filter(v=>{
         const st=(v.status||v.Status||'').toLowerCase();
