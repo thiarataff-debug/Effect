@@ -2045,7 +2045,8 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
     const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
     if (porArea.length > 0) return porArea.slice(0, 8);
   }
-  return filtradas.length > 0 ? filtradas : vagas.slice(0, 8);
+  // FIX: se nenhuma vaga filtrada, retorna TODAS as vagas ativas (não esconde vagas do prompt)
+  return filtradas.length > 0 ? filtradas : vagas;
 }
 
 function resumirVagas(vagas) {
@@ -2083,7 +2084,7 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
     : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`
   return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
 - Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
-- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área (ex: "tem vaga de garçom?", "auxiliar administrativo", "cozinheira", "rh") e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes. NÃO diga que vai confirmar com a equipe.\n- Só diga "não temos essa vaga no momento" se não houver nenhuma vaga compatível na lista abaixo.\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
+- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes.\n- Se não houver vaga exatamente igual ao pedido, apresente as vagas similares disponíveis e diga: \"No momento não temos exatamente essa vaga, mas temos essas oportunidades que podem te interessar.\"\n- NUNCA diga \"não temos vagas\" ou \"não há vagas disponíveis\". Se a lista estiver vazia ou sem compatibilidade, diga: \"Vou verificar com a equipe Effect as vagas disponíveis para o seu perfil e te retorno em breve. 💙\"\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
 }
 
 function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
@@ -2095,6 +2096,10 @@ async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
 
 async function chamarClaudeJSON(prompt) {
   const texto = await chamarClaude(prompt);
+  // FIX: se a IA retornou fallback de instabilidade, não tenta parsear JSON
+  if (texto === FALLBACK_INSTABILIDADE || texto === FALLBACK_RATE_LIMIT) {
+    throw new Error("IA indisponível para análise de currículo");
+  }
   try { return JSON.parse(texto); }
   catch (e) {
     const match = texto.match(/\{[\s\S]*\}/);
@@ -2173,10 +2178,14 @@ async function chamarGemini(prompt, tentativa = 1) {
     const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
     const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
 
+    if (ehRateLimit && tentativa < 3) {
+      await sleep(3000 * tentativa);
+      return chamarGemini(prompt, tentativa + 1);
+    }
     if (ehRateLimit) return FALLBACK_RATE_LIMIT;
 
-    if (ehTimeoutOuRede && tentativa < 2) {
-      await sleep(1500);
+    if (ehTimeoutOuRede && tentativa < 4) {
+      await sleep(1500 * tentativa);
       return chamarGemini(prompt, tentativa + 1);
     }
 
@@ -2205,10 +2214,14 @@ async function chamarClaudeOriginal(prompt, tentativa = 1) {
     const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
     const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
 
+    if (ehRateLimit && tentativa < 3) {
+      await sleep(3000 * tentativa);
+      return chamarClaudeOriginal(prompt, tentativa + 1);
+    }
     if (ehRateLimit) return FALLBACK_RATE_LIMIT;
 
-    if (ehTimeoutOuRede && tentativa < 2) {
-      await sleep(1500);
+    if (ehTimeoutOuRede && tentativa < 4) {
+      await sleep(1500 * tentativa);
       return chamarClaudeOriginal(prompt, tentativa + 1);
     }
 
