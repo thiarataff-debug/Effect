@@ -493,6 +493,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
     <button class="rbtn rbtn-pausar" onclick="pausarTodas()" title="Colocar TODAS as conversas em modo Manual">⏸️ Pausar Todas</button>
+    <button class="rbtn" style="background:#f59e0b;color:#fff;font-weight:700" onclick="assumirTodasParaLaura()" title="Assumir todas as conversas ativas para Laura">👩 Assumir Todas p/ Laura</button>
     <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
     <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
     <button class="rbtn" id="btn-backup" onclick="fazerBackupManual()" title="Salvar backup agora no Google Drive">💾 Backup</button>
@@ -2849,6 +2850,21 @@ async function toggleNovasManual(){
     atualizarBotaoNovasManual();
     toast(novaConversaIniciaManual?'🆕 Novas conversas iniciarão em modo MANUAL':'🆕 Novas conversas iniciarão com a Lia','success');
   }catch(e){toast('Erro ao alterar configuração','error');}
+}
+async function assumirTodasParaLaura(){
+  const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
+  if(!tels.length){toast('Todas as conversas já estão com Laura','success');return;}
+  if(!confirm(`Assumir ${tels.length} conversa(s) para Laura (modo manual)?`))return;
+  toast(`⏳ Assumindo ${tels.length} conversas para Laura...`,'success');
+  for(const tel of tels){
+    try{
+      await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,pausado:true,modo:'manual'})});
+      if(todasSessoes[tel]){todasSessoes[tel].modo='manual';todasSessoes[tel].pausado=true;todasSessoes[tel].motivoPausa='Assumido para Laura via botão em massa';}
+    }catch(e){console.error('Erro assumir',tel,e);}
+  }
+  renderLista();
+  if(sessaoAtual)renderPainelDireito();
+  toast(`👩 ${tels.length} conversa${tels.length>1?'s':''} assumida${tels.length>1?'s':''} para Laura`,'success');
 }
 async function pausarTodas(){
   const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
