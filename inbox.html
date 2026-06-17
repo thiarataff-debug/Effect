@@ -1418,6 +1418,8 @@ function textoHoraFallbackSessao(s, ultima){
   // Candidatos numéricos/ISO primeiro (mais confiáveis)
   const candidatosMs = [
     s?.lastMessageAtMs,
+    s?.timestampMs,
+    s?.timestamp,
     ultima?.timestampMs,
     ultima?.timestampISO,
     ultima?.timestamp,
@@ -1486,13 +1488,18 @@ function atividadeMsSessao(s, idxFallback=0){
   const fb1 = tsParaMs(s?.lastMessageAtMs);
   if(fb1 > 0) return fb1;
 
-  // 3) Fallback: dataWhatsapp ou formattedLastMessageAt
-  const fb2 = tsParaMs(s?.dataWhatsapp || s?.formattedLastMessageAt || s?.lastMessageAt);
+  // 3) Fallback: timestampMs ou timestamp da sessão (campo direto do Sheets)
+  const fb2 = tsParaMs(s?.timestampMs || s?.timestamp);
   if(fb2 > 0) return fb2;
+
+  // 4) Fallback: dataWhatsapp ou formattedLastMessageAt
+  const fb3 = tsParaMs(s?.dataWhatsapp || s?.formattedLastMessageAt || s?.lastMessageAt);
+  if(fb3 > 0) return fb3;
 
   // 4) Se ainda não há timestamp real, usa a posição do array como desempate
   //    (garante que pelo menos a ordem de chegada seja preservada)
-  return idxFallback > 0 ? -idxFallback : 0;
+  // FIX: positivo = sessões com índice maior (mais recentes) vão ao topo
+  return idxFallback > 0 ? idxFallback : 0;
 }
 
 function compatInfo(score){
@@ -1578,7 +1585,7 @@ all.filter(([t,s])=>
     const statusBadgeClass=({'Novo':'st-novo','Em atendimento':'st-em_atendimento','Aguardando candidato':'st-aguard_candidato','Aguardando recrutador':'st-aguard_recrutador','Finalizado':'st-finalizado'})[statusAtual]||'st-novo';
     const atvMs=atividadeMsSessao(s);
     const horaFallback = textoHoraFallbackSessao(s, ultima);
-const hInfo = atvMs ? formatarHora(atvMs) : { texto: horaFallback || '', hoje:false, ms:0 };
+const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallback, hoje:false, ms:0 } : { texto:'--:--', hoje:false, ms:0 });
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
