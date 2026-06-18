@@ -1542,19 +1542,29 @@ app.get("/inbox/curriculo/:telefone", async (req, res) => {
     }
 
     if (!lista.length) {
-      const driveRootLink = CONFIG.DRIVE_ROOT_FOLDER_ID
-        ? `https://drive.google.com/drive/folders/${CONFIG.DRIVE_ROOT_FOLDER_ID}`
-        : 'https://drive.google.com';
       const nomeCandidato = sessao?.nome || tel;
+      const nomeArquivo = sessao?.curriculo?.filename || '';
+      const termoBusca = nomeCandidato !== tel ? nomeCandidato : nomeArquivo || nomeCandidato;
+      const driveSearchLink = `https://drive.google.com/drive/search?q=${encodeURIComponent(termoBusca)}`;
       return res.status(404).send(`
-        <html><body style="font-family:sans-serif;padding:32px;max-width:520px">
+        <html><head><style>
+          body{font-family:sans-serif;padding:32px;max-width:520px;color:#1e293b}
+          .nome-box{display:flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin:12px 0}
+          .nome-text{font-size:15px;font-weight:700;flex:1}
+          .copy-btn{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;white-space:nowrap}
+          .copy-btn:active{opacity:.8}
+          a{color:#2563eb}
+        </style></head>
+        <body>
         <h3>📄 Currículo não disponível</h3>
-        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado. Isso acontece quando o upload para o Drive falhou e o servidor foi reiniciado.</p>
-        <p><strong>O que fazer:</strong></p>
-        <ul>
-          <li><a href="${driveRootLink}" target="_blank">🔗 Abrir pasta de Currículos no Drive</a> e buscar pelo nome do candidato.</li>
-          <li>Ou solicite reenvio: <a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato</a></li>
-        </ul>
+        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado após reinicialização do servidor.</p>
+        <p><strong>Copie o nome e busque no Drive:</strong></p>
+        <div class="nome-box">
+          <span class="nome-text" id="nome">${termoBusca}</span>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('nome').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',1500)})">Copiar</button>
+        </div>
+        <p><a href="${driveSearchLink}" target="_blank">🔍 Tentar abrir Drive com busca</a></p>
+        <p style="margin-top:16px"><a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato via WhatsApp</a></p>
         </body></html>`);
     }
 
