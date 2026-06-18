@@ -682,7 +682,7 @@ font-family:'Montserrat',sans-serif
         </div>
       </div>
       <div class="status-banner sb-manual" id="banner-manual">👩 <strong>Laura</strong> está respondendo — assinatura automática ativa.</div>
-      <div class="status-banner sb-camila" id="banner-camila">📅 <strong>Camila</strong> está respondendo — foco em agendamento de entrevistas.</div>
+      <div class="status-banner sb-camila" id="banner-camila">🩷 <strong>Camila</strong> está respondendo — foco em agendamento de entrevistas.</div>
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
       <!-- Pipeline de Status -->
       <div class="pipeline-bar" id="pipeline-bar">
@@ -2393,7 +2393,7 @@ async function enviarMsg(){
 
   const isLaura=modoAtual==='manual'||modoAtual==='camila';
   const nomeRemetente=modoAtual==='camila'?'Camila':'Laura';
-  if(isLaura)texto+=`\n\n— ${nomeRemetente}, Equipe Effect 💙`;
+  if(isLaura)texto+=`\n\n— ${nomeRemetente}, Equipe Effect ${modoAtual==='camila'?'🩷':'💙'}`;
 
   const btn=document.getElementById('send-btn');
   btn.disabled=true;
