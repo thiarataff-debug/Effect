@@ -1091,6 +1091,7 @@ let rpTab = 'perfil';
 let entrevistas = {}; // {telefone: [{data,hora,tipo,responsavel,obs,status,id}]}
 let notas = {}; // {telefone: [{texto, ts}]}
 let statusMap = {}; // {telefone: string}
+let pipelineMap = {}; // {telefone: string} — etapa do pipeline (Triado, Em Vaga, etc.)
 let statusFiltro = null; // status selecionado no filtro "Por Status"
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
@@ -1153,6 +1154,7 @@ function carregarLocalData(){
     entrevistas=JSON.parse(localStorage.getItem('effect_entrevistas_v1')||'{}');
     notas=JSON.parse(localStorage.getItem('effect_notas_v1')||'{}');
     statusMap=JSON.parse(localStorage.getItem('effect_status_v1')||'{}');
+    pipelineMap=JSON.parse(localStorage.getItem('effect_pipeline_v1')||'{}');
     intervencoes=JSON.parse(localStorage.getItem('effect_intervencoes_v1')||'{}');
     marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
     arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
@@ -1164,6 +1166,7 @@ function salvarLocal(){
     localStorage.setItem('effect_entrevistas_v1',JSON.stringify(entrevistas));
     localStorage.setItem('effect_notas_v1',JSON.stringify(notas));
     localStorage.setItem('effect_status_v1',JSON.stringify(statusMap));
+    localStorage.setItem('effect_pipeline_v1',JSON.stringify(pipelineMap));
     localStorage.setItem('effect_intervencoes_v1',JSON.stringify(intervencoes));
     localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
     localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
@@ -1714,8 +1717,8 @@ const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallbac
           ${humano?'<span class="cc cc-humano">🆘 Precisa humano</span>':''}
           ${alerta24?'<span class="cc cc-warning">⚠️ +24h sem resposta</span>':''}
           ${s.discResult?`<span class="cc cc-disc-${s.discResult.primario}">📊 ${s.discResult.primario}${s.discResult.secundario?'/'+s.discResult.secundario:''}</span>`:''}
-          ${statusAtual?`<span class="status-badge ${statusBadgeClass}">${statusAtual}</span>`:''}
-          ${isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
+          ${pipelineMap[tel]?`<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:${corStatusPipeline(pipelineMap[tel])};white-space:nowrap">${pipelineMap[tel]}</span>`:''}
+          ${s.modo==='camila'?'<span class="cc" style="background:#fce7f3;color:#db2777">📅 Camila</span>':isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
           ${marcadosRetorno[tel]?'<span class="cc cc-yellow">📌 Retornar</span>':''}
@@ -2182,7 +2185,7 @@ function atualizarStatus(val){
 
 // ── Pipeline de Status (botões rápidos) ──
 const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
-const PIPELINE_CORES={'Triado':'#64748b','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
+const PIPELINE_CORES={'Triado':'#64748b','Reprovado Triagem':'#b91c1c','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
 function corStatusPipeline(status){return PIPELINE_CORES[status]||'#94a3b8';}
 // ─── MENSAGENS AUTOMÁTICAS POR STATUS ───────────────────────────────────────
 const MENSAGENS_STATUS = {
@@ -2288,6 +2291,7 @@ async function confirmarMsgEntrevista(){
 
 async function _salvarStatus(status, enviar, mensagem){
   statusMap[sessaoAtual] = status;
+  pipelineMap[sessaoAtual] = status;
   salvarLocal();
   registrarIntervencao('Thiara','Status (pipeline)', status);
   atualizarPipelineAtivo(status);
