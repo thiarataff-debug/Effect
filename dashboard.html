@@ -1170,7 +1170,12 @@ function normalizeCandidato(c){
     cor:corPorNome(c.nome||c.Nome||''), _raw:c
   };
 }
-
+function linkarCandidatos(){
+  vagasData.forEach(v => {
+    if(!Array.isArray(v.candidatos)) v.candidatos = [];
+  });
+}
+  
 // ===== LOAD DATA =====
 async function loadData(){
   showLoadingOverlay(true);
