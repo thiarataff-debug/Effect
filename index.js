@@ -1,2529 +1,1856 @@
-// VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
-// INDEX CONSOLIDADO — 10/06/2026
-// CORREÇÃO: horário real das mensagens recebido pelo timestamp do WhatsApp — versão Gemini
-// Ajustes principais:
-// 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
-// 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
-// 3) Mantém manual apenas para pedido explícito de humano/responsável, dados sensíveis, saúde/PCD, jurídico, irritação/risco ou possível cliente.
-// 4) CORREÇÃO 10/06/2026 (parte 2): salvamento periódico no Sheets em paralelo e só para sessões com mudança
-//    + chamarClaude com retry/log de erro real + Lia não envia mais a mensagem genérica de "instabilidade"
-//    repetidamente ao candidato (evita spam); em vez disso alerta Thiara e tenta de novo silenciosamente.
-
-const express = require("express");
-const axios = require("axios");
-const pdfParse = require("pdf-parse");
-const path = require("path");
-const fs = require("fs");
-const { google } = require("googleapis");
-
-const app = express();
-app.use(express.json({ limit: "20mb" }));
-app.use((req, res, next) => { res.header("Access-Control-Allow-Origin", "*"); res.header("Access-Control-Allow-Headers", "Content-Type, Authorization"); res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); if (req.method === "OPTIONS") return res.sendStatus(200); next(); });
-
-const PORT = process.env.PORT || 3000;
-const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
-try { fs.mkdirSync(CURRICULOS_DIR, { recursive: true }); } catch (e) { console.error("Erro criando pasta local de currículos:", e.message); }
-
-const CONFIG = {
-  AI_PROVIDER: process.env.AI_PROVIDER || "gemini",
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.0-flash",
-  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
-  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
-  PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
-  VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
-  VAGAS_URL: process.env.VAGAS_URL,
-  THIARA_WHATSAPP: "5527997925288",
-  DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD",
-  DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
-  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-};
-
-const sessoes = {};
-const mensagensProcessadas = new Set();
-const curriculosProcessados = new Set();
-const atendimentosManuais = new Set();
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effect | Central de R&S</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
+  --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
+  --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
 }
-
-function limparTelefone(telefone) {
-  return String(telefone || "").replace(/\D/g, "");
-}
-
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function campo(vaga, nomes, padrao = "") {
-  for (const nome of nomes) {
-    if (vaga && vaga[nome] !== undefined && vaga[nome] !== null && String(vaga[nome]).trim() !== "") {
-      return vaga[nome];
-    }
-  }
-  return padrao;
-}
-
-function agora() {
-  return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
-function agoraMs() {
-  return Date.now();
-}
-
-function agoraHorarioBR() {
-  return new Date().toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  });
-}
-
-function carimboTempo() {
-  const ms = Date.now();
-  return {
-    timestampMs: ms,
-    timestampISO: new Date(ms).toISOString(),
-    horarioFormatado: agoraHorarioBR()
-  };
-}
-
-function agoraISO() {
-  return new Date().toISOString();
-}
-
-function parseDataFlexivel(valor) {
-  if (!valor) return null;
-  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
-  if (typeof valor === "number") {
-    const d = new Date(valor);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  const texto = String(valor).trim();
-  if (!texto) return null;
-
-  const direto = new Date(texto);
-  if (!isNaN(direto.getTime())) return direto;
-
-  // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
-  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if (m) {
-    let dia = Number(m[1]);
-    let mes = Number(m[2]);
-    let ano = Number(m[3]);
-    if (ano < 100) ano += 2000;
-    if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
-    const hora = Number(m[4] || 0);
-    const minuto = Number(m[5] || 0);
-    const segundo = Number(m[6] || 0);
-    const pad = n => String(n).padStart(2, '0');
-    const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
-    const d = new Date(isoStr);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  return null;
-}
-
-function formatarDataWhatsApp(valor) {
-  const date = parseDataFlexivel(valor);
-  if (!date) return "";
-
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((startToday - startDate) / 86400000);
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-  }
-  if (diffDays === 1) return "Ontem";
-  if (diffDays >= 2 && diffDays < 7) {
-    return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()];
-  }
-  return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-}
-
-function prepararEventoHistorico(role, content, timestampMs = null) {
-  const ms = timestampMs || Date.now();
-  const iso = new Date(ms).toISOString();
-  return {
-    role,
-    content,
-    timestamp: iso,
-    timestampISO: iso,
-    timestampMs: ms,
-    horario: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-    horarioFormatado: formatarDataWhatsApp(ms)
-  };
-}
-
-function normalizarEventoHistorico(evento) {
-  function paraMs(valor) {
-    if (!valor) return 0;
-
-    if (typeof valor === "number") {
-      return valor < 10000000000 ? valor * 1000 : valor;
-    }
-
-    const s = String(valor).trim();
-    if (!s) return 0;
-
-    if (/^\d{13,}$/.test(s)) return Number(s);
-    if (/^\d{10}$/.test(s)) return Number(s) * 1000;
-
-    // ISO: 2026-06-11T12:02:00.000Z
-    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
-    }
-
-    // Formato BR: 11/06/2026, 09:02:33
-    const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-    if (br) {
-      const dia = Number(br[1]);
-      const mes = Number(br[2]);
-      const ano = Number(br[3]);
-      const hora = Number(br[4] || 0);
-      const minuto = Number(br[5] || 0);
-      const segundo = Number(br[6] || 0);
-
-      const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
-      const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
-      // -03:00 explícito: Railway roda em UTC, sem isso fica 3h errado
-      const pad2 = n => String(n).padStart(2, '0');
-      const iso2 = `${ano}-${pad2(mesFinal)}-${pad2(diaFinal)}T${pad2(hora)}:${pad2(minuto)}:${pad2(segundo)}-03:00`;
-      const d = new Date(iso2);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
-    }
-
-    // Não usar new Date() livre para texto curto tipo "09:02".
-    // Isso foi uma das causas de o Inbox assumir o horário atual.
-    return 0;
-  }
-
-  const candidatos = [
-    evento?.timestampMs,
-    evento?.timestampISO,
-    evento?.timestamp,
-    evento?.createdAt,
-    evento?.dataHora,
-    evento?.horario
-  ];
-
-  let ms = 0;
-
-  for (const c of candidatos) {
-    const tentativa = paraMs(c);
-    if (tentativa && tentativa > 0) {
-      ms = tentativa;
-      break;
-    }
-  }
-
-  const iso = ms ? new Date(ms).toISOString() : "";
-
-  return {
-    ...(evento || {}),
-    timestamp: iso || (evento?.timestamp || ""),
-    timestampISO: iso || (evento?.timestampISO || ""),
-    timestampMs: ms,
-    horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : (evento?.horario || ""),
-    horarioFormatado: ms ? formatarDataWhatsApp(ms) : (evento?.horarioFormatado || "")
-  };
-}
-
-function obterUltimaMensagem(sessao) {
-  const historico = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
-  if (!historico.length) return null;
-  return historico.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0))[historico.length - 1];
-}
-
-function calcularUnreadSessao(sessao) {
-  if (Number.isFinite(Number(sessao?.unreadCount))) return Number(sessao.unreadCount || 0);
-  const historico = Array.isArray(sessao?.historico) ? sessao.historico : [];
-  let count = 0;
-  for (let i = historico.length - 1; i >= 0; i--) {
-    if (historico[i]?.role === "user") count++;
-    else if (historico[i]?.role === "assistant") break;
-  }
-  return count;
-}
-
-function normalizarSessaoParaInbox(telefone, sessao) {
-  const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
-  historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
-
-  const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
-  const lastMessageAtMs = ultima?.timestampMs || 0;
-  const unreadCount = calcularUnreadSessao(sessao);
-
-  return {
-    historico: historicoNormalizado,
-    nome: sessao?.nome || null,
-    modo: sessao?.modo || "automatico",
-    pausado: sessao?.pausado === true || atendimentosManuais.has(telefone),
-    motivoPausa: sessao?.motivoPausa || "",
-    aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
-    ultimaAnalise: sessao?.ultimaAnalise || null,
-    discResult: sessao?.discResult || null,
-    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
-    curriculos: normalizarCurriculosParaInbox(sessao),
-    lastMessage: ultima?.content || "",
-    lastMessageRole: ultima?.role || "",
-    lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
-    lastMessageAtMs,
-    dataWhatsapp: formatarDataWhatsApp(lastMessageAtMs),
-    formattedLastMessageAt: formatarDataWhatsApp(lastMessageAtMs),
-    unreadCount,
-    semResposta: ultima?.role === "user", // candidato aguardando resposta
-    raiox: Array.isArray(sessao?.raiox) ? sessao.raiox.slice(-5) : []
-  };
-}
-
-function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
-  const evento = prepararEventoHistorico(role, content, timestampMs);
-
-  sessao.historico.push(evento);
-  sessao.historico = sessao.historico.slice(-500);
-
-  sessao.lastMessageAtMs = evento.timestampMs || Date.now();
-  sessao.lastMessageAt = evento.timestampISO || new Date(sessao.lastMessageAtMs).toISOString();
-  sessao.formattedLastMessageAt = evento.horarioFormatado || "";
-  sessao.lastMessage = content || "";
-  sessao.lastMessageRole = role;
-
-  return evento;
-}
-
-function marcarMensagemRecebida(sessao, timestampMs = null) {
-  sessao.unreadCount = Number(sessao.unreadCount || 0) + 1;
-  sessao.lastMessageAtMs = timestampMs || Date.now();
-}
-
-function marcarConversaRespondida(sessao) {
-  sessao.unreadCount = 0;
-  // Preserva lastMessageAtMs real
-}
-
-const AREA_SYNONYMS = {
-  rh: [
-    "rh", "recursos humanos", "gente e gestao", "gente e gestão",
-    "departamento pessoal", "dp", "recrutamento", "selecao", "seleção",
-    "r&s", "rs", "treinamento", "endomarketing", "clima", "cultura",
-    "administracao de pessoal", "administração de pessoal",
-    "analista administrativo rh", "administrativo rh", "carreira", "remuneracao", "remuneração"
-  ],
-  logistica: [
-    "logistica", "logístico", "auxiliar de logistica", "assistente de logistica",
-    "operador de logistica", "estoque", "almoxarifado", "expedicao", "expedição",
-    "armazem", "armazém", "separacao", "separação", "conferente", "inventario",
-    "carga e descarga", "carregamento", "descarga", "empilhadeira", "paletizacao",
-    "supply chain", "cadeia de suprimentos", "transportadora", "frota", "deposito"
-  ],
-  administrativo: [
-    "administrativo", "administracao", "administração", "assistente administrativo",
-    "auxiliar administrativo", "secretaria", "secretario", "secretária", "recepcao", "recepção",
-    "recepcionista", "backoffice", "back office", "suporte administrativo", "rotinas administrativas",
-    "digitacao", "digitação", "financeiro", "contas a pagar", "contas a receber",
-    "faturamento", "cobranca", "cobrança", "tesouraria", "fiscal", "notas fiscais",
-    "sesmt", "seguranca do trabalho", "segurança do trabalho"
-  ],
-  operacional: [
-    "operacional", "operacoes", "operações", "producao", "produção", "operador",
-    "auxiliar de producao", "auxiliar de produção", "linha de producao", "linha de produção",
-    "montagem", "embalagem", "qualidade", "controle de qualidade", "manutencao", "manutenção",
-    "tecnico", "técnico", "operador de maquina", "operador de máquina"
-  ],
-  projetos: [
-    "projetos", "assistente de projetos", "analista de projetos", "gerente de projetos",
-    "pmo", "engenharia", "engenheiro", "engenheira", "vistoriador", "instalacao", "instalação",
-    "obras", "construcao", "construção"
-  ],
-  alimentos: [
-    "garcom", "garçom", "garconete", "garçonete", "barman", "bartender",
-    "cozinha", "cozinheiro", "cozinheira", "auxiliar de cozinha", "ajudante de cozinha",
-    "pizzaiolo", "churrasco", "chefe de cozinha", "sous chef", "confeiteiro", "confeitaria",
-    "atendente de restaurante", "atendente de bar", "restaurante", "buffet", "lanchonete",
-    "padeiro", "panificacao", "panificação"
-  ],
-  limpeza: [
-    "limpeza", "servicos gerais", "serviços gerais", "faxina", "faxineira", "faxineiro",
-    "zelador", "zeladora", "auxiliar de limpeza", "copeira", "copeiro",
-    "lavanderia", "higienizacao", "higienização", "portaria", "porteiro", "diaria", "diária"
-  ],
-  vendas: [
-    "vendas", "vendedor", "vendedora", "comercial", "representante", "consultor de vendas",
-    "atendimento ao cliente", "atendente", "balconista", "caixa", "promotor", "promotora",
-    "televendas", "telemarketing", "call center", "sdr"
-  ]
-};
-
-function contemSinonimoArea(texto = "", area) {
-  const clean = normalizarTexto(texto);
-  return (AREA_SYNONYMS[area] || []).some(term => clean.includes(normalizarTexto(term)));
-}
-
-function contemSinonimoRH(texto = "") {
-  return contemSinonimoArea(texto, "rh");
-}
-
-function textoDaVagaParaArea(vaga) {
-  return normalizarTexto([
-    campo(vaga, ["cargo", "Cargo", "CARGO"]),
-    campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
-    campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
-    campo(vaga, ["palavrasChave", "Palavras-chave", "Palavras Chave"]),
-    campo(vaga, ["requisitosDaVaga", "Requisitos da Vaga", "Requisitos"]),
-    campo(vaga, ["observacoes", "Observações", "Observacoes"])
-  ].join(" "));
-}
-
-function isVagaDaArea(vaga, area) {
-  return contemSinonimoArea(textoDaVagaParaArea(vaga), area);
-}
-
-function isRHVaga(vaga) {
-  return isVagaDaArea(vaga, "rh");
-}
-
-function candidatoTemPerfilArea(texto = "", area) {
-  return contemSinonimoArea(texto, area);
-}
-
-function candidatoTemPerfilRH(texto = "") {
-  return candidatoTemPerfilArea(texto, "rh");
-}
-
-function buscarVagaDaArea(vagas = [], area) {
-  return vagas.find(v => vagaEstaAtiva(v) && isVagaDaArea(v, area));
-}
-
-function buscarVagaRH(vagas = []) {
-  return buscarVagaDaArea(vagas, "rh");
-}
-
-function detectarAreaCandidato(texto = "") {
-  const areas = ["logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
-  return areas.find(area => candidatoTemPerfilArea(texto, area)) || null;
-}
-
-// ============================================================
-// GOOGLE DRIVE — currículos organizados por pasta de cargo
-// ============================================================
-
-let driveClient = null;
-const pastaPorCargoCache = {}; // { "auxiliar de servicos gerais": "folderId" }
-
-function getDriveClient() {
-  if (driveClient) return driveClient;
-  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    console.error("Drive: variável GOOGLE_SERVICE_ACCOUNT_JSON ausente.");
-    return null;
-  }
-  try {
-    const credentials = JSON.parse(CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/drive"]
-    });
-    driveClient = google.drive({ version: "v3", auth });
-    return driveClient;
-  } catch (e) {
-    console.error("Erro ao iniciar Google Drive client:", e.message);
-    return null;
-  }
-}
-
-
-function nomeArquivoSeguro(nome) {
-  return String(nome || "curriculo")
-    .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120) || "curriculo";
-}
-
-function salvarCurriculoLocal(buffer, filename, telefone, recebidoEmMs) {
-  try {
-    if (!buffer) return null;
-    const tel = limparTelefone(telefone);
-    const seguro = nomeArquivoSeguro(filename || `curriculo_${tel}`);
-    const finalName = `${tel}_${recebidoEmMs || Date.now()}_${seguro}`;
-    const fullPath = path.join(CURRICULOS_DIR, finalName);
-    fs.writeFileSync(fullPath, buffer);
-    return { localPath: fullPath, localFilename: finalName };
-  } catch (e) {
-    console.error("Erro salvarCurriculoLocal:", e.message);
-    return null;
-  }
-}
-
-function curriculoTemArquivo(cv) {
-  if (!cv) return false;
-  if (cv.base64) return true;
-  if (cv.driveLink) return true;
-  if (cv.localPath && fs.existsSync(cv.localPath)) return true;
-  return false;
-}
-
-function nomePastaCargo(cargo) {
-  const limpo = String(cargo || "Sem Cargo Identificado").trim();
-  return limpo
-    .replace(/[\\/:*?"<>|]/g, "-") // remove caracteres inválidos para nome de pasta
-    .slice(0, 100) || "Sem Cargo Identificado";
-}
-
-async function obterOuCriarPastaCargo(drive, cargo) {
-  const nomePasta = nomePastaCargo(cargo);
-  const chave = nomePasta.toLowerCase();
-  if (pastaPorCargoCache[chave]) return pastaPorCargoCache[chave];
-
-  // Procura subpasta existente com esse nome dentro da pasta raiz
-  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomePasta.replace(/'/g, "\\'")}' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: "files(id, name)", supportsAllDrives: true, includeItemsFromAllDrives: true });
-
-  let folderId;
-  if (busca.data.files && busca.data.files.length > 0) {
-    folderId = busca.data.files[0].id;
-  } else {
-    const criada = await drive.files.create({
-      requestBody: {
-        name: nomePasta,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [CONFIG.DRIVE_ROOT_FOLDER_ID]
-      },
-      fields: "id",
-      supportsAllDrives: true
-    });
-    folderId = criada.data.id;
-  }
-  pastaPorCargoCache[chave] = folderId;
-  return folderId;
-}
-
-async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType = 'application/octet-stream') {
-  const nomeFinal = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
-
-  // ── MÉTODO 1: Service Account direto (mesmo mecanismo dos backups) ──────────
-  try {
-    const drive = getDriveClient();
-    if (drive) {
-      const pastaId = await obterOuCriarPastaCargo(drive, cargo || "Currículos Recebidos");
-      const { Readable } = require("stream");
-      const file = await drive.files.create({
-        requestBody: {
-          name: nomeFinal,
-          parents: [pastaId],
-          mimeType: mimeType || "application/octet-stream"
-        },
-        media: {
-          mimeType: mimeType || "application/octet-stream",
-          body: Readable.from(buffer)
-        },
-        fields: "id, webViewLink",
-        supportsAllDrives: true
-      });
-      if (file.data?.id) {
-        // Torna o arquivo acessível para qualquer pessoa com o link
-        await drive.permissions.create({
-          fileId: file.data.id,
-          requestBody: { role: "reader", type: "anyone" },
-          supportsAllDrives: true
-        }).catch(e => console.warn("uploadCurriculoDrive: permissão pública não aplicada:", e.message));
-        const link = file.data.webViewLink || `https://drive.google.com/file/d/${file.data.id}/view`;
-        console.log(`✅ CV NO DRIVE via Service Account: ${telefone} | ${link}`);
-        return { link, fileId: file.data.id, pasta: cargo };
-      }
-    }
-  } catch (e) {
-    console.error(`uploadCurriculoDrive Service Account falhou: ${e.message} — tentando Apps Script...`);
-  }
-
-  // ── MÉTODO 2: Apps Script (fallback) ─────────────────────────────────────────
-  const scriptUrl = CONFIG.DRIVE_SCRIPT_URL;
-  if (!scriptUrl) { console.error("DRIVE_SCRIPT_URL não configurado"); return null; }
-  const base64 = buffer.toString("base64");
-
-  for (let tent = 1; tent <= 3; tent++) {
-    try {
-      const r = await axios.post(scriptUrl, {
-        base64,
-        filename: nomeFinal,
-        mimeType: mimeType || "application/octet-stream",
-        folderId: CONFIG.DRIVE_ROOT_FOLDER_ID,
-        subfolder: cargo || "Currículos Recebidos"
-      }, { timeout: 30000 });
-
-      if (r.data?.ok && r.data?.link) {
-        console.log(`✅ CV NO DRIVE via Apps Script (tent ${tent}): ${telefone} | ${r.data.link}`);
-        return { link: r.data.link, fileId: r.data.id, pasta: cargo };
-      }
-      console.error(`Drive Script tentativa ${tent}: resposta sem link —`, r.data);
-    } catch (e) {
-      console.error(`Drive Script tentativa ${tent} falhou: ${e.message}`);
-      if (tent < 3) await new Promise(res => setTimeout(res, 2000 * tent));
-    }
-  }
-
-  console.error(`⚠️ CV NÃO SALVO NO DRIVE após todas as tentativas — ${telefone} | ${filename}`);
-  return null;
-}
-
-
-function normalizarCurriculosParaInbox(sessao) {
-  const lista = Array.isArray(sessao?.curriculos) ? sessao.curriculos : [];
-  return lista.map((cv, idx) => ({
-    idx,
-    filename: cv.filename || `curriculo_${idx + 1}.pdf`,
-    mimeType: cv.mimeType || "application/octet-stream",
-    sizeBytes: cv.sizeBytes || null,
-    mediaId: cv.mediaId || null,
-    recebidoEm: cv.recebidoEm || "",
-    recebidoEmMs: cv.recebidoEmMs || 0,
-    recebidoEmFormatado: formatarDataWhatsApp(cv.recebidoEmMs || cv.recebidoEm),
-    driveLink: cv.driveLink || null,
-    pasta: cv.pasta || null,
-    analiseStatus: cv.analiseStatus || "recebido",
-    arquivoDisponivel: curriculoTemArquivo(cv),
-    local: !!cv.localPath
-  })).sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0));
-}
-
-function registrarCurriculoNaSessao(sessao, dados) {
-  if (!sessao.curriculos) sessao.curriculos = [];
-  const mediaId = dados.mediaId || null;
-  if (mediaId) {
-    const existente = sessao.curriculos.find(cv => cv.mediaId === mediaId);
-    if (existente) {
-      Object.assign(existente, dados);
-      sessao.curriculo = existente;
-      return existente;
-    }
-  }
-
-  const recebidoEmMs = dados.recebidoEmMs || Date.now();
-  const filename = dados.filename || `curriculo_${recebidoEmMs}.pdf`;
-
-  // Evita duplicidade visual quando o mesmo arquivo chega repetido em poucos segundos.
-  const duplicado = sessao.curriculos.find(cv =>
-    String(cv.filename || "") === String(filename || "") &&
-    Math.abs(Number(cv.recebidoEmMs || 0) - Number(recebidoEmMs || 0)) < 120000
-  );
-  if (duplicado) {
-    Object.assign(duplicado, dados, { filename, recebidoEmMs });
-    sessao.curriculo = duplicado;
-    return duplicado;
-  }
-
-  const cv = {
-    filename,
-    mimeType: dados.mimeType || "application/octet-stream",
-    sizeBytes: dados.sizeBytes || null,
-    mediaId,
-    base64: dados.base64 || "",
-    localPath: dados.localPath || "",
-    localFilename: dados.localFilename || "",
-    recebidoEmMs,
-    recebidoEm: dados.recebidoEm || new Date(recebidoEmMs).toISOString(),
-    driveLink: dados.driveLink || null,
-    pasta: dados.pasta || null,
-    analiseStatus: dados.analiseStatus || "recebido"
-  };
-  sessao.curriculos.push(cv);
-  sessao.curriculos = sessao.curriculos
-    .sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0))
-    .slice(0, 20);
-  sessao.curriculo = cv;
-  return cv;
-}
-
-// Quando true, toda NOVA conversa (primeiro contato) já nasce em modo manual,
-// pausada — a Lia não responde até alguém liberar manualmente no Inbox.
-let novaConversaIniciaManual = false;
-
-function garantirSessao(telefoneOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  if (!sessoes[telefone]) {
-    if (novaConversaIniciaManual) {
-      sessoes[telefone] = { historico: [], nome: null, modo: "manual", pausado: true, motivoPausa: "Iniciado em modo manual (configuração ativa no Inbox)" };
-      atendimentosManuais.add(telefone);
-    } else {
-      sessoes[telefone] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
-    }
-  }
-  if (atendimentosManuais.has(telefone)) {
-    sessoes[telefone].modo = "manual";
-    sessoes[telefone].pausado = true;
-  }
-  return sessoes[telefone];
-}
-
-function estaEmManual(telefoneOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  return atendimentosManuais.has(telefone) || sessao.pausado === true || sessao.modo === "manual";
-}
-
-// ============================================================
-// TRAVAS / MODO SUPERVISOR
-// ============================================================
-
-const TRAVAS = {
-  // PAUSA REAL: somente pedido explícito de humano/responsável.
-  humano: [
-    "quero falar com alguém","quero falar com alguem","quero falar com uma pessoa",
-    "quero falar com o responsável","quero falar com o responsavel",
-    "quero falar com responsável","quero falar com responsavel",
-    "quero falar com atendente","quero falar com humano","quero falar com recrutador",
-    "falar com alguém","falar com alguem","falar com uma pessoa",
-    "falar com o responsável","falar com o responsavel",
-    "falar com responsável","falar com responsavel",
-    "falar com atendente","falar com humano","falar com recrutador",
-    "não quero falar com robo","nao quero falar com robo",
-    "pessoa de verdade","alguém da effect","alguem da effect"
-  ],
-
-  // ALERTA, mas NÃO pausa automaticamente.
-  entrevista: ["tenho entrevista","marcaram minha entrevista","vim para entrevista","qual horario da entrevista","qual horário da entrevista","onde e a entrevista","onde é a entrevista","confirmar entrevista","marcar entrevista","agendar entrevista"],
-  retorno: ["fui aprovado","fui aprovada","fui reprovado","fui reprovada","nao tive retorno","não tive retorno","cadê meu retorno","cade meu retorno","estou aguardando retorno","ninguém me respondeu","ninguem me respondeu","já faz dias","ja faz dias"],
-  exFuncionario: ["ja trabalhei ai","já trabalhei aí","ja trabalhei nessa empresa","já trabalhei nessa empresa","fui funcionario","fui funcionário","fui colaborador","trabalhei anteriormente","ex funcionario","ex funcionário"],
-  urgencia: ["urgente","urgencia","urgência","preciso trabalhar","estou desempregado","estou desempregada","preciso muito","estou passando necessidade"],
-  indicacao: ["fulano me indicou","fui indicado","fui indicada","recebi indicação","recebi indicacao","indicação","indicacao"],
-  cargoEstrategico: ["supervisor","supervisora","coordenador","coordenadora","gerente","analista senior","analista sênior","especialista","engenheiro","engenheira","liderança","lideranca","gestão de equipe","gestao de equipe"],
-
-  // PAUSA REAL: temas sensíveis/risco.
-  pcdSaude: ["sou pcd","tenho laudo","deficiencia","deficiência","cota pcd","laudo medico","laudo médico","afastamento","atestado","cirurgia","gravidez","gestante","limitação","limitacao","tratamento"],
-  irritacao: ["não entendeu","nao entendeu","isso está errado","isso esta errado","péssimo atendimento","pessimo atendimento","ridículo","ridiculo","reclamação","reclamacao","processo","advogado","procon","isso não ajuda","isso nao ajuda"],
-  dadosSensiveis: ["cpf","rg","cnh","pis","ctps","conta bancária","conta bancaria","pix","cartão","cartao","dados bancários","dados bancarios","nome da mãe","nome da mae","nome do pai","data de nascimento"],
-  juridico: ["fgts","férias","ferias","13º","13°","décimo terceiro","decimo terceiro","rescisão","rescisao","processo trabalhista","direitos trabalhistas","justa causa","advogado trabalhista"],
-  empresa: ["preciso contratar","quero contratar","quero divulgar vaga","procuro recrutamento","minha empresa","sou empresa","contratar funcionário","contratar funcionario","tenho uma vaga","serviço de recrutamento","servico de recrutamento"],
-
-  // Não pausar por baixa confiança. Usar só para alerta.
-  baixaConfianca: ["não encontrei","nao encontrei","não consegui localizar","nao consegui localizar","não tenho certeza","nao tenho certeza","talvez","provavelmente","tive uma instabilidade","pode me mandar novamente","não consegui entender","nao consegui entender"],
-  salario: ["salário","salario","quanto ganha","remuneração","remuneracao","benefícios","beneficios","vale transporte","vale alimentação","vale alimentacao","ticket","vr","va"],
-  vagaNaoEncontrada: ["vaga do instagram","vaga que vi","vi uma vaga","anúncio","anuncio","vaga administrativa","postagem","publicação","publicacao"]
-};
-
-function contemAlguma(texto, lista) {
-  const t = normalizarTexto(texto);
-  return lista.some(p => t.includes(normalizarTexto(p)));
-}
-
-function detectarMenorIdade(texto) {
-  const t = normalizarTexto(texto);
-  return /\b(14|15|16|17)\s*anos\b/.test(t);
-}
-
-function ultimasPerguntasRepetidas(sessao) {
-  const falasLia = (sessao.historico || []).filter(h => h.role === "assistant").map(h => normalizarTexto(h.content || "")).filter(Boolean).slice(-3);
-  if (falasLia.length < 2) return false;
-  const ultima = falasLia[falasLia.length - 1];
-  const anterior = falasLia[falasLia.length - 2];
-  if (!ultima || !anterior) return false;
-  return ultima === anterior || ultima.includes(anterior) || anterior.includes(ultima);
-}
-
-function conversaSemAvanco(sessao) {
-  const historico = sessao.historico || [];
-  if (historico.length < 12) return false;
-  const texto = normalizarTexto(historico.map(h => h.content || "").join(" "));
-  const temNome = !!sessao.nome || texto.includes("meu nome") || texto.includes("sou ");
-  const temCidade = texto.includes("vitoria") || texto.includes("vitória") || texto.includes("vila velha") || texto.includes("serra") || texto.includes("cariacica") || texto.includes("linhares") || texto.includes("guarapari");
-  const temVaga = texto.includes("vaga") || texto.includes("cargo") || texto.includes("oportunidade") || texto.includes("trabalho");
-  return !(temNome && temCidade && temVaga);
-}
-
-async function enviarAlertaSimplesThiara(telefoneOriginal, titulo, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const alerta = `${titulo}\n\n📱 Candidato:\n+${telefone}\n\n💬 Mensagem:\n${mensagem || "Não informada"}`;
-  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
-}
-
-async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, respostaSegura = null) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  atendimentosManuais.add(telefone);
-  sessao.modo = "manual";
-  sessao.pausado = true;
-  sessao.motivoPausa = motivo;
-  const alerta = `🚨 INTERVENÇÃO NECESSÁRIA — LIA PAUSADA\n\n📱 Candidato:\n+${telefone}\n\n⚠️ Motivo:\n${motivo}\n\n💬 Última mensagem:\n${ultimaMensagem || "Não informada"}\n\n✅ A conversa foi colocada em modo MANUAL.`;
-  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
-  if (respostaSegura) {
-    await enviarMensagem(telefone, respostaSegura);
-    registrarEntradaSessao(sessao, "assistant", respostaSegura);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
-  }
-  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-  return true;
-}
-
-async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const texto = mensagem || "";
-
-  // VERSÃO ENXUTA: a Lia NÃO deve jogar candidatos normais para manual.
-  // Manual automático fica restrito a pedido explícito de humano/responsável.
-  // Todo o restante no máximo gera alerta para Thiara, mas a Lia continua atendendo.
-
-  if (contemAlguma(texto, TRAVAS.humano)) {
-    return await pausarPorTrava(
-      telefone,
-      "Candidato pediu atendimento humano/responsável",
-      texto,
-      "Claro. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento com você. 💙"
-    );
-  }
-
-  // Alertas sem pausar a Lia.
-  if (contemAlguma(texto, TRAVAS.entrevista)) await enviarAlertaSimplesThiara(telefone, "📅 CANDIDATO FALOU SOBRE ENTREVISTA", texto);
-  if (contemAlguma(texto, TRAVAS.retorno)) await enviarAlertaSimplesThiara(telefone, "🔁 CANDIDATO PEDIU RETORNO DO PROCESSO", texto);
-  if (contemAlguma(texto, TRAVAS.exFuncionario)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO DISSE QUE JÁ TRABALHOU NA EMPRESA", texto);
-  if (contemAlguma(texto, TRAVAS.urgencia)) await enviarAlertaSimplesThiara(telefone, "⚠️ CANDIDATO EM URGÊNCIA/VULNERABILIDADE", texto);
-  if (contemAlguma(texto, TRAVAS.indicacao)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
-  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
-  if (contemAlguma(texto, TRAVAS.pcdSaude)) await enviarAlertaSimplesThiara(telefone, "♿ MENSAGEM ENVOLVE PCD/SAÚDE/LAUDO", texto);
-  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) await enviarAlertaSimplesThiara(telefone, "🔒 MENSAGEM ENVOLVE DADOS PESSOAIS", texto);
-  if (contemAlguma(texto, TRAVAS.juridico)) await enviarAlertaSimplesThiara(telefone, "⚖️ MENSAGEM ENVOLVE TEMA TRABALHISTA/JURÍDICO", texto);
-  if (contemAlguma(texto, TRAVAS.empresa)) await enviarAlertaSimplesThiara(telefone, "🏢 POSSÍVEL CLIENTE/EMPRESA", texto);
-  if (detectarMenorIdade(texto)) await enviarAlertaSimplesThiara(telefone, "🚸 POSSÍVEL CANDIDATO MENOR DE IDADE", texto);
-  if (ultimasPerguntasRepetidas(garantirSessao(telefone))) await enviarAlertaSimplesThiara(telefone, "🔁 POSSÍVEL LOOP DE PERGUNTA DA LIA", texto);
-
-  return false;
-}
-
-async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const texto = resposta || "";
-
-  // Nunca pausar por resposta de baixa confiança. Apenas alerta.
-  if (contemAlguma(texto, TRAVAS.baixaConfianca)) {
-    await enviarAlertaSimplesThiara(
-      telefone,
-      "⚠️ RESPOSTA DA LIA COM BAIXA CONFIANÇA",
-      `Mensagem do candidato: ${mensagemOriginal || ""}\n\nResposta da Lia: ${resposta || ""}`
-    );
-  }
-
-  return false;
-}
-
-// ============================================================
-// SHEETS
-// ============================================================
-
-async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome, timestampMs = null) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const MAX_TENTATIVAS = 3;
-  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
-    try {
-      if (!CONFIG.VAGAS_URL) return;
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const ms = timestampMs || Date.now();
-      const payload = JSON.stringify({
-        acao: "salvarMensagem",
-        telefone,
-        role,
-        mensagem,
-        nome: nome || "",
-        timestamp: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-        timestampISO: new Date(ms).toISOString(),
-        timestampMs: ms
-      });
-      await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
-      return;
-    } catch (e) {
-      console.error(`Erro salvarMensagemSheets (${tentativa}/3):`, e.message);
-      if (tentativa < MAX_TENTATIVAS) await sleep(2000 * tentativa);
-    }
-  }
-}
-
-async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
-  const telefone = limparTelefone(telefoneOriginal);
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const sessaoAtualSheets = sessoes[telefone] || {};
-    const curriculosMeta = (Array.isArray(sessaoAtualSheets.curriculos) ? sessaoAtualSheets.curriculos : (sessaoAtualSheets.curriculo ? [sessaoAtualSheets.curriculo] : [])).map(cv => ({
-      filename: cv.filename || "",
-      mimeType: cv.mimeType || "",
-      sizeBytes: cv.sizeBytes || null,
-      mediaId: cv.mediaId || null,
-      recebidoEm: cv.recebidoEm || "",
-      recebidoEmMs: cv.recebidoEmMs || 0,
-      driveLink: cv.driveLink || "",
-      pasta: cv.pasta || "",
-      analiseStatus: cv.analiseStatus || "recebido"
-    }));
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
-    await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
-  } catch (e) {
-    console.error("Erro salvarConversaCompletaSheets:", e.message);
-  }
-}
-
-async function carregarSessoesDoSheets() {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=conversas`, { timeout: 15000, maxRedirects: 5 });
-    const data = r.data;
-    if (!data.sucesso || !data.sessoes) return;
-
-    Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
-      const tel = limparTelefone(telOriginal);
-      const motivoOriginal = sessao.motivoPausa || "";
-      const motivoNormalizado = normalizarTexto(motivoOriginal);
-
-      // Limpa praticamente todos os manuais antigos criados por travas automáticas.
-      // Mantém manual somente quando foi assumido no Inbox/Laura ou pedido explícito de humano.
-      const motivoMantemManual =
-        motivoNormalizado.includes("pausado manualmente no inbox") ||
-        motivoNormalizado.includes("atendimento assumido manualmente") ||
-        motivoNormalizado.includes("candidato pediu atendimento humano") ||
-        motivoNormalizado.includes("humano/responsavel") ||
-        motivoNormalizado.includes("humano/responsável");
-
-      const modoOriginal = sessao.modo || (sessao.pausado ? "manual" : "automatico");
-      const manualAntigoIndevido = modoOriginal === "manual" && !motivoMantemManual;
-      const modo = manualAntigoIndevido ? "automatico" : modoOriginal;
-      const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
-      const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
-
-      const existente = sessoes[tel] || {};
-      const curriculosExistentes = Array.isArray(existente.curriculos) ? existente.curriculos : (existente.curriculo ? [existente.curriculo] : []);
-      const curriculosSheets = Array.isArray(sessao.curriculos) ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
-      const curriculosMesclados = curriculosExistentes.length ? curriculosExistentes : curriculosSheets;
-
-      sessoes[tel] = {
-        historico: Array.isArray(sessao.historico)
-          ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
-          : [],
-        nome: sessao.nome || null,
-        modo,
-        pausado,
-        motivoPausa,
-        unreadCount: Number(sessao.unreadCount || 0),
-        curriculos: curriculosMesclados,
-        curriculo: curriculosMesclados[0] || existente.curriculo || null,
-        ultimaAnalise: existente.ultimaAnalise || sessao.ultimaAnalise || null,
-        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo"
-      };
-
-      if (pausado) atendimentosManuais.add(tel);
-      else atendimentosManuais.delete(tel);
-    });
-
-    console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
-  } catch (e) {
-    console.error("Erro carregarSessoesDoSheets:", e.message);
-  }
-}
-
-carregarSessoesDoSheets();
-
-// Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
-// (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
-// sozinho ultrapassava o intervalo de 5min e sobrecarregava o servidor, derrubando
-// também as chamadas à API da Claude.)
-const ultimoSaveSessao = {};
-
-setInterval(async () => {
-  const tarefas = Object.entries(sessoes)
-    .filter(([telefone, sessao]) => {
-      if (!sessao.historico || sessao.historico.length === 0) return false;
-      const ultima = sessao.historico[sessao.historico.length - 1];
-      const assinatura = `${sessao.historico.length}|${ultima?.timestampMs || ultima?.content || ""}`;
-      if (ultimoSaveSessao[telefone] === assinatura) return false;
-      ultimoSaveSessao[telefone] = assinatura;
-      return true;
-    })
-    .map(([telefone, sessao]) =>
-      salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome)
-        .catch(e => console.error(`Erro ao salvar ${telefone} no ciclo periódico:`, e.message))
-    );
-
-  if (tarefas.length) {
-    console.log(`Salvamento periódico: ${tarefas.length} sessão(ões) com mudanças.`);
-    await Promise.allSettled(tarefas);
-  }
-}, 5 * 60 * 1000);
-
-// ============================================================
-// BACKUP AUTOMÁTICO (DIÁRIO + SEMANAL) → Google Drive
-// ============================================================
-
-let ultimoBackupDiario = null;
-let ultimoBackupSemanal = null;
-
-async function fazerBackup(tipo = "diario") {
-  const drive = getDriveClient();
-  if (!drive) { console.warn("Backup: Drive não disponível."); return false; }
-
-  try {
-    // Garante pasta "Backups" dentro da pasta raiz do Drive
-    const nomeBackupFolder = "Backups-Lia";
-    let backupFolderId = null;
-
-    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeBackupFolder}' and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)" });
-    if (busca.data.files?.length) {
-      backupFolderId = busca.data.files[0].id;
-    } else {
-      const nova = await drive.files.create({
-        requestBody: { name: nomeBackupFolder, mimeType: "application/vnd.google-apps.folder", parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-        fields: "id"
-      });
-      backupFolderId = nova.data.id;
-    }
-
-    // Monta snapshot
-    const agora = new Date();
-    const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const snapshot = {
-      tipo,
-      geradoEm: agora.toISOString(),
-      totalSessoes: Object.keys(sessoes).length,
-      sessoes: Object.fromEntries(
-        Object.entries(sessoes).map(([tel, s]) => [tel, {
-          nome: s.nome,
-          modo: s.modo,
-          pausado: s.pausado,
-          motivoPausa: s.motivoPausa,
-          totalMensagens: s.historico?.length || 0,
-          ultimaMensagem: s.historico?.slice(-1)[0]?.content?.slice(0, 100) || "",
-          ultimaAnalise: s.ultimaAnalise || null,
-          historico: s.historico || []
-        }])
-      )
-    };
-
-    const { Readable } = require("stream");
-    const conteudo = JSON.stringify(snapshot, null, 2);
-    const stream = Readable.from(Buffer.from(conteudo, "utf8"));
-
-    await drive.files.create({
-      requestBody: {
-        name: `backup-${tipo}-${ts}.json`,
-        parents: [backupFolderId],
-        mimeType: "application/json"
-      },
-      media: { mimeType: "application/json", body: stream },
-      fields: "id"
-    });
-
-    console.log(`✅ Backup ${tipo} salvo no Drive — ${ts} — ${Object.keys(sessoes).length} sessões`);
-    if (tipo === "diario") ultimoBackupDiario = agora;
-    if (tipo === "semanal") ultimoBackupSemanal = agora;
-    return true;
-  } catch (e) {
-    console.error(`Erro backup ${tipo}:`, e.message);
-    return false;
-  }
-}
-
-// Backup diário — executa a cada 24h
-setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
-
-// Backup semanal — executa a cada 7 dias
-setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
-
-// Primeiro backup diário roda 5min após o servidor subir
-setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
-
-// Endpoint para backup manual via Inbox
-app.post("/inbox/backup", async (req, res) => {
-  const ok = await fazerBackup("manual");
-  return res.json({
-    ok,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null
-  });
-});
-
-// Endpoint de status do backup
-app.get("/inbox/backup/status", (req, res) => {
-  res.json({
-    ok: true,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null,
-    totalSessoes: Object.keys(sessoes).length
-  });
-});
-
-// ============================================================
-// ROTAS PRINCIPAIS
-// ============================================================
-
-app.get("/", (req, res) => {
-  res.send("Lia Effect rodando — modo supervisor + Linhares via planilha ✅");
-});
-
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === CONFIG.VERIFY_TOKEN) return res.status(200).send(challenge);
-  return res.sendStatus(403);
-});
-
-app.post("/webhook", async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!message) return;
-    if (message.id && mensagensProcessadas.has(message.id)) return;
-    if (message.id) { mensagensProcessadas.add(message.id); if (mensagensProcessadas.size > 1000) mensagensProcessadas.clear(); }
-    if (!message.text?.body && !message.document && !message.audio) return;
-    const from = limparTelefone(message.from);
-    const sessaoAtual = garantirSessao(from);
-    const messageTimestampMs = message.timestamp ? Number(message.timestamp) * 1000 : Date.now();
-    if (message.text?.body) {
-      const texto = message.text.body;
-      registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "", messageTimestampMs);
-      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
-      const travou = await aplicarTravasEntrada(from, texto);
-      if (travou) return;
-      const resposta = await processarMensagem(from, texto);
-      if (resposta) await enviarMensagem(from, resposta);
-      return;
-    }
-    if (message.audio) {
-      registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]", messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "", messageTimestampMs);
-      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
-      const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
-      registrarEntradaSessao(sessaoAtual, "assistant", respostaAudio);
-      marcarConversaRespondida(sessaoAtual);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "assistant", respostaAudio, sessaoAtual.nome || "");
-      await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
-      await enviarMensagem(from, respostaAudio);
-      return;
-    }
-    if (message.document) {
-      const emManual = estaEmManual(from);
-      const conteudoDoc = `[Documento/Currículo recebido]`;
-
-      // Evita duplicar a mesma linha no histórico quando a Meta reenvia o evento.
-      const ultimo = sessaoAtual.historico?.[sessaoAtual.historico.length - 1];
-      const ultimoMs = Number(ultimo?.timestampMs || 0);
-      if (!(ultimo && ultimo.role === "user" && String(ultimo.content || "").includes("Documento/Currículo") && Math.abs(ultimoMs - messageTimestampMs) < 120000)) {
-        registrarEntradaSessao(sessaoAtual, "user", conteudoDoc, messageTimestampMs);
-        await salvarMensagemSheets(from, "user", conteudoDoc, sessaoAtual.nome || "", messageTimestampMs);
-      }
-
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-
-      if (!emManual) {
-        await enviarMensagem(from, "Perfeito, recebi seu currículo. 💙");
-      } else {
-        console.log("CURRÍCULO RECEBIDO EM MANUAL — salvando silenciosamente:", from);
-      }
-
-      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual, timestampMs: messageTimestampMs });
-      if (!emManual && resposta) await enviarMensagem(from, resposta);
-      return;
-    }
-  } catch (erro) {
-    console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
-  }
-});
-
-// ============================================================
-// ROTAS HTML — PÁGINAS
-// ============================================================
-
-app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
-app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
-app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
-app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
-
-
-// ─── ENVIAR DISC (sem ativar modo manual) ───
-app.post("/inbox/enviar-disc", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || '');
-    const mensagem = req.body.mensagem || '';
-    if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
-    const sessao = garantirSessao(telefone);
-    await enviarMensagem(telefone, mensagem);
-    registrarEntradaSessao(sessao, "assistant", mensagem);
-    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || "");
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('Erro /inbox/enviar-disc:', e.message);
-    return res.json({ ok: false, erro: e.message });
-  }
-});
-
-// ─── DISC ASSESSMENT ───
-app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc.html")));
-
-app.post("/disc/submit", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || '');
-    const nome = String(req.body.nome || '').trim();
-    const vaga = String(req.body.vaga || '').trim();
-    const percentuaisNatural = req.body.percentuaisNatural || {};
-    const percentuaisAdaptado = req.body.percentuaisAdaptado || {};
-    const primarioNatural = req.body.primarioNatural || '';
-    const primarioAdaptado = req.body.primarioAdaptado || '';
-    const secundarioNatural = req.body.secundarioNatural || null;
-
-    const resultado = {
-      respondidoEm: new Date().toISOString(),
-      nome, vaga,
-      percentuaisNatural,
-      percentuaisAdaptado,
-      primario: primarioNatural,          // compatibilidade com inbox
-      primarioNatural,
-      primarioAdaptado,
-      secundario: secundarioNatural,
-      secundarioNatural
-    };
-
-    if (telefone && sessoes[telefone]) {
-      sessoes[telefone].discResult = resultado;
-      if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
-    }
-
-    await salvarDiscNoDrive(telefone, nome, resultado).catch(e => console.error('Erro DISC Drive:', e.message));
-
-    // Notificar candidato que o DISC foi recebido
-    if (telefone) {
-      const nomeFirst = (nome || 'Candidato').split(' ')[0];
-      const perfisDesc = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Criterioso' };
-      const descPrimario = perfisDesc[resultado.primario] || resultado.primario || '';
-      const msgConfirm = `✅ ${nomeFirst}, recebemos seu questionário DISC!\n\nSeu perfil predominante é *${resultado.primario}${descPrimario ? ' — ' + descPrimario : ''}*. Nossa equipe irá considerar essas informações na avaliação do seu perfil. 💙`;
-      enviarMensagem(telefone, msgConfirm).catch(e => console.error('Erro ao notificar DISC:', e.message));
-      // Salvar no Sheets
-      if (sessoes[telefone]) {
-        salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, sessoes[telefone].nome || nome || '').catch(()=>{});
-      }
-    }
-
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('Erro /disc/submit:', e.message);
-    return res.json({ ok: false, erro: e.message });
-  }
-});
-
-app.get("/disc/resultado/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.json({ ok: false });
-  return res.json({ ok: true, resultado: sessao.discResult });
-});
-
-// Relatório visual completo (abre em nova aba pelo inbox)
-app.get("/disc/resultado-view/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
-  const d = sessao.discResult;
-  const nome = d.nome || sessao.nome || tel;
-  const pct = d.percentuais || {};
-  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5ff'};
-  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Analítico'};
-  const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC — ${nome}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:30px 20px;max-width:600px;margin:0 auto}
-  .card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,.09);margin-bottom:16px}
-  h1{font-size:20px;font-weight:800;color:#1e3a5f;margin-bottom:4px} .sub{font-size:11px;color:#a1a1aa;margin-bottom:20px}
-  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px} .bar-l{font-size:12px;font-weight:800;width:14px}
-  .bar-t{flex:1;background:#e8ecf1;border-radius:999px;height:14px;overflow:hidden} .bar-f{height:100%;border-radius:999px}
-  .bar-p{font-size:11px;font-weight:700;color:#a1a1aa;width:32px;text-align:right}
-  .sec-t{font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:16px}
-  p{font-size:12.5px;line-height:1.65;color:#374151} li{font-size:12.5px;line-height:1.65;color:#374151;margin-left:16px;margin-bottom:4px}
-  .logo{font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:20px}.logo span{color:#8ed1b2}
-  @media print{body{background:#fff}.card{box-shadow:none;border:1px solid #e5e7eb}}</style></head><body>
-  <div class="logo">Effect <span>Pessoas</span></div>
-  <div class="card">
-    <h1>${EMOJIS[d.primario]||''} ${NOMES[d.primario]||d.primario}${d.secundario?' / '+NOMES[d.secundario]:''}</h1>
-    <div class="sub">📋 Relatório DISC · ${nome} · ${new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
-    ${['D','I','S','C'].map(k=>`<div class="bar-row">
-      <div class="bar-l" style="color:${CORES[k]}">${k}</div>
-      <div class="bar-t"><div class="bar-f" style="width:${pct[k]||0}%;background:${CORES[k]}"></div></div>
-      <div class="bar-p">${pct[k]||0}%</div>
-    </div>`).join('')}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0}
+.logo-area{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.logo-area h1{color:#ffffff;font-size:19px;font-weight:700;letter-spacing:2px}
+.logo-area .logo-sub{color:var(--teal);font-size:10px;font-weight:600;margin-top:1px}
+.logo-area .logo-panel{color:rgba(161,161,170,0.55);font-size:9px;margin-top:1px;letter-spacing:.5px}
+.nav-section{padding:16px 18px 4px;font-size:8px;color:rgba(161,161,170,0.45);letter-spacing:2px;text-transform:uppercase;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:12px;font-weight:500;transition:.2s;border-left:3px solid transparent}
+.nav-item:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.05)}
+.nav-item.active{color:#ffffff;border-left-color:var(--teal);background:rgba(78,205,196,0.1)}
+.nav-item i{width:16px;text-align:center;font-size:12px;opacity:.8}
+.nav-item.active i{color:var(--teal);opacity:1}
+.badge{background:var(--blue);color:var(--white);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:auto;min-width:20px;text-align:center}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--white);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0}
+.page-title h2{font-size:17px;font-weight:700}
+.page-title p{font-size:11px;color:var(--gray);margin-top:2px}
+.topbar-actions{display:flex;gap:10px}
+.btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--green);color:var(--dark)}
+.btn-primary:hover{background:#79c9a5}
+.btn-outline{background:transparent;border:1px solid rgba(0,0,0,0.12);color:var(--dark)}
+.btn-outline:hover{border-color:var(--dark)}
+.content{flex:1;overflow-y:auto;padding:22px 26px}
+.view{display:none}.view.active{display:block}
+#kanban-view.active{display:flex;flex-direction:column}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--gray);border-radius:10px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:var(--white);border-radius:12px;padding:16px;border:1px solid rgba(0,0,0,0.06)}
+.kpi-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:14px}
+.kpi-label{font-size:10px;color:var(--gray);font-weight:600;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:700}
+.kpi-sub{font-size:10px;margin-top:4px}
+.kpi-up{color:var(--sage)}.kpi-dn{color:var(--salmon)}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:20px}
+.chart-card{background:var(--white);border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.06)}
+.chart-title{font-size:12px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.chart-title span{font-size:10px;color:var(--gray);font-weight:400}
+.funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.f-label{font-size:10px;color:var(--gray);width:120px;flex-shrink:0}
+.f-wrap{flex:1;background:var(--bg);border-radius:4px;height:20px;overflow:hidden}
+.f-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:700;color:var(--dark)}
+.f-num{font-size:10px;font-weight:700;width:26px;text-align:right;flex-shrink:0}
+.donut-legend{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.leg-row{display:flex;align-items:center;gap:7px;font-size:10px}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.leg-label{flex:1;color:var(--gray)}.leg-val{font-weight:700}
+.bar-wrap{display:flex;align-items:flex-end;gap:10px;height:120px;padding-top:10px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;border-radius:4px 4px 0 0}
+.bar-lbl{font-size:9px;color:var(--gray)}.bar-num{font-size:9px;font-weight:700}
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.activity-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg)}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white);flex-shrink:0}
+.at{font-size:11px;line-height:1.5}.at-time{font-size:10px;color:var(--gray);margin-top:2px}
+.int-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg);cursor:pointer}
+.int-row:hover{background:var(--bg);border-radius:8px;padding-left:8px}
+.time-badge{background:var(--bg);border-radius:8px;padding:6px 9px;text-align:center;flex-shrink:0}
+.time-badge .t{font-size:13px;font-weight:700}.time-badge .d{font-size:9px;color:var(--gray)}
+.int-info h4{font-size:11px;font-weight:700}.int-info p{font-size:10px;color:var(--gray);margin-top:1px}
+.tipo-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;margin-top:3px;display:inline-block}
+
+/* VAGAS */
+.vagas-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.vaga-tabs{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.vaga-tab{padding:7px 16px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:.2s;font-family:'Montserrat',sans-serif;border:1.5px solid rgba(0,0,0,0.12);background:var(--white);color:var(--dark);display:inline-flex;align-items:center;gap:6px}
+.vaga-tab.active{background:var(--dark);color:#fff;border-color:var(--dark)}
+.vaga-tab .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.vaga-tab .dot-green{background:#4caf50}
+.vaga-tab .dot-red{background:#e53935}
+.vagas-toolbar .search-in{padding:7px 13px;border:1.5px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);min-width:200px}
+.filter-bar{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+.search-in{flex:1;min-width:180px;padding:8px 13px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white)}
+.sel{padding:8px 13px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);cursor:pointer}
+.vagas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* VAGA CARD — novo layout */
+.vaga-card{background:var(--white);border-radius:12px;padding:16px 18px;border:1px solid rgba(0,0,0,0.07);cursor:pointer;transition:.2s;border-left:4px solid var(--teal);position:relative}
+.vaga-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.1);transform:translateY(-1px)}
+.vaga-card.urg{border-left-color:var(--salmon)}
+.vaga-card.encerrada{border-left-color:var(--gray);opacity:.8}
+.vc-title{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;line-height:1.3}
+.vc-client{font-size:11px;font-weight:600;color:var(--teal);margin-bottom:10px}
+.vc-icons{display:flex;gap:14px;font-size:10px;color:var(--gray);margin-bottom:10px;flex-wrap:wrap}
+.vc-icons span{display:flex;align-items:center;gap:4px}
+.vc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.vc-badge-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;background:var(--dark);color:#fff}
+.vc-badge-status .dot{width:7px;height:7px;border-radius:50%;background:#4caf50;flex-shrink:0}
+.vc-badge-status.encerrada-badge .dot{background:#e53935}
+.vc-badge-num{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(0,0,0,0.06);color:var(--gray)}
+.vc-timing{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--gray);margin-bottom:10px;flex-wrap:wrap}
+.vc-emdia{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;background:rgba(142,209,178,0.2);color:var(--sage)}
+.vc-sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:10px 0}
+.vc-cands-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.vc-cands-lbl{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+.vc-cands-cnt{background:var(--blue);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px}
+.vc-cand-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg)}
+.vc-cand-row:last-child{border-bottom:none}
+.vc-cav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.vc-cname{font-size:11px;font-weight:600;flex:1}
+.vc-score{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700}
+.vc-score.bom{background:rgba(142,209,178,0.25);color:var(--sage)}
+.vc-score.med{background:rgba(31,165,240,0.18);color:var(--blue)}
+.vc-score.baixo{background:rgba(244,175,161,0.25);color:#c0392b}
+.vc-cand-btns{display:flex;gap:4px}
+.vc-btn-sm{padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;border:none;transition:.2s}
+.vc-btn-inbox{background:var(--dark);color:#fff}
+.vc-btn-wa{background:#25D366;color:#fff}
+.v-num{font-size:9px;color:var(--gray);font-weight:600}
+.st-badge{font-size:9px;padding:3px 9px;border-radius:20px;font-weight:600}
+.v-title{font-size:13px;font-weight:700;margin-bottom:3px}
+.v-client{font-size:11px;color:var(--gray);margin-bottom:12px;display:flex;align-items:center;gap:4px}
+.v-meta{display:flex;gap:12px;font-size:10px;color:var(--gray);margin-bottom:12px;flex-wrap:wrap}
+.v-meta span{display:flex;align-items:center;gap:3px}
+.avatars{display:flex}.c-av{width:24px;height:24px;border-radius:50%;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--white);border:2px solid var(--white);margin-left:-5px}
+.c-av:first-child{margin-left:0}
+.c-count{font-size:10px;color:var(--gray);margin-left:6px}
+.prog-wrap{margin-top:11px;background:var(--bg);border-radius:4px;height:3px}
+.prog-fill{height:100%;border-radius:4px;background:var(--green)}
+
+/* KANBAN */
+.kb-filters{display:flex;gap:9px;margin-bottom:14px;align-items:center}
+.kb-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px;flex:1}
+.kb-col{min-width:230px;width:230px;display:flex;flex-direction:column;flex-shrink:0}
+.col-hdr{padding:9px 12px;border-radius:9px 9px 0 0;font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.col-cnt{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(0,0,0,0.15)}
+.col-body{background:rgba(0,0,0,0.025);border-radius:0 0 9px 9px;padding:9px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(0,0,0,0.05);border-top:none;min-height:200px;max-height:calc(100vh - 220px)}
+.kb-card{background:var(--white);border-radius:9px;padding:12px;cursor:pointer;transition:.2s;border:1px solid rgba(0,0,0,0.05);border-left:3px solid var(--green)}
+.kb-card:hover{box-shadow:0 3px 14px rgba(0,0,0,0.12)}
+.kb-card.urg{border-left-color:var(--salmon)}
+.kc-num{font-size:9px;color:var(--gray);font-weight:600;margin-bottom:3px}
+.kc-job{font-size:11px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.kc-client{font-size:10px;color:var(--gray);margin-bottom:8px}
+.kc-name{font-size:11px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.kc-score{display:flex;align-items:center;gap:3px;font-size:9px;font-weight:700;margin-bottom:8px;color:var(--sage)}
+.kc-footer{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--gray)}
+.kc-footer.late{color:var(--salmon);font-weight:600}
+.add-btn{width:100%;padding:7px;background:transparent;border:1px dashed rgba(0,0,0,0.12);border-radius:7px;color:var(--gray);font-size:11px;cursor:pointer;font-family:'Montserrat',sans-serif;transition:.2s;margin-top:4px}
+.add-btn:hover{background:var(--white);color:var(--dark)}
+
+/* CANDIDATOS TABLE */
+.tbl-wrap{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,0.06)}
+.cands-tbl{width:100%;border-collapse:collapse}
+.cands-tbl th{background:var(--dark);color:var(--gray);font-size:10px;font-weight:600;padding:11px 13px;text-align:left}
+.cands-tbl td{padding:11px 13px;font-size:11px;border-bottom:1px solid var(--bg)}
+.cands-tbl tr:hover td{background:var(--bg)}
+.score-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
+
+/* CALENDARIO */
+.cal-hdr{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.cal-nav-btn{padding:6px 11px;border:1px solid rgba(0,0,0,0.1);border-radius:6px;cursor:pointer;background:var(--white);font-family:'Montserrat',sans-serif;font-size:14px}
+.cal-month{font-size:17px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:rgba(0,0,0,0.06);border-radius:12px;overflow:hidden}
+/* JS gera cal-dh para cabeçalhos dos dias */
+.cal-dh{background:var(--dark);color:#fff;font-size:10px;font-weight:600;padding:9px;text-align:center}
+/* JS gera cal-cell para células */
+.cal-cell,.cal-day{background:var(--white);min-height:90px;padding:7px;cursor:default}
+.cal-cell.other,.cal-day.other{background:var(--bg)}
+.cal-cell.today,.cal-day.today{background:rgba(142,209,178,0.1);outline:2px solid var(--green);outline-offset:-1px}
+.cal-cell.has-ev{cursor:pointer}
+/* JS gera cal-num para número do dia */
+.cal-num,.cal-dn{font-size:11px;font-weight:600;margin-bottom:5px;color:var(--dark)}
+.cal-num.today-num{color:var(--green);font-weight:800;font-size:13px}
+.cal-day.today .cal-dn{color:var(--green);font-weight:700}
+.cal-ev{font-size:10px;padding:3px 6px;border-radius:4px;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;display:flex;align-items:center;gap:4px}
+.cal-ev span{flex-shrink:0;font-size:10px}
+
+/* RELATORIOS / INDICADORES */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.metric-card{background:var(--white);border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.06)}
+.metric-lbl{font-size:11px;color:var(--gray);margin-bottom:8px;font-weight:600}
+.metric-big{font-size:30px;font-weight:700}
+.metric-ctx{font-size:10px;color:var(--gray);margin-top:5px}
+.prog{margin-top:10px;height:4px;background:var(--bg);border-radius:4px}
+.prog-f{height:100%;border-radius:4px}
+/* ── PAINEL DE INDICADORES ── */
+.ind-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.ind-header h3{font-size:16px;font-weight:700}
+.ind-header p{font-size:11px;color:var(--gray);margin-top:3px}
+.ind-section-title{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1.5px;margin:18px 0 10px;padding-left:2px;display:flex;align-items:center;gap:7px}
+.ind-section-title::after{content:'';flex:1;height:1px;background:rgba(0,0,0,0.07)}
+.ind-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px}
+.ind-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px}
+.ind-card{background:var(--white);border-radius:12px;padding:16px 16px 14px;border:1px solid rgba(0,0,0,0.06);border-left:4px solid var(--green);position:relative}
+.ind-card.azul{border-left-color:var(--blue)}
+.ind-card.salmon{border-left-color:var(--salmon)}
+.ind-card.sage{border-left-color:var(--sage)}
+.ind-card.navy{border-left-color:var(--navy)}
+.ind-card.orange{border-left-color:#f59e0b}
+.ind-card.teal{border-left-color:var(--teal)}
+.ind-lbl{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.ind-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:3px}
+.ind-sub{font-size:10px;color:var(--gray);margin-top:3px}
+.ind-meta{font-size:10px;margin-top:7px;display:flex;align-items:center;gap:4px;font-weight:600}
+.ind-ok{color:#4caf50}.ind-warn{color:#f59e0b}.ind-bad{color:var(--salmon)}.ind-neu{color:var(--gray)}
+.ind-prog{margin-top:8px;height:3px;background:var(--bg);border-radius:4px}
+.ind-prog-f{height:100%;border-radius:4px}
+/* Funil */
+.funil-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.funil-lbl{font-size:10px;color:var(--gray);width:130px;flex-shrink:0;font-weight:600}
+.funil-track{flex:1;background:var(--bg);border-radius:5px;height:24px}
+.funil-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:8px;font-size:10px;font-weight:700;color:#fff;min-width:24px}
+.funil-num{font-size:10px;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+.funil-pct{font-size:9px;color:var(--gray);width:40px;text-align:right;flex-shrink:0}
+/* Candidatos/Vaga mini list */
+.cpv-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.cpv-nome{font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.cpv-bar-wrap{width:80px;background:var(--bg);border-radius:3px;height:13px;flex-shrink:0}
+.cpv-bar-fill{height:100%;border-radius:3px}
+.cpv-n{width:28px;text-align:right;font-size:10px;font-weight:700;flex-shrink:0}
+/* Turnover */
+.turn-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.turn-lbl{font-size:10px;color:var(--gray);width:90px;flex-shrink:0}
+.turn-track{flex:1;background:var(--bg);border-radius:4px;height:18px}
+.turn-fill{height:100%;border-radius:4px;background:var(--salmon);display:flex;align-items:center;padding-left:6px;font-size:9px;font-weight:700;color:#fff;min-width:18px}
+.turn-pct{font-size:10px;font-weight:700;width:38px;text-align:right;flex-shrink:0}
+/* Retenção ring */
+.ret-ring-outer{display:flex;align-items:center;gap:24px;padding:10px 0}
+.ret-ring{width:90px;height:90px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:8px solid var(--green);position:relative}
+.ret-ring.warn{border-color:#f59e0b}.ret-ring.bad{border-color:var(--salmon)}
+.ret-ring-val{font-size:20px;font-weight:700;line-height:1}
+.ret-ring-sub{font-size:8px;color:var(--gray)}
+.ret-detail{flex:1}
+.ret-detail-row{display:flex;justify-content:space-between;font-size:10px;padding:4px 0;border-bottom:1px solid var(--bg)}
+.ret-detail-row:last-child{border-bottom:none}
+/* Modal Indicadores */
+.modal-ind{position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:9000;display:none;align-items:center;justify-content:center}
+.modal-ind.show{display:flex}
+.modal-ind-box{background:#fff;border-radius:16px;width:620px;max-width:96vw;max-height:91vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.28)}
+.modal-ind-head{padding:20px 24px 0;border-bottom:1px solid rgba(0,0,0,0.08)}
+.modal-ind-head h3{font-size:15px;font-weight:700;margin-bottom:3px}
+.modal-ind-head p{font-size:11px;color:var(--gray);padding-bottom:12px}
+.modal-ind-tabs{display:flex;gap:4px}
+.modal-ind-tab{padding:7px 13px;border-radius:7px 7px 0 0;font-size:10px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;border:none;background:rgba(0,0,0,0.05);color:var(--gray);transition:.15s}
+.modal-ind-tab.active{background:var(--navy);color:#fff}
+.modal-ind-body{padding:18px 24px;overflow-y:auto;flex:1}
+.mig{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mig-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.mig-sep{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--bg);grid-column:1/-1}
+.mi-group{display:flex;flex-direction:column;gap:4px}
+.mi-label{font-size:10px;font-weight:600;color:var(--dark)}
+.mi-hint{font-size:9px;color:var(--gray)}
+.mi-input{padding:8px 11px;border:1.5px solid rgba(0,0,0,0.11);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;width:100%}
+.mi-input:focus{border-color:var(--blue)}
+.mi-select{padding:8px 11px;border:1.5px solid rgba(0,0,0,0.11);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;width:100%;background:#fff}
+.modal-ind-foot{padding:12px 24px 18px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(0,0,0,0.07);flex-shrink:0}
+/* Histórico de registros */
+.reg-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg);font-size:10px}
+.reg-row:last-child{border-bottom:none}
+.reg-vaga{font-weight:700;flex:1}
+.reg-date{color:var(--gray)}
+.reg-del{background:none;border:none;cursor:pointer;color:var(--gray);font-size:13px;padding:2px 4px}
+.reg-del:hover{color:var(--salmon)}
+
+/* NR01 */
+.nr-header{background:var(--white);border-radius:12px;padding:22px;border:1px solid rgba(0,0,0,0.06);margin-bottom:18px}
+.nr-header h3{font-size:15px;font-weight:700;margin-bottom:5px}
+.nr-header p{font-size:12px;color:var(--gray)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:14px;width:92vw;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-left{flex:1;padding:26px;overflow-y:auto;border-right:1px solid var(--bg)}
+.modal-right{width:290px;padding:18px;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;gap:16px;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:3px}
+.modal-sub{font-size:11px;color:var(--gray);margin-bottom:18px}
+.sec-title{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.info-item label{font-size:10px;color:var(--gray);display:block;margin-bottom:2px}
+.info-item p{font-size:12px;font-weight:600}
+.stages-wrap{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px}
+.stage-btn{padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid rgba(0,0,0,0.1);cursor:pointer;background:var(--white);transition:.2s;font-family:'Montserrat',sans-serif}
+.stage-btn.active{background:var(--green);border-color:var(--green);color:var(--dark)}
+.cand-row2{display:flex;align-items:center;gap:9px;padding:9px;background:var(--bg);border-radius:9px;margin-bottom:7px;cursor:pointer}
+.cand-row2:hover{background:#eaecf0}
+.cr2-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white);flex-shrink:0}
+.cr2-name{font-size:11px;font-weight:700}.cr2-stage{font-size:10px;color:var(--gray)}
+.cr2-score{font-size:12px;font-weight:700;margin-left:auto}
+.chat-wrap{display:flex;flex-direction:column;height:240px}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-bottom:9px}
+.chat-msg{display:flex;gap:7px}
+.cm-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--white)}
+.cm-bubble{background:var(--bg);border-radius:0 9px 9px 9px;padding:7px 10px;font-size:11px;max-width:100%}
+.cm-name{font-weight:700;font-size:9px;margin-bottom:2px}
+.cm-time{font-size:9px;color:var(--gray);margin-top:2px}
+.chat-in{display:flex;gap:7px}
+.chat-input{flex:1;padding:8px 11px;border:1px solid rgba(0,0,0,0.1);border-radius:20px;font-family:'Montserrat',sans-serif;font-size:11px}
+.chat-send{padding:8px 12px;background:var(--green);border:none;border-radius:20px;cursor:pointer;font-size:12px}
+.sched-item{background:var(--white);border-radius:7px;padding:9px;margin-bottom:7px}
+.sched-tipo{font-size:11px;font-weight:700}.sched-cand{font-size:10px;color:var(--gray)}
+.sched-hora{font-size:10px;margin-top:3px}
+.budget-box{background:var(--white);border-radius:8px;padding:11px;font-size:11px;line-height:1.8}
+.quick-btn{width:100%;padding:8px 12px;background:var(--white);border:1px solid rgba(0,0,0,0.1);border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:500;text-align:left;display:flex;align-items:center;gap:8px;transition:.2s;margin-bottom:6px}
+.quick-btn:hover{border-color:var(--dark);background:var(--bg)}
+.quick-btn.danger{color:var(--salmon);border-color:rgba(244,175,161,0.4)}
+
+/* DISC */
+.disc-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.disc-letter{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.disc-bar-bg{flex:1;background:var(--bg);border-radius:4px;height:14px;overflow:hidden}
+.disc-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.disc-pct{font-size:10px;font-weight:700;width:28px;text-align:right;flex-shrink:0}
+.disc-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+.disc-match-ring{width:52px;height:52px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--green);flex-shrink:0}
+.disc-match-pct{font-size:14px;font-weight:800;line-height:1}
+.disc-match-lbl{font-size:8px;color:var(--gray)}
+.disc-tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;margin:2px}
+.disc-section{background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px}
+.disc-section-title{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.match-card{background:var(--white);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:8px;border:1px solid rgba(0,0,0,0.06)}
+.match-card:hover{background:var(--bg)}
+.match-info{flex:1}.match-name{font-size:12px;font-weight:700}.match-sub{font-size:10px;color:var(--gray);margin-top:2px}
+/* AGENDAR OVERLAY */
+#agendar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center}
+#agendar-overlay.show{display:flex}
+/* Gestor panel */
+.gestor-form{max-width:740px}
+.form-section{background:var(--white);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,0.06);margin-bottom:16px}
+.form-section-title{font-size:12px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.8px}
+.form-input,.form-select,.form-textarea{padding:9px 12px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);transition:.2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--green)}
+.form-textarea{resize:vertical;min-height:70px}
+.disc-question{background:var(--bg);border-radius:8px;padding:12px;margin-bottom:8px}
+.disc-q-text{font-size:12px;font-weight:500;margin-bottom:8px}
+.disc-q-hint{font-size:10px;color:var(--gray);margin-bottom:8px}
+.disc-q-options{display:flex;gap:6px;flex-wrap:wrap}
+.disc-q-opt{padding:5px 12px;border-radius:20px;border:1px solid rgba(0,0,0,0.12);font-size:11px;cursor:pointer;background:var(--white);font-family:'Montserrat',sans-serif;font-weight:500;transition:.2s}
+.disc-q-opt:hover,.disc-q-opt.sel{background:var(--green);border-color:var(--green);color:var(--dark);font-weight:700}
+.disc-result-preview{background:var(--dark);border-radius:10px;padding:14px;color:var(--white)}
+.disc-result-preview h4{font-size:11px;color:var(--gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo-area">
+    <h1>EFFECT</h1>
+    <div class="logo-sub">Pessoas &amp; Performance</div>
+    <div class="logo-panel">Painel Interno</div>
   </div>
-  <button onclick="window.print()" style="background:#1e3a5f;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:16px">🖨️ Imprimir / Salvar PDF</button>
-  </body></html>`;
-  res.send(html);
-});
+  <nav>
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="gotoView('dashboard',this)"><i class="fas fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" onclick="gotoView('calendario',this)"><i class="fas fa-calendar-alt"></i> Agenda <span class="badge">3</span></div>
+    <div class="nav-item" onclick="gotoView('inbox-lia',this)"><i class="fas fa-comment-dots"></i> Inbox Lia</div>
+    <div class="nav-section">Banco de Dados</div>
+    <div class="nav-item" onclick="gotoView('candidatos',this)"><i class="fas fa-users"></i> Candidatos <span class="badge">41</span></div>
+    <div class="nav-item" onclick="gotoView('vagas',this)"><i class="fas fa-briefcase"></i> Vagas <span class="badge">58</span></div>
+    <div class="nav-item" onclick="gotoView('kanban',this)"><i class="fas fa-columns"></i> Kanban Pipeline</div>
+    <div class="nav-section">Ferramentas</div>
+    <div class="nav-item" onclick="window.open('https://effect-production.up.railway.app/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
+    <div class="nav-item" onclick="gotoView('relatorios',this)"><i class="fas fa-chart-bar"></i> Relatórios</div>
+    <div class="nav-item" onclick="gotoView('nr01',this)"><i class="fas fa-shield-alt"></i> NR-01</div>
+    <div class="nav-item" onclick="gotoView('disc',this)"><i class="fas fa-brain"></i> DISC &amp; Match</div>
+  </nav>
+</aside>
 
-async function salvarDiscNoDrive(telefone, nome, resultado) {
-  const drive = getDriveClient();
-  if (!drive) return;
+<main class="main">
+  <div class="topbar">
+    <div class="page-title">
+      <h2 id="ptitle">Dashboard</h2>
+      <p id="psub">Visão geral · Junho 2026</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" onclick="openNovaVaga()"><i class="fas fa-plus"></i> Nova Vaga</button>
+      <button class="btn btn-primary" onclick="openModal(vagasData[0])"><i class="fas fa-user-plus"></i> Novo Candidato</button>
+    </div>
+  </div>
 
-  // Garante pasta DISC-Resultados
-  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='DISC-Resultados' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: 'files(id)' });
-  let folderId;
-  if (busca.data.files?.length) {
-    folderId = busca.data.files[0].id;
-  } else {
-    const nova = await drive.files.create({
-      requestBody: { name: 'DISC-Resultados', mimeType: 'application/vnd.google-apps.folder', parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-      fields: 'id'
-    });
-    folderId = nova.data.id;
-  }
+  <div class="content">
 
-  const { Readable } = require('stream');
-  const ts = new Date().toISOString().slice(0, 10);
-  const nomeArq = `DISC-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
-  const conteudo = JSON.stringify({ telefone, nome, ...resultado }, null, 2);
-
-  await drive.files.create({
-    requestBody: { name: nomeArq, parents: [folderId], mimeType: 'application/json' },
-    media: { mimeType: 'application/json', body: Readable.from(Buffer.from(conteudo, 'utf8')) },
-    fields: 'id'
-  });
-  console.log(`✅ DISC salvo no Drive: ${nomeArq}`);
-}
-app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
-app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
-app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
-
-// ============================================================
-// ROTAS API — SHEETS
-// ============================================================
-
-app.get("/sheets/candidatos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ candidatos: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) { res.json({ candidatos: [], erro: e.message }); }
-});
-
-app.get("/sheets/vagas", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ vagas: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=vagas`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) { res.json({ vagas: [], erro: e.message }); }
-});
-
-app.post("/sheets/candidatos/status", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone: req.body.telefone, status: req.body.status, observacoes: req.body.observacao }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-    res.json({ ok: true, sucesso: true });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ============================================================
-// ROTAS API — INBOX
-// ============================================================
-
-app.post("/inbox/config-novas-conversas", (req, res) => {
-  novaConversaIniciaManual = req.body.manual === true;
-  res.json({ ok: true, novaConversaIniciaManual });
-});
-
-app.get("/inbox/sessoes", (req, res) => {
-  try {
-    const lista = Object.entries(sessoes).map(([tel, sessao]) => {
-      const telefone = limparTelefone(tel);
-      garantirSessao(telefone);
-
-      // Segurança extra: se restou motivo antigo agressivo em memória, não mostrar como manual.
-      const motivoNormalizado = normalizarTexto(sessao.motivoPausa || "");
-      const manualAntigoIndevido =
-        motivoNormalizado.includes("conversa longa sem avanco") ||
-        motivoNormalizado.includes("conversa longa sem avanço") ||
-        motivoNormalizado.includes("baixa confianca") ||
-        motivoNormalizado.includes("baixa confiança") ||
-        motivoNormalizado.includes("solicitacao de retorno") ||
-        motivoNormalizado.includes("solicitação de retorno") ||
-        motivoNormalizado.includes("assunto relacionado a entrevista") ||
-        motivoNormalizado.includes("assunto relacionado à entrevista") ||
-        motivoNormalizado.includes("possivel repeticao") ||
-        motivoNormalizado.includes("possível repetição");
-
-      if (manualAntigoIndevido) {
-        atendimentosManuais.delete(telefone);
-        sessao.modo = "automatico";
-        sessao.pausado = false;
-        sessao.motivoPausa = "";
-      }
-
-      return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
-    }).sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
-
-    const dados = {};
-    lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
-
-    const totalConversas = lista.length;
-    const totalNaoLidas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
-    const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
-
-    res.json({
-      sessoes: dados,
-      totalConversas,
-      totalNaoLidas,
-      totalMensagensNaoLidas,
-      novaConversaIniciaManual,
-      atualizadoEm: new Date().toISOString(),
-      atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
-    });
-  } catch (erro) {
-    res.json({ sessoes: {}, totalConversas: 0, totalNaoLidas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
-  }
-});
-
-app.post("/inbox/marcar-lida", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    sessao.unreadCount = 0;
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, unreadCount: 0 });
-  } catch (erro) {
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.post("/inbox/pausar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const devePausar = req.body.pausado === true || req.body.manual === true || req.body.modo === "manual" || req.body.mode === "manual" || req.body.status === "manual";
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    if (devePausar) { atendimentosManuais.add(telefone); sessao.modo = "manual"; sessao.pausado = true; sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox"; }
-    else { atendimentosManuais.delete(telefone); sessao.modo = "automatico"; sessao.pausado = false; sessao.motivoPausa = ""; }
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
-  } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
-});
-
-app.post("/inbox/modo", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const modo = req.body.modo || req.body.mode;
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    if (modo === "manual") { atendimentosManuais.add(telefone); sessao.modo = "manual"; sessao.pausado = true; sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox"; }
-    else { atendimentosManuais.delete(telefone); sessao.modo = "automatico"; sessao.pausado = false; sessao.motivoPausa = ""; }
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
-  } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
-});
-
-// ─── RESUMIR CONVERSA com IA ───
-app.post("/inbox/resumir", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    const hist = sessao.historico || [];
-    if (!hist.length) return res.json({ ok: false, erro: "Sem histórico para resumir" });
-
-    const ultimas = hist.slice(-30);
-    const transcript = ultimas.map(h => `${h.role === 'user' ? 'Candidato' : 'Lia'}: ${h.content || ''}`).join('\n');
-
-    const prompt = `Você é um assistente de RH. Com base no histórico de conversa abaixo, forneça um resumo estruturado e objetivo.
-
-HISTÓRICO:
-${transcript}
-
-Responda EXATAMENTE neste formato (sem markdown, sem asteriscos):
-Nome: [nome do candidato ou "não identificado"]
-Cidade/Bairro: [cidade e/ou bairro mencionado ou "não informado"]
-Vaga de interesse: [cargo ou vaga ou "não mencionado"]
-Experiência: [resumo breve da experiência ou "não informado"]
-Pendências: [o que ainda falta coletar ou confirmar — seja específico]
-Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "Aguardar envio de currículo", "Analisar perfil"]`;
-
-    const resumo = await chamarGeminiJSON(prompt).catch(() => chamarGemini(prompt));
-    if (!resumo) return res.json({ ok: false, erro: "IA não retornou resposta" });
-
-    const texto = typeof resumo === 'string' ? resumo : JSON.stringify(resumo, null, 2);
-    return res.json({ ok: true, resumo: texto });
-  } catch (erro) {
-    console.error("Erro /inbox/resumir:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.post("/inbox/enviar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const mensagem = req.body.mensagem || req.body.message || req.body.texto || req.body.text;
-    if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
-
-    const sessao = garantirSessao(telefone);
-
-    // Quando a Laura envia pelo Inbox, a conversa deve ficar em manual.
-    atendimentosManuais.add(telefone);
-    sessao.modo = "manual";
-    sessao.pausado = true;
-    sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
-
-    // Primeiro envia para o WhatsApp.
-    await enviarMensagem(telefone, mensagem);
-
-    // Depois grava imediatamente no histórico do servidor.
-    // Isso permite que o Inbox recarregue e já encontre a mensagem enviada.
-    const eventoSalvo = registrarEntradaSessao(sessao, "assistant", mensagem);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-
-    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-
-    return res.json({
-      ok: true,
-      telefone,
-      modo: "manual",
-      pausado: true,
-      mensagem: eventoSalvo,
-      historicoLength: sessao.historico.length
-    });
-  } catch (erro) {
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.get("/inbox/curriculo/:telefone", async (req, res) => {
-  try {
-    const tel = limparTelefone(req.params.telefone);
-    let sessao = sessoes[tel];
-
-    // Se sessão não existe ou não tem currículo, tenta recarregar do Sheets
-    let lista = sessao
-      ? (Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []))
-      : [];
-
-    if (!lista.length && CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        const r = await axios.get(`${urlBase}?acao=conversas&telefone=${tel}`, { timeout: 8000, maxRedirects: 3 });
-        const d = r.data;
-        if (d?.sessoes) {
-          const telKey = Object.keys(d.sessoes).find(k => limparTelefone(k) === tel);
-          if (telKey) {
-            const s = d.sessoes[telKey];
-            const cvs = Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
-            if (cvs.length) {
-              // Salva de volta na sessão em memória
-              if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: s.nome || null, modo: "automatico", pausado: false, motivoPausa: "", unreadCount: 0, curriculos: [], curriculo: null, ultimaAnalise: null };
-              sessoes[tel].curriculos = cvs;
-              sessoes[tel].curriculo = cvs[0];
-              sessao = sessoes[tel];
-              lista = cvs;
-            }
-          }
-        }
-      } catch (e) { console.error("Fallback Sheets curriculo:", e.message); }
-    }
-
-    if (!lista.length) {
-      const nomeCandidato = sessao?.nome || tel;
-      const nomeArquivo = sessao?.curriculo?.filename || '';
-      const termoBusca = nomeCandidato !== tel ? nomeCandidato : nomeArquivo || nomeCandidato;
-      const driveSearchLink = `https://drive.google.com/drive/search?q=${encodeURIComponent(termoBusca)}`;
-      return res.status(404).send(`
-        <html><head><style>
-          body{font-family:sans-serif;padding:32px;max-width:520px;color:#1e293b}
-          .nome-box{display:flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin:12px 0}
-          .nome-text{font-size:15px;font-weight:700;flex:1}
-          .copy-btn{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;white-space:nowrap}
-          .copy-btn:active{opacity:.8}
-          a{color:#2563eb}
-        </style></head>
-        <body>
-        <h3>📄 Currículo não disponível</h3>
-        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado após reinicialização do servidor.</p>
-        <p><strong>Copie o nome e busque no Drive:</strong></p>
-        <div class="nome-box">
-          <span class="nome-text" id="nome">${termoBusca}</span>
-          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('nome').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',1500)})">Copiar</button>
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-briefcase" style="color:var(--green)"></i></div>
+          <div class="kpi-label">Vagas Ativas</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
         </div>
-        <p><a href="${driveSearchLink}" target="_blank">🔍 Tentar abrir Drive com busca</a></p>
-        <p style="margin-top:16px"><a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato via WhatsApp</a></p>
-        </body></html>`);
-    }
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(31,165,240,.1)"><i class="fas fa-users" style="color:var(--blue)"></i></div>
+          <div class="kpi-label">Em Processo</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(244,175,161,.15)"><i class="fas fa-hourglass-half" style="color:var(--salmon)"></i></div>
+          <div class="kpi-label">Ag. Resposta</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(123,142,96,.15)"><i class="fas fa-check-circle" style="color:var(--sage)"></i></div>
+          <div class="kpi-label">Contratados</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(142,209,178,.15)"><i class="fas fa-percent" style="color:var(--green)"></i></div>
+          <div class="kpi-label">Taxa Aprovação</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:rgba(161,161,170,.15)"><i class="fas fa-clock" style="color:var(--gray)"></i></div>
+          <div class="kpi-label">Tempo Médio</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">carregando...</div>
+        </div>
+      </div>
 
-    const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
-    const cv = lista[idx];
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Funil de Seleção <span>Junho 2026</span></div>
+          <div id="funnel-chart"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Vagas por Status</div>
+          <svg width="100%" viewBox="0 0 140 130" id="donut-svg"></svg>
+          <div class="donut-legend" id="donut-legend"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Contratações / Mês</div>
+          <div class="bar-wrap" id="bar-chart"></div>
+        </div>
+      </div>
 
-    // Se tem driveLink, redireciona diretamente para o Drive
-    if (cv?.driveLink) return res.redirect(cv.driveLink);
+      <div class="bottom-row">
+        <div class="chart-card">
+          <div class="chart-title">Atividade Recente</div>
+          <div id="activity-feed"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Próximas Entrevistas &amp; Alinhamentos</div>
+          <div id="upcoming-ints"></div>
+        </div>
+      </div>
+    </div>
 
-    let buffer = null;
-    if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
-    else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+    <!-- VAGAS -->
+    <div id="vagas-view" class="view">
+      <div class="vagas-toolbar">
+        <div class="vaga-tabs">
+          <button class="vaga-tab active" id="tab-todas" onclick="setVagaTab('todas',this)">Todas</button>
+          <button class="vaga-tab" id="tab-abertas" onclick="setVagaTab('abertas',this)"><span class="dot dot-green"></span> Abertas</button>
+          <button class="vaga-tab" id="tab-encerradas" onclick="setVagaTab('encerradas',this)"><span class="dot dot-red"></span> Encerradas</button>
+        </div>
+        <input class="search-in" id="vagas-search" placeholder="🔍 Buscar vaga, cargo ou cliente..." oninput="renderVagas()" style="min-width:220px;max-width:300px">
+        <button class="btn btn-primary" onclick="openNovaVaga()"><i class="fas fa-plus"></i> Nova Vaga</button>
+      </div>
+      <div class="vagas-grid" id="vagas-grid"></div>
+    </div>
 
-    if (!buffer) {
-      // Arquivo local sumiu (reinício do Railway) — tenta driveLink da análise
-      const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
-      if (dlFallback) return res.redirect(dlFallback);
-      return res.status(404).send(`
-        <html><body style="font-family:sans-serif;padding:32px">
-        <h3>📄 Arquivo indisponível</h3>
-        <p>O arquivo do currículo foi apagado após reinicialização do servidor (armazenamento temporário).</p>
-        <p>Acesse o <strong>Google Drive</strong> para encontrar o currículo salvo, ou solicite reenvio pelo WhatsApp.</p>
-        </body></html>`);
-    }
+    <!-- KANBAN -->
+    <div id="kanban-view" class="view">
+      <div class="kb-filters">
+        <input class="search-in" placeholder="🔍 Buscar candidato..." style="max-width:250px">
+        <select class="sel"><option>Todas as vagas</option></select>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline"><i class="fas fa-filter"></i> Filtros</button>
+          <button class="btn btn-primary" onclick="openModal(vagasData[0])"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>
+      </div>
+      <div class="kb-board" id="kb-board"></div>
+    </div>
 
-    const inline = req.query.inline === "1" || req.query.inline === "true";
-    res.set("Content-Type", cv.mimeType || "application/octet-stream");
-    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
-    res.send(buffer);
-  } catch (erro) {
-    console.error("Erro /inbox/curriculo:", erro.message);
-    res.status(500).send("Erro ao obter currículo");
-  }
-});
+    <!-- CANDIDATOS -->
+    <div id="candidatos-view" class="view">
+      <div class="filter-bar">
+        <input class="search-in" placeholder="🔍 Buscar candidato...">
+        <select class="sel"><option>Todas as vagas</option></select>
+        <select class="sel"><option>Todas as etapas</option></select>
+      </div>
+      <div class="tbl-wrap">
+        <table class="cands-tbl">
+          <thead><tr>
+            <th>Candidato</th><th>Vaga</th><th>Cliente</th><th>Etapa</th>
+            <th>Score</th><th>Dias</th><th>Observação</th><th></th>
+          </tr></thead>
+          <tbody id="cands-tbody"></tbody>
+        </table>
+      </div>
+    </div>
 
+    <!-- CALENDARIO -->
+    <div id="calendario-view" class="view">
+      <div class="cal-hdr">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+        <div class="cal-month" id="cal-label"></div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline" id="btn-ver-semana" onclick="toggleCalView()"><i class="fas fa-calendar-week"></i> Ver Semana</button>
+          <button class="btn btn-primary" onclick="openAgendarModal()"><i class="fas fa-calendar-plus"></i> Agendar</button>
+        </div>
+      </div>
+      <div id="cal-wrap"></div>
+      <div id="semana-wrap" style="display:none"></div>
+    </div>
 
-app.post("/inbox/observacao", async (req, res) => {
-  const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-  const observacao = req.body.observacao || req.body.note || "";
-  if (!telefone) return res.json({ ok: false });
-  try {
-    if (CONFIG.VAGAS_URL) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      await axios.post(urlBase, { acao: "salvarMensagem", telefone, role: "observacao", mensagem: observacao, nome: sessoes[telefone]?.nome || "" }, { headers: { "Content-Type": "application/json" }, timeout: 10000 });
-    }
-  } catch (e) { console.error("Erro salvar obs:", e.message); }
-  res.json({ ok: true });
-});
+    <!-- INBOX LIA -->
+    <div id="inbox-lia-view" class="view">
+      <div style="max-width:680px">
+        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h3 style="font-size:16px;font-weight:700">Inbox · Lia</h3>
+            <p style="font-size:12px;color:var(--gray);margin-top:4px">Mensagens, respostas e interações da assistente Lia com candidatos.</p>
+          </div>
+          <a href="https://effect-production.up.railway.app/painel" target="_blank" class="btn btn-outline" style="font-size:11px"><i class="fas fa-external-link-alt"></i> Abrir Lia</a>
+        </div>
+        <div id="lia-inbox-list"></div>
+      </div>
+    </div>
 
+    <!-- MODAL AGENDAR -->
+    <div class="modal-overlay" id="agendar-overlay" onclick="if(event.target===this)closeAgendar()">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:420px;max-width:95vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3 style="font-size:15px;font-weight:700">Agendar Compromisso</h3>
+        <button onclick="closeAgendar()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <select class="form-select" id="ag-tipo">
+            <option>Entrevista RH</option><option>Entrevista c/ Cliente</option><option>Alinhamento de Vaga</option><option>Follow-up</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Candidato / Participante</label><input class="form-input" id="ag-cand" placeholder="Nome do candidato ou gestor"></div>
+        <div class="form-group"><label class="form-label">Vaga Relacionada</label>
+          <select class="form-select" id="ag-vaga"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="ag-data" type="date"></div>
+          <div class="form-group"><label class="form-label">Horário</label><input class="form-input" id="ag-hora" type="time" value="09:00"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Observação</label><textarea class="form-textarea" id="ag-obs" placeholder="Link da reunião, instrução..." style="min-height:60px"></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="salvarAgendamento()"><i class="fas fa-check"></i> Confirmar</button>
+          <button class="btn btn-outline" onclick="closeAgendar()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+    </div>
 
-app.post("/inbox/status", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-    const status = String(req.body.status || "").trim();
-    const prioritario = req.body.prioritario === true;
-    const enviar = req.body.enviarMensagem === true;
-    const mensagem = String(req.body.mensagem || "").trim();
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+    <!-- INDICADORES -->
+    <div id="relatorios-view" class="view">
+      <div class="ind-header">
+        <div>
+          <h3>📊 Indicadores Estratégicos de R&S</h3>
+          <p>Métricas de desempenho do processo seletivo · Effect Pessoas</p>
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalIndicadores()">📥 Registrar Dados</button>
+      </div>
 
-    const sessao = garantirSessao(telefone);
-    sessao.statusProcesso = status || sessao.statusProcesso || "Novo";
-    if (prioritario) sessao.motivoPausa = "Prioritário";
+      <!-- BLOCO 1: TEMPO -->
+      <div class="ind-section-title">⏱ Indicadores de Tempo</div>
+      <div class="ind-grid-4" id="ind-tempo-grid">
+        <div class="ind-card azul">
+          <div class="ind-lbl">1 · Time to Fill</div>
+          <div class="ind-val" id="ind-ttf-val">—</div>
+          <div class="ind-sub" id="ind-ttf-sub">Dias médios até contratação</div>
+          <div class="ind-meta" id="ind-ttf-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-ttf-prog" style="background:var(--blue)"></div></div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">2 · Tempo 1ºs Candidatos</div>
+          <div class="ind-val" id="ind-t1c-val">—</div>
+          <div class="ind-sub" id="ind-t1c-sub">Dias até envio ao cliente</div>
+          <div class="ind-meta" id="ind-t1c-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-t1c-prog" style="background:var(--green)"></div></div>
+        </div>
+        <div class="ind-card orange">
+          <div class="ind-lbl">5 · Taxa de Comparecimento</div>
+          <div class="ind-val" id="ind-comp-val">—</div>
+          <div class="ind-sub" id="ind-comp-sub">Entrevistas realizadas ÷ agendadas</div>
+          <div class="ind-meta" id="ind-comp-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-comp-prog" style="background:#f59e0b"></div></div>
+        </div>
+        <div class="ind-card salmon">
+          <div class="ind-lbl">3 · Candidatos por Vaga</div>
+          <div class="ind-val" id="ind-cpv-val">—</div>
+          <div class="ind-sub">Média de inscritos por processo</div>
+          <div id="ind-cpv-list" style="margin-top:8px"></div>
+        </div>
+      </div>
 
-    if (CONFIG.VAGAS_URL && status) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      await axios.post(urlBase, {
-        acao: "salvarAnalise",
-        telefone,
-        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-        status,
-        observacoes: `${status}${prioritario ? " | Prioritário" : ""}`,
-        vagaInteresse: sessao.ultimaAnalise?.vagaInteresse || "",
-        idVaga: sessao.ultimaAnalise?.idVaga || "",
-        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || ""
-      }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-    }
+      <!-- BLOCO 2: QUALIDADE -->
+      <div class="ind-section-title">🏆 Indicadores de Qualidade</div>
+      <div class="ind-grid-4">
+        <div class="ind-card teal">
+          <div class="ind-lbl">6 · Aprovação pelo Cliente</div>
+          <div class="ind-val" id="ind-apcl-val">—</div>
+          <div class="ind-sub" id="ind-apcl-sub">Aprovados ÷ enviados ao cliente</div>
+          <div class="ind-meta" id="ind-apcl-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-apcl-prog" style="background:var(--teal)"></div></div>
+        </div>
+        <div class="ind-card sage">
+          <div class="ind-lbl">7 · CVs por Contratação</div>
+          <div class="ind-val" id="ind-cvpc-val">—</div>
+          <div class="ind-sub" id="ind-cvpc-sub">Currículos avaliados por hire</div>
+          <div class="ind-meta" id="ind-cvpc-meta"></div>
+        </div>
+        <div class="ind-card azul">
+          <div class="ind-lbl">8 · Taxa de Contratação</div>
+          <div class="ind-val" id="ind-tc-val">—</div>
+          <div class="ind-sub" id="ind-tc-sub">Contratados ÷ entrevistados</div>
+          <div class="ind-meta" id="ind-tc-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-tc-prog" style="background:var(--blue)"></div></div>
+        </div>
+        <div class="ind-card salmon">
+          <div class="ind-lbl">9 · Taxa de Reposição</div>
+          <div class="ind-val" id="ind-trepos-val">—</div>
+          <div class="ind-sub" id="ind-trepos-sub">Reposições ÷ total de contratações</div>
+          <div class="ind-meta" id="ind-trepos-meta"></div>
+          <div class="ind-prog"><div class="ind-prog-f" id="ind-trepos-prog" style="background:var(--salmon)"></div></div>
+        </div>
+      </div>
 
-    if (enviar && mensagem) {
-      await enviarMensagem(telefone, mensagem);
-      registrarEntradaSessao(sessao, "assistant", mensagem);
-      marcarConversaRespondida(sessao);
-      await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || sessao.ultimaAnalise?.nome || "");
-    }
+      <!-- BLOCO 3: RETENÇÃO + FUNIL -->
+      <div class="ind-section-title">🔄 Retenção e Funil de Conversão</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <!-- Retenção 90d -->
+        <div class="chart-card">
+          <div class="chart-title">10 · Retenção 90 Dias <span id="ind-ret90-periodo"></span></div>
+          <div class="ret-ring-outer" id="ind-ret90-area">
+            <div class="ret-ring" id="ind-ret90-ring">
+              <div class="ret-ring-val" id="ind-ret90-val">—</div>
+              <div class="ret-ring-sub">90d</div>
+            </div>
+            <div class="ret-detail" id="ind-ret90-detail"></div>
+          </div>
+        </div>
+        <!-- Turnover -->
+        <div class="chart-card">
+          <div class="chart-title">11 · Turnover das Contratações <span></span></div>
+          <div id="ind-turnover-chart" style="margin-top:6px"></div>
+        </div>
+        <!-- Funil -->
+        <div class="chart-card">
+          <div class="chart-title">4 · Funil de Conversão <span id="ind-funil-periodo"></span></div>
+          <div id="ind-funil-chart" style="margin-top:6px"></div>
+        </div>
+      </div>
 
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
+      <!-- Fontes -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="chart-card">
+          <div class="chart-title">Fontes de Candidatos</div>
+          <div id="source-chart"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Motivos de Desistência / Reprovação</div>
+          <div id="rejection-chart"></div>
+        </div>
+      </div>
+    </div>
 
-    // Banco de Talentos: registra em aba dedicada no Sheets
-    if (status === "Banco de Talentos" && CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, {
-          acao: "bancoTalentos",
-          telefone,
-          nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-          cargo: sessao.ultimaAnalise?.vagaInteresse || sessao.vagaInteresse || "",
-          cidade: sessao.ultimaAnalise?.cidade || sessao.cidade || "",
-          driveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-          perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || "",
-          discPrimario: sessao.discResult?.primario || "",
-          dataEntrada: new Date().toLocaleDateString("pt-BR"),
-          timestampMs: Date.now()
-        }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-        console.log(`Banco de Talentos: ${telefone} (${sessao.nome || ""})`);
-      } catch (e) { console.error("Erro bancoTalentos Sheets:", e.message); }
-    }
+    <!-- NR-01 -->
+    <div id="nr01-view" class="view">
+      <div class="nr-header">
+        <h3>🛡 Gestão de Riscos Psicossociais · NR-01</h3>
+        <p>Mapeamento e monitoramento conforme nova NR-01 (vigência 2025) — inclusão obrigatória de riscos psicossociais no PGR</p>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-lbl">Diagnósticos Realizados</div>
+          <div class="metric-big" style="color:var(--green)">4</div>
+          <div class="metric-ctx">Empresas clientes mapeadas</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">Treinamentos Ministrados</div>
+          <div class="metric-big" style="color:var(--blue)">12h</div>
+          <div class="metric-ctx">Capacitações em 2026</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-lbl">Planos de Ação</div>
+          <div class="metric-big" style="color:var(--salmon)">7</div>
+          <div class="metric-ctx">3 em andamento · 4 concluídos</div>
+        </div>
+      </div>
+      <div class="chart-card" style="max-width:580px">
+        <div class="chart-title">Fatores de Risco Mapeados (média dos clientes)</div>
+        <div id="nr01-chart"></div>
+      </div>
+    </div>
 
-    return res.json({ ok: true, telefone, status: sessao.statusProcesso, prioritario });
-  } catch (erro) {
-    console.error("Erro /inbox/status:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
+    <!-- PAINEL DO GESTOR -->
+    <div id="gestor-view" class="view">
+      <div class="gestor-form">
+        <div style="margin-bottom:18px">
+          <h3 style="font-size:16px;font-weight:700">Painel do Gestor · Requisição de Vaga</h3>
+          <p style="font-size:12px;color:var(--gray);margin-top:4px">Preencha as informações abaixo. As respostas sobre o perfil comportamental serão usadas para gerar automaticamente a recomendação DISC da vaga.</p>
+        </div>
 
-app.post("/inbox/encaminhar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
+        <!-- Dados da vaga -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-briefcase" style="color:var(--green)"></i> Dados da Vaga</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" placeholder="Ex: Analista Administrativo"></div>
+            <div class="form-group"><label class="form-label">Departamento</label><input class="form-input" placeholder="Ex: Financeiro"></div>
+            <div class="form-group"><label class="form-label">Nº de Vagas</label><input class="form-input" type="number" value="1"></div>
+            <div class="form-group"><label class="form-label">Regime</label><select class="form-select"><option>CLT</option><option>PJ</option><option>Temporário</option><option>Estágio</option></select></div>
+            <div class="form-group"><label class="form-label">Faixa Salarial</label><input class="form-input" placeholder="Ex: R$ 4.000 – R$ 5.500"></div>
+            <div class="form-group"><label class="form-label">Prazo para Contratar</label><input class="form-input" type="date"></div>
+            <div class="form-group full"><label class="form-label">Justificativa da Abertura</label><select class="form-select"><option>Substituição</option><option>Expansão de equipe</option><option>Novo cargo</option><option>Falha técnica</option><option>Licença</option></select></div>
+            <div class="form-group full"><label class="form-label">Descrição das Principais Responsabilidades</label><textarea class="form-textarea" placeholder="Descreva as principais atividades e responsabilidades do cargo..."></textarea></div>
+          </div>
+        </div>
 
-    const sessao = garantirSessao(telefone);
-    const idVaga = String(req.body.idVaga || req.body.id || "").trim();
-    const vagaInteresse = String(req.body.vagaInteresse || req.body.cargo || "").trim();
-    const vaga = req.body.vaga || {};
-    const agoraLocal = agora();
+        <!-- Perguntas DISC -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-brain" style="color:var(--blue)"></i> Perfil Comportamental — Perguntas para Definir o DISC Ideal</div>
+          <p style="font-size:11px;color:var(--gray);margin-bottom:14px">Responda cada pergunta conforme a realidade do cargo. O sistema calculará automaticamente o perfil DISC recomendado.</p>
 
-    sessao.statusProcesso = "Interessado";
-    sessao.aguardandoConfirmacaoInteresse = false;
-    sessao.ultimaAnalise = {
-      ...(sessao.ultimaAnalise || {}),
-      idVaga,
-      vagaInteresse,
-      status: "Interessado",
-      curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || ""
-    };
+          <div class="disc-question">
+            <div class="disc-q-text">1. O profissional precisará tomar decisões rápidas, assumir riscos e resolver problemas com autonomia?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#e74c3c">D (Dominância)</strong> — liderança, assertividade, competitividade</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'d1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'d1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
 
-    if (CONFIG.VAGAS_URL) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const basePayload = {
-        telefone,
-        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-        status: "Interessado",
-        vagaInteresse,
-        idVaga,
-        proximaAcao: "Encaminhado manualmente pelo Inbox",
-        observacoes: `Encaminhado manualmente pelo Inbox em ${agoraLocal}.`,
-        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || sessao.ultimaAnalise?.pontosFortes || ""
-      };
-      await axios.post(urlBase, { acao: "salvarAnalise", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-      try {
-        await axios.post(urlBase, { acao: "confirmarInteresse", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-      } catch (e) {
-        console.error("confirmarInteresse manual falhou, mas salvarAnalise rodou:", e.message);
-      }
-    }
+          <div class="disc-question">
+            <div class="disc-q-text">2. O cargo exige comunicação constante, persuasão, entusiasmo e capacidade de influenciar pessoas?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#f39c12">I (Influência)</strong> — comunicação, sociabilidade, otimismo</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'i1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'i1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
 
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
-    return res.json({ ok: true, telefone, idVaga, vagaInteresse, status: "Interessado" });
-  } catch (erro) {
-    console.error("Erro /inbox/encaminhar:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
+          <div class="disc-question">
+            <div class="disc-q-text">3. A função requer constância, paciência, trabalho em equipe e suporte contínuo às pessoas?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#27ae60">S (Estabilidade)</strong> — calma, colaboração, lealdade, rotina</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'s1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'s1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
 
+          <div class="disc-question">
+            <div class="disc-q-text">4. O trabalho envolve análise detalhada, precisão, conformidade com normas e alto padrão de qualidade?</div>
+            <div class="disc-q-hint">↳ Indica fator <strong style="color:#2980b9">C (Conformidade)</strong> — análise, critério, perfeccionismo, processos</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','nunca')">Nunca / Raramente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','as-vezes')">Às vezes</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'c1','frequente')">Frequentemente</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'c1','sempre')">Sempre / É essencial</button>
+            </div>
+          </div>
 
-// ============================================================
-// ROTA — PORTAL DO CLIENTE
-// ============================================================
+          <div class="disc-question">
+            <div class="disc-q-text">5. Qual é o ritmo típico do ambiente de trabalho para essa função?</div>
+            <div class="disc-q-hint">↳ Ajuda a calibrar a intensidade entre D/I (ritmo rápido) e S/C (ritmo metódico)</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'r1','intenso')">Intenso e acelerado</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'r1','misto')">Misto (picos e calmaria)</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'r1','estavel')">Estável e previsível</button>
+            </div>
+          </div>
 
-app.post("/cliente/solicitar", async (req, res) => {
-  try {
-    const d = req.body;
-    const msg = `🆕 NOVA SOLICITAÇÃO DE VAGA — Effect
+          <div class="disc-question">
+            <div class="disc-q-text">6. O profissional liderará pessoas ou projetos formalmente?</div>
+            <div class="disc-q-hint">↳ Liderança formal reforça D; liderança colaborativa reforça S e I</div>
+            <div class="disc-q-options">
+              <button class="disc-q-opt" onclick="discSelect(this,'l1','sim-formal')">Sim, liderança formal</button>
+              <button class="disc-q-opt sel" onclick="discSelect(this,'l1','colabora')">Liderança colaborativa / influência</button>
+              <button class="disc-q-opt" onclick="discSelect(this,'l1','nao')">Não, posição individual</button>
+            </div>
+          </div>
 
-🏢 EMPRESA
-• Nome: ${d.empresa_nome || ''}
-• Responsável: ${d.responsavel_nome || ''} ${d.responsavel_cargo ? '('+d.responsavel_cargo+')' : ''}
-• WhatsApp: ${d.responsavel_whatsapp || ''}
-• E-mail: ${d.responsavel_email || ''}
-• Segmento: ${d.segmento || ''}
+          <!-- Preview DISC calculado -->
+          <div class="disc-result-preview" id="disc-preview" style="margin-top:16px">
+            <h4>🎯 Perfil DISC Recomendado (calculado pelas respostas)</h4>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div id="disc-preview-bars" style="flex:1;min-width:220px"></div>
+              <div id="disc-preview-tag" style="text-align:center"></div>
+            </div>
+          </div>
+        </div>
 
-💼 VAGA
-• Cargo: ${d.vaga_cargo || ''} (${d.vaga_quantidade || '1'} vaga(s))
-• Cidade: ${d.vaga_cidade || ''}
-• Salário: ${d.vaga_salario || 'A combinar'}
-• Horário: ${d.vaga_horario || ''}
-• Benefícios: ${d.vaga_beneficios || ''}
-• Responsabilidades: ${d.vaga_responsabilidades || ''}
-• Requisitos: ${d.vaga_requisitos || ''}
+        <!-- Competências -->
+        <div class="form-section">
+          <div class="form-section-title"><i class="fas fa-star" style="color:var(--sage)"></i> Competências e Requisitos</div>
+          <div class="form-row">
+            <div class="form-group full"><label class="form-label">Competências Técnicas Obrigatórias</label><textarea class="form-textarea" placeholder="Ex: Excel avançado, SAP, legislação trabalhista..."></textarea></div>
+            <div class="form-group full"><label class="form-label">Competências Comportamentais Desejadas</label><textarea class="form-textarea" placeholder="Ex: Comunicação clara, proatividade, organização..."></textarea></div>
+            <div class="form-group"><label class="form-label">Escolaridade Mínima</label><select class="form-select"><option>Ensino Médio</option><option>Técnico</option><option>Superior cursando</option><option>Superior completo</option><option>Pós-graduação</option><option>MBA / Mestrado</option></select></div>
+            <div class="form-group"><label class="form-label">Experiência Mínima</label><select class="form-select"><option>Sem experiência</option><option>6 meses</option><option>1 ano</option><option>2 anos</option><option>3+ anos</option><option>5+ anos</option></select></div>
+          </div>
+        </div>
 
-👤 PERFIL
-• Escolaridade: ${d.perfil_escolaridade || ''}
-• Experiência: ${d.perfil_experiencia || ''}
-• Competências: ${d.perfil_competencias || ''}
-${d.perfil_obs ? '• Obs: '+d.perfil_obs : ''}
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="padding:12px 24px" onclick="alert('Requisição enviada para a Effect! O perfil DISC recomendado foi gerado automaticamente.')"><i class="fas fa-paper-plane"></i> Enviar Requisição</button>
+          <button class="btn btn-outline" style="padding:12px 20px" onclick="alert('Salvando rascunho...')"><i class="fas fa-save"></i> Salvar Rascunho</button>
+        </div>
+      </div>
+    </div>
 
-📄 CONTRATO
-• Razão social: ${d.contrato_razao || ''}
-• CNPJ: ${d.contrato_cnpj || ''}
-• Endereço: ${d.contrato_endereco || ''}
-• Serviço: ${d.contrato_servico || ''}
-• Valor: ${d.contrato_valor || 'A definir'}
-• Pagamento: ${d.contrato_pagamento || ''}
-${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
+    <!-- DISC & MATCH -->
+    <div id="disc-view" class="view">
+      <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h3 style="font-size:16px;font-weight:700">DISC & Match de Candidatos</h3>
+          <p style="font-size:12px;color:var(--gray);margin-top:4px">Perfis DISC recomendados por vaga e compatibilidade com cada candidato.</p>
+        </div>
+        <select class="sel" id="disc-vaga-sel" onchange="renderDiscView()">
+          <option value="0">Carregando vagas...</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chart-card">
+          <div class="chart-title">Perfil DISC Ideal para a Vaga</div>
+          <div id="disc-vaga-bars"></div>
+          <div id="disc-vaga-desc" style="margin-top:12px;font-size:11px;color:var(--gray);line-height:1.6"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Match dos Candidatos</div>
+          <div id="disc-matches"></div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-top:16px">
+        <div class="chart-title">Perfis DISC dos Candidatos em Processo</div>
+        <div id="disc-all-candidates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:4px"></div>
+      </div>
+    </div>
 
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
+  </div>
+</main>
 
-    if (CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, { acao: "salvarAnalise", cargo: d.vaga_cargo, cliente: d.empresa_nome, cidade: d.vaga_cidade, salario: d.vaga_salario, horario: d.vaga_horario, beneficios: d.vaga_beneficios, responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos, escolaridade: d.perfil_escolaridade, experiencia: d.perfil_experiencia, contato: d.responsavel_whatsapp, origem: "Portal do Cliente" }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-      } catch(e) { console.error("Erro salvar vaga cliente:", e.message); }
-    }
+<!-- MODAL INDICADORES -->
+<div class="modal-ind" id="modal-ind" onclick="if(event.target===this)fecharModalIndicadores()">
+<div class="modal-ind-box">
+  <div class="modal-ind-head">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h3>📥 Registrar Dados do Processo</h3>
+        <p>Preencha os dados de cada processo seletivo para calcular os indicadores automaticamente</p>
+      </div>
+      <button onclick="fecharModalIndicadores()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray);padding:0 0 0 10px">×</button>
+    </div>
+    <div class="modal-ind-tabs">
+      <button class="modal-ind-tab active" onclick="switchTabInd(this,0)">📋 Processo</button>
+      <button class="modal-ind-tab" onclick="switchTabInd(this,1)">📊 Funil de Etapas</button>
+      <button class="modal-ind-tab" onclick="switchTabInd(this,2)">🔄 Retenção</button>
+      <button class="modal-ind-tab" onclick="switchTabInd(this,3)">🗂 Histórico</button>
+    </div>
+  </div>
+  <div class="modal-ind-body">
 
-    res.json({ ok: true });
-  } catch (e) {
-    console.error("Erro /cliente/solicitar:", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
+    <!-- ABA 0: PROCESSO -->
+    <div id="ind-tab-0">
+      <div class="mig">
+        <div class="mig-sep">Identificação da Vaga</div>
+        <div class="mi-group">
+          <label class="mi-label">Vaga / Cargo *</label>
+          <input class="mi-input" id="ind-f-vaga" placeholder="Ex: Garçom, Auxiliar Cozinha…">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Cliente / Empresa *</label>
+          <input class="mi-input" id="ind-f-cliente" placeholder="Ex: Restaurante Bela Vista">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Nível da Vaga</label>
+          <select class="mi-select" id="ind-f-nivel">
+            <option value="Operacional">Operacional (meta: até 15 dias)</option>
+            <option value="Técnica">Técnica (meta: até 30 dias)</option>
+            <option value="Estratégica">Estratégica (meta: até 45 dias)</option>
+          </select>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">É reposição?</label>
+          <select class="mi-select" id="ind-f-reposicao">
+            <option value="0">Não — Nova contratação</option>
+            <option value="1">Sim — Substituição</option>
+          </select>
+        </div>
+        <div class="mig-sep">Linha do Tempo</div>
+        <div class="mi-group">
+          <label class="mi-label">📅 Data de abertura da vaga</label>
+          <input class="mi-input" type="date" id="ind-f-abertura">
+          <span class="mi-hint">Quando o cliente solicitou a vaga</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">📤 Data do 1º envio ao cliente</label>
+          <input class="mi-input" type="date" id="ind-f-primeiro">
+          <span class="mi-hint">Quando você enviou os primeiros candidatos</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">✅ Data de contratação</label>
+          <input class="mi-input" type="date" id="ind-f-contratacao">
+          <span class="mi-hint">Quando o candidato aceitou a proposta</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">👤 Nome do Contratado</label>
+          <input class="mi-input" id="ind-f-contratado" placeholder="Para rastrear retenção depois">
+        </div>
+      </div>
+    </div>
 
-app.post("/cliente/disponibilidade", async (req, res) => {
-  try {
-    const { slots, empresa } = req.body;
-    if (!slots || !slots.length) return res.json({ ok: false });
-    const msg = `📅 DISPONIBILIDADE DE AGENDA RECEBIDA\n\n🏢 Empresa: ${empresa || 'Cliente'}\n\nHorários disponíveis para entrevistas:\n${slots.sort().map(s => {
-      const [data, hora] = s.split('_');
-      const d = new Date(data + 'T12:00:00');
-      return `• ${d.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})} às ${hora}`;
-    }).join('\n')}\n\nAgende pelo painel: /painel → 📅 Agenda`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
-    res.json({ ok: true });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
+    <!-- ABA 1: FUNIL -->
+    <div id="ind-tab-1" style="display:none">
+      <div class="mig-3">
+        <div class="mig-sep">Candidatos por Etapa</div>
+        <div class="mi-group">
+          <label class="mi-label">Inscritos / Recebidos</label>
+          <input class="mi-input" type="number" id="ind-f-inscritos" placeholder="0" min="0">
+          <span class="mi-hint">Total que chegaram</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Currículos Avaliados</label>
+          <input class="mi-input" type="number" id="ind-f-cvs" placeholder="0" min="0">
+          <span class="mi-hint">Após triagem inicial</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Triados / Pré-selecionados</label>
+          <input class="mi-input" type="number" id="ind-f-triados" placeholder="0" min="0">
+          <span class="mi-hint">Aprovados na triagem</span>
+        </div>
+        <div class="mig-sep">Entrevistas</div>
+        <div class="mi-group">
+          <label class="mi-label">Entrevistas Agendadas</label>
+          <input class="mi-input" type="number" id="ind-f-agendadas" placeholder="0" min="0">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Entrevistas Realizadas</label>
+          <input class="mi-input" type="number" id="ind-f-realizadas" placeholder="0" min="0">
+          <span class="mi-hint">Quantos compareceram</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Entrevistados (total)</label>
+          <input class="mi-input" type="number" id="ind-f-entrevistados" placeholder="0" min="0">
+          <span class="mi-hint">Incluindo todas as etapas</span>
+        </div>
+        <div class="mig-sep">Aprovação e Contratação</div>
+        <div class="mi-group">
+          <label class="mi-label">Finalistas</label>
+          <input class="mi-input" type="number" id="ind-f-finalistas" placeholder="0" min="0">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Enviados ao Cliente</label>
+          <input class="mi-input" type="number" id="ind-f-enviados" placeholder="0" min="0">
+          <span class="mi-hint">Apresentados para aprovação</span>
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Aprovados pelo Cliente</label>
+          <input class="mi-input" type="number" id="ind-f-aprovados" placeholder="0" min="0">
+        </div>
+        <div class="mi-group" style="grid-column:1/-1">
+          <label class="mi-label">Contratados neste processo</label>
+          <input class="mi-input" type="number" id="ind-f-contratados" placeholder="0" min="0" style="max-width:200px">
+        </div>
+      </div>
+    </div>
 
-// ============================================================
-// ROTA — TRANSIÇÃO LIA → LAURA
-// ============================================================
+    <!-- ABA 2: RETENÇÃO -->
+    <div id="ind-tab-2" style="display:none">
+      <p style="font-size:11px;color:var(--gray);margin-bottom:16px">Registre quando um profissional contratado pela Effect deixou o emprego. Isso permite calcular Retenção 90d e Turnover.</p>
+      <div class="mig">
+        <div class="mig-sep">Registrar Saída</div>
+        <div class="mi-group">
+          <label class="mi-label">Nome do Profissional</label>
+          <input class="mi-input" id="ind-r-nome" placeholder="Quem saiu do emprego?">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Vaga / Cargo</label>
+          <input class="mi-input" id="ind-r-cargo" placeholder="Qual era o cargo?">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Data de Contratação</label>
+          <input class="mi-input" type="date" id="ind-r-data-hire">
+        </div>
+        <div class="mi-group">
+          <label class="mi-label">Data de Saída</label>
+          <input class="mi-input" type="date" id="ind-r-data-saida">
+        </div>
+        <div class="mi-group" style="grid-column:1/-1">
+          <label class="mi-label">Motivo da Saída</label>
+          <select class="mi-select" id="ind-r-motivo">
+            <option>Pedido de demissão</option>
+            <option>Demissão pela empresa</option>
+            <option>Não passou período de experiência</option>
+            <option>Proposta melhor</option>
+            <option>Problemas pessoais</option>
+            <option>Outros</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarRetencao()" style="margin-top:14px">➕ Registrar Saída</button>
+      <div style="margin-top:20px">
+        <div style="font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Saídas Registradas</div>
+        <div id="ind-ret-lista"></div>
+      </div>
+    </div>
 
-app.post("/inbox/transicao", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false });
-    const msg = "Olá! 😊 A partir de agora, a Laura da nossa equipe Effect dará continuidade ao seu atendimento. Pode falar! 💙";
-    await enviarMensagem(telefone, msg);
-    const sessao = garantirSessao(telefone);
-    registrarEntradaSessao(sessao, "assistant", msg);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
-    res.json({ ok: true });
-  } catch(e) { res.json({ ok: false, erro: e.message }); }
-});
+    <!-- ABA 3: HISTÓRICO -->
+    <div id="ind-tab-3" style="display:none">
+      <div style="font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Processos Registrados</div>
+      <div id="ind-historico-lista"></div>
+    </div>
 
-// ============================================================
-// PROCESSAMENTO
-// ============================================================
+  </div>
+  <div class="modal-ind-foot">
+    <button class="btn btn-outline" onclick="fecharModalIndicadores()">Fechar</button>
+    <button class="btn btn-primary" id="btn-salvar-ind" onclick="salvarIndicador()">💾 Salvar Processo</button>
+  </div>
+</div>
+</div>
 
-const FALLBACK_INSTABILIDADE = "Tive uma instabilidade aqui. Pode me mandar novamente?";
-const FALLBACK_RATE_LIMIT = "Estou processando suas informações, só preciso de um instantinho. Pode me responder novamente em alguns segundos?";
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeBG(event)">
+<div class="modal">
+  <div class="modal-left">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+      <div>
+        <div id="m-num" style="font-size:9px;color:var(--gray);font-weight:600;margin-bottom:3px"></div>
+        <div class="modal-title" id="m-title"></div>
+        <div class="modal-sub" id="m-client"></div>
+      </div>
+      <button onclick="closeModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray)">✕</button>
+    </div>
 
-async function processarMensagem(telefoneOriginal, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  if (estaEmManual(telefone)) { console.log("BLOQUEIO INTERNO — IA NÃO CHAMADA:", telefone); return null; }
-  if (ehSaudacaoSimples(mensagem) && sessao.historico.length <= 1) {
-    const candidatoExistente = await buscarCandidatoNaPlanilha(telefone);
-    if (candidatoExistente?.encontrado) {
-      const nome = candidatoExistente.candidato?.Nome || "";
-      const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
-      registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-      sessao.historico = sessao.historico.slice(-500);
-      await salvarMensagemSheets(telefone, "assistant", resposta, nome);
-      await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
-      return resposta;
-    }
-  }
-  if (sessao.aguardandoConfirmacaoInteresse && ehConfirmacaoInteresse(mensagem)) {
-    await confirmarInteresseNaPlanilha(telefone, sessao.ultimaAnalise);
-    await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
-    sessao.aguardandoConfirmacaoInteresse = false;
-    const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
-    registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return resposta;
-  }
-  const vagas = await buscarVagas();
+    <div class="sec-title">📋 Requisição da Vaga</div>
+    <div class="info-grid" id="m-req"></div>
 
-  // RAIO-X: registra diagnóstico da busca de vagas para cada mensagem
-  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagem, sessao.historico);
-  const areaDetectada = detectarAreaCandidato(normalizarTexto(mensagem + " " + (sessao.historico||[]).slice(-4).map(h=>h.content||"").join(" ")));
-  const raiox = {
-    ts: new Date().toISOString(),
-    mensagem: mensagem.slice(0, 100),
-    totalVagasDisp: vagas.length,
-    vagasFiltradasQtd: vagasFiltradas.length,
-    areaDetectada: areaDetectada || "nenhuma",
-    vagasEncontradas: vagasFiltradas.slice(0,3).map(v => campo(v,["cargo","Cargo"]) + " / " + campo(v,["cidade","Cidade/Bairro","Cidade"]))
+    <div class="sec-title">🏷 Etapa do Processo</div>
+    <div class="stages-wrap" id="m-stages"></div>
+
+    <div class="sec-title">🧠 Perfil DISC Recomendado para a Vaga</div>
+    <div class="disc-section" id="m-disc-vaga"></div>
+
+    <div class="sec-title">👥 Candidatos Vinculados <span style="font-size:9px;color:var(--gray);font-weight:400;margin-left:6px">— clique para ver currículo completo e match DISC</span></div>
+    <div id="m-cands"></div>
+    <button class="btn btn-outline" style="width:100%;margin-top:6px;justify-content:center" onclick="alert('Vincular candidato à vaga...')"><i class="fas fa-plus"></i> Vincular Candidato</button>
+
+    <div class="sec-title" style="margin-top:18px">💬 Bate-papo da Vaga</div>
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="m-chat"></div>
+      <div class="chat-in">
+        <input class="chat-input" placeholder="Mensagem..." id="chat-in" onkeydown="sendMsg(event)">
+        <button class="chat-send" onclick="sendMsgClick()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-right">
+    <div>
+      <div class="sec-title">📅 Agenda da Vaga</div>
+      <div id="m-sched"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="openAgendarModal(curModal)"><i class="fas fa-calendar-plus"></i> Agendar</button>
+    </div>
+    <div>
+      <div class="sec-title">💰 Orçamento &amp; Aprovação</div>
+      <div class="budget-box" id="m-budget"></div>
+    </div>
+    <div>
+      <div class="sec-title">⚡ Ações Rápidas</div>
+      <button class="quick-btn" onclick="alert('E-mail para candidato...')"><i class="fas fa-envelope" style="color:var(--blue)"></i> E-mail ao candidato</button>
+      <button class="quick-btn" onclick="alert('WhatsApp...')"><i class="fab fa-whatsapp" style="color:var(--sage)"></i> WhatsApp</button>
+      <button class="quick-btn" onclick="alert('Gerar relatório desta vaga...')"><i class="fas fa-file-alt" style="color:var(--green)"></i> Relatório da vaga</button>
+      <button class="quick-btn" onclick="alert('Exportar candidatos...')"><i class="fas fa-download" style="color:var(--gray)"></i> Exportar candidatos</button>
+      <button class="quick-btn danger" onclick="alert('Arquivar vaga...')"><i class="fas fa-archive"></i> Arquivar vaga</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+
+const etapas = ['Não Planejada','Divulgação','Triagem','Entrevista RH','Teste Prático','Entrevista Cliente','Proposta','Admissão','Contratado'];
+const etapaCores = {'Não Planejada':'#a1a1aa','Divulgação':'#1fa5f0','Triagem':'#f5c518','Entrevista RH':'#f4afa1','Teste Prático':'#b07fe8','Entrevista Cliente':'#8ed1b2','Proposta':'#7b8e60','Admissão':'#f5a623','Contratado':'#2a2a2b'};
+
+// ===== API URL (Railway) =====
+const API = (()=>{
+  // Se aberto localmente (file://) aponta para Railway
+  if(window.location.protocol==='file:'||!window.location.host) return 'https://effect-production.up.railway.app';
+  return window.location.origin;
+})();
+
+// ===== GLOBAL STATE =====
+let vagasData = [];
+let candidatosData = [];
+let sessoesData = [];
+let agendaItems = JSON.parse(localStorage.getItem('effect-agenda') || '[]');
+let curModal = null;
+let editingAgendaId = null;
+let calMon = new Date().getMonth();
+let calYr = new Date().getFullYear();
+let vagaTabAtiva = 'todas';
+let calViewSemana = false;
+
+// ===== UTILS =====
+function normT(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function normBool(v){ return ['true','sim','s','1','yes','urgente'].includes(String(v||'').toLowerCase()); }
+function iniciais(nome){ return String(nome||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(); }
+const CORES_POOL=['#8ed1b2','#1fa5f0','#7b8e60','#f4afa1','#a1a1aa','#f5c518','#b07fe8','#f5a623'];
+function corPorNome(nome){ let h=0;for(let i=0;i<(nome||'').length;i++)h=((h<<5)-h)+nome.charCodeAt(i);return CORES_POOL[Math.abs(h)%CORES_POOL.length]; }
+
+// ===== NORMALIZE SHEETS DATA =====
+function normalizeVaga(v, i){
+  const titulo = v.cargo||v.titulo||v.Cargo||v.Titulo||v.vaga||v.Vaga||v['Cargo/Vaga']||'(sem título)';
+  const status  = v.status||v.Status||v.Situacao||v['Situação']||'Em andamento';
+  const enc = normBool(v.encerrada||v.Encerrada)||['encerrada','contratado','fechada'].some(s=>normT(status).includes(s));
+  return {
+    id: v.id||v.ID||v.Id||(i+1),
+    num: v.numero||v.num||v.Numero||v['Nº']||v['Num']||`R&S-${String(i+1).padStart(3,'0')}`,
+    titulo, cliente:v.cliente||v.Cliente||v.empresa||v.Empresa||'—',
+    status, etapa:v.etapa||v.Etapa||v.Fase||'Divulgação',
+    nivel:v.nivel||v.Nivel||v['Nível']||'—',
+    urg:normBool(v.urgente||v.Urgente||v.urgencia||v['Urgência']),
+    prazo:v.prazo||v.Prazo||v.deadline||'—',
+    salario:v.salario||v.Salario||v['Salário']||v['Faixa Salarial']||'A combinar',
+    regime:v.regime||v.Regime||'CLT',
+    local:v.local||v.Local||v.cidade||v.Cidade||'—',
+    vagas_n:parseInt(v.vagas||v.Vagas||v['Nº Vagas']||v.qtd||1)||1,
+    resp:v.responsavel||v.Responsavel||v['Responsável']||'Effect',
+    aprov:v.aprovador||v.Aprovador||'—',
+    justif:v.justificativa||v.Justificativa||'—',
+    orc:v.orcamento||v.Orcamento||v['Orçamento']||'—',
+    encerrada:enc, candidatos:[], chat:[], agenda:[], _raw:v
   };
-  if (!sessao.raiox) sessao.raiox = [];
-  sessao.raiox = [...sessao.raiox.slice(-9), raiox]; // guarda os 10 mais recentes
-  if (vagas.length === 0) {
-    console.warn(`RAIO-X VAGAS — ${telefone}: lista de vagas VAZIA ao processar mensagem. Cache: ${vagasCache.length} vagas em cache.`);
-  } else if (vagasFiltradas.length === 0) {
-    console.warn(`RAIO-X VAGAS — ${telefone}: ${vagas.length} vagas disponíveis mas NENHUMA filtrada. Área: ${areaDetectada||"não detectada"}`);
-  }
-
-  const prompt = montarPromptConversa(sessao, mensagem, vagas);
-  const resposta = await chamarClaudeTexto(prompt);
-
-  // Se a chamada à Claude falhou (mensagem genérica de instabilidade/rate-limit),
-  // NÃO manda isso pro candidato e NÃO grava no histórico — evita o spam de
-  // "Tive uma instabilidade aqui..." em loop. Só alerta a Thiara uma vez.
-  if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
-    if (!sessao._alertaInstabilidadeEnviado || (Date.now() - sessao._alertaInstabilidadeEnviado) > 10 * 60 * 1000) {
-      sessao._alertaInstabilidadeEnviado = Date.now();
-      await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA NÃO RESPONDEU", mensagem);
-    }
-    return null;
-  }
-
-  const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
-  if (respostaTravada) return null;
-  registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-  sessao.historico = sessao.historico.slice(-500);
-  await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
-  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-  return resposta;
+}
+function normalizeCandidato(c){
+  return {
+    nome:c.nome||c.Nome||c.candidato||c.Candidato||'—',
+    vaga:c.vaga||c.Vaga||c.vagaInteresse||c.VagaInteresse||c['Vaga de Interesse']||c['vaga de interesse']||c.cargo||c.Cargo||'',
+    etapa:c.etapa||c.Etapa||c.status||c.Status||'Triagem',
+    score:parseInt(c.score||c.Score||c.pontuacao||0)||0,
+    obs:c.obs||c.observacao||c.Observacao||c['Observação']||'',
+    telefone:c.telefone||c.Telefone||c.whatsapp||'',
+    cor:corPorNome(c.nome||c.Nome||''), _raw:c
+  };
 }
 
-async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const silencioso = opcoes.silencioso === true;
-  const recebidoEmMs = opcoes.timestampMs || Date.now();
-  const sessao = garantirSessao(telefone);
-  let cvSalvo = null;
-
-  try {
-    // ══════════════════════════════════════════════════════
-    // PASSO 1 — DOWNLOAD DO BINÁRIO
-    // Se isso falhar, é problema real (Meta API fora). Nada pode ser feito.
-    // ══════════════════════════════════════════════════════
-    const { buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarArquivo(documento.id, documento.filename, documento.mime_type || documento.mimeType);
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 2 — SALVAR NO GOOGLE DRIVE IMEDIATAMENTE
-    // Isso é feito ANTES de qualquer análise. É o armazenamento permanente.
-    // Se falhar, tenta mais 2 vezes com delay crescente antes de desistir.
-    // ══════════════════════════════════════════════════════
-    let driveLink = null;
-    let drivePasta = null;
-    for (let tentDrive = 1; tentDrive <= 3; tentDrive++) {
-      try {
-        const driveInfo = await uploadCurriculoDrive(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, "Currículos Recebidos", telefone, mimeType);
-        if (driveInfo?.link) {
-          driveLink = driveInfo.link;
-          drivePasta = driveInfo.pasta;
-          console.log(`✅ CV NO DRIVE (tentativa ${tentDrive}) — ${telefone} — ${driveLink}`);
-          break;
-        }
-      } catch (e) {
-        console.error(`Drive tentativa ${tentDrive}/3 falhou: ${e.message}`);
-        if (tentDrive < 3) await sleep(2000 * tentDrive);
-      }
+// ===== LOAD DATA =====
+async function loadData(){
+  showLoadingOverlay(true);
+  try{
+    const [r1,r2,r3]=await Promise.allSettled([
+      fetch(`${API}/sheets/vagas`).then(r=>r.json()).catch(()=>({vagas:[]})),
+      fetch(`${API}/sheets/candidatos`).then(r=>r.json()).catch(()=>({candidatos:[]})),
+      fetch(`${API}/inbox/sessoes`).then(r=>r.json()).catch(()=>[]),
+    ]);
+    if(r1.status==='fulfilled'){
+      const raw=r1.value?.vagas||r1.value?.data||[];
+      vagasData=Array.isArray(raw)?raw.map(normalizeVaga):[];
     }
-    if (!driveLink) {
-      console.error(`⚠️ CV NÃO SALVO NO DRIVE após 3 tentativas — ${telefone} | ${arquivoNome}`);
-      await enviarAlertaSimplesThiara(telefone, "🔥 CURRÍCULO NÃO FOI SALVO NO DRIVE", `Arquivo: ${arquivoNome || "desconhecido"}`);
+    if(r2.status==='fulfilled'){
+      const raw=r2.value?.candidatos||r2.value?.data||[];
+      candidatosData=Array.isArray(raw)?raw.map(normalizeCandidato):[];
     }
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 3 — REGISTRAR NA SESSÃO E SALVAR NO SHEETS
-    // Agora com driveLink já disponível. Registro permanente.
-    // ══════════════════════════════════════════════════════
-    const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
-    cvSalvo = registrarCurriculoNaSessao(sessao, {
-      mediaId: documento.id || null,
-      base64: arquivoBuffer.toString("base64"),
-      localPath: localInfo.localPath || "",
-      localFilename: localInfo.localFilename || "",
-      filename: arquivoNome || `curriculo_${telefone}`,
-      mimeType,
-      sizeBytes,
-      recebidoEmMs,
-      recebidoEm: new Date(recebidoEmMs).toISOString(),
-      driveLink,
-      pasta: drivePasta,
-      analiseStatus: driveLink ? "salvo_drive" : "drive_indisponivel"
-    });
-    sessao.curriculo = cvSalvo;
-    console.log(`CV REGISTRADO — ${telefone} — Drive: ${driveLink ? "✅" : "❌"} — Local: ${localInfo.localPath ? "✅" : "❌"}`);
-
-    // Salva no Sheets imediatamente com driveLink. Se o servidor reiniciar agora, o link está lá.
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 4 — EXTRAIR TEXTO PARA ANÁLISE (opcional)
-    // Falha aqui não afeta o que já foi salvo.
-    // ══════════════════════════════════════════════════════
-    const textoCurriculo = await extrairTextoPdf(arquivoBuffer, arquivoNome, mimeType);
-
-    // Se não houver texto legível, currículo está salvo no Drive — só avisa.
-    if (!textoCurriculo || textoCurriculo.length < 50) {
-      if (cvSalvo) cvSalvo.analiseStatus = cvSalvo.analiseStatus === "salvo_drive" ? "salvo_drive_sem_texto" : cvSalvo.analiseStatus;
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática não conseguiu ler o conteúdo do arquivo, mas ele ficou salvo para avaliação da equipe. 💙";
+    if(r3.status==='fulfilled'){
+      const raw=r3.value;
+      // /inbox/sessoes retorna {sessoes:{tel:obj,...}, totalConversas, ...}
+      const src=raw?.sessoes||raw;
+      sessoesData=Array.isArray(src)?src:Object.values(src||{});
     }
+    linkarCandidatos();
+    atualizarBadges();
+    // DEBUG: mostra no console o que chegou
+    console.log('[DEBUG] vagasData:', vagasData.length, vagasData.map(v=>v.titulo));
+    console.log('[DEBUG] candidatosData:', candidatosData.length, 'com vaga preenchida:', candidatosData.filter(c=>c.vaga).length, candidatosData.slice(0,3).map(c=>({nome:c.nome,vaga:c.vaga})));
+    console.log('[DEBUG] sessoesData:', sessoesData.length, 'com vagaInteresse:', sessoesData.filter(s=>s.ultimaAnalise?.vagaInteresse||s.vagaInteresse).length, sessoesData.slice(0,3).map(s=>({nome:s.nome,vi:s.ultimaAnalise?.vagaInteresse||s.vagaInteresse})));
+    console.log('[DEBUG] candidatos por vaga:', vagasData.map(v=>v.titulo+': '+v.candidatos.length));
+  }catch(e){ console.error('loadData erro:',e); }
+  showLoadingOverlay(false);
+  renderAll();
+}
 
-    // 2) ANÁLISE DA IA — opcional. Se falhar, não invalida o currículo.
-    let analise;
-    try {
-      const vagas = await buscarVagas();
-      let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
-      const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
-      if (vagaRH && !vagasFiltradas.some(v => campo(v, ["idVaga", "ID Vaga", "ID"]) === campo(vagaRH, ["idVaga", "ID Vaga", "ID"]))) {
-        vagasFiltradas = [vagaRH, ...vagasFiltradas].slice(0, 5);
-      }
-
-      const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
-      analise = await chamarGeminiJSON(prompt).catch(() => chamarClaudeJSON(prompt));
-
-      if (vagaRH) {
-        const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
-        const cidadeRH = campo(vagaRH, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-        const idRH = campo(vagaRH, ["idVaga", "ID Vaga", "ID"]);
-        const semMatch = !analise.vagaInteresse || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas") || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas");
-        if (semMatch || !isRHVaga({ cargo: analise.vagaInteresse, area: analise.areaInteresse, palavrasChave: analise.motivoMatch })) {
-          analise.vagaInteresse = cargoRH || "Analista Administrativo (RH)";
-          analise.idVaga = idRH || analise.idVaga || "";
-          analise.cidade = analise.cidade || cidadeRH || "Serra/ES";
-          analise.areaInteresse = analise.areaInteresse || "Recursos Humanos";
-          analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 75);
-          analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 75);
-          analise.classificacao = analise.classificacao || "Bom";
-          analise.motivoMatch = analise.motivoMatch || "Experiência/aderência com RH, Recursos Humanos, DP, R&S ou Gente e Gestão.";
-          analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
-
-Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perfil:
-
-📍 ${cargoRH || "Analista Administrativo (RH)"}
-📍 ${cidadeRH || "Serra/ES"}
-
-Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
-        }
-      }
-
-      // Força match por área para candidatos não-RH
-      if (!vagaRH) {
-        const areaCv = detectarAreaCandidato(textoCurriculo);
-        if (areaCv) {
-          const vagaArea = buscarVagaDaArea(vagas, areaCv);
-          if (vagaArea) {
-            const cargoArea = campo(vagaArea, ["cargo", "Cargo", "CARGO"]);
-            const cidadeArea = campo(vagaArea, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-            const idArea = campo(vagaArea, ["idVaga", "ID Vaga", "ID"]);
-            const semMatch = !analise.vagaInteresse
-              || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("oportunidade em aberto");
-            if (semMatch) {
-              analise.vagaInteresse = cargoArea || analise.vagaInteresse;
-              analise.idVaga = idArea || analise.idVaga || "";
-              analise.cidade = analise.cidade || cidadeArea || "";
-              analise.areaInteresse = analise.areaInteresse || areaCv;
-              analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 70);
-              analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 70);
-              analise.classificacao = analise.classificacao || "Bom";
-              analise.motivoMatch = analise.motivoMatch || `Aderência com a área de ${areaCv}.`;
-              analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!\n\nAnalisei seu currículo e encontrei uma vaga com aderência ao seu perfil:\n\n📌 ${cargoArea}\n📍 ${cidadeArea || "ES"}\n\nVou registrar seu interesse e encaminhar seu perfil para avaliação. Você teria interesse em participar? 💙`;
-            }
-          }
-        }
-      }
-
-      if (cvSalvo) {
-        cvSalvo.analiseStatus = "analisado";
-        analise.curriculoDriveLink = cvSalvo.driveLink || null;
-      }
-
-      await salvarAnaliseNaPlanilha(telefone, analise);
-      await enviarAlertaThiara(analise, telefone);
-      sessao.aguardandoConfirmacaoInteresse = true;
-      sessao.ultimaAnalise = analise;
-      sessao.nome = analise.nome || sessao.nome;
-
-      if (!silencioso) {
-        registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
-        marcarConversaRespondida(sessao);
-        sessao.historico = sessao.historico.slice(-500);
-        await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
-      } else {
-        console.log(`CURRÍCULO DE ${telefone} SALVO/ANALISADO EM MODO MANUAL — sem resposta automática ao candidato.`);
-      }
-
-      await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome || sessao.nome || "");
-      return silencioso ? null : analise.mensagemCandidato;
-    } catch (erroIA) {
-      if (cvSalvo) cvSalvo.analiseStatus = "analise_indisponivel";
-      console.error("Análise automática indisponível, mas currículo foi salvo:", JSON.stringify(erroIA.response?.data || erroIA.message || erroIA));
-      await enviarAlertaSimplesThiara(telefone, "⚠️ CURRÍCULO SALVO, MAS IA NÃO ANALISOU", String(erroIA.message || erroIA));
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática está temporariamente indisponível, mas o arquivo ficou salvo para avaliação da equipe. 💙";
+function linkarCandidatos(){
+  for(const c of candidatosData){
+    if(!c.vaga) continue;
+    const vaga=vagasData.find(v=>normT(v.titulo)===normT(c.vaga)||normT(v.titulo).includes(normT(c.vaga))||normT(c.vaga).includes(normT(v.titulo)));
+    if(vaga&&!vaga.candidatos.some(x=>x.nome===c.nome)) vaga.candidatos.push(c);
+  }
+  for(const s of sessoesData){
+    const nome=s.nome||s.candidato||s.ultimaAnalise?.nome||'';
+    if(!nome) continue;
+    // vagaInteresse fica dentro de ultimaAnalise no servidor
+    const vt=s.ultimaAnalise?.vagaInteresse||s.vagaInteresse||s.ultimaAnalise?.cargo||s.cargo||s.vaga||'';
+    if(!vt) continue;
+    const vaga=vagasData.find(v=>normT(v.titulo).includes(normT(vt))||normT(vt).includes(normT(v.titulo)));
+    if(vaga&&!vaga.candidatos.some(x=>x.nome===nome)){
+      // pipeline/etapa também vem de ultimaAnalise ou do campo pipeline no topo
+      const etapa=s.ultimaAnalise?.pipeline||s.pipeline||s.ultimaAnalise?.etapa||s.statusProcesso||s.etapa||'Triagem';
+      vaga.candidatos.push({nome,etapa,score:0,obs:'',telefone:s.telefone||'',cor:corPorNome(nome)});
     }
-  } catch (erro) {
-    console.error("Erro ao receber/salvar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
-    await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO RECEBER/SALVAR CURRÍCULO", String(erro.message || erro));
-    return silencioso ? null : "Recebi seu arquivo, mas tive uma falha técnica para salvar o currículo. Pode me encaminhar novamente, por favor?";
   }
 }
 
-
-// Apenas faz o download do arquivo. Não tenta parsear. Mais rápido e nunca bloqueia o salvamento.
-async function baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal = "", tentativa = 1) {
-  try {
-    const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
-    const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 45000 });
-    const buffer = Buffer.from(arquivo.data);
-    const filename = filenameOriginal || "curriculo";
-    const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
-    return { buffer, filename, mimeType, sizeBytes: buffer.length };
-  } catch (e) {
-    if (tentativa < 3) {
-      console.error(`baixarArquivo tentativa ${tentativa} falhou: ${e.message} — retentando...`);
-      await sleep(2000 * tentativa);
-      return baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal, tentativa + 1);
-    }
-    throw e;
-  }
-}
-
-// Extrai texto do PDF para análise. Totalmente opcional — falha aqui não afeta o salvamento.
-async function extrairTextoPdf(buffer, filename, mimeType) {
-  const ehPdf = /pdf/i.test(mimeType) || /\.pdf$/i.test(filename);
-  if (!ehPdf) return "";
-  try {
-    const pdfData = await pdfParse(buffer);
-    return String(pdfData.text || "").slice(0, 12000);
-  } catch (e) {
-    console.error("Leitura do texto do PDF falhou (arquivo já salvo no Drive):", e.message);
-    return "";
-  }
-}
-
-// Mantida para compatibilidade, mas processarCurriculo usa as funções separadas agora.
-async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
-  const { buffer, filename, mimeType, sizeBytes } = await baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal);
-  const texto = await extrairTextoPdf(buffer, filename, mimeType);
-  return { texto, buffer, filename, mimeType, sizeBytes };
-}
-
-
-async function buscarCandidatoNaPlanilha(telefone) {
-  try {
-    if (!CONFIG.VAGAS_URL) return null;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=candidato&telefone=${encodeURIComponent(telefone)}`, { timeout: 15000 });
-    return r.data;
-  } catch (e) { return null; }
-}
-
-function vagaEstaAtiva(vaga) {
-  const status = normalizarTexto(campo(vaga, ["status", "Status"]));
-  if (!status) return true;
-  return !["encerrada","cancelada","inativa","suspensa","fechada","finalizada"].includes(status);
-}
-
-// Cache de vagas — evita retornar lista vazia quando o Sheets está lento ou fora
-let vagasCache = [];
-let vagasCacheTs = 0;
-const VAGAS_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-async function buscarVagas() {
-  // Se o cache ainda é válido, usa sem bater no Sheets
-  if (vagasCache.length && (Date.now() - vagasCacheTs) < VAGAS_CACHE_TTL) {
-    return vagasCache;
-  }
-  try {
-    const vagasSheets = [];
-    if (CONFIG.VAGAS_URL) {
-      const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
-      if (r.data?.vagas) vagasSheets.push(...r.data.vagas.filter(vagaEstaAtiva));
-    }
-    if (vagasSheets.length) {
-      vagasCache = vagasSheets;
-      vagasCacheTs = Date.now();
-    }
-    // Se Sheets retornou vazio mas temos cache, usa o cache (evita "não temos vagas" falso)
-    return vagasSheets.length ? vagasSheets : vagasCache;
-  } catch (e) {
-    console.error("Erro buscarVagas:", e.message);
-    return vagasCache; // usa cache antigo em vez de retornar []
-  }
-}
-
-function primeiroNome(nome) { return String(nome || "").trim().split(/\s+/)[0]; }
-
-function ehSaudacaoSimples(mensagem) {
-  const texto = normalizarTexto(mensagem).trim();
-  return ["oi","ola","olá","bom dia","boa tarde","boa noite","tudo bem","td bem"].includes(texto);
-}
-
-function textoDaVaga(vaga) {
-  return normalizarTexto([campo(vaga,["idVaga","ID Vaga","ID"]),campo(vaga,["cargo","Cargo","CARGO"]),campo(vaga,["area","Área/Setor","Area/Setor","Área","Area"]),campo(vaga,["cidade","Cidade/Bairro","Cidade","Local"]),campo(vaga,["perfilResumido","Perfil Resumido","Perfil"]),campo(vaga,["palavrasChave","Palavras-chave","Palavras Chave"]),campo(vaga,["requisitosDaVaga","Requisitos da Vaga","Requisitos"]),campo(vaga,["requisitoObrigatorio","Requisito Obrigatório","Requisito Obrigatorio"]),campo(vaga,["observacoes","Observações","Observacoes"]),campo(vaga,["status","Status"])].join(" "));
-}
-
-function filtrarVagasRelevantes(vagas, texto, historico) {
-  const textoBusca = normalizarTexto(texto + " " + historico.map(h => h.content).join(" "));
-  const areaCandidato = detectarAreaCandidato(textoBusca);
-  const CIDADES_ES = ["linhares", "serra", "vitoria", "vila velha", "cariacica", "guarapari",
-    "colatina", "cachoeiro", "aracruz", "viana", "fundao", "fundão", "santa teresa",
-    "piuma", "anchieta", "itapemirim", "marataizes", "marataízes"];
-  const vagasComScore = vagas.map(vaga => {
-    const textoVaga = textoDaVaga(vaga);
-    let score = 0;
-    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => { if (textoVaga.includes(p)) score++; });
-    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
-      const boosts = { rh: 80, logistica: 60, administrativo: 50, operacional: 50, projetos: 50, alimentos: 50, limpeza: 50, vendas: 50 };
-      score += boosts[areaCandidato] || 40;
-    }
-    CIDADES_ES.forEach(cidade => { if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 35; });
-    return { vaga, score };
+function atualizarBadges(){
+  const abertas=vagasData.filter(v=>!v.encerrada).length;
+  const totalCands=candidatosData.length+sessoesData.length;
+  const proxAgenda=agendaItems.filter(a=>{if(!a.data)return false;return new Date(a.data)>=new Date(new Date().toDateString());}).length;
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    const txt=el.textContent||'';
+    const b=el.querySelector('.badge');
+    if(!b) return;
+    if(txt.includes('Candidatos')) b.textContent=totalCands||'';
+    if(txt.includes('Vagas')) b.textContent=abertas||'';
+    if(txt.includes('Agenda')) b.textContent=proxAgenda||'';
   });
-  const filtradas = vagasComScore.filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(i => i.vaga);
-  if (filtradas.length === 0 && areaCandidato) {
-    const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
-    if (porArea.length > 0) return porArea.slice(0, 8);
+}
+
+function showLoadingOverlay(show){
+  let el=document.getElementById('loading-overlay');
+  if(!el&&show){
+    el=document.createElement('div');el.id='loading-overlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,0.75);z-index:9998;display:flex;align-items:center;justify-content:center;font-family:Montserrat,sans-serif;font-size:13px;font-weight:600;color:#2a2a2b';
+    el.innerHTML='<div style="text-align:center"><div style="font-size:26px;margin-bottom:10px">⏳</div>Carregando dados reais...</div>';
+    document.body.appendChild(el);
   }
-  // FIX: se nenhuma vaga filtrada, retorna TODAS as vagas ativas (não esconde vagas do prompt)
-  return filtradas.length > 0 ? filtradas : vagas;
+  if(el) el.style.display=show?'flex':'none';
 }
 
-function resumirVagas(vagas) {
-  return vagas.map(vaga => ({
-    idVaga: campo(vaga,["idVaga","ID Vaga","ID"]),
-    cargo: campo(vaga,["cargo","Cargo","CARGO"]),
-    area: campo(vaga,["area","Área/Setor","Area/Setor","Área","Area"]),
-    cidade: campo(vaga,["cidade","Cidade/Bairro","Cidade","Local"]),
-    horario: campo(vaga,["horario","Horário","Escala/Horário","Escala/Horario"]),
-    escala: campo(vaga,["escala","Escala","Escala/Horário","Escala/Horario"]),
-    salario: campo(vaga,["salario","Salário Base","Salario Base","Salário","Salario"]),
-    beneficios: campo(vaga,["beneficios","Benefícios","Beneficios"]),
-    escolaridade: campo(vaga,["escolaridade","Escolaridade"]),
-    experienciaMinima: campo(vaga,["experienciaMinima","Exp. Mínima","Exp. Minima"]),
-    requisitoObrigatorio: campo(vaga,["requisitoObrigatorio","Requisito Obrigatório","Requisito Obrigatorio"]),
-    aceitaSemExperiencia: campo(vaga,["aceitaSemExperiencia","Aceita Sem Experiência","Aceita Sem Experiencia"]),
-    perfilResumido: campo(vaga,["perfilResumido","Perfil Resumido"]),
-    palavrasChave: campo(vaga,["palavrasChave","Palavras-chave","Palavras Chave"]),
-    status: campo(vaga,["status","Status"]),
-    observacoes: campo(vaga,["observacoes","Observações","Observacoes"])
-  }));
+// ===== NAV =====
+function gotoView(name,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(name+'-view').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const mes=new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const titles={
+    dashboard:['Dashboard','Visão geral · '+mes.charAt(0).toUpperCase()+mes.slice(1)],
+    vagas:['Vagas','Pipeline de recrutamento'],
+    kanban:['Kanban · Pipeline','Gestão de etapas por candidato'],
+    candidatos:['Candidatos','Todos os candidatos em processo'],
+    calendario:['Calendário','Entrevistas, alinhamentos e follow-ups'],
+    relatorios:['Relatórios & Indicadores','Métricas de desempenho'],
+    nr01:['NR-01 · Riscos Psicossociais','Gestão de conformidade'],
+    gestor:['Painel do Gestor','Requisição de vaga com perfil DISC'],
+    disc:['DISC & Match de Candidatos','Compatibilidade por perfil comportamental'],
+    'inbox-lia':['Inbox · Lia','Mensagens e interações da assistente'],
+  };
+  if(titles[name]){document.getElementById('ptitle').textContent=titles[name][0];document.getElementById('psub').textContent=titles[name][1];}
 }
 
-function montarPromptConversa(sessao, mensagemAtual, vagas) {
-  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagemAtual, sessao.historico);
-  const vagasResumidas = resumirVagas(vagasFiltradas);
-  const historicoCurto = sessao.historico.slice(-8).map(h => `${h.role}: ${h.content}`).join("\n");
-  const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
-  const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
-  const areaDetectada = detectarAreaCandidato(textoConversa);
-  const instrucaoCurriculo = ehLinhares
-    ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
-    : areaDetectada
-    ? `COLETA DIRECIONADA — ÁREA: ${areaDetectada.toUpperCase()}:\n- O candidato demonstrou interesse ou experiência em ${areaDetectada}.\n- Priorize vagas da área de ${areaDetectada} disponíveis na lista.\n- Colete: nome, cidade/bairro, experiência na área, escolaridade, disponibilidade e currículo.\n- Se houver vaga compatível, apresente com cargo, local, regime, remuneração, benefícios, jornada e requisitos.\n- Se o currículo já foi recebido, confirme o interesse e informe os próximos passos.`
-    : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
-- Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
-- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes.\n- Se não houver vaga exatamente igual ao pedido, apresente as vagas similares disponíveis e diga: \"No momento não temos exatamente essa vaga, mas temos essas oportunidades que podem te interessar.\"\n- NUNCA diga \"não temos vagas\" ou \"não há vagas disponíveis\". Se a lista estiver vazia ou sem compatibilidade, diga: \"Vou verificar com a equipe Effect as vagas disponíveis para o seu perfil e te retorno em breve. 💙\"\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
+function renderAll(){
+  renderDashboard();renderVagas();renderKanban();renderCandidatos();
+  renderCalendario();renderRelatorios();renderDiscView();updateDiscPreview();renderInboxLia();
 }
 
-function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
-  const vagasResumidas = resumirVagas(vagas);
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nAnalise o currículo abaixo e compare com as vagas disponíveis.\n\nResponda SOMENTE em JSON válido, sem markdown, sem explicação fora do JSON.\n\nUse exatamente esta estrutura:\n\n{\n  "nome": "",\n  "cidade": "",\n  "areaInteresse": "",\n  "vagaInteresse": "",\n  "idVaga": "",\n  "scoreGeral": 0,\n  "scoreVaga": 0,\n  "classificacao": "",\n  "motivoMatch": "",\n  "status": "",\n  "requisitoObrigatorio": "",\n  "escolaridadeCompativel": "",\n  "experienciaCompativel": "",\n  "anosExperiencia": "",\n  "pontosFortes": "",\n  "pontosAtencao": "",\n  "analiseIA": "",\n  "transporteProprio": "",\n  "cltImediato": "",\n  "observacoes": "",\n  "mensagemCandidato": ""\n}\n\nREGRAS DE CLASSIFICAÇÃO:\n- 90 a 100: Excelente\n- 70 a 89: Bom\n- 50 a 69: Regular\n- abaixo de 50: Reprovado\n- Nunca use Excelente se faltar requisito obrigatório.\n- Não prometa contratação.\n\nFORMATO DA mensagemCandidato:\n😊 Olá, {NOME}!\n\nAnalisei seu currículo e identifiquei uma oportunidade que possui compatibilidade com sua experiência profissional.\n\n📍 {CARGO}\n📍 {CIDADE}\n\nOs principais pontos observados foram:\n\n• {PONTO FORTE 1}\n• {PONTO FORTE 2}\n• {PONTO FORTE 3}\n\nVocê teria interesse em participar deste processo seletivo?\n\nFico à disposição. 💙\n\nREGRAS:\n- Não mostrar score.\n- Não mostrar classificação.\n- Não falar em IA ou análise automática.\n- Não elogiar o nome.\n- Não usar textos longos.\n- Não prometer contratação.\n\nVAGAS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nCURRÍCULO:\n${textoCurriculo}`;
-}
+// ===== RENDER DASHBOARD =====
+function renderDashboard(){
+  // Funil
+  const allCands=vagasData.flatMap(v=>v.candidatos);
+  const total=allCands.length+sessoesData.length;
+  const etIdx=e=>etapas.indexOf(e);
+  const fd=[
+    {l:'Inscritos',n:total,c:'#8ed1b2'},
+    {l:'Triagem',n:allCands.filter(c=>etIdx(c.etapa)>=2).length,c:'#1fa5f0'},
+    {l:'Entrevista RH',n:allCands.filter(c=>etIdx(c.etapa)>=3).length,c:'#7b8e60'},
+    {l:'Entrev. Cliente',n:allCands.filter(c=>etIdx(c.etapa)>=5).length,c:'#f5c518'},
+    {l:'Proposta',n:allCands.filter(c=>etIdx(c.etapa)>=6).length,c:'#f4afa1'},
+    {l:'Contratados',n:allCands.filter(c=>etIdx(c.etapa)>=8).length,c:'#2a2a2b'},
+  ];
+  const maxF=fd[0].n||1;
+  document.getElementById('funnel-chart').innerHTML=fd.map(f=>`<div class="funnel-row"><div class="f-label">${f.l}</div><div class="f-wrap"><div class="f-bar" style="width:${(f.n/maxF*100).toFixed(0)}%;background:${f.c}">${f.n}</div></div><div class="f-num">${f.n}</div></div>`).join('');
 
-async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
-
-async function chamarClaudeJSON(prompt) {
-  const texto = await chamarClaude(prompt);
-  // FIX: se a IA retornou fallback de instabilidade, não tenta parsear JSON
-  if (texto === FALLBACK_INSTABILIDADE || texto === FALLBACK_RATE_LIMIT) {
-    throw new Error("IA indisponível para análise de currículo");
+  // Donut — vagas por etapa
+  const groups={};
+  for(const v of vagasData){
+    const k=v.encerrada?'Encerrada':(v.etapa||'Em andamento');
+    groups[k]=(groups[k]||0)+1;
   }
-  try { return JSON.parse(texto); }
-  catch (e) {
-    const match = texto.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("Claude não retornou JSON válido: " + texto);
-  }
+  if(!Object.keys(groups).length) groups['Sem dados']=1;
+  const dcols=['#8ed1b2','#1fa5f0','#f4afa1','#7b8e60','#f5c518','#a1a1aa','#b07fe8'];
+  const dd=Object.entries(groups).map(([l,v],i)=>({l,v,c:dcols[i%dcols.length]}));
+  const tot=dd.reduce((a,b)=>a+b.v,0),r=46,cx=70,cy=60,circ=2*Math.PI*r;
+  let off=0;const segs=dd.map(d=>{const l=(d.v/tot)*circ;const s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.c}" stroke-width="18" stroke-dasharray="${l} ${circ-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;off+=l;return s;});
+  document.getElementById('donut-svg').innerHTML=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f5f7fa" stroke-width="18"/>${segs.join('')}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-family="Montserrat" font-weight="700" font-size="17" fill="#2a2a2b">${tot}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="Montserrat" font-size="8" fill="#a1a1aa">vagas</text>`;
+  document.getElementById('donut-legend').innerHTML=dd.map(d=>`<div class="leg-row"><div class="leg-dot" style="background:${d.c}"></div><div class="leg-label">${d.l}</div><div class="leg-val">${d.v}</div></div>`).join('');
+
+  // Barras mensais (contratados)
+  const mesAtual=new Date().getMonth();
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const ms=Array.from({length:6},(_,i)=>meses[(mesAtual-5+i+12)%12]);
+  const vs=Array(6).fill(0);vs[5]=allCands.filter(c=>etIdx(c.etapa)>=8).length;
+  const mx=Math.max(...vs,1);
+  document.getElementById('bar-chart').innerHTML=ms.map((m,i)=>`<div class="bar-col"><div class="bar-num">${vs[i]||''}</div><div class="bar" style="height:${(vs[i]/mx*100).toFixed(0)}%;background:${i===5?'#8ed1b2':'rgba(142,209,178,0.3)'}"></div><div class="bar-lbl">${m}</div></div>`).join('');
+
+  // Atividade recente
+  const acts=buildActivityFeed();
+  document.getElementById('activity-feed').innerHTML=acts.length?acts.map(a=>`<div class="activity-row"><div class="av" style="background:${a.cor}">${a.ini}</div><div><div class="at">${a.text}</div><div class="at-time">${a.time}</div></div></div>`).join(''):'<div style="font-size:11px;color:var(--gray);padding:8px 0">Nenhuma atividade recente.</div>';
+
+  // Próximas entrevistas (da agenda)
+  const proximas=getProximosAgendamentos(5);
+  document.getElementById('upcoming-ints').innerHTML=proximas.length?proximas.map(i=>`<div class="int-row" onclick="gotoView('calendario',null)">
+    <div class="time-badge"><div class="t">${i.hora}</div><div class="d">${formatDataCurta(i.data)}</div></div>
+    <div class="int-info"><h4>${i.cand}</h4><p>${i.vagaTitulo||i.tipo}</p><span class="tipo-badge" style="background:${i.cor}22;color:${i.cor}">${i.tipo}</span></div>
+    <div style="display:flex;gap:4px;margin-left:auto;flex-shrink:0">
+      <button onclick="event.stopPropagation();editarAgendamento(${i.id})" style="border:none;background:rgba(0,0,0,0.07);border-radius:6px;cursor:pointer;padding:3px 7px;font-size:11px" title="Editar">✏️</button>
+      <button onclick="event.stopPropagation();deletarAgendamento(${i.id})" style="border:none;background:rgba(244,175,161,0.2);border-radius:6px;cursor:pointer;padding:3px 7px;font-size:11px" title="Excluir">🗑</button>
+    </div>
+  </div>`).join(''):'<div style="font-size:11px;color:var(--gray);padding:8px 0">Nenhum agendamento próximo. Use <strong>Agendar</strong> para adicionar.</div>';
+
+  // KPI cards
+  updateKPICards();
 }
 
-// Versão JSON-only do Gemini — usada exclusivamente para análise de currículo
-async function chamarGeminiJSON(prompt) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) return null;
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const { default: axios2 } = await import("axios").catch(() => ({ default: require("axios") }));
-    const axiosFn = axios2 || require("axios");
-    const response = await axiosFn.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" }
-      },
-      { headers: { "Content-Type": "application/json" }, timeout: 45000 }
-    );
-    const texto = response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
-    if (!texto) throw new Error("Gemini retornou resposta vazia");
-    try { return JSON.parse(texto); }
-    catch (e) {
-      const match = texto.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-      throw new Error("GeminiJSON não retornou JSON válido: " + texto.slice(0, 200));
+function updateKPICards(){
+  const abertas=vagasData.filter(v=>!v.encerrada).length;
+  const emProcesso=candidatosData.length+sessoesData.length;
+  const manual=sessoesData.filter(s=>s.pausado||s.modo==='manual').length;
+  const contratados=vagasData.flatMap(v=>v.candidatos).filter(c=>etapas.indexOf(c.etapa)>=8).length;
+  const taxa=emProcesso>0?Math.round((contratados/emProcesso)*100):0;
+  const cards=document.querySelectorAll('.kpi-card');
+  if(cards[0]){cards[0].querySelector('.kpi-value').textContent=abertas;cards[0].querySelector('.kpi-sub').textContent=`Total: ${vagasData.length} cadastradas`;}
+  if(cards[1]){cards[1].querySelector('.kpi-value').textContent=emProcesso;cards[1].querySelector('.kpi-sub').textContent=`${sessoesData.length} via WhatsApp`;}
+  if(cards[2]){cards[2].querySelector('.kpi-value').textContent=manual;cards[2].querySelector('.kpi-sub').textContent='Em atendimento manual';}
+  if(cards[3]){cards[3].querySelector('.kpi-value').textContent=contratados;cards[3].querySelector('.kpi-sub').textContent='Posições fechadas';}
+  if(cards[4]){cards[4].querySelector('.kpi-value').textContent=taxa+'%';cards[4].querySelector('.kpi-sub').textContent=taxa>=60?'↑ acima da meta':'↓ abaixo da meta (60%)';}
+}
+
+function buildActivityFeed(){
+  const acts=[];
+  const recAgenda=[...agendaItems].sort((a,b)=>new Date(b.data||0)-new Date(a.data||0)).slice(0,3);
+  for(const a of recAgenda) acts.push({text:`<strong>${a.cand}</strong> · ${a.tipo}${a.vagaTitulo?' — '+a.vagaTitulo:''}`,time:formatDataRelativa(a.data),cor:a.cor||'#8ed1b2',ini:iniciais(a.cand)});
+  const recSess=[...sessoesData].filter(s=>s.nome).sort((a,b)=>(b.lastMessageAtMs||0)-(a.lastMessageAtMs||0)).slice(0,5-acts.length);
+  for(const s of recSess) acts.push({text:`<strong>${s.nome||'Candidato'}</strong> interagiu com a Lia${s.vagaInteresse?' · '+s.vagaInteresse:''}`,time:s.lastMessageAtMs?formatDataRelativa(new Date(s.lastMessageAtMs)):'recentemente',cor:corPorNome(s.nome||''),ini:iniciais(s.nome||'')});
+  return acts.slice(0,5);
+}
+
+function getProximosAgendamentos(max){
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  return [...agendaItems].filter(a=>a.data&&new Date(a.data)>=hoje).sort((a,b)=>new Date(a.data+'T'+(a.hora||'00:00'))-new Date(b.data+'T'+(b.hora||'00:00'))).slice(0,max);
+}
+
+function formatDataCurta(ds){
+  if(!ds) return '—';
+  const d=new Date(ds+'T12:00:00');
+  return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+}
+function formatDataRelativa(ds){
+  if(!ds) return '';
+  const d=new Date(ds);const hoje=new Date();
+  const diff=Math.floor((hoje-d)/(1000*60*60*24));
+  if(diff<0) return `em ${-diff}d`;if(diff===0) return 'hoje';if(diff===1) return 'ontem';return `${diff}d atrás`;
+}
+
+// ===== VAGAS =====
+function setVagaTab(tab,el){
+  vagaTabAtiva=tab;
+  document.querySelectorAll('.vaga-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderVagas();
+}
+
+function renderVagas(){
+  const q=(document.getElementById('vagas-search')?.value||'').toLowerCase();
+  const lista=vagasData.filter(v=>{
+    if(vagaTabAtiva==='abertas'&&v.encerrada) return false;
+    if(vagaTabAtiva==='encerradas'&&!v.encerrada) return false;
+    if(q&&!v.titulo.toLowerCase().includes(q)&&!v.cliente.toLowerCase().includes(q)&&!v.num.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!lista.length){
+    document.getElementById('vagas-grid').innerHTML=vagasData.length===0?'<div style="color:var(--gray);font-size:13px;padding:20px 0">⏳ Aguardando dados do Google Sheets...</div>':'<div style="color:var(--gray);font-size:13px;padding:20px 0">Nenhuma vaga encontrada.</div>';
+    return;
+  }
+  const sLabel=s=>s>=85?'bom':s>=70?'med':'baixo';
+  const sTxt=s=>s>=85?`Bom ${s}`:s>=70?`Ok ${s}`:s?`${s}`:'—';
+  document.getElementById('vagas-grid').innerHTML=lista.map(v=>{
+    const enc=!!v.encerrada;
+    const candsHtml=v.candidatos.slice(0,3).map(c=>`<div class="vc-cand-row">
+      <div class="vc-cav" style="background:${c.cor}">${iniciais(c.nome)}</div>
+      <div class="vc-cname">${c.nome}</div>
+      ${c.score?`<span class="vc-score ${sLabel(c.score)}">${sTxt(c.score)}</span>`:''}
+      <div class="vc-cand-btns">
+        <button class="vc-btn-sm vc-btn-inbox" onclick="event.stopPropagation();window.open('/inbox','_blank')">Inbox</button>
+        ${c.telefone?`<button class="vc-btn-sm vc-btn-wa" onclick="event.stopPropagation();window.open('https://wa.me/${c.telefone}','_blank')"><i class="fab fa-whatsapp"></i></button>`:''}
+      </div></div>`).join('');
+    const vi=vagasData.indexOf(v);
+    return `<div class="vaga-card ${v.urg?'urg':''} ${enc?'encerrada':''}" onclick="openModal(vagasData[${vi}])">
+      <div class="vc-title">${v.titulo}</div>
+      <div class="vc-client">${v.cliente}</div>
+      <div class="vc-icons"><span>📍 ${v.local}</span><span>💰 ${v.salario}</span><span>⏰ ${v.regime}</span></div>
+      <div class="vc-badges">
+        <span class="vc-badge-status ${enc?'encerrada-badge':''}"><span class="dot" style="background:${enc?'#e53935':'#4caf50'}"></span>${enc?'Encerrada':'Aberta'}</span>
+        <span class="vc-badge-num">${v.num}</span>
+        ${v.urg?'<span style="font-size:9px;padding:3px 8px;border-radius:20px;font-weight:700;background:rgba(244,175,161,0.3);color:#c0392b">⚡ Urgente</span>':''}
+      </div>
+      <div class="vc-timing"><span>📅 Prazo: ${v.prazo}</span>${v.etapa?`<span style="font-size:9px;color:var(--gray)">${v.etapa}</span>`:''}</div>
+      <hr class="vc-sep">
+      <div class="vc-cands-hdr"><span class="vc-cands-lbl">Candidatos</span><span class="vc-cands-cnt">${v.candidatos.length}</span></div>
+      ${candsHtml||'<div style="font-size:10px;color:var(--gray)">Nenhum candidato vinculado.</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ===== KANBAN =====
+function renderKanban(){
+  document.getElementById('kb-board').innerHTML=etapas.map(e=>{
+    const cards=vagasData.flatMap(v=>v.candidatos.filter(c=>c.etapa===e).map(c=>({...c,vaga:v})));
+    return `<div class="kb-col">
+      <div class="col-hdr" style="background:${etapaCores[e]}22;color:${etapaCores[e]}">${e}<span class="col-cnt" style="color:${etapaCores[e]}">${cards.length}</span></div>
+      <div class="col-body">
+        ${cards.map(c=>`<div class="kb-card ${c.vaga.urg?'urg':''}" onclick="openModal(vagasData[${vagasData.indexOf(c.vaga)}])">
+          <div class="kc-num">${c.vaga.num}</div><div class="kc-job">${c.vaga.titulo}</div>
+          <div class="kc-client"><i class="fas fa-user" style="font-size:9px;margin-right:3px"></i>${c.nome}</div>
+          ${c.score?`<div class="kc-score">${c.score}/100</div>`:''}
+          <div class="kc-footer">${c.vaga.prazo||''}</div>
+        </div>`).join('')}
+        <button class="add-btn" onclick="openAgendarModal()">+ Adicionar candidato</button>
+      </div></div>`;
+  }).join('');
+}
+
+// ===== CANDIDATOS TABLE =====
+function renderCandidatos(){
+  const all=[
+    ...candidatosData.map(c=>({...c,vagaTitulo:c.vaga||'—',vagaCliente:'—'})),
+    ...vagasData.flatMap(v=>v.candidatos.map(c=>({...c,vagaTitulo:v.titulo,vagaCliente:v.cliente})))
+  ];
+  const seen=new Set();
+  const unique=all.filter(c=>{const k=(c.nome||'').toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  if(!unique.length){
+    document.getElementById('cands-tbody').innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px">${vagasData.length===0?'⏳ Carregando candidatos...':'Nenhum candidato encontrado.'}</td></tr>`;
+    return;
+  }
+  document.getElementById('cands-tbody').innerHTML=unique.map(c=>{
+    const sc=c.score>=85?'#8ed1b2':c.score>=70?'#1fa5f0':'#f4afa1';
+    const cor=c.cor||corPorNome(c.nome||'');
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:50%;background:${cor};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${iniciais(c.nome)}</div><strong>${c.nome}</strong></div></td>
+      <td>${c.vagaTitulo||'—'}</td><td>${(c.vagaCliente||'').split(' ')[0]||'—'}</td>
+      <td><span class="tag" style="background:${(etapaCores[c.etapa]||'#a1a1aa')}22;color:${etapaCores[c.etapa]||'#a1a1aa'}">${c.etapa||'—'}</span></td>
+      <td>${c.score?`<span class="score-chip" style="background:${sc}22;color:${sc}">${c.score}/100</span>`:'—'}</td>
+      <td style="color:var(--gray)">—</td>
+      <td style="color:var(--gray);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.obs||'—'}</td>
+      <td>${c.telefone?`<button class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="window.open('https://wa.me/${c.telefone}','_blank')"><i class='fab fa-whatsapp'></i></button>`:''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== CALENDAR =====
+function renderCalendario(){
+  const d=new Date(calYr,calMon,1);
+  const lbl=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  document.getElementById('cal-label').textContent=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  const first=d.getDay(),dim=new Date(calYr,calMon+1,0).getDate(),today=new Date();
+  const evs={};
+  for(const item of agendaItems){
+    if(!item.data) continue;
+    const id=new Date(item.data+'T12:00:00');
+    if(id.getFullYear()===calYr&&id.getMonth()===calMon){
+      const day=id.getDate();
+      if(!evs[day]) evs[day]=[];
+      evs[day].push({t:`${item.hora||''} ${item.cand}`.trim(),c:item.cor||'#8ed1b2',id:item.id});
     }
-  } catch (e) {
-    throw e;
   }
-}
-
-// chamarClaude agora:
-// - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
-// - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
-// - timeout maior (45s) para reduzir falsos timeouts sob carga
-async function chamarGemini(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) {
-      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192
-        }
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 45000
-      }
-    );
-
-    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
-
-    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
-    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
-
-    if (ehRateLimit && tentativa < 3) {
-      await sleep(3000 * tentativa);
-      return chamarGemini(prompt, tentativa + 1);
-    }
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 4) {
-      await sleep(1500 * tentativa);
-      return chamarGemini(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
+  let html='<div class="cal-grid">';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>html+=`<div class="cal-dh">${d}</div>`);
+  for(let i=0;i<first;i++) html+='<div class="cal-cell"></div>';
+  for(let d=1;d<=dim;d++){
+    const isT=d===today.getDate()&&calMon===today.getMonth()&&calYr===today.getFullYear();
+    const dayEvs=evs[d]||[];
+    html+=`<div class="cal-cell${isT?' today':''}${dayEvs.length?' has-ev':''}">
+      <div class="cal-num${isT?' today-num':''}">${d}</div>
+      ${dayEvs.map(e=>`<div class="cal-ev" style="background:${e.c}22;color:${e.c};border-left:2px solid ${e.c}" onclick="event.stopPropagation()">
+        ${e.t}<span onclick="editarAgendamento(${e.id})" style="cursor:pointer;margin-left:4px;font-size:9px">✏️</span><span onclick="deletarAgendamento(${e.id})" style="cursor:pointer;font-size:9px">🗑</span>
+      </div>`).join('')}
+    </div>`;
   }
+  html+='</div>';
+  document.getElementById('cal-wrap').innerHTML=html;
+  if(calViewSemana) renderSemana();
 }
 
-async function chamarClaudeOriginal(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.CLAUDE_API_KEY) {
-      console.error("chamarClaudeOriginal: CLAUDE_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-    const response = await axios.post("https://api.anthropic.com/v1/messages", {
-      model: "claude-sonnet-4-6",
-      max_tokens: 1800,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }]
-    }, { headers: { "x-api-key": CONFIG.CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, timeout: 45000 });
-    return response.data?.content?.[0]?.text || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-    console.error(`Erro chamarClaudeOriginal (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+function renderSemana(){
+  const hoje=new Date();
+  const ini=new Date(hoje);ini.setDate(hoje.getDate()-hoje.getDay());
+  const dias=Array.from({length:7},(_,i)=>{const d=new Date(ini);d.setDate(ini.getDate()+i);return d;});
+  const horas=Array.from({length:12},(_,i)=>i+8);
+  const dNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const weekEvs=dias.map(d=>{
+    const ds=d.toISOString().slice(0,10);
+    const items=agendaItems.filter(a=>a.data===ds);
+    const byH={};
+    items.forEach(a=>{const h=parseInt((a.hora||'08:00').split(':')[0]);if(!byH[h])byH[h]=[];byH[h].push({t:`${a.tipo}: ${a.cand}`,c:a.cor||'#8ed1b2',id:a.id});});
+    return byH;
+  });
+  let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:600px"><thead><tr><th style="padding:6px;width:60px;color:var(--gray);font-size:10px">Hora</th>`;
+  dias.forEach((d,i)=>{const isT=d.toDateString()===hoje.toDateString();html+=`<th style="padding:8px;text-align:center;${isT?'color:var(--blue);font-weight:700':'color:var(--gray)'}">${dNames[i]}<br><span style="font-size:15px;font-weight:700">${d.getDate()}</span></th>`;});
+  html+=`</tr></thead><tbody>`;
+  horas.forEach(h=>{
+    html+=`<tr><td style="padding:4px 8px;color:var(--gray);white-space:nowrap;vertical-align:top;border-top:1px solid var(--bg)">${h}:00</td>`;
+    dias.forEach((_,i)=>{
+      const ev=(weekEvs[i]&&weekEvs[i][h])||[];
+      html+=`<td style="border:1px solid var(--bg);padding:3px;vertical-align:top;min-height:40px">${ev.map(e=>`<div style="background:${e.c}22;color:${e.c};border-left:3px solid ${e.c};padding:3px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:2px;display:flex;gap:3px;align-items:center"><span style="flex:1">${e.t}</span><span onclick="editarAgendamento(${e.id})" style="cursor:pointer;font-size:9px">✏️</span><span onclick="deletarAgendamento(${e.id})" style="cursor:pointer;font-size:9px">🗑</span></div>`).join('')}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('semana-wrap').innerHTML=html;
+}
 
-    const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+// ===== AGENDA (localStorage) =====
+function openAgendarModal(vagaRef){
+  editingAgendaId=null;
+  const titleEl=document.querySelector('#agendar-overlay h3');
+  if(titleEl) titleEl.textContent='Agendar Compromisso';
+  const sel=document.getElementById('ag-vaga');
+  if(sel) sel.innerHTML=vagasData.length?vagasData.map(v=>`<option value="${v.id}" ${vagaRef&&vagaRef.id===v.id?'selected':''}>${v.num} · ${v.titulo}</option>`).join(''):'<option value="">Nenhuma vaga cadastrada</option>';
+  document.getElementById('ag-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ag-tipo').value='Entrevista RH';
+  document.getElementById('ag-cand').value='';
+  document.getElementById('ag-obs').value='';
+  document.getElementById('ag-hora').value='09:00';
+  document.getElementById('agendar-overlay').classList.add('show');
+}
+function closeAgendar(){document.getElementById('agendar-overlay').classList.remove('show');editingAgendaId=null;}
 
-    if (ehRateLimit && tentativa < 3) {
-      await sleep(3000 * tentativa);
-      return chamarClaudeOriginal(prompt, tentativa + 1);
-    }
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
+function editarAgendamento(id){
+  const item=agendaItems.find(a=>a.id===id);if(!item) return;
+  editingAgendaId=id;
+  const titleEl=document.querySelector('#agendar-overlay h3');if(titleEl) titleEl.textContent='Editar Agendamento';
+  const sel=document.getElementById('ag-vaga');
+  if(sel) sel.innerHTML=vagasData.map(v=>`<option value="${v.id}" ${v.id==item.vagaId?'selected':''}>${v.num} · ${v.titulo}</option>`).join('');
+  document.getElementById('ag-tipo').value=item.tipo||'Entrevista RH';
+  document.getElementById('ag-cand').value=item.cand||'';
+  document.getElementById('ag-data').value=item.data||'';
+  document.getElementById('ag-hora').value=item.hora||'09:00';
+  document.getElementById('ag-obs').value=item.obs||'';
+  document.getElementById('agendar-overlay').classList.add('show');
+}
 
-    if (ehTimeoutOuRede && tentativa < 4) {
-      await sleep(1500 * tentativa);
-      return chamarClaudeOriginal(prompt, tentativa + 1);
-    }
+function deletarAgendamento(id){
+  if(!confirm('Excluir este agendamento?')) return;
+  agendaItems=agendaItems.filter(a=>a.id!==id);
+  localStorage.setItem('effect-agenda',JSON.stringify(agendaItems));
+  renderCalendario();renderDashboard();if(calViewSemana)renderSemana();atualizarBadges();
+}
 
-    return FALLBACK_INSTABILIDADE;
+function salvarAgendamento(){
+  const tipo=document.getElementById('ag-tipo').value;
+  const cand=(document.getElementById('ag-cand').value||'').trim()||'—';
+  const data=document.getElementById('ag-data').value;
+  const hora=document.getElementById('ag-hora').value;
+  const vagaIdRaw=document.getElementById('ag-vaga').value;
+  const obs=document.getElementById('ag-obs').value||'';
+  if(!data||!hora){alert('Por favor preencha data e horário.');return;}
+  const vagaId=vagaIdRaw?parseInt(vagaIdRaw):null;
+  const vaga=vagasData.find(v=>v.id==vagaId);
+  const item={tipo,cand,data,hora,vagaId,vagaTitulo:vaga?.titulo||'',obs,cor:'#8ed1b2'};
+  if(editingAgendaId){
+    const idx=agendaItems.findIndex(a=>a.id===editingAgendaId);
+    if(idx>=0) agendaItems[idx]={...agendaItems[idx],...item};
+  } else {
+    agendaItems.push({id:Date.now(),...item});
   }
+  localStorage.setItem('effect-agenda',JSON.stringify(agendaItems));
+  closeAgendar();renderCalendario();renderDashboard();if(calViewSemana)renderSemana();atualizarBadges();
 }
 
-// Função central de IA.
-// Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
-// Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
-async function chamarClaude(prompt, tentativa = 1) {
-  const provider = String(CONFIG.AI_PROVIDER || "gemini").toLowerCase().trim();
+function formatDataCurta(ds){
+  if(!ds) return '—';
+  const d=new Date(ds+'T12:00:00');
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+}
+function formatDataRelativa(ds){
+  if(!ds) return '—';
+  const diff=Math.round((new Date(ds+'T12:00:00')-new Date())/(86400000));
+  if(diff===0) return 'Hoje';
+  if(diff===1) return 'Amanhã';
+  if(diff===-1) return 'Ontem';
+  if(diff>0) return `em ${diff}d`;
+  return `há ${Math.abs(diff)}d`;
+}
 
-  if (provider === "claude") {
-    return chamarClaudeOriginal(prompt, tentativa);
+// ===== INBOX LIA =====
+function renderInboxLia(){
+  const recent=[...sessoesData].sort((a,b)=>(b.lastMessageAtMs||0)-(a.lastMessageAtMs||0)).slice(0,10);
+  if(!recent.length){
+    document.getElementById('lia-inbox-list').innerHTML='<div style="color:var(--gray);font-size:12px;padding:20px 0">Nenhuma conversa recente. Acesse o inbox completo pelo botão acima.</div>';
+    return;
   }
+  document.getElementById('lia-inbox-list').innerHTML=recent.map(s=>{
+    const nome=s.nome||s.candidato||s.telefone||'Candidato';
+    const ultimaMsg=s.lastMessage||s.historico?.slice(-1)[0]?.content||s.historico?.slice(-1)[0]?.mensagem||s.ultimaMensagem||'';
+    const vaga=s.vagaInteresse||s.ultimaAnalise?.vagaInteresse||s.cargo||'';
+    const cor=corPorNome(nome);
+    const hora=s.lastMessageAtMs?new Date(s.lastMessageAtMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'—';
+    return `<div style="background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border:1px solid rgba(0,0,0,0.07);display:flex;gap:12px;align-items:flex-start">
+      <div style="width:38px;height:38px;border-radius:50%;background:${cor};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${iniciais(nome)}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <strong style="font-size:12px">${nome}</strong><span style="font-size:10px;color:var(--gray)">${hora}</span>
+        </div>
+        ${vaga?`<div style="font-size:11px;color:var(--gray);margin-bottom:6px">${vaga}</div>`:''}
+        <div style="font-size:12px;margin-bottom:8px;color:#444">${ultimaMsg||'...'}</div>
+        <div style="display:flex;gap:6px">
+          <a href="/inbox" target="_blank" class="btn btn-primary" style="padding:4px 12px;font-size:10px"><i class="fas fa-external-link-alt"></i> Abrir Inbox</a>
+          ${s.modo==='manual'?'<span style="font-size:10px;color:var(--salmon);font-weight:700;padding:4px 0">● Manual</span>':'<span style="font-size:10px;color:var(--sage);font-weight:700;padding:4px 0">✓ Automático</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  const respostaGemini = await chamarGemini(prompt, tentativa);
+// ===== INDICADORES — DADOS =====
+let indRegistros=[];
+let indRetencao=[];
+function carregarIndData(){
+  try{
+    indRegistros=JSON.parse(localStorage.getItem('effect_ind_registros_v1')||'[]');
+    indRetencao=JSON.parse(localStorage.getItem('effect_ind_retencao_v1')||'[]');
+  }catch(e){indRegistros=[];indRetencao=[];}
+}
+function salvarIndData(){
+  localStorage.setItem('effect_ind_registros_v1',JSON.stringify(indRegistros));
+  localStorage.setItem('effect_ind_retencao_v1',JSON.stringify(indRetencao));
+}
+carregarIndData();
 
-  if (
-    (respostaGemini === FALLBACK_INSTABILIDADE || respostaGemini === FALLBACK_RATE_LIMIT) &&
-    CONFIG.CLAUDE_API_KEY
-  ) {
-    console.error("Gemini falhou. Tentando Claude como fallback temporário.");
-    return chamarClaudeOriginal(prompt, tentativa);
+function setEl(id,html){const el=document.getElementById(id);if(el)el.innerHTML=html;}
+
+// ===== INDICADORES — RENDER =====
+function renderRelatorios(){
+  const src=[{l:'WhatsApp/Lia',n:sessoesData.length,c:'#25D366'},{l:'LinkedIn',n:0,c:'#1fa5f0'},{l:'Indicação',n:0,c:'#8ed1b2'},{l:'Outros',n:0,c:'#a1a1aa'}].filter(s=>s.n>0);
+  const maxS=Math.max(...src.map(s=>s.n),1);
+  document.getElementById('source-chart').innerHTML=src.length?src.map(s=>`<div class="funil-row"><div class="funil-lbl">${s.l}</div><div class="funil-track"><div class="funil-fill" style="width:${(s.n/maxS*100).toFixed(0)}%;background:${s.c}">${s.n}</div></div></div>`).join(''):'<div style="font-size:11px;color:var(--gray)">Registre dados via WhatsApp/Lia para ver aqui.</div>';
+  document.getElementById('rejection-chart').innerHTML='<div style="font-size:11px;color:var(--gray);padding:8px 0">Dados de reprovação serão exibidos conforme o pipeline avança.</div>';
+  const r=indRegistros;
+  if(!r.length){
+    ['ttf','t1c','comp','apcl','cvpc','tc','trepos'].forEach(id=>{
+      const v=document.getElementById('ind-'+id+'-val');if(v)v.textContent='—';
+      const m=document.getElementById('ind-'+id+'-meta');if(m)m.innerHTML='<span style="color:var(--gray)">Registre o 1º processo</span>';
+    });
+    ['ind-cpv-val','ind-ret90-val'].forEach(id=>setEl(id,'—'));
+    setEl('ind-cpv-list','');
+    setEl('ind-ret90-detail','<div style="font-size:11px;color:var(--gray)">Sem dados de retenção</div>');
+    setEl('ind-turnover-chart','<div style="font-size:11px;color:var(--gray);padding:10px 0">Registre saídas na aba Retenção.</div>');
+    setEl('ind-funil-chart','<div style="font-size:11px;color:var(--gray);padding:10px 0">Registre um processo para ver o funil</div>');
+    return;
   }
-
-  return respostaGemini;
+  function avg(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;}
+  function pct(a,b){return b>0?(a/b*100):null;}
+  function fmtD(d){return d!==null?Math.round(d)+'d':'—';}
+  function fmtP(p){return p!==null?Math.round(p)+'%':'—';}
+  function st(val,bom,mau,inv=false){if(val===null)return'neu';const ok=inv?val<=bom:val>=bom;const bad=inv?val>mau:val<mau;return ok?'ok':bad?'bad':'warn';}
+  function tag(s,txt){const cls=s==='ok'?'ind-ok':s==='bad'?'ind-bad':'ind-warn';const icon=s==='ok'?'✓ ':s==='bad'?'✗ ':'⚠ ';return`<span class="${cls}">${icon}${txt}</span>`;}
+  function bar(id,val,max){const el=document.getElementById(id);if(el)el.style.width=val!==null?Math.min(100,val/max*100).toFixed(0)+'%':'0%';}
+  // 1. Time to Fill
+  const ttfV=r.filter(x=>x.dataAbertura&&x.dataContratacao).map(x=>{const d=(new Date(x.dataContratacao)-new Date(x.dataAbertura))/86400000;return d>=0?d:null;}).filter(x=>x!==null);
+  const ttfM=avg(ttfV);const metaT={Operacional:15,Técnica:30,Estratégica:45};const metaTV=metaT[r[r.length-1]?.nivel||'Operacional']||15;
+  setEl('ind-ttf-val',fmtD(ttfM));setEl('ind-ttf-sub',ttfV.length?`${ttfV.length} vaga${ttfV.length>1?'s':''} · meta ${metaTV}d`:'Informe datas de abertura e contratação');setEl('ind-ttf-meta',tag(st(ttfM,metaTV,metaTV*1.5,true),`Meta: até ${metaTV} dias`));bar('ind-ttf-prog',ttfM!==null?Math.max(0,metaTV*2-ttfM):0,metaTV*2);
+  // 2. Tempo 1ºs Candidatos
+  const t1V=r.filter(x=>x.dataAbertura&&x.dataPrimeiroCandidato).map(x=>{const d=(new Date(x.dataPrimeiroCandidato)-new Date(x.dataAbertura))/86400000;return d>=0?d:null;}).filter(x=>x!==null);
+  const t1M=avg(t1V);
+  setEl('ind-t1c-val',fmtD(t1M));setEl('ind-t1c-sub',t1V.length?`${t1V.length} processo${t1V.length>1?'s':''} · meta 2–5 dias`:'Informe datas de abertura e 1º envio');setEl('ind-t1c-meta',tag(st(t1M,5,7,true),'Meta: 2 a 5 dias'));bar('ind-t1c-prog',t1M!==null?Math.max(0,10-t1M):0,10);
+  // 3. Candidatos por Vaga
+  const inscT=r.filter(x=>x.inscritos>0);const cpvM=avg(inscT.map(x=>x.inscritos));
+  setEl('ind-cpv-val',cpvM!==null?Math.round(cpvM)+'':'—');
+  const cpvEl=document.getElementById('ind-cpv-list');
+  if(cpvEl&&inscT.length){const maxI=Math.max(...inscT.map(x=>x.inscritos));cpvEl.innerHTML=inscT.slice(-5).map(x=>`<div class="cpv-row"><div class="cpv-nome">${x.vaga}</div><div class="cpv-bar-wrap"><div class="cpv-bar-fill" style="width:${(x.inscritos/maxI*100).toFixed(0)}%;background:var(--blue)"></div></div><div class="cpv-n">${x.inscritos}</div></div>`).join('');}
+  // 4. Funil
+  const fI=r.reduce((a,x)=>a+(+x.inscritos||0),0),fT=r.reduce((a,x)=>a+(+x.triados||0),0),fE=r.reduce((a,x)=>a+(+x.entrevistados||0),0),fF=r.reduce((a,x)=>a+(+x.finalistas||0),0),fC=r.reduce((a,x)=>a+(+x.contratados||0),0);
+  const fMax=Math.max(fI,1);
+  const funil=[{l:'Inscritos',n:fI,c:'#1fa5f0'},{l:'Triados',n:fT,c:'#4ecdc4'},{l:'Entrevistados',n:fE,c:'var(--sage)'},{l:'Finalistas',n:fF,c:'#f59e0b'},{l:'Contratados',n:fC,c:fC?'#4caf50':'var(--gray)'}].filter(x=>x.n>0);
+  setEl('ind-funil-chart',funil.length?funil.map(f=>`<div class="funil-row"><div class="funil-lbl">${f.l}</div><div class="funil-track"><div class="funil-fill" style="width:${(f.n/fMax*100).toFixed(0)}%;background:${f.c}">${f.n}</div></div><div class="funil-pct">${fI?(f.n/fI*100).toFixed(0)+'%':''}</div></div>`).join(''):'<div style="font-size:11px;color:var(--gray)">Preencha as etapas.</div>');
+  // 5. Comparecimento
+  const totAg=r.reduce((a,x)=>a+(+x.agendadas||0),0),totRe=r.reduce((a,x)=>a+(+x.realizadas||0),0);
+  const pC=pct(totRe,totAg);setEl('ind-comp-val',fmtP(pC));setEl('ind-comp-sub',totAg?`${totRe} de ${totAg} entrevistas · meta ≥80%`:'Informe agendadas e realizadas');setEl('ind-comp-meta',tag(st(pC,80,60),'Meta: ≥ 80%'));bar('ind-comp-prog',pC,100);
+  // 6. Aprovação cliente
+  const totEv=r.reduce((a,x)=>a+(+x.enviadosCliente||0),0),totAp=r.reduce((a,x)=>a+(+x.aprovadosCliente||0),0);
+  const pA=pct(totAp,totEv);setEl('ind-apcl-val',fmtP(pA));setEl('ind-apcl-sub',totEv?`${totAp} aprovados de ${totEv} enviados`:'Informe candidatos enviados e aprovados');setEl('ind-apcl-meta',tag(st(pA,50,30),'Meta: ≥ 50%'));bar('ind-apcl-prog',pA,100);
+  // 7. CVs/Contratação
+  const totCv=r.reduce((a,x)=>a+(+x.curriculosAvaliados||0),0),totCo=r.reduce((a,x)=>a+(+x.contratados||0),0);
+  const cvpc=totCo>0?totCv/totCo:null;setEl('ind-cvpc-val',cvpc!==null?Math.round(cvpc)+'':'—');setEl('ind-cvpc-sub',totCv?`${totCv} CVs → ${totCo} contratação${totCo>1?'ões':''}`:'Informe currículos avaliados');setEl('ind-cvpc-meta',tag(cvpc!==null?(cvpc<=100?'ok':cvpc<=200?'warn':'bad'):'neu',cvpc!==null?(cvpc<=100?'Eficiência alta':'Triagem pesada'):'Registre dados'));
+  // 8. Taxa Contratação
+  const pTc=pct(totCo,fE);setEl('ind-tc-val',fmtP(pTc));setEl('ind-tc-sub',fE?`${totCo} de ${fE} entrevistados contratados`:'Informe entrevistados e contratados');setEl('ind-tc-meta',tag(st(pTc,10,5),'Meta: ≥ 10%'));bar('ind-tc-prog',pTc,100);
+  // 9. Taxa Reposição
+  const totRp=r.filter(x=>String(x.reposicao)==='1'||x.reposicao===1||x.reposicao===true).length;
+  const pRp=pct(totRp,totCo);const rpSt=pRp===null?'neu':pRp<=6?'ok':pRp<=15?'warn':'bad';
+  setEl('ind-trepos-val',fmtP(pRp));setEl('ind-trepos-sub',`${totRp} reposição${totRp!==1?'ões':''} em ${totCo} contratação${totCo!==1?'ões':''}`);setEl('ind-trepos-meta',tag(rpSt,'Meta: ≤ 6%'));bar('ind-trepos-prog',pRp!==null?Math.max(0,20-pRp):0,20);
+  // 10. Retenção 90d
+  const saidas=indRetencao;
+  const totH=r.filter(x=>x.nomeContratado).length;
+  const sEm90=saidas.filter(s=>{if(!s.dataHire||!s.dataSaida)return false;const d=(new Date(s.dataSaida)-new Date(s.dataHire))/86400000;return d>=0&&d<=90;}).length;
+  const perm=Math.max(0,totH-sEm90);const pRet=totH>0?pct(perm,totH):null;
+  const retSt=pRet===null?'neu':pRet>=90?'ok':pRet>=75?'warn':'bad';
+  const ring=document.getElementById('ind-ret90-ring');if(ring){ring.className='ret-ring'+(retSt==='warn'?' warn':retSt==='bad'?' bad':'');}
+  setEl('ind-ret90-val',fmtP(pRet));
+  setEl('ind-ret90-detail',totH?`<div class="ret-detail-row"><span>Rastreados</span><strong>${totH}</strong></div><div class="ret-detail-row"><span>Saíram em 90d</span><strong style="color:var(--salmon)">${sEm90}</strong></div><div class="ret-detail-row"><span>Permaneceram</span><strong style="color:#4caf50">${perm}</strong></div><div class="ret-detail-row"><span>Meta</span><strong>≥ 90%</strong></div>`:'<div style="font-size:11px;color:var(--gray)">Preencha "Nome do Contratado" nos registros.</div>');
+  // 11. Turnover
+  function ct(dias){return saidas.filter(s=>{if(!s.dataHire||!s.dataSaida)return false;const d=(new Date(s.dataSaida)-new Date(s.dataHire))/86400000;return d>=0&&d<=dias;}).length;}
+  const t30=ct(30),t60=ct(60),t90=ct(90),t180=ct(180),maxT=Math.max(t180,1);
+  setEl('ind-turnover-chart',saidas.length?[{l:'Até 30d',n:t30},{l:'Até 60d',n:t60},{l:'Até 90d',n:t90},{l:'Até 180d',n:t180}].map(tr=>`<div class="turn-row"><div class="turn-lbl">${tr.l}</div><div class="turn-track"><div class="turn-fill" style="width:${(tr.n/maxT*100).toFixed(0)}%">${tr.n||''}</div></div><div class="turn-pct">${totCo?((tr.n/totCo)*100).toFixed(0)+'%':'—'}</div></div>`).join(''):'<div style="font-size:11px;color:var(--gray);padding:10px 0">Registre saídas na aba Retenção.</div>');
 }
 
-async function salvarAnaliseNaPlanilha(telefone, analise) {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao salvar análise:", e.message); }
+// ===== MODAL INDICADORES =====
+let indTabAtiva=0;
+function abrirModalIndicadores(){limparFormInd();indTabAtiva=0;document.querySelectorAll('.modal-ind-tab').forEach((t,i)=>t.classList.toggle('active',i===0));document.querySelectorAll('[id^="ind-tab-"]').forEach((t,i)=>t.style.display=i===0?'':'none');const bs=document.getElementById('btn-salvar-ind');if(bs)bs.style.display='';renderHistoricoInd();renderRetencaoLista();document.getElementById('modal-ind').classList.add('show');}
+function fecharModalIndicadores(){document.getElementById('modal-ind').classList.remove('show');}
+function switchTabInd(btn,idx){indTabAtiva=idx;document.querySelectorAll('.modal-ind-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));document.querySelectorAll('[id^="ind-tab-"]').forEach((t,i)=>t.style.display=i===idx?'':'none');const bs=document.getElementById('btn-salvar-ind');if(bs)bs.style.display=(idx===0||idx===1)?'':'none';if(idx===3)renderHistoricoInd();if(idx===2)renderRetencaoLista();}
+function limparFormInd(){['ind-f-vaga','ind-f-cliente','ind-f-contratado','ind-f-abertura','ind-f-primeiro','ind-f-contratacao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['ind-f-inscritos','ind-f-cvs','ind-f-triados','ind-f-agendadas','ind-f-realizadas','ind-f-entrevistados','ind-f-finalistas','ind-f-enviados','ind-f-aprovados','ind-f-contratados'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const n=document.getElementById('ind-f-nivel');if(n)n.value='Operacional';const rp=document.getElementById('ind-f-reposicao');if(rp)rp.value='0';}
+function salvarIndicador(){
+  const vaga=(document.getElementById('ind-f-vaga')?.value||'').trim();if(!vaga){alert('Informe o nome da vaga.');return;}
+  indRegistros.push({id:Date.now(),vaga,cliente:document.getElementById('ind-f-cliente')?.value.trim()||'',nivel:document.getElementById('ind-f-nivel')?.value||'Operacional',reposicao:document.getElementById('ind-f-reposicao')?.value||'0',dataAbertura:document.getElementById('ind-f-abertura')?.value||'',dataPrimeiroCandidato:document.getElementById('ind-f-primeiro')?.value||'',dataContratacao:document.getElementById('ind-f-contratacao')?.value||'',nomeContratado:document.getElementById('ind-f-contratado')?.value.trim()||'',inscritos:+document.getElementById('ind-f-inscritos')?.value||0,curriculosAvaliados:+document.getElementById('ind-f-cvs')?.value||0,triados:+document.getElementById('ind-f-triados')?.value||0,agendadas:+document.getElementById('ind-f-agendadas')?.value||0,realizadas:+document.getElementById('ind-f-realizadas')?.value||0,entrevistados:+document.getElementById('ind-f-entrevistados')?.value||0,finalistas:+document.getElementById('ind-f-finalistas')?.value||0,enviadosCliente:+document.getElementById('ind-f-enviados')?.value||0,aprovadosCliente:+document.getElementById('ind-f-aprovados')?.value||0,contratados:+document.getElementById('ind-f-contratados')?.value||0,dataRegistro:new Date().toISOString().slice(0,10)});
+  salvarIndData();limparFormInd();renderHistoricoInd();renderRelatorios();
+  document.querySelectorAll('.modal-ind-tab')[3].click();
+}
+function excluirRegistroInd(id){if(!confirm('Excluir?'))return;indRegistros=indRegistros.filter(r=>r.id!==id);salvarIndData();renderHistoricoInd();renderRelatorios();}
+function renderHistoricoInd(){
+  const el=document.getElementById('ind-historico-lista');if(!el)return;
+  if(!indRegistros.length){el.innerHTML='<div style="font-size:11px;color:var(--gray)">Nenhum processo registrado.</div>';return;}
+  el.innerHTML=[...indRegistros].reverse().map(r=>`<div class="reg-row"><div><div class="reg-vaga">${r.vaga}</div><div style="font-size:9px;color:var(--gray)">${r.cliente||'—'} · ${r.nivel}${r.reposicao==='1'?' · Reposição':''}</div><div style="font-size:9px;color:var(--gray)">${r.dataAbertura||'—'} → ${r.dataContratacao||'—'} · ${r.inscritos||0} inscritos</div></div><div class="reg-date">${r.dataRegistro}</div><button class="reg-del" onclick="excluirRegistroInd(${r.id})">🗑</button></div>`).join('');
+}
+function salvarRetencao(){
+  const nome=(document.getElementById('ind-r-nome')?.value||'').trim();
+  const dataHire=document.getElementById('ind-r-data-hire')?.value||'';
+  const dataSaida=document.getElementById('ind-r-data-saida')?.value||'';
+  if(!nome||!dataHire||!dataSaida){alert('Preencha nome, data de contratação e data de saída.');return;}
+  indRetencao.push({id:Date.now(),nome,cargo:document.getElementById('ind-r-cargo')?.value||'',motivo:document.getElementById('ind-r-motivo')?.value||'',dataHire,dataSaida,dataRegistro:new Date().toISOString().slice(0,10)});
+  salvarIndData();['ind-r-nome','ind-r-cargo','ind-r-data-hire','ind-r-data-saida'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});renderRetencaoLista();renderRelatorios();
+}
+function excluirRetencao(id){if(!confirm('Excluir?'))return;indRetencao=indRetencao.filter(r=>r.id!==id);salvarIndData();renderRetencaoLista();renderRelatorios();}
+function renderRetencaoLista(){
+  const el=document.getElementById('ind-ret-lista');if(!el)return;
+  if(!indRetencao.length){el.innerHTML='<div style="font-size:11px;color:var(--gray)">Nenhuma saída registrada.</div>';return;}
+  el.innerHTML=[...indRetencao].reverse().map(r=>{const dias=r.dataHire&&r.dataSaida?Math.round((new Date(r.dataSaida)-new Date(r.dataHire))/86400000):null;const cor=dias!==null&&dias<=30?'var(--salmon)':dias!==null&&dias<=90?'#f59e0b':'#4caf50';return`<div class="reg-row"><div><div class="reg-vaga">${r.nome} — ${r.cargo}</div><div style="font-size:9px;color:var(--gray)">${r.motivo} · ${r.dataHire||'—'} → ${r.dataSaida||'—'}</div>${dias!==null?`<div style="font-size:9px;font-weight:700;color:${cor}">Saiu em ${dias} dias</div>`:''}</div><button class="reg-del" onclick="excluirRetencao(${r.id})">🗑</button></div>`;}).join('');
 }
 
-async function confirmarInteresseNaPlanilha(telefone, analise) {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "confirmarInteresse", telefone, vagaInteresse: analise?.vagaInteresse || "", idVaga: analise?.idVaga || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao confirmar interesse:", e.message); }
+// ===== DISC =====
+const discCores={D:'#e74c3c',I:'#f39c12',S:'#27ae60',C:'#2980b9'};
+const discNomes={D:'Dominante',I:'Influente',S:'Estável',C:'Analítico'};
+const discEmojis={D:'🦁',I:'🌟',S:'🤝',C:'🔬'};
+const discVagasConfig={
+  '_default':{D:25,I:25,S:25,C:25,prim:'S',desc:'Perfil balanceado — adaptável a diferentes contextos.'},
+  'Garçom':{D:20,I:40,S:30,C:10,prim:'I',desc:'Comunicativo, simpático, foco no atendimento ao cliente.'},
+  'Bartender':{D:25,I:40,S:20,C:15,prim:'I',desc:'Criativo, social, rápido em ambiente de alta demanda.'},
+  'Cozinheiro':{D:20,I:15,S:35,C:30,prim:'S',desc:'Metódico, técnico, trabalho em equipe na cozinha.'},
+  'Auxiliar':{D:15,I:20,S:45,C:20,prim:'S',desc:'Colaborativo, estável, suporte às operações.'},
+  'Gerente':{D:40,I:25,S:20,C:15,prim:'D',desc:'Liderança, tomada de decisão, gestão de equipe.'},
+  'Analista':{D:20,I:15,S:25,C:40,prim:'C',desc:'Analítico, preciso, foco em dados e processos.'},
+  'Recepcion':{D:15,I:35,S:35,C:15,prim:'I',desc:'Comunicativo, organizado, foco no cliente.'},
+  'Vendedor':{D:35,I:40,S:10,C:15,prim:'I',desc:'Persuasivo, proativo, orientado a metas.'},
+};
+const discCandidatos={};
+function discBars(profile){return['D','I','S','C'].map(k=>{const w=profile[k]||0;return`<div class="disc-bar-row"><div class="disc-letter" style="background:${discCores[k]}">${k}</div><div class="disc-bar-bg"><div class="disc-bar-fill" style="width:${w}%;background:${discCores[k]}"></div></div><div class="disc-pct" style="color:${discCores[k]}">${w}%</div></div>`;}).join('');}
+function getDiscVaga(vaga){if(!vaga)return discVagasConfig['_default'];for(const[k,cfg]of Object.entries(discVagasConfig)){if(k==='_default')continue;if(normT(vaga.titulo).includes(normT(k)))return cfg;}return discVagasConfig['_default'];}
+function discMatchScore(vd,cd){return Math.max(0,Math.round(100-['D','I','S','C'].reduce((a,k)=>a+Math.abs((vd[k]||0)-(cd[k]||0)),0)*0.8));}
+function discMatchColor(s){return s>=80?'var(--green)':s>=60?'#f5c518':'var(--salmon)';}
+function discMatchLabel(s){return s>=80?'Ótimo match':s>=60?'Match parcial':'Baixo match';}
+function renderDiscVagaModal(vaga){
+  const disc=getDiscVaga(vaga);const el=document.getElementById('m-disc-vaga');if(!el)return;
+  el.innerHTML=`<div style="display:flex;gap:14px;align-items:flex-start"><div style="flex:1">${discBars(disc)}</div><div style="text-align:center;flex-shrink:0"><div style="width:50px;height:50px;border-radius:50%;background:${discCores[disc.prim]};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;margin:0 auto 6px">${disc.prim}</div><div style="font-size:9px;color:var(--gray);font-weight:600">${discNomes[disc.prim]}</div></div></div><div style="margin-top:10px;font-size:11px;color:var(--gray);line-height:1.6">${disc.desc}</div>`;
+}
+function renderCandidatosComDisc(vaga){
+  const vagaDisc=getDiscVaga(vaga);
+  return(vaga.candidatos||[]).map(c=>{
+    const cd=discCandidatos[c.nome]||{D:25,I:25,S:25,C:25,prim:'S',desc:'Perfil DISC não avaliado.'};
+    const match=discMatchScore(vagaDisc,cd);const mc=discMatchColor(match);
+    return`<div class="cand-row2"><div class="cr2-av" style="background:${c.cor||'#8ed1b2'}">${iniciais(c.nome)}</div><div style="flex:1"><div class="cr2-name">${c.nome}</div><div class="cr2-stage">${c.etapa}</div><div style="margin-top:4px;display:flex;gap:4px">${['D','I','S','C'].map(k=>`<span class="disc-tag" style="background:${discCores[k]}22;color:${discCores[k]}">${k} ${cd[k]}%</span>`).join('')}</div></div><div style="text-align:center;flex-shrink:0;margin-left:8px"><div style="width:46px;height:46px;border-radius:50%;border:3px solid ${mc};display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:13px;font-weight:800;color:${mc};line-height:1">${match}%</div><div style="font-size:8px;color:var(--gray)">match</div></div><div style="font-size:9px;color:${mc};font-weight:700;margin-top:3px">${discMatchLabel(match)}</div></div></div>`;
+  }).join('')||'<div style="font-size:11px;color:var(--gray);padding:8px 0">Nenhum candidato vinculado ainda.</div>';
+}
+function renderDiscView(){
+  const selEl=document.getElementById('disc-vaga-sel');if(!selEl)return;
+  if(vagasData.length)selEl.innerHTML=vagasData.map((v,i)=>`<option value="${i}">${v.num} · ${v.titulo}</option>`).join('');
+  const idx=parseInt(selEl.value)||0;const vaga=vagasData[idx]||vagasData[0];
+  if(!vaga){document.getElementById('disc-vaga-bars').innerHTML='<div style="color:var(--gray);font-size:12px">Nenhuma vaga carregada.</div>';return;}
+  const disc=getDiscVaga(vaga);
+  const barsEl=document.getElementById('disc-vaga-bars');if(barsEl)barsEl.innerHTML=discBars(disc);
+  const descEl=document.getElementById('disc-vaga-desc');if(descEl)descEl.innerHTML=`<strong style="color:${discCores[disc.prim]}">${discEmojis[disc.prim]} Perfil primário: ${discNomes[disc.prim]}</strong><br>${disc.desc}`;
+  const matchEl=document.getElementById('disc-matches');
+  if(matchEl){if(!(vaga.candidatos||[]).length){matchEl.innerHTML='<div style="font-size:12px;color:var(--gray)">Nenhum candidato vinculado.</div>';}else{matchEl.innerHTML=vaga.candidatos.map(c=>{const cd=discCandidatos[c.nome]||{D:25,I:25,S:25,C:25,prim:'S'};const match=discMatchScore(disc,cd);const mc=discMatchColor(match);return`<div class="match-card"><div class="disc-match-ring" style="border-color:${mc}"><div class="disc-match-pct" style="color:${mc}">${match}%</div><div class="disc-match-lbl">match</div></div><div class="match-info"><div class="match-name">${c.nome}</div><div class="match-sub">${c.etapa} · <strong style="color:${discCores[cd.prim]}">${cd.prim}</strong></div></div><div style="font-size:10px;font-weight:700;color:${mc}">${discMatchLabel(match)}</div></div>`;}).join('');}}
+  const allEl=document.getElementById('disc-all-candidates');
+  if(allEl){const all=vagasData.flatMap(v=>v.candidatos.map(c=>({...c,vaga:v})));allEl.innerHTML=all.length?all.map(c=>{const cd=discCandidatos[c.nome]||{D:25,I:25,S:25,C:25,prim:'S',desc:'Perfil não avaliado.'};return`<div class="chart-card" style="padding:14px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:34px;height:34px;border-radius:50%;background:${c.cor||'#8ed1b2'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${iniciais(c.nome)}</div><div><div style="font-size:12px;font-weight:700">${c.nome}</div><div style="font-size:10px;color:var(--gray)">${c.vaga.titulo}</div></div><div style="margin-left:auto;width:32px;height:32px;border-radius:50%;background:${discCores[cd.prim]};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff">${cd.prim}</div></div>${discBars(cd)}</div>`;}).join(''):'<div style="font-size:12px;color:var(--gray)">Nenhum candidato nos processos.</div>';}
+}
+function updateDiscPreview(){
+  const selEl=document.getElementById('disc-vaga-sel');if(selEl&&vagasData.length)renderDiscView();
+}
+const discState={d1:'frequente',i1:'as-vezes',s1:'frequente',c1:'frequente',r1:'misto',l1:'colabora'};
+function discSelect(btn,key,val){discState[key]=val;btn.closest('.disc-q-options').querySelectorAll('.disc-q-opt').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');calcDiscGestor();}
+function calcDiscGestor(){
+  const weights={nunca:0,'as-vezes':1,frequente:2,sempre:3};
+  const D=weights[discState.d1]||0,I=weights[discState.i1]||0,S=weights[discState.s1]||0,C=weights[discState.c1]||0;
+  const tot=Math.max(D+I+S+C,1);
+  const pD=Math.round(D/tot*100),pI=Math.round(I/tot*100),pS=Math.round(S/tot*100),pC=100-pD-pI-pS;
+  const result={D:pD,I:pI,S:pS,C:pC};const prim=Object.entries(result).sort((a,b)=>b[1]-a[1])[0][0];
+  const resEl=document.getElementById('disc-gestor-result');
+  if(resEl)resEl.innerHTML=`<div style="margin-top:16px;padding:16px;background:var(--bg);border-radius:10px"><div style="font-weight:700;margin-bottom:10px">Perfil Recomendado: <span style="color:${discCores[prim]}">${discEmojis[prim]} ${discNomes[prim]}</span></div>${discBars(result)}</div>`;
 }
 
-function ehConfirmacaoInteresse(mensagem) {
-  const texto = normalizarTexto(mensagem);
-  return ["sim","tenho interesse","quero","quero participar","aceito","tenho sim","pode ser","tenho disponibilidade","tenho","ok"].some(p => texto === p || texto.includes(p));
+// ===== MODAL VAGA =====
+function openModal(vaga){
+  if(!vaga)return;
+  curModal=vaga;
+  document.getElementById('m-num').textContent=`${vaga.num||''} · ${vaga.nivel||''} · Responsável: ${vaga.resp||'—'}`;
+  document.getElementById('m-title').textContent=vaga.titulo||'';
+  document.getElementById('m-client').textContent=`${vaga.cliente||'—'} · ${vaga.local||'—'}`;
+  document.getElementById('m-req').innerHTML=[{l:'Regime',v:vaga.regime},{l:'Salário',v:vaga.salario},{l:'Nº Vagas',v:vaga.vagas_n},{l:'Prazo',v:vaga.prazo},{l:'Justificativa',v:vaga.justif},{l:'Aprovador',v:vaga.aprov}].map(i=>`<div class="info-item"><label>${i.l}</label><p>${i.v||'—'}</p></div>`).join('');
+  renderDiscVagaModal(vaga);
+  document.getElementById('m-stages').innerHTML=etapas.map(e=>`<button class="stage-btn ${e===vaga.etapa?'active':''}" onclick="setStage('${e}')">${e}</button>`).join('');
+  document.getElementById('m-cands').innerHTML=renderCandidatosComDisc(vaga);
+  document.getElementById('m-chat').innerHTML=(vaga.chat||[]).map(m=>`<div class="chat-msg"><div class="cm-av" style="background:${m.cor||'#8ed1b2'}">${iniciais(m.autor||'?')}</div><div class="cm-bubble"><div class="cm-name">${m.autor}</div>${m.msg}<div class="cm-time">${m.hora}</div></div></div>`).join('');
+  const vagaAgenda=agendaItems.filter(a=>a.vagaId==vaga.id||normT(a.vagaTitulo||'')===normT(vaga.titulo));
+  document.getElementById('m-sched').innerHTML=vagaAgenda.length?vagaAgenda.map(a=>`<div class="sched-item" style="border-left:3px solid ${a.cor||'#8ed1b2'}"><div style="display:flex;justify-content:space-between;align-items:center"><div class="sched-tipo">${a.tipo}</div><div style="display:flex;gap:4px"><button onclick="editarAgendamento(${a.id})" style="border:none;background:rgba(0,0,0,0.07);border-radius:5px;cursor:pointer;padding:2px 6px;font-size:10px">✏️</button><button onclick="deletarAgendamento(${a.id})" style="border:none;background:rgba(244,175,161,0.2);border-radius:5px;cursor:pointer;padding:2px 6px;font-size:10px">🗑</button></div></div><div class="sched-cand">${a.cand}</div><div class="sched-hora" style="color:${a.cor||'#8ed1b2'}"><i class="fas fa-clock"></i> ${formatDataCurta(a.data)} às ${a.hora}</div></div>`).join(''):'<div style="font-size:11px;color:var(--gray)">Nenhum agendamento.</div>';
+  document.getElementById('m-budget').innerHTML=`<span style="color:var(--gray)">Orçamento:</span> <strong>${vaga.orc||'—'}</strong><br><span style="color:var(--gray)">Faixa salarial:</span> <strong>${vaga.salario||'—'}</strong><br><span style="color:var(--gray)">Aprovador:</span> <strong>${vaga.aprov||'—'}</strong>`;
+  const chat=document.getElementById('m-chat');chat.scrollTop=chat.scrollHeight;
+  document.getElementById('modal-overlay').classList.add('show');
 }
-
-async function enviarAlertaThiara(analise, telefone) {
-  try {
-    const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
-    const classificacao = String(analise.classificacao || "").toLowerCase();
-    if (score < 80 && !classificacao.includes("excelente")) return;
-    const destaque = score >= 90 || classificacao.includes("excelente") ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO" : "🚨 NOVO MATCH IDENTIFICADO";
-    const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta Thiara:", e.message); }
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show');curModal=null;}
+function closeBG(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+function setStage(e){if(!curModal)return;curModal.etapa=e;document.getElementById('m-stages').querySelectorAll('.stage-btn').forEach(b=>b.classList.toggle('active',b.textContent===e));}
+function sendMsg(e){if(e.key==='Enter')sendMsgClick();}
+function sendMsgClick(){
+  const inp=document.getElementById('chat-in');if(!inp.value.trim()||!curModal)return;
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('m-chat').innerHTML+=`<div class="chat-msg"><div class="cm-av" style="background:#8ed1b2">TT</div><div class="cm-bubble"><div class="cm-name">Thiara</div>${inp.value}<div class="cm-time">${hora}</div></div></div>`;
+  const chat=document.getElementById('m-chat');chat.scrollTop=chat.scrollHeight;inp.value='';
 }
-
-async function enviarAlertaInteresseThiara(analise, telefone) {
-  try {
-    const texto = `✅ CANDIDATO CONFIRMOU INTERESSE\n\n👤 ${analise?.nome || "Não identificado"}\n\n📌 Vaga:\n${analise?.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise?.cidade || "Não informada"}\n\n⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise?.classificacao || "Não informada"}\n\n📱 WhatsApp:\n+${telefone}\n\n✅ O candidato confirmou interesse na oportunidade.`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta interesse:", e.message); }
-}
-
-function formatarLista(texto) {
-  if (!texto) return "Não informado";
-  const partes = String(texto).split(/;|,|\n/).map(p => p.trim()).filter(Boolean).slice(0, 5);
-  return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
-}
-
-async function enviarMensagem(toOriginal, body) {
-  const to = limparTelefone(toOriginal);
-  if (!to) return;
-  try {
-    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
-    await axios.post(url, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-  } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
-}
-
-async function enviarTemplate(telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR") {
-  const to = limparTelefone(telefone);
-  if (!to) return { sucesso: false, erro: "Telefone inválido" };
-  try {
-    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
-    await axios.post(url, { messaging_product: "whatsapp", to, type: "template", template: { name: templateName, language: { code: languageCode } } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-    console.log(`Template ${templateName} enviado para ${to}`);
-    return { sucesso: true };
-  } catch (e) {
-    console.error("Erro ao enviar template:", JSON.stringify(e.response?.data || e.message));
-    return { sucesso: false, erro: e.message };
-  }
-}
-
-async function coletarTelefonesReengajamento() {
-  const agora = Date.now();
-  const INATIVO_MS = 3 * 24 * 60 * 60 * 1000;
-  return Object.entries(sessoes)
-    .filter(([tel, s]) => s.cvSalvo && (agora - (s.ultimaMensagem || 0)) > INATIVO_MS)
-    .map(([tel]) => tel);
-}
-
-app.get("/inbox/reengajamento/status", async (req, res) => {
-  try {
-    const telefones = await coletarTelefonesReengajamento();
-    res.json({ total: telefones.length, telefones });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  try {
-    const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
-    const telefones = forceTelefones || await coletarTelefonesReengajamento();
-    const lista = limite ? telefones.slice(0, Number(limite)) : telefones;
-    const resultados = [];
-    for (const tel of lista) {
-      const r = await enviarTemplate(tel, templateName, languageCode);
-      resultados.push({ telefone: tel, ...r });
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.get("/inbox/curriculo/:telefone/pedir-reenvio", async (req, res) => {
-  try {
-    const tel = limparTelefone(req.params.telefone);
-    const sessao = sessoes[tel] || {};
-    const nome = (sessao.nome || 'Candidato').split(' ')[0];
-    const msg = `Olá, ${nome}! Precisamos do seu currículo atualizado para dar continuidade ao processo seletivo. Por favor, envie seu currículo aqui pelo WhatsApp. 😊`;
-    await enviarMensagem(tel, msg);
-    registrarEntradaSessao(sessao, 'assistant', msg);
-    salvarConversaCompletaSheets(tel, sessao.historico || [], sessao.nome || '').catch(() => {});
-    res.send('<html><body style="font-family:sans-serif;padding:32px"><h3>✅ Solicitação enviada!</h3><p>Mensagem enviada pedindo reenvio do currículo.</p><p><a href="javascript:window.close()">Fechar</a></p></body></html>');
-  } catch (e) {
-    res.status(500).send('Erro ao enviar mensagem: ' + e.message);
-  }
-});
-
-app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
-  try {
-    const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
-    if (!telefone) return res.status(400).json({ erro: "telefone obrigatório" });
-    const r = await enviarTemplate(telefone, templateName, languageCode);
-    res.json(r);
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+function openNovaVaga(){window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');}
+</script>
+</body>
+</html>
