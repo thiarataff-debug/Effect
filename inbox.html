@@ -458,6 +458,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .pl-group{display:flex;align-items:center;gap:5px}
 .pl-group-label{font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;min-width:62px;border-right:1px solid #e2e8f0;padding-right:6px}
 .cc-disc-match-ok{background:#d1fae5;color:#065f46}.cc-disc-match-par{background:#fef9c3;color:#92400e}.cc-disc-match-no{background:#fee2e2;color:#991b1b}
+.modal-tipo-btn{padding:7px 16px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--navy);transition:.15s}
+.modal-tipo-btn.ativo{background:var(--navy);color:#fff;border-color:var(--navy)}
 </style>
 </head>
 <body>
@@ -493,6 +495,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 <header>
   <div style="display:flex;align-items:center;gap:12px">
     <div class="hlogo">Effect <span>Lia</span></div>
+    <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">🗓️ Agenda</button>
   </div>
   <div class="hright">
@@ -918,6 +921,22 @@ font-family:'Montserrat',sans-serif
       <label class="modal-label">Empresa</label>
       <input class="modal-input" id="ent-msg-empresa" type="text" placeholder="Ex.: Empresa XYZ">
     </div>
+    <div class="modal-field">
+      <label class="modal-label">Tipo</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button id="ent-tipo-online" class="modal-tipo-btn ativo" onclick="setTipoEntrevista('Online')">🖥️ Online</button>
+        <button id="ent-tipo-presencial" class="modal-tipo-btn" onclick="setTipoEntrevista('Presencial')">🏢 Presencial</button>
+      </div>
+    </div>
+    <div id="ent-campo-link" class="modal-field">
+      <label class="modal-label">Link da reunião</label>
+      <input class="modal-input" id="ent-msg-link" type="text" placeholder="Ex.: meet.google.com/abc-defg">
+    </div>
+    <div id="ent-campo-endereco" class="modal-field" style="display:none">
+      <label class="modal-label">Endereço</label>
+      <input class="modal-input" id="ent-msg-endereco" type="text" placeholder="Ex.: Rua das Flores, 100, Vitória/ES">
+      <a id="ent-maps-link" href="#" target="_blank" style="font-size:10px;color:#1e88e5;display:none;margin-top:4px">🗺️ Ver no Google Maps</a>
+    </div>
     <div class="modal-field" style="display:flex;gap:10px">
       <div style="flex:1">
         <label class="modal-label">Dia / Semana</label>
@@ -1283,6 +1302,8 @@ function mostrarView(v){
   const ne=document.getElementById('nav-entrevistas');if(ne)ne.style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
   const navAg=document.getElementById('nav-agenda');
   if(navAg)navAg.style.background=v==='agenda'?'rgba(255,255,255,.22)':'';
+  const navConv=document.getElementById('nav-conversas');
+  if(navConv)navConv.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
   if(v==='agenda') renderAgenda();
 }
@@ -1312,7 +1333,7 @@ function obterTimestampMsg(msg){
   if(!msg)return 0;
 
   const agora=Date.now();
-  const limiteFuturo=agora+(10*60*1000); // tolerância de 10 min; não deixa virar amanhã/horário atual
+  const limiteFuturo=agora+(7*24*60*60*1000); // tolerância de 7 dias (evita filtrar msgs com clock skew)
 
   const candidatos=[
     msg.timestampMs,
@@ -1327,6 +1348,11 @@ function obterTimestampMsg(msg){
     const ms=tsParaMs(c);
     if(ms&&ms>0&&ms<=limiteFuturo){
       return ms;
+    }
+    // Aceita ISO strings mesmo fora do limite (clock skew do servidor)
+    if(typeof c==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(c)){
+      const d=new Date(c);
+      if(!isNaN(d.getTime())&&d.getTime()>0){return d.getTime();}
     }
   }
 
@@ -1750,7 +1776,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallbac
 }
 
 // ─── ABRIR CONVERSA ───
-function abrirConversa(tel){
+function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mostra última mensagem
   sessaoAtual=tel;
   const s=todasSessoes[tel];if(!s)return;
   document.getElementById('chat-empty').style.display='none';
@@ -1896,10 +1922,16 @@ function renderMsgs(s){
     ultimoRole=msg.role;
   });
 
-  // Sempre abre igual WhatsApp: últimas mensagens visíveis embaixo.
-  setTimeout(()=>{
-    div.scrollTop=div.scrollHeight;
-  },50);
+  // Auto-scroll só se _scrollPinned (usuário não rolou para cima)
+  if(_scrollPinned){
+    setTimeout(()=>{ div.scrollTop=div.scrollHeight; },50);
+  }
+
+  // Listener de scroll: desativa auto-scroll se usuário subir, reativa se voltar ao fundo
+  div.onscroll=()=>{
+    const distBottom=div.scrollHeight-div.scrollTop-div.clientHeight;
+    _scrollPinned = distBottom < 60;
+  };
 }
 
 
@@ -1987,9 +2019,18 @@ function renderPainelPerfil(s){
     <div style="font-size:11px;line-height:1.6;color:var(--text)">${formatarListaHtml(anal.pontosAtencao)}</div>
   </div>
   `:''}
-  ${curriculos.length?`
+  ${(()=>{
+    // Link rápido do CV mais recente no topo do perfil
+    const linkRapido = curriculos.length ? (curriculos[curriculos.length-1].driveLink || '') : '';
+    if(!linkRapido) return '';
+    return \`<div class="rp-section" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px">📄 CURRÍCULO NO DRIVE</div>
+      <a href="\${linkRapido}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all;font-weight:600">🔗 Abrir currículo</a>
+    </div>\`;
+  })()}
+  \${curriculos.length?\`
   <div class="rp-section">
-    <div class="rp-section-title">📄 Currículos (${curriculos.length})</div>
+    <div class="rp-section-title">📄 Currículos (\${curriculos.length})</div>
     ${curriculos.map((cv,i)=>{
       const link=cv.driveLink||'';
       const data=cv.recebidoEmFormatado||formatarDataHoraMensagem(cv.recebidoEmMs||cv.recebidoEm||cv.timestampMs)||'—';
@@ -2259,6 +2300,7 @@ async function enviarDiscDireto(){
 }
 // ── Pipeline de Status (botões rápidos) ──
 let _emVagaMode = false; // flag: "EM VAGA" clicado, aguardando seleção de vaga
+let _scrollPinned = true; // true = auto-scroll para o fundo ao renderizar msgs
 const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
 const PIPELINE_CORES={'Triado':'#64748b','Reprovado Triagem':'#b91c1c','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
 function corStatusPipeline(status){return PIPELINE_CORES[status]||'#94a3b8';}
@@ -2283,16 +2325,36 @@ const MENSAGENS_STATUS = {
 };
 
 const TEMPLATES_ENTREVISTA = {
-  'Entrevista Agendada': (nome, cargo, empresa, semana, horario) =>
-    `Olá, ${nome}! 😊 Gostaríamos de convidá-lo(a) a participar de uma entrevista online para o cargo de *${cargo}* junto à empresa *${empresa}*. Podemos agendar para *${semana}* às *${horario}*? — Camila, Equipe Effect`,
-  'Entrevista Gestor Agendada': (nome, cargo, empresa, semana, horario) =>
-    `Olá, ${nome}! 😊 Gostaríamos de dar continuidade ao seu processo e convidá-lo(a) a participar de uma entrevista presencial com o gestor da vaga. Podemos agendar para *${semana}* às *${horario}*? — Camila, Equipe Effect`,
+  'Entrevista Agendada': (nome, cargo, empresa, semana, horario, tipo='Online', local='') => {
+    const tipoTxt = tipo==='Presencial' ? 'presencial' : 'online';
+    const localTxt = tipo==='Presencial' && local ? `\n📍 *Endereço:* ${local}` : (tipo==='Online' && local ? `\n🔗 *Link:* ${local}` : '');
+    return `Olá, ${nome}! 😊 Gostaríamos de convidá-lo(a) a participar de uma entrevista ${tipoTxt} para o cargo de *${cargo}* junto à empresa *${empresa}*. Podemos agendar para *${semana}* às *${horario}*?${localTxt} — Camila, Equipe Effect`;
+  },
+  'Entrevista Gestor Agendada': (nome, cargo, empresa, semana, horario, tipo='Presencial', local='') => {
+    const tipoTxt = tipo==='Presencial' ? 'presencial' : 'online';
+    const localTxt = tipo==='Presencial' && local ? `\n📍 *Endereço:* ${local}` : (tipo==='Online' && local ? `\n🔗 *Link:* ${local}` : '');
+    return `Olá, ${nome}! 😊 Gostaríamos de dar continuidade ao seu processo e convidá-lo(a) a participar de uma entrevista ${tipoTxt} com o gestor da vaga. Podemos agendar para *${semana}* às *${horario}*?${localTxt} — Camila, Equipe Effect`;
+  },
 };
 
 let _statusPendente = null;
+let _tipoEntrevista = 'Online'; // 'Online' ou 'Presencial'
 
 async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+
+  // Toggle: clicar no status já ativo desvincula
+  if(status !== 'Em Vaga' && pipelineMap[sessaoAtual] === status){
+    delete pipelineMap[sessaoAtual];
+    delete statusMap[sessaoAtual];
+    salvarLocal();
+    atualizarPipelineAtivo(null);
+    renderLista();
+    renderPainelDireito();
+    toast('Status removido','info');
+    try{ await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status:'',enviarMensagem:false,mensagem:''})}); }catch(e){}
+    return;
+  }
 
   // Em Vaga: abre seleção de vaga primeiro
   if(status === 'Em Vaga'){
@@ -2324,9 +2386,13 @@ async function definirStatusPipeline(status){
     document.getElementById('ent-msg-empresa').value = '';
     document.getElementById('ent-msg-semana').value = '';
     document.getElementById('ent-msg-horario').value = '';
-    document.getElementById('modal-msg-ent-titulo').textContent = status === 'Entrevista Agendada' ? '📅 Entrevista Online' : '📅 Entrevista com Gestor';
+    if(document.getElementById('ent-msg-link')) document.getElementById('ent-msg-link').value = '';
+    if(document.getElementById('ent-msg-endereco')) document.getElementById('ent-msg-endereco').value = '';
+    const tipoDefault = status === 'Entrevista Gestor Agendada' ? 'Presencial' : 'Online';
+    setTipoEntrevista(tipoDefault);
+    document.getElementById('modal-msg-ent-titulo').textContent = status === 'Entrevista Agendada' ? '📅 Agendar Entrevista' : '📅 Entrevista com Gestor';
     atualizarPreviewEntrevista();
-    ['ent-msg-cargo','ent-msg-empresa','ent-msg-semana','ent-msg-horario'].forEach(id => {
+    ['ent-msg-cargo','ent-msg-empresa','ent-msg-semana','ent-msg-horario','ent-msg-link','ent-msg-endereco'].forEach(id => {
       document.getElementById(id).addEventListener('input', atualizarPreviewEntrevista);
     });
     document.getElementById('modal-msg-entrevista').classList.add('show');
@@ -2349,6 +2415,15 @@ async function definirStatusPipeline(status){
   document.getElementById('modal-msg-status').classList.add('show');
 }
 
+function setTipoEntrevista(tipo){
+  _tipoEntrevista = tipo;
+  document.getElementById('ent-tipo-online').classList.toggle('ativo', tipo==='Online');
+  document.getElementById('ent-tipo-presencial').classList.toggle('ativo', tipo==='Presencial');
+  document.getElementById('ent-campo-link').style.display = tipo==='Online' ? '' : 'none';
+  document.getElementById('ent-campo-endereco').style.display = tipo==='Presencial' ? '' : 'none';
+  atualizarPreviewEntrevista();
+}
+
 function atualizarPreviewEntrevista(){
   if(!_statusPendente) return;
   const s = todasSessoes[sessaoAtual] || {};
@@ -2357,8 +2432,21 @@ function atualizarPreviewEntrevista(){
   const empresa = document.getElementById('ent-msg-empresa').value || '[empresa]';
   const semana = document.getElementById('ent-msg-semana').value || '[semana]';
   const horario = document.getElementById('ent-msg-horario').value || '[horário]';
+  const tipo = _tipoEntrevista || 'Online';
+  const local = tipo==='Presencial'
+    ? (document.getElementById('ent-msg-endereco')?.value || '')
+    : (document.getElementById('ent-msg-link')?.value || '');
+  // Atualiza link Maps ao digitar endereço
+  if(tipo==='Presencial'){
+    const mapsEl = document.getElementById('ent-maps-link');
+    const endEl = document.getElementById('ent-msg-endereco');
+    if(mapsEl && endEl && endEl.value){
+      mapsEl.href = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(endEl.value);
+      mapsEl.style.display = 'inline';
+    }
+  }
   const fn = TEMPLATES_ENTREVISTA[_statusPendente];
-  if(fn) document.getElementById('ent-msg-preview').value = fn(nome, cargo, empresa, semana, horario);
+  if(fn) document.getElementById('ent-msg-preview').value = fn(nome, cargo, empresa, semana, horario, tipo, local);
 }
 
 async function confirmarMsgStatus(enviar){
@@ -2378,11 +2466,46 @@ async function confirmarMsgEntrevista(){
   const semana = document.getElementById('ent-msg-semana').value;
   const horario = document.getElementById('ent-msg-horario').value;
   if(!semana || !horario){ toast('Preencha dia e horário','error'); return; }
+  const tipo = _tipoEntrevista || 'Online';
+  const local = tipo === 'Presencial' ? (document.getElementById('ent-msg-endereco')?.value || '') : (document.getElementById('ent-msg-link')?.value || '');
   const fn = TEMPLATES_ENTREVISTA[_statusPendente];
-  const texto = fn(nome, cargo, empresa, semana, horario);
+  const texto = fn(nome, cargo, empresa, semana, horario, tipo, local);
   fecharModal('modal-msg-entrevista');
   await _salvarStatus(_statusPendente, true, texto);
+
+  // Salvar na Agenda
+  const dataAgenda = _parseDateBR(semana);
+  const agendaItem = {
+    id: Date.now(),
+    cand: s.nome || s.ultimaAnalise?.nome || nome,
+    tipo: _statusPendente.includes('Gestor') ? 'Entrevista Gestor' : 'Entrevista RH',
+    vagaTitulo: s.ultimaAnalise?.vagaInteresse || cargo,
+    data: dataAgenda,
+    hora: horario.replace('h',':').replace(/^(\d):/, '0$1:').padEnd(5,'0'),
+    telefone: sessaoAtual,
+    status: 'Agendada',
+    cor: corPorNome(s.nome||nome),
+    tipoEntrevista: tipo,
+    local: local
+  };
+  agendaItems.push(agendaItem);
+  localStorage.setItem('effect-agenda', JSON.stringify(agendaItems));
+  toast('📅 Agendado na Agenda','success');
+
   _statusPendente = null;
+}
+
+function _parseDateBR(txt){
+  // Tenta extrair data de strings como "segunda-feira, 23/06" ou "23/06/2026"
+  if(!txt) return '';
+  const m = txt.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if(m){
+    const d = m[1].padStart(2,'0');
+    const mo = m[2].padStart(2,'0');
+    const yr = m[3] ? (m[3].length===2?'20'+m[3]:m[3]) : new Date().getFullYear();
+    return `${yr}-${mo}-${d}`;
+  }
+  return txt;
 }
 
 async function _salvarStatus(status, enviar, mensagem){
