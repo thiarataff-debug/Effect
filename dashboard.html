@@ -1162,7 +1162,7 @@ function normalizeVaga(v, i){
 function normalizeCandidato(c){
   return {
     nome:c.nome||c.Nome||c.candidato||c.Candidato||'—',
-    vaga:c.vaga||c.Vaga||c.cargo||c.Cargo||'',
+    vaga:c.vaga||c.Vaga||c.vagaInteresse||c.VagaInteresse||c['Vaga de Interesse']||c['vaga de interesse']||c.cargo||c.Cargo||'',
     etapa:c.etapa||c.Etapa||c.status||c.Status||'Triagem',
     score:parseInt(c.score||c.Score||c.pontuacao||0)||0,
     obs:c.obs||c.observacao||c.Observacao||c['Observação']||'',
@@ -1196,6 +1196,11 @@ async function loadData(){
     }
     linkarCandidatos();
     atualizarBadges();
+    // DEBUG: mostra no console o que chegou
+    console.log('[DEBUG] vagasData:', vagasData.length, vagasData.map(v=>v.titulo));
+    console.log('[DEBUG] candidatosData:', candidatosData.length, 'com vaga preenchida:', candidatosData.filter(c=>c.vaga).length, candidatosData.slice(0,3).map(c=>({nome:c.nome,vaga:c.vaga})));
+    console.log('[DEBUG] sessoesData:', sessoesData.length, 'com vagaInteresse:', sessoesData.filter(s=>s.ultimaAnalise?.vagaInteresse||s.vagaInteresse).length, sessoesData.slice(0,3).map(s=>({nome:s.nome,vi:s.ultimaAnalise?.vagaInteresse||s.vagaInteresse})));
+    console.log('[DEBUG] candidatos por vaga:', vagasData.map(v=>v.titulo+': '+v.candidatos.length));
   }catch(e){ console.error('loadData erro:',e); }
   showLoadingOverlay(false);
   renderAll();
