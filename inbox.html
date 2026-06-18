@@ -169,7 +169,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 .status-banner{padding:6px 16px;font-size:11px;font-weight:600;flex-shrink:0;display:none;align-items:center;gap:6px}
 .status-banner.show{display:flex}
-.sb-manual{background:#f3e8ff;border-bottom:1px solid #ddd6fe;color:#5b21b6}
+.sb-manual{background:#f3e8ff;border-bottom:1px solid #ddd6fe;color:#5b21b6}.sb-camila{background:#ecfdf5;border-bottom:1px solid #6ee7b7;color:#065f46}.ha-camila{background:#0d9488;color:#fff}.ha-camila:hover{opacity:.9}
 .sb-atencao{background:#fee2e2;border-bottom:1px solid #fca5a5;color:#7f1d1d}
 
 .messages{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:3px}
@@ -487,8 +487,6 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 <header>
   <div style="display:flex;align-items:center;gap:12px">
     <div class="hlogo">Effect <span>Lia</span></div>
-    <button class="rbtn" onclick="mostrarView('inbox')" id="nav-inbox" style="background:rgba(255,255,255,.22)">💬 Conversas</button>
-    <button class="rbtn" onclick="mostrarView('entrevistas')" id="nav-entrevistas">📅 Entrevistas</button>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">🗓️ Agenda</button>
   </div>
   <div class="hright">
@@ -664,23 +662,20 @@ font-family:'Montserrat',sans-serif
           <!-- Grupo Bot -->
           <button class="ha-btn ha-green" id="btn-lia" onclick="setModo('lia')">🤖 Lia</button>
           <button class="ha-btn ha-laura" id="btn-manual" onclick="setModo('manual')">👩 Assumir</button>
+          <button class="ha-btn ha-camila" id="btn-camila" onclick="setModo('camila')">📅 Camila</button>
           <span class="ha-divider"></span>
           <!-- Grupo Candidato -->
           <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Direcionar candidato para vaga" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Direcionar para vaga</button>
           <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
-          <button class="ha-btn ha-ghost" onclick="abrirModalStatus()" title="Atualizar status">📌 Status</button>
-          <button class="ha-btn ha-ghost" id="btn-prioritario" onclick="togglePrioritario()" title="Marcar como prioritário">⭐ Prioritário</button>
           <span class="ha-divider"></span>
           <!-- Dropdown Mais — tudo o que é secundário -->
           <div class="ha-dropdown" id="dropdown-mais">
             <button class="ha-btn ha-ghost" onclick="toggleDropdownMais(event,this)">⋯ Mais</button>
             <div class="ha-dropdown-menu" id="dropdown-mais-menu">
               <div class="ha-dropdown-item" onclick="arquivarConversa();fecharDropdownMais()"><span class="di-icon">📁</span> Arquivar</div>
-              <div class="ha-dropdown-item" onclick="abrirModalEntrevista();fecharDropdownMais()"><span class="di-icon">📅</span> Entrevista</div>
               <div class="ha-dropdown-item" onclick="abrirDiscCandidato();fecharDropdownMais()"><span class="di-icon">📊</span> DISC</div>
               <div class="ha-dropdown-item" id="item-template" onclick="abrirModalTemplate();fecharDropdownMais()" style="display:none"><span class="di-icon">📤</span> Template</div>
               <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
-              <div class="ha-dropdown-item" onclick="abrirModalSlots();fecharDropdownMais()"><span class="di-icon">🕐</span> Oferecer Horários</div>
               <div class="ha-separator"></div>
               <div class="ha-dropdown-item" onclick="toggleRetornar();fecharDropdownMais()" id="item-retornar"><span class="di-icon">📌</span> Marcar p/ Retornar</div>
               <div class="ha-dropdown-item" onclick="marcarNaoLida();fecharDropdownMais()"><span class="di-icon">🔵</span> Marcar Não Lida</div>
@@ -689,6 +684,7 @@ font-family:'Montserrat',sans-serif
         </div>
       </div>
       <div class="status-banner sb-manual" id="banner-manual">👩 <strong>Laura</strong> está respondendo — assinatura automática ativa.</div>
+      <div class="status-banner sb-camila" id="banner-camila">📅 <strong>Camila</strong> está respondendo — foco em agendamento de entrevistas.</div>
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
       <!-- Pipeline de Status -->
       <div class="pipeline-bar" id="pipeline-bar">
@@ -1263,8 +1259,8 @@ function mostrarView(v){
   document.getElementById('view-entrevistas').style.display=v==='entrevistas'?'flex':'none';
   const agendaEl=document.getElementById('view-agenda');
   if(agendaEl)agendaEl.style.display=v==='agenda'?'flex':'none';
-  document.getElementById('nav-inbox').style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
-  document.getElementById('nav-entrevistas').style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
+  const ni=document.getElementById('nav-inbox');if(ni)ni.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
+  const ne=document.getElementById('nav-entrevistas');if(ne)ne.style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
   const navAg=document.getElementById('nav-agenda');
   if(navAg)navAg.style.background=v==='agenda'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
@@ -1849,6 +1845,7 @@ function renderMsgs(s){
       const conteudo = msg.content || '';
       if(isUser && conteudo.includes('Documento/Currículo recebido')){
         const cvs = Array.isArray(s.curriculos) && s.curriculos.length ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
+        // Encontra o currículo mais próximo do timestamp desta mensagem
         const msgMs = Number(msg.timestampMs || 0);
         let cv = cvs.find(c => Math.abs(Number(c.recebidoEmMs||0) - msgMs) < 300000) || cvs[cvs.length-1] || null;
         const link = cv?.driveLink || '';
@@ -2219,27 +2216,31 @@ let _statusPendente = null;
 async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
 
+  // Entrevistas: abre modal com campos
   if(status === 'Entrevista Agendada' || status === 'Entrevista Gestor Agendada'){
     _statusPendente = status;
     const s = todasSessoes[sessaoAtual] || {};
-    document.getElementById('ent-msg-cargo').value = s.ultimaAnalise?.vagaInteresse || '';
+    const cargo = s.ultimaAnalise?.vagaInteresse || '';
+    document.getElementById('ent-msg-cargo').value = cargo;
     document.getElementById('ent-msg-empresa').value = '';
     document.getElementById('ent-msg-semana').value = '';
     document.getElementById('ent-msg-horario').value = '';
     document.getElementById('modal-msg-ent-titulo').textContent = status === 'Entrevista Agendada' ? '📅 Entrevista Online' : '📅 Entrevista com Gestor';
     atualizarPreviewEntrevista();
     ['ent-msg-cargo','ent-msg-empresa','ent-msg-semana','ent-msg-horario'].forEach(id => {
-      document.getElementById(id).oninput = atualizarPreviewEntrevista;
+      document.getElementById(id).addEventListener('input', atualizarPreviewEntrevista);
     });
     document.getElementById('modal-msg-entrevista').classList.add('show');
     return;
   }
 
+  // Statuses sem mensagem: atualiza direto
   if(!MENSAGENS_STATUS[status]){
     await _salvarStatus(status, false, '');
     return;
   }
 
+  // Statuses com mensagem: abre modal de confirmação
   const s = todasSessoes[sessaoAtual] || {};
   const nome = (s.nome || s.ultimaAnalise?.nome || 'tudo bem').split(' ')[0];
   const texto = MENSAGENS_STATUS[status](nome);
@@ -2250,7 +2251,7 @@ async function definirStatusPipeline(status){
 }
 
 function atualizarPreviewEntrevista(){
-  if(!_statusPendente || !sessaoAtual) return;
+  if(!_statusPendente) return;
   const s = todasSessoes[sessaoAtual] || {};
   const nome = (s.nome || s.ultimaAnalise?.nome || 'candidato').split(' ')[0];
   const cargo = document.getElementById('ent-msg-cargo').value || '[cargo]';
@@ -2309,30 +2310,39 @@ function aplicarModoVisual(modo){
   modoAtual=modo;
   document.getElementById('btn-lia').style.opacity=modo==='lia'?'1':'.5';
   document.getElementById('btn-manual').style.opacity=modo==='manual'?'1':'.5';
+  document.getElementById('btn-camila').style.opacity=modo==='camila'?'1':'.5';
   document.getElementById('banner-manual').classList.toggle('show',modo==='manual');
-  document.getElementById('msg-input').placeholder=modo==='lia'?'A Lia responde automaticamente...':'Respondendo como Laura...';
+  document.getElementById('banner-camila').classList.toggle('show',modo==='camila');
+  const placeholders={lia:'A Lia responde automaticamente...',manual:'Respondendo como Laura...',camila:'Respondendo como Camila (agendamento)...'};
+  document.getElementById('msg-input').placeholder=placeholders[modo]||'Respondendo...';
 }
 async function setModo(modo){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
-  const eraLia=s&&s.modo!=='manual';
+  const eraLia=s&&s.modo!=='manual'&&s.modo!=='camila';
+  const pausado=modo==='manual'||modo==='camila';
   try{
-    const r=await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,pausado:modo==='manual',modo})});
+    const r=await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,pausado,modo})});
     const d=await r.json();
     if(d.ok){
-      if(todasSessoes[sessaoAtual]){todasSessoes[sessaoAtual].modo=modo;todasSessoes[sessaoAtual].pausado=modo==='manual';}
+      if(todasSessoes[sessaoAtual]){todasSessoes[sessaoAtual].modo=modo;todasSessoes[sessaoAtual].pausado=pausado;}
       aplicarModoVisual(modo);
-      registrarIntervencao('Laura',modo==='manual'?'Assumiu conversa':'Devolveu para Lia','');
+      const nomeAtend=modo==='camila'?'Camila':modo==='manual'?'Laura':'Lia';
+      registrarIntervencao(nomeAtend,pausado?'Assumiu conversa':'Devolveu para Lia','');
       renderLista();renderPainelDireito();
-      if(modo==='manual'&&eraLia){
-        toast('👩 Laura assumiu — candidato será avisado','success');
-        await fetch(`${API}/inbox/transicao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual})});
+      if(pausado&&eraLia){
+        if(modo==='camila'){
+          toast('📅 Camila assumiu — agendamento de entrevista','success');
+        } else {
+          toast('👩 Laura assumiu — candidato será avisado','success');
+          await fetch(`${API}/inbox/transicao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual})});
+        }
       }else if(modo==='lia'){
         toast('🤖 Lia reativada','success');
       }
       const ca=document.getElementById('ch-av');
-      ca.textContent=modo==='manual'?'👩':'🤖';
-      ca.style.background=modo==='manual'?'var(--laura)':'rgba(255,255,255,.15)';
+      ca.textContent=modo==='camila'?'📅':modo==='manual'?'👩':'🤖';
+      ca.style.background=modo==='camila'?'#0d9488':modo==='manual'?'var(--laura)':'rgba(255,255,255,.15)';
     }
   }catch(e){toast('Erro ao alterar modo','error');}
 }
@@ -2381,8 +2391,9 @@ async function enviarMsg(){
   let texto=input.value.trim();
   if(!texto)return;
 
-  const isLaura=modoAtual==='manual';
-  if(isLaura)texto+=ASSINATURA;
+  const isLaura=modoAtual==='manual'||modoAtual==='camila';
+  const nomeRemetente=modoAtual==='camila'?'Camila':'Laura';
+  if(isLaura)texto+=`\n\n— ${nomeRemetente}, Equipe Effect 💙`;
 
   const btn=document.getElementById('send-btn');
   btn.disabled=true;
@@ -3830,7 +3841,7 @@ function atualizarTitulo(){
 
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios'].forEach(id=>{
+    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios','modal-msg-status','modal-msg-entrevista'].forEach(id=>{
       const el=document.getElementById(id);
       if(el && el.classList.contains('show')) el.classList.remove('show');
     });
