@@ -1109,6 +1109,13 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
 const etapas = ['Não Planejada','Divulgação','Triagem','Entrevista RH','Teste Prático','Entrevista Cliente','Proposta','Admissão','Contratado'];
 const etapaCores = {'Não Planejada':'#a1a1aa','Divulgação':'#1fa5f0','Triagem':'#f5c518','Entrevista RH':'#f4afa1','Teste Prático':'#b07fe8','Entrevista Cliente':'#8ed1b2','Proposta':'#7b8e60','Admissão':'#f5a623','Contratado':'#2a2a2b'};
 
+// ===== API URL (Railway) =====
+const API = (()=>{
+  // Se aberto localmente (file://) aponta para Railway
+  if(window.location.protocol==='file:'||!window.location.host) return 'https://effect-production.up.railway.app';
+  return window.location.origin;
+})();
+
 // ===== GLOBAL STATE =====
 let vagasData = [];
 let candidatosData = [];
@@ -1169,9 +1176,9 @@ async function loadData(){
   showLoadingOverlay(true);
   try{
     const [r1,r2,r3]=await Promise.allSettled([
-      fetch('/sheets/vagas').then(r=>r.json()).catch(()=>({vagas:[]})),
-      fetch('/sheets/candidatos').then(r=>r.json()).catch(()=>({candidatos:[]})),
-      fetch('/inbox/sessoes').then(r=>r.json()).catch(()=>[]),
+      fetch(`${API}/sheets/vagas`).then(r=>r.json()).catch(()=>({vagas:[]})),
+      fetch(`${API}/sheets/candidatos`).then(r=>r.json()).catch(()=>({candidatos:[]})),
+      fetch(`${API}/inbox/sessoes`).then(r=>r.json()).catch(()=>[]),
     ]);
     if(r1.status==='fulfilled'){
       const raw=r1.value?.vagas||r1.value?.data||[];
@@ -1201,12 +1208,16 @@ function linkarCandidatos(){
     if(vaga&&!vaga.candidatos.some(x=>x.nome===c.nome)) vaga.candidatos.push(c);
   }
   for(const s of sessoesData){
-    const nome=s.nome||s.candidato||'';
+    const nome=s.nome||s.candidato||s.ultimaAnalise?.nome||'';
     if(!nome) continue;
-    const vt=s.vagaInteresse||s.cargo||s.vaga||'';
-    const vaga=vt?vagasData.find(v=>normT(v.titulo).includes(normT(vt))||normT(vt).includes(normT(v.titulo))):null;
+    // vagaInteresse fica dentro de ultimaAnalise no servidor
+    const vt=s.ultimaAnalise?.vagaInteresse||s.vagaInteresse||s.ultimaAnalise?.cargo||s.cargo||s.vaga||'';
+    if(!vt) continue;
+    const vaga=vagasData.find(v=>normT(v.titulo).includes(normT(vt))||normT(vt).includes(normT(v.titulo)));
     if(vaga&&!vaga.candidatos.some(x=>x.nome===nome)){
-      vaga.candidatos.push({nome,etapa:s.statusProcesso||s.etapa||'Triagem',score:0,obs:'',telefone:s.telefone||'',cor:corPorNome(nome)});
+      // pipeline/etapa também vem de ultimaAnalise ou do campo pipeline no topo
+      const etapa=s.ultimaAnalise?.pipeline||s.pipeline||s.ultimaAnalise?.etapa||s.statusProcesso||s.etapa||'Triagem';
+      vaga.candidatos.push({nome,etapa,score:0,obs:'',telefone:s.telefone||'',cor:corPorNome(nome)});
     }
   }
 }
@@ -1834,17 +1845,4 @@ function sendMsgClick(){
   document.getElementById('m-chat').innerHTML+=`<div class="chat-msg"><div class="cm-av" style="background:#8ed1b2">TT</div><div class="cm-bubble"><div class="cm-name">Thiara</div>${inp.value}<div class="cm-time">${hora}</div></div></div>`;
   const chat=document.getElementById('m-chat');chat.scrollTop=chat.scrollHeight;inp.value='';
 }
-function openNovaVaga(){window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');}
-
-// ===== NR01 CHART =====
-function renderNR01(){
-  const nr01=document.getElementById('nr01-chart');
-  if(nr01){const nr=[{l:'Sobrecarga de trabalho',n:72},{l:'Pressão por metas',n:65},{l:'Falta de autonomia',n:45},{l:'Conflitos interpessoais',n:30},{l:'Assédio/constrangimento',n:15}];nr01.innerHTML=nr.map(r=>`<div class="funil-row"><div class="funil-lbl">${r.l}</div><div class="funil-track"><div class="funil-fill" style="width:${r.n}%;background:#f4afa1">${r.n}%</div></div></div>`).join('');}
-}
-
-// ===== INIT =====
-loadData();
-renderNR01();
-</script>
-</body>
-</html>
+function openNovaVaga(){window.open('https://effect-production.up.railway.app/cliente#f
