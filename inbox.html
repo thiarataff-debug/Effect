@@ -2258,21 +2258,21 @@ function corStatusPipeline(status){return PIPELINE_CORES[status]||'#94a3b8';}
 // ─── MENSAGENS AUTOMÁTICAS POR STATUS ───────────────────────────────────────
 const MENSAGENS_STATUS = {
   'Reprovado Triagem': (nome) =>
-    `Olá, ${nome}! Agradecemos muito o seu interesse e o tempo dedicado em nos enviar seu currículo. Após análise do seu perfil, identificamos que, no momento, não temos uma vaga com aderência ao que buscamos. Seu currículo fica em nosso banco de talentos e entraremos em contato caso surja uma oportunidade compatível. 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}!\n\nAgradecemos muito o seu interesse e o tempo dedicado em nos enviar seu currículo.\nApós análise do seu perfil, identificamos que, no momento, não temos uma vaga com aderência ao que buscamos.\nSeu currículo fica em nosso banco de talentos e entraremos em contato caso surja uma oportunidade compatível.\n\n💙— Laura, Equipe Effect`,
   'Aprovado 1ª Etapa': (nome) =>
-    `Olá, ${nome}! 🎉 Temos uma ótima notícia: você foi aprovado(a) na primeira etapa do processo seletivo! Em breve entraremos em contato com mais informações sobre os próximos passos. Parabéns! 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 🎉\n\nTemos uma ótima notícia: você foi aprovado(a) na primeira etapa do processo seletivo!\nEm breve entraremos em contato com mais informações sobre os próximos passos.\nParabéns!\n\n💙 — Laura, Equipe Effect`,
   'Reprovado 1ª Etapa': (nome) =>
-    `Olá, ${nome}! Agradecemos muito sua participação no processo seletivo. Após avaliação, informamos que não daremos continuidade à sua candidatura nesta etapa. Seu perfil fica em nosso banco de talentos para futuras oportunidades. 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}!\n\nAgradecemos muito sua participação no processo seletivo.\nApós avaliação, informamos que não daremos continuidade à sua candidatura nesta etapa.\nSeu perfil fica em nosso banco de talentos para futuras oportunidades.\n\n💙 — Laura, Equipe Effect`,
   'Em Teste': (nome) =>
-    `Olá, ${nome}! 😊 Você avançou para a próxima etapa e receberá em breve as instruções para realização do teste. Qualquer dúvida, estamos à disposição! 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 😊\n\nVocê avançou para a próxima etapa e receberá em breve as instruções para realização do teste.\nQualquer dúvida, estamos à disposição!\n\n💙 — Laura, Equipe Effect`,
   'Aprovado Gestor': (nome) =>
-    `Olá, ${nome}! 🎉 Excelente notícia! Você foi aprovado(a) na entrevista com o gestor. Nossa equipe entrará em contato em breve para os próximos passos. Parabéns! 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 🎉\nExcelente notícia!\nVocê foi aprovado(a) na entrevista com o gestor.\nNossa equipe entrará em contato em breve para os próximos passos.\nParabéns!\n\n💙 — Laura, Equipe Effect`,
   'Reprovado Gestor': (nome) =>
-    `Olá, ${nome}! Obrigada pela participação e pelo tempo dedicado ao processo. Infelizmente não seguiremos com sua candidatura nesta etapa. Seu perfil fica registrado para novas oportunidades. 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}!\n\nObrigada pela participação e pelo tempo dedicado ao processo.\nInfelizmente não seguiremos com sua candidatura nesta etapa.\nSeu perfil fica registrado para novas oportunidades.\n💙 — Laura, Equipe Effect`,
   'Em Admissão': (nome) =>
-    `Olá, ${nome}! 🎉 Parabéns, você foi selecionado(a) e está em processo de admissão! Nossa equipe entrará em contato com as informações necessárias. Seja bem-vindo(a)! 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 🎉\n\nParabéns, você foi selecionado(a) e está em processo de admissão!\nNossa equipe entrará em contato com as informações necessárias.\nSeja bem-vindo(a)!\n\n💙 — Laura, Equipe Effect`,
   'Banco de Talentos': (nome) =>
-    `Olá, ${nome}! 😊 Agradecemos seu interesse em fazer parte da nossa equipe. No momento não temos uma vaga compatível com seu perfil, mas mantemos seu currículo em nosso banco de talentos. Entraremos em contato assim que surgir uma oportunidade! 💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 😊\nAgradecemos seu interesse em fazer parte da nossa equipe.\nNo momento não temos uma vaga compatível com seu perfil, mas mantemos seu currículo em nosso banco de talentos.\nEntraremos em contato assim que surgir uma oportunidade!\n\n💙 — Laura, Equipe Effect`,
 };
 
 const TEMPLATES_ENTREVISTA = {
