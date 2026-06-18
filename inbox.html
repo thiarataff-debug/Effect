@@ -1791,7 +1791,22 @@ function renderMsgs(s){
 
       const b=document.createElement('div');
       b.className=`mbubble ${rc}`;
-      b.textContent=msg.content||'';
+
+      // Renderiza mensagens de documento como card clicável
+      const conteudo = msg.content || '';
+      if(isUser && conteudo.includes('Documento/Currículo recebido')){
+        const cvs = Array.isArray(s.curriculos) && s.curriculos.length ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
+        // Encontra o currículo mais próximo do timestamp desta mensagem
+        const msgMs = Number(msg.timestampMs || 0);
+        let cv = cvs.find(c => Math.abs(Number(c.recebidoEmMs||0) - msgMs) < 300000) || cvs[cvs.length-1] || null;
+        const link = cv?.driveLink || '';
+        b.innerHTML = `<span style="font-size:1.4em">📄</span> <strong>Currículo recebido</strong>` +
+          (link
+            ? `<br><a href="${link}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all">🔗 Abrir no Drive</a>`
+            : `<br><span style="font-size:11px;color:#999">⏳ Salvando no Drive...</span>`);
+      } else {
+        b.textContent = conteudo;
+      }
 
       if(horaTexto){
         const span=document.createElement('span');
