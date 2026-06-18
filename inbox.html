@@ -169,7 +169,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 .status-banner{padding:6px 16px;font-size:11px;font-weight:600;flex-shrink:0;display:none;align-items:center;gap:6px}
 .status-banner.show{display:flex}
-.sb-manual{background:#f3e8ff;border-bottom:1px solid #ddd6fe;color:#5b21b6}.sb-camila{background:#fdf2f8;border-bottom:1px solid #f9a8d4;color:#9d174d}.ha-camila{background:#db2777;color:#fff}.ha-camila:hover{opacity:.9}
+.sb-manual{background:#f3e8ff;border-bottom:1px solid #ddd6fe;color:#5b21b6}.sb-camila{background:#fdf2f8;border-bottom:1px solid #f9a8d4;color:#9d174d}.ha-camila{background:#db2777;color:#fff}.ha-camila:hover{opacity:.9}.mbubble.camila{background:linear-gradient(135deg,#fce7f3,#fbcfe8);border-left:3px solid #db2777}.msg-group.camila .msg-sender{color:#db2777}
 .sb-atencao{background:#fee2e2;border-bottom:1px solid #fca5a5;color:#7f1d1d}
 
 .messages{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:3px}
@@ -619,15 +619,13 @@ font-family:'Montserrat',sans-serif
       <div class="ftab-mais-wrap">
         <button class="ftab" onclick="toggleMaisAbas(event)">⋯ Mais</button>
         <div class="ftab-mais-menu" id="ftab-mais-menu">
-          <div class="ftab-mais-item" id="ftabm-atencao" onclick="setTabMais('atencao','ftabm-atencao')">⭐ Prioritário <span class="ftab-mais-cnt" id="cntm-atencao">0</span></div>
-          <div class="ftab-mais-item" id="ftabm-aguardando-effect" onclick="setTabMais('aguardando-effect','ftabm-aguardando-effect')">🔴 Effect <span class="ftab-mais-cnt" id="cntm-aguardando-effect">0</span></div>
-          <div class="ftab-mais-item" id="ftabm-novos" onclick="setTabMais('novos','ftabm-novos')">🟢 Novos <span class="ftab-mais-cnt" id="cntm-novos">0</span></div>
           <div class="ftab-mais-item" id="ftabm-aguardando-candidato" onclick="setTabMais('aguardando-candidato','ftabm-aguardando-candidato')">🟡 Candidato <span class="ftab-mais-cnt" id="cntm-aguardando-candidato">0</span></div>
           <div class="ftab-mais-item" id="ftabm-manual" onclick="setTabMais('manual','ftabm-manual')">👩 Laura <span class="ftab-mais-cnt" id="cntm-manual">0</span></div>
           <div class="ftab-mais-item" id="ftabm-lia" onclick="setTabMais('lia','ftabm-lia')">🤖 Lia <span class="ftab-mais-cnt" id="cntm-lia">0</span></div>
           <div class="ftab-mais-item" id="ftabm-curriculos" onclick="setTabMais('curriculos','ftabm-curriculos')">📄 CVs <span class="ftab-mais-cnt" id="cntm-curriculos">0</span></div>
           <div class="ftab-mais-item" id="ftabm-retornar" onclick="setTabMais('retornar','ftabm-retornar')">📌 Retornar <span class="ftab-mais-cnt" id="cntm-retornar">0</span></div>
           <div class="ftab-mais-item" id="ftabm-arquivadas" onclick="setTabMais('arquivadas','ftabm-arquivadas')">📦 Arquivadas <span class="ftab-mais-cnt" id="cntm-arquivadas">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-camila" onclick="setTabMais('camila','ftabm-camila')">📅 Camila <span class="ftab-mais-cnt" id="cntm-camila">0</span></div>
           <div class="ftab-mais-item" id="ftabm-prstatus" onclick="setTabMais('prstatus','ftabm-prstatus')">📌 Por Status</div>
         </div>
       </div>
@@ -1605,6 +1603,7 @@ function renderLista(){
     if(tab==='aguardando-effect'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
+    if(tab==='camila')return s.modo==='camila';
     if(tab==='lia')return!(s.modo==='manual'||s.pausado===true);
     if(tab==='atencao')return isAtencao(s);
     if(tab==='curriculos')return !!(
@@ -1789,6 +1788,7 @@ function renderMsgs(s){
     const isUser=msg.role==='user';
     const isObs=msg.role==='observacao';
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
+    const isCamila=msg.role==='assistant'&&(msg.content||'').includes('— Camila');
     const ts=obterTimestampMsg(msg);
     const horaTexto=ts?extrairHora(ts):horaFallbackMsg(msg);
     const dataMsg=ts?formatarDataMensagem(ts):'';
@@ -1828,13 +1828,13 @@ function renderMsgs(s){
 
       g.appendChild(b);
     }else{
-      const rc=isUser?'candidato':isLaura?'manual':'lia';
+      const rc=isUser?'candidato':isCamila?'camila':isLaura?'manual':'lia';
       g.className=`msg-group ${rc}`;
 
       if(ultimoRole!==msg.role){
         const sn=document.createElement('div');
         sn.className='msg-sender';
-        sn.textContent=isUser?(s.nome?.split(' ')[0]||'👤 Candidato'):isLaura?'👩 Laura':'🤖 Lia';
+        sn.textContent=isUser?(s.nome?.split(' ')[0]||'👤 Candidato'):isCamila?'📅 Camila':isLaura?'👩 Laura':'🤖 Lia';
         g.appendChild(sn);
       }
 
@@ -2450,7 +2450,7 @@ async function enviarMsg(){
         todasSessoes[telefoneAtual].lastMessageAtMs=d.mensagem.timestampMs||eventoLocal.timestampMs;
       }
 
-      toast(isLaura?'👩 Enviado como Laura':'✉️ Enviado!','success');
+      toast(modoAtual==='camila'?'📅 Enviado como Camila':isLaura?'👩 Enviado como Laura':'✉️ Enviado!','success');
 
       // Sincroniza depois, sem apagar a mensagem otimista imediatamente.
       setTimeout(()=>{
@@ -3795,7 +3795,7 @@ function setTabMais(t,id){
 }
 // Sincroniza contadores do menu com os spans ocultos
 function syncMaisContadores(){
-  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas'};
+  const map={novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas',camila:'cntm-camila'};
   Object.entries(map).forEach(([k,id])=>{
     const src=document.getElementById('cnt-'+k);
     const dst=document.getElementById(id);
@@ -3820,11 +3820,17 @@ function setTab(el,t){
 function renderStatusFilterBar(){
   const bar=document.getElementById('status-filter-bar');
   const all=Object.entries(todasSessoes||{});
-  bar.innerHTML=['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st=>{
-    const count=all.filter(([t,s])=>(statusMap[t]||'Novo')===st).length;
+  const etapas=[
+    {st:'Triado',cor:'#64748b'},{st:'Em Vaga',cor:'#3b82f6'},{st:'Reprovado Triagem',cor:'#b91c1c'},
+    {st:'Entrevista Agendada',cor:'#f59e0b'},{st:'Aprovado 1ª Etapa',cor:'#22c55e'},{st:'Reprovado 1ª Etapa',cor:'#ef4444'},
+    {st:'Entrevista Gestor Agendada',cor:'#f97316'},{st:'Em Teste',cor:'#8b5cf6'},{st:'Aprovado Gestor',cor:'#16a34a'},
+    {st:'Reprovado Gestor',cor:'#dc2626'},{st:'Em Admissão',cor:'#0d9488'},{st:'Banco de Talentos',cor:'#6b7280'}
+  ];
+  bar.innerHTML=etapas.map(({st,cor})=>{
+    const count=all.filter(([t,s])=>(statusMap[t]||'')===st).length;
     if(count===0)return '';
     const ativo=statusFiltro===st;
-    return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
+    return `<button class="spill" style="background:${ativo?cor:'#fff'};color:${ativo?'#fff':cor};border-color:${cor}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\\'")}')">${st} <span style="opacity:.75">(${count})</span></button>`;
   }).filter(Boolean).join('');
 }
 function selecionarStatusFiltro(st){
