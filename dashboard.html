@@ -1182,55 +1182,29 @@ function getIdVaga(obj){
 function linkarCandidatos(){
   vagasData.forEach(v => v.candidatos = []);
 
-  for(const c of candidatosData){
-    const idCand = getIdVaga(c) || c._raw?.['ID Vaga'] || '';
-    const nomeVaga = String(c.vaga || c._raw?.['Vaga de Interesse'] || '').trim();
+  const vagasPorId = {};
+  vagasData.forEach(v => {
+    const id = normT(getIdVaga(v));
+    if(id) vagasPorId[id] = v;
+  });
 
-    const vaga = vagasData.find(v => {
-      const idV = getIdVaga(v);
-      return (
-        idCand && idV && normT(idCand) === normT(idV)
-      ) || (
-        nomeVaga &&
-        (
-          normT(v.titulo) === normT(nomeVaga) ||
-          normT(v.titulo).includes(normT(nomeVaga)) ||
-          normT(nomeVaga).includes(normT(v.titulo))
-        )
-      );
-    });
+  candidatosData.forEach(c => {
+    const id = normT(getIdVaga(c) || c._raw?.['ID Vaga'] || '');
+    if(!id) return;
 
-    if(vaga && !vaga.candidatos.some(x => x.telefone === c.telefone || x.nome === c.nome)){
+    const vaga = vagasPorId[id];
+    if(!vaga) return;
+
+    if(!vaga.candidatos.some(x => x.telefone === c.telefone || x.nome === c.nome)){
       vaga.candidatos.push(c);
     }
-  }
+  });
 
-  for(const s of sessoesData){
-    const nome = s.nome || s.candidato || s.ultimaAnalise?.nome || '';
-    if(!nome) continue;
-
-    const idCand = getIdVaga(s.ultimaAnalise) || getIdVaga(s);
-    const nomeVaga = s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || s.ultimaAnalise?.cargo || s.cargo || s.vaga || '';
-
-    const vaga = vagasData.find(v => {
-      const idV = getIdVaga(v);
-      return (
-        idCand && idV && normT(idCand) === normT(idV)
-      ) || (
-        nomeVaga &&
-        (
-          normT(v.titulo) === normT(nomeVaga) ||
-          normT(v.titulo).includes(normT(nomeVaga)) ||
-          normT(nomeVaga).includes(normT(v.titulo))
-        )
-      );
-    });
-
-    if(vaga && !vaga.candidatos.some(x => x.telefone === s.telefone || x.nome === nome)){
-      const etapa = s.ultimaAnalise?.pipeline || s.pipeline || s.ultimaAnalise?.etapa || s.statusProcesso || s.etapa || 'Triagem';
-      vaga.candidatos.push({nome, etapa, score:0, obs:'', telefone:s.telefone||'', cor:corPorNome(nome)});
-    }
-  }
+  console.log('[DEBUG VINCULO FINAL]', vagasData.map(v => ({
+    vaga: v.titulo,
+    id: getIdVaga(v),
+    total: v.candidatos.length
+  })));
 }
   
 // ===== LOAD DATA =====
