@@ -1849,7 +1849,6 @@ function renderMsgs(s){
       const conteudo = msg.content || '';
       if(isUser && conteudo.includes('Documento/Currículo recebido')){
         const cvs = Array.isArray(s.curriculos) && s.curriculos.length ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
-        // Encontra o currículo mais próximo do timestamp desta mensagem
         const msgMs = Number(msg.timestampMs || 0);
         let cv = cvs.find(c => Math.abs(Number(c.recebidoEmMs||0) - msgMs) < 300000) || cvs[cvs.length-1] || null;
         const link = cv?.driveLink || '';
@@ -2220,31 +2219,27 @@ let _statusPendente = null;
 async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
 
-  // Entrevistas: abre modal com campos
   if(status === 'Entrevista Agendada' || status === 'Entrevista Gestor Agendada'){
     _statusPendente = status;
     const s = todasSessoes[sessaoAtual] || {};
-    const cargo = s.ultimaAnalise?.vagaInteresse || '';
-    document.getElementById('ent-msg-cargo').value = cargo;
+    document.getElementById('ent-msg-cargo').value = s.ultimaAnalise?.vagaInteresse || '';
     document.getElementById('ent-msg-empresa').value = '';
     document.getElementById('ent-msg-semana').value = '';
     document.getElementById('ent-msg-horario').value = '';
     document.getElementById('modal-msg-ent-titulo').textContent = status === 'Entrevista Agendada' ? '📅 Entrevista Online' : '📅 Entrevista com Gestor';
     atualizarPreviewEntrevista();
     ['ent-msg-cargo','ent-msg-empresa','ent-msg-semana','ent-msg-horario'].forEach(id => {
-      document.getElementById(id).addEventListener('input', atualizarPreviewEntrevista);
+      document.getElementById(id).oninput = atualizarPreviewEntrevista;
     });
     document.getElementById('modal-msg-entrevista').classList.add('show');
     return;
   }
 
-  // Statuses sem mensagem: atualiza direto
   if(!MENSAGENS_STATUS[status]){
     await _salvarStatus(status, false, '');
     return;
   }
 
-  // Statuses com mensagem: abre modal de confirmação
   const s = todasSessoes[sessaoAtual] || {};
   const nome = (s.nome || s.ultimaAnalise?.nome || 'tudo bem').split(' ')[0];
   const texto = MENSAGENS_STATUS[status](nome);
@@ -2255,7 +2250,7 @@ async function definirStatusPipeline(status){
 }
 
 function atualizarPreviewEntrevista(){
-  if(!_statusPendente) return;
+  if(!_statusPendente || !sessaoAtual) return;
   const s = todasSessoes[sessaoAtual] || {};
   const nome = (s.nome || s.ultimaAnalise?.nome || 'candidato').split(' ')[0];
   const cargo = document.getElementById('ent-msg-cargo').value || '[cargo]';
@@ -3821,4 +3816,26 @@ function renderStatusFilterBar(){
     return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
   }).filter(Boolean).join('');
 }
-function selecionarStatusFiltro(st
+function selecionarStatusFiltro(st){
+  statusFiltro = statusFiltro===st ? null : st; // toggle
+  renderStatusFilterBar();
+  renderLista();
+}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
+function atualizarTitulo(){
+  const n=Object.entries(todasSessoes).filter(([t,s])=>contarNaoLidas(t,s)>0).length;
+  document.title=n>0?`(${n}) Effect Lia Inbox`:'Effect — Lia Inbox';
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && el.classList.contains('show')) el.classList.remove('show');
+    });
+  }
+});
+</script>
+</body>
+</html>
