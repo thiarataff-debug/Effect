@@ -1508,30 +1508,80 @@ app.post("/inbox/enviar", async (req, res) => {
   }
 });
 
-app.get("/inbox/curriculo/:telefone", (req, res) => {
+app.get("/inbox/curriculo/:telefone", async (req, res) => {
   try {
     const tel = limparTelefone(req.params.telefone);
-    const sessao = sessoes[tel];
-    if (!sessao) return res.status(404).send("Conversa não encontrada");
+    let sessao = sessoes[tel];
 
-    const lista = Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
-    if (!lista.length) return res.status(404).send("Currículo não encontrado");
+    // Se sessão não existe ou não tem currículo, tenta recarregar do Sheets
+    let lista = sessao
+      ? (Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []))
+      : [];
+
+    if (!lista.length && CONFIG.VAGAS_URL) {
+      try {
+        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+        const r = await axios.get(`${urlBase}?acao=conversas&telefone=${tel}`, { timeout: 8000, maxRedirects: 3 });
+        const d = r.data;
+        if (d?.sessoes) {
+          const telKey = Object.keys(d.sessoes).find(k => limparTelefone(k) === tel);
+          if (telKey) {
+            const s = d.sessoes[telKey];
+            const cvs = Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
+            if (cvs.length) {
+              // Salva de volta na sessão em memória
+              if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: s.nome || null, modo: "automatico", pausado: false, motivoPausa: "", unreadCount: 0, curriculos: [], curriculo: null, ultimaAnalise: null };
+              sessoes[tel].curriculos = cvs;
+              sessoes[tel].curriculo = cvs[0];
+              sessao = sessoes[tel];
+              lista = cvs;
+            }
+          }
+        }
+      } catch (e) { console.error("Fallback Sheets curriculo:", e.message); }
+    }
+
+    if (!lista.length) {
+      return res.status(404).send(`
+        <html><body style="font-family:sans-serif;padding:32px">
+        <h3>📄 Currículo não disponível</h3>
+        <p>O arquivo não foi encontrado no servidor. Isso pode acontecer após reinicialização do sistema.</p>
+        <p><strong>Opções:</strong></p>
+        <ul>
+          <li>Verifique se o currículo foi salvo no Google Drive e acesse diretamente pelo link do Drive.</li>
+          <li>Solicite ao candidato que reenvie o currículo pelo WhatsApp.</li>
+        </ul>
+        </body></html>`);
+    }
 
     const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
     const cv = lista[idx];
+
+    // Se tem driveLink, redireciona diretamente para o Drive
+    if (cv?.driveLink) return res.redirect(cv.driveLink);
+
     let buffer = null;
     if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
     else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+
     if (!buffer) {
-      // Redireciona para o Drive se o arquivo local sumiu (ex: reinício do Railway)
-      if (cv.driveLink) return res.redirect(cv.driveLink);
-      return res.status(404).send("Arquivo do currículo indisponível. Abra pelo Drive ou solicite reenvio.");
+      // Arquivo local sumiu (reinício do Railway) — tenta driveLink da análise
+      const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
+      if (dlFallback) return res.redirect(dlFallback);
+      return res.status(404).send(`
+        <html><body style="font-family:sans-serif;padding:32px">
+        <h3>📄 Arquivo indisponível</h3>
+        <p>O arquivo do currículo foi apagado após reinicialização do servidor (armazenamento temporário).</p>
+        <p>Acesse o <strong>Google Drive</strong> para encontrar o currículo salvo, ou solicite reenvio pelo WhatsApp.</p>
+        </body></html>`);
     }
+
     const inline = req.query.inline === "1" || req.query.inline === "true";
     res.set("Content-Type", cv.mimeType || "application/octet-stream");
     res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
     res.send(buffer);
   } catch (erro) {
+    console.error("Erro /inbox/curriculo:", erro.message);
     res.status(500).send("Erro ao obter currículo");
   }
 });
