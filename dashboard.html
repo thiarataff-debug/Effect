@@ -1206,26 +1206,19 @@ async function loadData(){
   renderAll();
 }
 
-function linkarCandidatos(){
-  for(const c of candidatosData){
-    if(!c.vaga) continue;
-    const vaga=vagasData.find(v=>normT(v.titulo)===normT(c.vaga)||normT(v.titulo).includes(normT(c.vaga))||normT(c.vaga).includes(normT(v.titulo)));
-    if(vaga&&!vaga.candidatos.some(x=>x.nome===c.nome)) vaga.candidatos.push(c);
-  }
-  for(const s of sessoesData){
-    const nome=s.nome||s.candidato||s.ultimaAnalise?.nome||'';
-    if(!nome) continue;
-    // vagaInteresse fica dentro de ultimaAnalise no servidor
-    const vt=s.ultimaAnalise?.vagaInteresse||s.vagaInteresse||s.ultimaAnalise?.cargo||s.cargo||s.vaga||'';
-    if(!vt) continue;
-    const vaga=vagasData.find(v=>normT(v.titulo).includes(normT(vt))||normT(vt).includes(normT(v.titulo)));
-    if(vaga&&!vaga.candidatos.some(x=>x.nome===nome)){
-      // pipeline/etapa também vem de ultimaAnalise ou do campo pipeline no topo
-      const etapa=s.ultimaAnalise?.pipeline||s.pipeline||s.ultimaAnalise?.etapa||s.statusProcesso||s.etapa||'Triagem';
-      vaga.candidatos.push({nome,etapa,score:0,obs:'',telefone:s.telefone||'',cor:corPorNome(nome)});
-    }
-  }
-}
+const tels = new Set();
+
+candidatosData.forEach(c => {
+  const tel = String(c.telefone || '').replace(/\D/g,'');
+  if(tel) tels.add(tel);
+});
+
+sessoesData.forEach(s => {
+  const tel = String(s.telefone || '').replace(/\D/g,'');
+  if(tel) tels.add(tel);
+});
+
+const totalCands = tels.size || candidatosData.length;
 
 function atualizarBadges(){
   const abertas=vagasData.filter(v=>!v.encerrada).length;
