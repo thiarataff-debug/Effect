@@ -531,7 +531,6 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
         supportsAllDrives: true
       });
       if (file.data?.id) {
-        // Torna o arquivo acessível para qualquer pessoa com o link
         await drive.permissions.create({
           fileId: file.data.id,
           requestBody: { role: "reader", type: "anyone" },
@@ -2361,4 +2360,38 @@ async function coletarTelefonesReengajamento() {
   const INATIVO_MS = 3 * 24 * 60 * 60 * 1000;
   return Object.entries(sessoes)
     .filter(([tel, s]) => s.cvSalvo && (agora - (s.ultimaMensagem || 0)) > INATIVO_MS)
-    .map(([tel])
+    .map(([tel]) => tel);
+}
+
+app.get("/inbox/reengajamento/status", async (req, res) => {
+  try {
+    const telefones = await coletarTelefonesReengajamento();
+    res.json({ total: telefones.length, telefones });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+app.post("/inbox/reengajamento/disparar", async (req, res) => {
+  try {
+    const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
+    const telefones = forceTelefones || await coletarTelefonesReengajamento();
+    const lista = limite ? telefones.slice(0, Number(limite)) : telefones;
+    const resultados = [];
+    for (const tel of lista) {
+      const r = await enviarTemplate(tel, templateName, languageCode);
+      resultados.push({ telefone: tel, ...r });
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
+  try {
+    const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
+    if (!telefone) return res.status(400).json({ erro: "telefone obrigatório" });
+    const r = await enviarTemplate(telefone, templateName, languageCode);
+    res.json(r);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
