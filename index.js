@@ -531,6 +531,7 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
         supportsAllDrives: true
       });
       if (file.data?.id) {
+        // Torna o arquivo acessível para qualquer pessoa com o link
         await drive.permissions.create({
           fileId: file.data.id,
           requestBody: { role: "reader", type: "anyone" },
@@ -1152,6 +1153,24 @@ app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
 app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
 
+
+// ─── ENVIAR DISC (sem ativar modo manual) ───
+app.post("/inbox/enviar-disc", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || '');
+    const mensagem = req.body.mensagem || '';
+    if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
+    const sessao = garantirSessao(telefone);
+    await enviarMensagem(telefone, mensagem);
+    registrarEntradaSessao(sessao, "assistant", mensagem);
+    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || "");
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Erro /inbox/enviar-disc:', e.message);
+    return res.json({ ok: false, erro: e.message });
+  }
+});
+
 // ─── DISC ASSESSMENT ───
 app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc.html")));
 
@@ -1184,6 +1203,19 @@ app.post("/disc/submit", async (req, res) => {
     }
 
     await salvarDiscNoDrive(telefone, nome, resultado).catch(e => console.error('Erro DISC Drive:', e.message));
+
+    // Notificar candidato que o DISC foi recebido
+    if (telefone) {
+      const nomeFirst = (nome || 'Candidato').split(' ')[0];
+      const perfisDesc = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Criterioso' };
+      const descPrimario = perfisDesc[resultado.primario] || resultado.primario || '';
+      const msgConfirm = `✅ ${nomeFirst}, recebemos seu questionário DISC!\n\nSeu perfil predominante é *${resultado.primario}${descPrimario ? ' — ' + descPrimario : ''}*. Nossa equipe irá considerar essas informações na avaliação do seu perfil. 💙`;
+      enviarMensagem(telefone, msgConfirm).catch(e => console.error('Erro ao notificar DISC:', e.message));
+      // Salvar no Sheets
+      if (sessoes[telefone]) {
+        salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, sessoes[telefone].nome || nome || '').catch(()=>{});
+      }
+    }
 
     return res.json({ ok: true });
   } catch (e) {
