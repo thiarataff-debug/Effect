@@ -1542,14 +1542,18 @@ app.get("/inbox/curriculo/:telefone", async (req, res) => {
     }
 
     if (!lista.length) {
+      const driveRootLink = CONFIG.DRIVE_ROOT_FOLDER_ID
+        ? `https://drive.google.com/drive/folders/${CONFIG.DRIVE_ROOT_FOLDER_ID}`
+        : 'https://drive.google.com';
+      const nomeCandidato = sessao?.nome || tel;
       return res.status(404).send(`
-        <html><body style="font-family:sans-serif;padding:32px">
+        <html><body style="font-family:sans-serif;padding:32px;max-width:520px">
         <h3>📄 Currículo não disponível</h3>
-        <p>O arquivo não foi encontrado no servidor. Isso pode acontecer após reinicialização do sistema.</p>
-        <p><strong>Opções:</strong></p>
+        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado. Isso acontece quando o upload para o Drive falhou e o servidor foi reiniciado.</p>
+        <p><strong>O que fazer:</strong></p>
         <ul>
-          <li>Verifique se o currículo foi salvo no Google Drive e acesse diretamente pelo link do Drive.</li>
-          <li>Solicite ao candidato que reenvie o currículo pelo WhatsApp.</li>
+          <li><a href="${driveRootLink}" target="_blank">🔗 Abrir pasta de Currículos no Drive</a> e buscar pelo nome do candidato.</li>
+          <li>Ou solicite reenvio: <a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato</a></li>
         </ul>
         </body></html>`);
     }
@@ -2465,6 +2469,21 @@ app.post("/inbox/reengajamento/disparar", async (req, res) => {
     }
     res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
   } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+app.get("/inbox/curriculo/:telefone/pedir-reenvio", async (req, res) => {
+  try {
+    const tel = limparTelefone(req.params.telefone);
+    const sessao = sessoes[tel] || {};
+    const nome = (sessao.nome || 'Candidato').split(' ')[0];
+    const msg = `Olá, ${nome}! Precisamos do seu currículo atualizado para dar continuidade ao processo seletivo. Por favor, envie seu currículo aqui pelo WhatsApp. 😊`;
+    await enviarMensagem(tel, msg);
+    registrarEntradaSessao(sessao, 'assistant', msg);
+    salvarConversaCompletaSheets(tel, sessao.historico || [], sessao.nome || '').catch(() => {});
+    res.send('<html><body style="font-family:sans-serif;padding:32px"><h3>✅ Solicitação enviada!</h3><p>Mensagem enviada pedindo reenvio do currículo.</p><p><a href="javascript:window.close()">Fechar</a></p></body></html>');
+  } catch (e) {
+    res.status(500).send('Erro ao enviar mensagem: ' + e.message);
+  }
 });
 
 app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
