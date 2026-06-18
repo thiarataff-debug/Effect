@@ -2199,6 +2199,58 @@ function atualizarStatus(val){
   toast(`Status: ${val}`,'success');
 }
 
+// ── DISC Match ──
+function calcDiscMatch(discResult,perfilVaga){
+  if(!discResult||!perfilVaga)return null;
+  const pv=perfilVaga.toUpperCase().replace(/[^DISC]/g,'');
+  const pc=(discResult.primario||'').toUpperCase();
+  const sc=(discResult.secundario||'').toUpperCase();
+  if(!pv||!pc)return null;
+  if(pv.includes(pc))return 'ok';
+  if(sc&&pv.includes(sc))return 'par';
+  return 'no';
+}
+function discMatchBadge(s){
+  const disc=s.discResult;if(!disc)return '';
+  const idVaga=s.ultimaAnalise?.idVaga||'';if(!idVaga)return '';
+  const perfil=discPerfilVagas[idVaga];if(!perfil)return '';
+  const match=calcDiscMatch(disc,perfil);if(!match)return '';
+  const map={ok:{cls:'cc-disc-match-ok',txt:'✅ Match DISC'},par:{cls:'cc-disc-match-par',txt:'⚠️ Parcial'},no:{cls:'cc-disc-match-no',txt:'❌ Sem match'}};
+  const m=map[match];
+  return `<span class="cc ${m.cls}">${m.txt}</span>`;
+}
+function setDiscPerfilVaga(idVaga,perfil){
+  discPerfilVagas[idVaga]=perfil;salvarLocal();renderLista();
+  toast(`💡 DISC da vaga: ${perfil}`,'success');
+}
+function abrirSetDiscVaga(idVaga){
+  const atual=discPerfilVagas[idVaga]||'';
+  const escolha=prompt(`Perfil DISC ideal (ex: D, SI, DC)\nAtual: ${atual||'não definido'}:`);
+  if(escolha===null)return;
+  const v=escolha.trim().toUpperCase();
+  if(!v){delete discPerfilVagas[idVaga];salvarLocal();renderPainelVagas('');toast('Perfil removido','success');return;}
+  setDiscPerfilVaga(idVaga,v);renderPainelVagas('');
+}
+async function enviarDiscDireto(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  const nome=(s?.nome||'Candidato').split(' ')[0];
+  const linkDisc=`${API}/disc/${sessaoAtual}`;
+  const msg=`Olá, ${nome}! Para avançar no processo seletivo, pedimos que responda um breve questionário comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
+  try{
+    const r=await fetch(`${API}/inbox/enviar-disc`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:msg})});
+    const d=await r.json();
+    if(d.ok){
+      const s2=todasSessoes[sessaoAtual];
+      if(s2){
+        if(!s2.historico)s2.historico=[];
+        s2.historico.push({role:'assistant',content:msg,timestamp:new Date().toISOString()});
+        renderMsgs(s2);
+      }
+      toast('📊 DISC enviado!','success');
+    }else{toast('Erro ao enviar DISC','error');}
+  }catch(e){toast('Erro ao enviar DISC','error');console.error(e);}
+}
 // ── Pipeline de Status (botões rápidos) ──
 const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
 const PIPELINE_CORES={'Triado':'#64748b','Reprovado Triagem':'#b91c1c','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
@@ -3846,19 +3898,24 @@ function renderStatusFilterBar(){
   const all=Object.entries(todasSessoes||{});
   const etapas=[
     {st:'Triado',cor:'#64748b'},{st:'Em Vaga',cor:'#3b82f6'},{st:'Reprovado Triagem',cor:'#b91c1c'},
-    {st:'Entrevista Agendada',cor:'#f59e0b'},{st:'Aprovado 1ª Etapa',cor:'#22c55e'},{st:'Reprovado 1ª Etapa',cor:'#ef4444'},
-    {st:'Entrevista Gestor Agendada',cor:'#f97316'},{st:'Em Teste',cor:'#8b5cf6'},{st:'Aprovado Gestor',cor:'#16a34a'},
-    {st:'Reprovado Gestor',cor:'#dc2626'},{st:'Em Admissão',cor:'#0d9488'},{st:'Banco de Talentos',cor:'#6b7280'}
+    {st:'Entrevista Agendada',cor:'#f59e0b'},{st:'Aprovado 1ª Etapa',cor:'#22c55e'},
+    {st:'Reprovado 1ª Etapa',cor:'#ef4444'},{st:'Entrevista Gestor Agendada',cor:'#f97316'},
+    {st:'Em Teste',cor:'#8b5cf6'},{st:'Aprovado Gestor',cor:'#16a34a'},
+    {st:'Reprovado Gestor',cor:'#dc2626'},{st:'Em Admissão',cor:'#0d9488'},
+    {st:'Banco de Talentos',cor:'#6b7280'}
   ];
+  const camila=all.filter(([t,s])=>s.modo==='camila').length;
+  const camilaBtn=camila>0?`<button class="spill" style="background:${filtroModo==='camila'?'#db2777':'#fff'};color:${filtroModo==='camila'?'#fff':'#db2777'};border-color:#db2777" onclick="selecionarStatusFiltro('__camila__')">🩷 Camila <span style="opacity:.65">(${camila})</span></button>`:'';
   bar.innerHTML=etapas.map(({st,cor})=>{
-    const count=all.filter(([t,s])=>(statusMap[t]||'')===st).length;
+    const count=all.filter(([t,s])=>(pipelineMap[t]||'')===st).length;
     if(count===0)return '';
     const ativo=statusFiltro===st;
-    return `<button class="spill" style="background:${ativo?cor:'#fff'};color:${ativo?'#fff':cor};border-color:${cor}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\\'")}')">${st} <span style="opacity:.75">(${count})</span></button>`;
-  }).filter(Boolean).join('');
+    return `<button class="spill" style="background:${ativo?cor:'#fff'};color:${ativo?'#fff':cor};border-color:${cor}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
+  }).filter(Boolean).join('')+camilaBtn;
 }
 function selecionarStatusFiltro(st){
-  statusFiltro = statusFiltro===st ? null : st; // toggle
+  if(st==='__camila__'){filtroModo=filtroModo==='camila'?null:'camila';tab='camila';renderStatusFilterBar();renderLista();return;}
+  statusFiltro=statusFiltro===st?null:st;
   renderStatusFilterBar();
   renderLista();
 }
@@ -3871,7 +3928,7 @@ function atualizarTitulo(){
 
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios','modal-msg-status','modal-msg-entrevista'].forEach(id=>{
+    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios'].forEach(id=>{
       const el=document.getElementById(id);
       if(el && el.classList.contains('show')) el.classList.remove('show');
     });
