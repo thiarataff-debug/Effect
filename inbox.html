@@ -1379,6 +1379,19 @@ function tsParaMs(ts){
       return isNaN(d.getTime())?0:d.getTime();
     }
 
+    // Formato BR: "11/06/2026, 09:02:33" ou "11/06/2026 09:02:33"
+    const br2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[, ]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(br2){
+      const dia=Number(br2[1]),mes=Number(br2[2]),ano=Number(br2[3]);
+      const h=Number(br2[4]||0),mi=Number(br2[5]||0),se=Number(br2[6]||0);
+      // dia/mes ambíguos: se dia>12 é dia; se mes>12 inverte
+      const dF=dia>12?dia:(mes>12?mes:dia);
+      const mF=dia>12?mes:(mes>12?dia:mes);
+      const pad=n=>String(n).padStart(2,'0');
+      const d=new Date(`${ano}-${pad(mF)}-${pad(dF)}T${pad(h)}:${pad(mi)}:${pad(se)}-03:00`);
+      return isNaN(d.getTime())?0:d.getTime();
+    }
+
     // Data pura: 2026-06-11
     const ymd=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if(ymd){
