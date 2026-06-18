@@ -1256,7 +1256,7 @@ async function loadData(){
       const src=raw?.sessoes||raw;
       sessoesData=Array.isArray(src)?src:Object.values(src||{});
     }
-    // linkarCandidatos();
+    linkarCandidatos();
     atualizarBadges();
     // DEBUG: mostra no console o que chegou
     console.log('[DEBUG] vagasData:', vagasData.length, vagasData.map(v=>v.titulo));
