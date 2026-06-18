@@ -1170,11 +1170,69 @@ function normalizeCandidato(c){
     cor:corPorNome(c.nome||c.Nome||''), _raw:c
   };
 }
-function linkarCandidatos(){
-  vagasData.forEach(v => {
-    if(!Array.isArray(v.candidatos)) v.candidatos = [];
-  });
+function getIdVaga(obj){
+  const r = obj?._raw || obj || {};
+  return String(
+    obj?.idVaga || obj?.vagaId || obj?.IDVaga || obj?.['ID Vaga'] ||
+    r?.idVaga || r?.vagaId || r?.IDVaga || r?.['ID Vaga'] ||
+    r?.['Id Vaga'] || r?.codigoVaga || r?.['Código Vaga'] || ''
+  ).trim();
 }
+
+function linkarCandidatos(){
+  vagasData.forEach(v => v.candidatos = []);
+
+  for(const c of candidatosData){
+    const idCand = getIdVaga(c);
+    const nomeVaga = String(c.vaga || c._raw?.['Vaga de Interesse'] || '').trim();
+
+    const vaga = vagasData.find(v => {
+      const idV = getIdVaga(v);
+      return (
+        idCand && idV && normT(idCand) === normT(idV)
+      ) || (
+        nomeVaga &&
+        (
+          normT(v.titulo) === normT(nomeVaga) ||
+          normT(v.titulo).includes(normT(nomeVaga)) ||
+          normT(nomeVaga).includes(normT(v.titulo))
+        )
+      );
+    });
+
+    if(vaga && !vaga.candidatos.some(x => x.telefone === c.telefone || x.nome === c.nome)){
+      vaga.candidatos.push(c);
+    }
+  }
+
+  for(const s of sessoesData){
+    const nome = s.nome || s.candidato || s.ultimaAnalise?.nome || '';
+    if(!nome) continue;
+
+    const idCand = getIdVaga(s.ultimaAnalise) || getIdVaga(s);
+    const nomeVaga = s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || s.ultimaAnalise?.cargo || s.cargo || s.vaga || '';
+
+    const vaga = vagasData.find(v => {
+      const idV = getIdVaga(v);
+      return (
+        idCand && idV && normT(idCand) === normT(idV)
+      ) || (
+        nomeVaga &&
+        (
+          normT(v.titulo) === normT(nomeVaga) ||
+          normT(v.titulo).includes(normT(nomeVaga)) ||
+          normT(nomeVaga).includes(normT(v.titulo))
+        )
+      );
+    });
+
+    if(vaga && !vaga.candidatos.some(x => x.telefone === s.telefone || x.nome === nome)){
+      const etapa = s.ultimaAnalise?.pipeline || s.pipeline || s.ultimaAnalise?.etapa || s.statusProcesso || s.etapa || 'Triagem';
+      vaga.candidatos.push({nome, etapa, score:0, obs:'', telefone:s.telefone||'', cor:corPorNome(nome)});
+    }
+  }
+}
+  
 // ===== LOAD DATA =====
 async function loadData(){
   showLoadingOverlay(true);
