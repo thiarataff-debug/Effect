@@ -1183,7 +1183,7 @@ function linkarCandidatos(){
   vagasData.forEach(v => v.candidatos = []);
 
   for(const c of candidatosData){
-    const idCand = getIdVaga(c);
+    const idCand = getIdVaga(c) || c._raw?.['ID Vaga'] || '';
     const nomeVaga = String(c.vaga || c._raw?.['Vaga de Interesse'] || '').trim();
 
     const vaga = vagasData.find(v => {
