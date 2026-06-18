@@ -509,11 +509,46 @@ async function obterOuCriarPastaCargo(drive, cargo) {
 }
 
 async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType = 'application/octet-stream') {
-  // Usa Apps Script rodando como a conta da Thiara — sem problema de quota de conta de serviço
+  const nomeFinal = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
+
+  // ── MÉTODO 1: Service Account direto (mesmo mecanismo dos backups) ──────────
+  try {
+    const drive = getDriveClient();
+    if (drive) {
+      const pastaId = await obterOuCriarPastaCargo(drive, cargo || "Currículos Recebidos");
+      const { Readable } = require("stream");
+      const file = await drive.files.create({
+        requestBody: {
+          name: nomeFinal,
+          parents: [pastaId],
+          mimeType: mimeType || "application/octet-stream"
+        },
+        media: {
+          mimeType: mimeType || "application/octet-stream",
+          body: Readable.from(buffer)
+        },
+        fields: "id, webViewLink",
+        supportsAllDrives: true
+      });
+      if (file.data?.id) {
+        // Torna o arquivo acessível para qualquer pessoa com o link
+        await drive.permissions.create({
+          fileId: file.data.id,
+          requestBody: { role: "reader", type: "anyone" },
+          supportsAllDrives: true
+        }).catch(e => console.warn("uploadCurriculoDrive: permissão pública não aplicada:", e.message));
+        const link = file.data.webViewLink || `https://drive.google.com/file/d/${file.data.id}/view`;
+        console.log(`✅ CV NO DRIVE via Service Account: ${telefone} | ${link}`);
+        return { link, fileId: file.data.id, pasta: cargo };
+      }
+    }
+  } catch (e) {
+    console.error(`uploadCurriculoDrive Service Account falhou: ${e.message} — tentando Apps Script...`);
+  }
+
+  // ── MÉTODO 2: Apps Script (fallback) ─────────────────────────────────────────
   const scriptUrl = CONFIG.DRIVE_SCRIPT_URL;
   if (!scriptUrl) { console.error("DRIVE_SCRIPT_URL não configurado"); return null; }
-
-  const nomeFinal = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
   const base64 = buffer.toString("base64");
 
   for (let tent = 1; tent <= 3; tent++) {
@@ -536,7 +571,8 @@ async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType 
       if (tent < 3) await new Promise(res => setTimeout(res, 2000 * tent));
     }
   }
-  console.error(`⚠️ CV NÃO SALVO NO DRIVE após 3 tentativas via Script — ${telefone} | ${filename}`);
+
+  console.error(`⚠️ CV NÃO SALVO NO DRIVE após todas as tentativas — ${telefone} | ${filename}`);
   return null;
 }
 
@@ -2325,38 +2361,4 @@ async function coletarTelefonesReengajamento() {
   const INATIVO_MS = 3 * 24 * 60 * 60 * 1000;
   return Object.entries(sessoes)
     .filter(([tel, s]) => s.cvSalvo && (agora - (s.ultimaMensagem || 0)) > INATIVO_MS)
-    .map(([tel]) => tel);
-}
-
-app.get("/inbox/reengajamento/status", async (req, res) => {
-  try {
-    const telefones = await coletarTelefonesReengajamento();
-    res.json({ total: telefones.length, telefones });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  try {
-    const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
-    const telefones = forceTelefones || await coletarTelefonesReengajamento();
-    const lista = limite ? telefones.slice(0, Number(limite)) : telefones;
-    const resultados = [];
-    for (const tel of lista) {
-      const r = await enviarTemplate(tel, templateName, languageCode);
-      resultados.push({ telefone: tel, ...r });
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
-  try {
-    const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
-    if (!telefone) return res.status(400).json({ erro: "telefone obrigatório" });
-    const r = await enviarTemplate(telefone, templateName, languageCode);
-    res.json(r);
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+    .map(([tel])
