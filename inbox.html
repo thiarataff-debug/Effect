@@ -365,8 +365,11 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .rbtn-reativar:hover{opacity:.88!important}
 
 /* Scroll */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+.conv-list,.messages,.rp-body,.ev-body,#pv-lista{scrollbar-width:auto;scrollbar-color:#1e293b transparent}
+.conv-list::-webkit-scrollbar,.messages::-webkit-scrollbar,.rp-body::-webkit-scrollbar,.ev-body::-webkit-scrollbar,#pv-lista::-webkit-scrollbar{width:12px!important}
+.conv-list::-webkit-scrollbar-track,.messages::-webkit-scrollbar-track,.rp-body::-webkit-scrollbar-track,.ev-body::-webkit-scrollbar-track,#pv-lista::-webkit-scrollbar-track{background:transparent!important}
+.conv-list::-webkit-scrollbar-thumb,.messages::-webkit-scrollbar-thumb,.rp-body::-webkit-scrollbar-thumb,.ev-body::-webkit-scrollbar-thumb,#pv-lista::-webkit-scrollbar-thumb{background:#1e293b!important;border-radius:6px!important;min-height:40px}
+.conv-list::-webkit-scrollbar-thumb:hover,.messages::-webkit-scrollbar-thumb:hover,.rp-body::-webkit-scrollbar-thumb:hover,.ev-body::-webkit-scrollbar-thumb:hover,#pv-lista::-webkit-scrollbar-thumb:hover{background:#0f172a!important}
 
 /* Empty */
 .empty{padding:28px;text-align:center;color:var(--muted);font-size:11px}
@@ -1103,6 +1106,7 @@ let notas = {}; // {telefone: [{texto, ts}]}
 let statusMap = {}; // {telefone: string}
 let discPerfilVagas = {}; // {idVaga: perfil DISC ideal}
 let pipelineMap = {}; // {telefone: string} — etapa do pipeline (Triado, Em Vaga, etc.)
+let vagaMap = {}; // {telefone: idVaga} — vaga vinculada ao candidato
 let statusFiltro = null; // status selecionado no filtro "Por Status"
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
@@ -1167,6 +1171,7 @@ function carregarLocalData(){
     statusMap=JSON.parse(localStorage.getItem('effect_status_v1')||'{}');
     pipelineMap=JSON.parse(localStorage.getItem('effect_pipeline_v1')||'{}');
     discPerfilVagas=JSON.parse(localStorage.getItem('effect_disc_vagas_v1')||'{}');
+    vagaMap=JSON.parse(localStorage.getItem('effect_vagamap_v1')||'{}');
     intervencoes=JSON.parse(localStorage.getItem('effect_intervencoes_v1')||'{}');
     marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
     arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
@@ -1180,6 +1185,7 @@ function salvarLocal(){
     localStorage.setItem('effect_status_v1',JSON.stringify(statusMap));
     localStorage.setItem('effect_pipeline_v1',JSON.stringify(pipelineMap));
     localStorage.setItem('effect_disc_vagas_v1',JSON.stringify(discPerfilVagas));
+    localStorage.setItem('effect_vagamap_v1',JSON.stringify(vagaMap));
     localStorage.setItem('effect_intervencoes_v1',JSON.stringify(intervencoes));
     localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
     localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
@@ -2252,6 +2258,7 @@ async function enviarDiscDireto(){
   }catch(e){toast('Erro ao enviar DISC','error');console.error(e);}
 }
 // ── Pipeline de Status (botões rápidos) ──
+let _emVagaMode = false; // flag: "EM VAGA" clicado, aguardando seleção de vaga
 const PIPELINE_STATUSES=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Reprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Reprovado Gestor','Em Admissão','Banco de Talentos'];
 const PIPELINE_CORES={'Triado':'#64748b','Reprovado Triagem':'#b91c1c','Em Vaga':'#3b82f6','Entrevista Agendada':'#f59e0b','Aprovado 1ª Etapa':'#22c55e','Reprovado 1ª Etapa':'#ef4444','Entrevista Gestor Agendada':'#f97316','Em Teste':'#8b5cf6','Aprovado Gestor':'#16a34a','Reprovado Gestor':'#dc2626','Em Admissão':'#0d9488','Banco de Talentos':'#6b7280'};
 function corStatusPipeline(status){return PIPELINE_CORES[status]||'#94a3b8';}
@@ -2272,7 +2279,7 @@ const MENSAGENS_STATUS = {
   'Em Admissão': (nome) =>
     `Olá, ${nome}! 🎉\n\nParabéns, você foi selecionado(a) e está em processo de admissão!\nNossa equipe entrará em contato com as informações necessárias.\nSeja bem-vindo(a)!\n\n💙 — Laura, Equipe Effect`,
   'Banco de Talentos': (nome) =>
-    `Olá, ${nome}! 😊\nAgradecemos seu interesse em fazer parte da nossa equipe.\nNo momento não temos uma vaga compatível com seu perfil, mas mantemos seu currículo em nosso banco de talentos.\nEntraremos em contato assim que surgir uma oportunidade!\n\n💙 — Laura, Equipe Effect`,
+    `Olá, ${nome}! 😊\n\nAgradecemos seu interesse em fazer parte da nossa equipe.\nNo momento não temos uma vaga compatível com seu perfil, mas mantemos seu currículo em nosso banco de talentos.\nEntraremos em contato assim que surgir uma oportunidade!\n\n💙 — Laura, Equipe Effect`,
 };
 
 const TEMPLATES_ENTREVISTA = {
@@ -2286,6 +2293,27 @@ let _statusPendente = null;
 
 async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
+
+  // Em Vaga: abre seleção de vaga primeiro
+  if(status === 'Em Vaga'){
+    _emVagaMode = true;
+    if(!vagasCache){
+      try{
+        const r=await fetch(`${API}/sheets/vagas`);
+        const d=await r.json();
+        vagasCache=(d.vagas||[]).filter(v=>{
+          const st=(v.status||v.Status||'').toLowerCase();
+          return !['encerrada','cancelada','inativa','suspensa','fechada','finalizada'].includes(st);
+        });
+      }catch(e){vagasCache=[];}
+    }
+    const s=todasSessoes[sessaoAtual]||{};
+    const vagaAtual=s.ultimaAnalise?.vagaInteresse||'';
+    document.getElementById('encaminhar-busca').value=vagaAtual;
+    renderListaEncaminhar(vagaAtual);
+    document.getElementById('modal-encaminhar').classList.add('show');
+    return;
+  }
 
   // Entrevistas: abre modal com campos
   if(status === 'Entrevista Agendada' || status === 'Entrevista Gestor Agendada'){
@@ -2596,6 +2624,7 @@ function renderPainelVagas(busca){
   if(!lista.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada para "'+busca+'"</div>';return;}
   div.innerHTML=lista.map((v,i)=>{
     const cargo=v.cargo||v.Cargo||'Sem cargo';
+    const empresa=v.cliente||v['Cliente / Empresa']||v.Cliente||v.empresa||v.Empresa||'';
     const cidade=v.cidade||v.Cidade||v['Cidade/Bairro']||'—';
     const salario=v.salario||v.Salário||v['Salário Base']||'—';
     const beneficios=v.beneficios||v.Benefícios||'';
@@ -2607,6 +2636,7 @@ function renderPainelVagas(busca){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <div>
           <div style="font-weight:700;font-size:13px;color:#1e3a5f">${cargo}</div>
+          ${empresa?`<div style="font-size:11px;color:#4f46e5;font-weight:600">🏢 ${empresa}</div>`:''}
           ${idVaga?`<div style="font-size:10px;color:var(--muted)">ID: ${idVaga}</div>`:''}
         </div>
         <div style="display:flex;gap:4px;align-items:center">
@@ -2623,6 +2653,34 @@ function renderPainelVagas(busca){
       </div>
       ${req?`<div style="margin-top:6px;font-size:10px;color:#b45309;background:#fef3c7;border-radius:5px;padding:3px 7px">⚠️ Requisito: ${req}</div>`:''}
       ${perfil?`<div style="margin-top:5px;font-size:10px;color:var(--muted)">${perfil.slice(0,120)}${perfil.length>120?'...':''}</div>`:''}
+      ${(()=>{
+        // Candidatos vinculados a esta vaga
+        const chave=idVaga||cargo;
+        const cands=Object.entries(todasSessoes||{})
+          .filter(([tel,s])=>{
+            const vm=vagaMap[tel];
+            const vi=s.ultimaAnalise?.idVaga||s.ultimaAnalise?.vagaInteresse;
+            const pm=pipelineMap[tel];
+            return (vm&&(vm===idVaga||vm===cargo))
+              ||(vi&&idVaga&&vi===idVaga)
+              ||(!vm&&vi&&vi===cargo&&pm==='Em Vaga');
+          })
+          .map(([tel,s])=>({tel,nome:s.nome||s.ultimaAnalise?.nome||tel,etapa:pipelineMap[tel]||statusMap[tel]||'Em Vaga'}));
+        const cor=cands.length>0?'#0d9488':'#94a3b8';
+        return `<div style="margin-top:10px;border-top:1px solid #f1f5f9;padding-top:8px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <span style="font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px">CANDIDATOS</span>
+            <span style="background:${cor};color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700">${cands.length}</span>
+          </div>
+          ${cands.length===0
+            ?`<div style="font-size:11px;color:#94a3b8">Nenhum candidato vinculado.</div>`
+            :cands.map(c=>`<div onclick="abrirConversa('${c.tel}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;background:#f8fafc" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'">
+                <span style="font-weight:600;color:#1e3a5f">${c.nome}</span>
+                <span style="font-size:9px;color:#fff;background:${PIPELINE_CORES[c.etapa]||'#64748b'};padding:2px 6px;border-radius:4px">${c.etapa}</span>
+              </div>`).join('')
+          }
+        </div>`;
+      })()}
     </div>`;
   }).join('');
 }
@@ -2719,6 +2777,7 @@ function linhasRequisitos(v){
 }
 function montarTemplateVaga(v){
   const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'—';
+  const empresa=campoVaga(v,['cliente','Cliente / Empresa','Cliente','empresa','Empresa']);
   const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
   const regime=campoVaga(v,['regime','Regime','Tipo de Contratação','Tipo de Contratacao'])||'CLT';
   const horario=campoVaga(v,['horario','Horário','Escala/Horário','Escala/Horario']);
@@ -2729,6 +2788,7 @@ function montarTemplateVaga(v){
   const inicioImediato=/in[ií]cio imediato/i.test(String(obs+' '+campoVaga(v,['perfilResumido','Perfil Resumido'])));
 
   let txt=`🟢 VAGA: ${cargo}\n`;
+  if(empresa)txt+=`🏢 Empresa: ${empresa}\n`;
   if(cidade)txt+=`📍 Local: ${cidade}\n`;
   if(regime)txt+=`💼 Regime de contratação: ${regime}\n`;
 
@@ -2806,17 +2866,25 @@ async function encaminharParaVaga(idx){
   const v=vagasCache[idx];if(!v)return;
   const id=campoVaga(v,['idVaga','ID Vaga','ID']);
   const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'Vaga';
-  const ok=confirm(`Confirmar encaminhamento deste candidato para a vaga:\n\n${cargo}${id?`\n${id}`:''}?`);
+  const modoEmVaga=_emVagaMode;
+  _emVagaMode=false;
+  const acao=modoEmVaga?'Confirmar vínculo (Em Vaga)':'Confirmar encaminhamento';
+  const ok=confirm(`${acao}:\n\n${cargo}${id?`\n${id}`:''}?`);
   if(!ok)return;
   const s=todasSessoes[sessaoAtual]||{};
-  statusMap[sessaoAtual]='Interessado';
+  const novoStatus=modoEmVaga?'Em Vaga':'Interessado';
+  statusMap[sessaoAtual]=novoStatus;
+  if(modoEmVaga){pipelineMap[sessaoAtual]='Em Vaga';}
+  vagaMap[sessaoAtual]=id||cargo; // vincula candidato à vaga
   if(!s.ultimaAnalise)s.ultimaAnalise={};
   s.ultimaAnalise.vagaInteresse=cargo;
   s.ultimaAnalise.idVaga=id;
-  registrarIntervencao('Thiara','Encaminhado para vaga',`${cargo}${id?` — ${id}`:''}`);
+  const acao2=modoEmVaga?'Vinculado à vaga (Em Vaga)':'Encaminhado para vaga';
+  registrarIntervencao('Thiara',acao2,`${cargo}${id?` — ${id}`:''}`);
   salvarLocal();renderLista();renderPainelDireito();fecharModal('modal-encaminhar');
+  if(modoEmVaga){atualizarPipelineAtivo('Em Vaga');}
   try{
-    const r=await fetch(`${API}/inbox/encaminhar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,idVaga:id,vagaInteresse:cargo,vaga:v})});
+    const r=await fetch(`${API}/inbox/encaminhar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,idVaga:id,vagaInteresse:cargo,vaga:v,status:novoStatus})});
     const d=await r.json();
     if(d.ok)toast('🎯 Candidato vinculado à vaga','success');
     else toast('Vinculado localmente, mas não salvou no Sheets: '+(d.erro||''),'error');
@@ -3061,7 +3129,10 @@ function enviarCorrecao(){
 }
 
 // ─── MODAL ───
-function fecharModal(id){document.getElementById(id).classList.remove('show');}
+function fecharModal(id){
+  document.getElementById(id).classList.remove('show');
+  if(id==='modal-encaminhar')_emVagaMode=false; // cancela modo Em Vaga se fechou sem selecionar
+}
 function fecharModalOverlay(e,id){if(e.target===document.getElementById(id))fecharModal(id);}
 
 // ─── PAUSAR/REATIVAR TODAS (emergência) ───
@@ -3871,7 +3942,7 @@ function setTabMais(t,id){
 }
 // Sincroniza contadores do menu com os spans ocultos
 function syncMaisContadores(){
-  const map={novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas',camila:'cntm-camila'};
+  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas'};
   Object.entries(map).forEach(([k,id])=>{
     const src=document.getElementById('cnt-'+k);
     const dst=document.getElementById(id);
@@ -3896,26 +3967,15 @@ function setTab(el,t){
 function renderStatusFilterBar(){
   const bar=document.getElementById('status-filter-bar');
   const all=Object.entries(todasSessoes||{});
-  const etapas=[
-    {st:'Triado',cor:'#64748b'},{st:'Em Vaga',cor:'#3b82f6'},{st:'Reprovado Triagem',cor:'#b91c1c'},
-    {st:'Entrevista Agendada',cor:'#f59e0b'},{st:'Aprovado 1ª Etapa',cor:'#22c55e'},
-    {st:'Reprovado 1ª Etapa',cor:'#ef4444'},{st:'Entrevista Gestor Agendada',cor:'#f97316'},
-    {st:'Em Teste',cor:'#8b5cf6'},{st:'Aprovado Gestor',cor:'#16a34a'},
-    {st:'Reprovado Gestor',cor:'#dc2626'},{st:'Em Admissão',cor:'#0d9488'},
-    {st:'Banco de Talentos',cor:'#6b7280'}
-  ];
-  const camila=all.filter(([t,s])=>s.modo==='camila').length;
-  const camilaBtn=camila>0?`<button class="spill" style="background:${filtroModo==='camila'?'#db2777':'#fff'};color:${filtroModo==='camila'?'#fff':'#db2777'};border-color:#db2777" onclick="selecionarStatusFiltro('__camila__')">🩷 Camila <span style="opacity:.65">(${camila})</span></button>`:'';
-  bar.innerHTML=etapas.map(({st,cor})=>{
-    const count=all.filter(([t,s])=>(pipelineMap[t]||'')===st).length;
+  bar.innerHTML=['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st=>{
+    const count=all.filter(([t,s])=>(statusMap[t]||'Novo')===st).length;
     if(count===0)return '';
     const ativo=statusFiltro===st;
-    return `<button class="spill" style="background:${ativo?cor:'#fff'};color:${ativo?'#fff':cor};border-color:${cor}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
-  }).filter(Boolean).join('')+camilaBtn;
+    return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
+  }).filter(Boolean).join('');
 }
 function selecionarStatusFiltro(st){
-  if(st==='__camila__'){filtroModo=filtroModo==='camila'?null:'camila';tab='camila';renderStatusFilterBar();renderLista();return;}
-  statusFiltro=statusFiltro===st?null:st;
+  statusFiltro = statusFiltro===st ? null : st;
   renderStatusFilterBar();
   renderLista();
 }
