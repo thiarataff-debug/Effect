@@ -2031,14 +2031,14 @@ function renderPainelPerfil(s){
     <div style="font-size:11px;line-height:1.6;color:var(--text)">${formatarListaHtml(anal.pontosAtencao)}</div>
   </div>
   `:''}
-  $(()=>{
+ ${(()=>{
   // Link rápido do CV mais recente no topo do perfil
   const linkRapido = curriculos.length ? (curriculos[curriculos.length-1].driveLink || '') : '';
   if(!linkRapido) return '';
-  return `\<div class="rp-section" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;">
+  return `<div class="rp-section" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;">
     <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px">📄 CURRÍCULO NO DRIVE</div>
-    <a href="\${linkRapido}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all;font-weight:600">🔗</a>
-  </div>\`;
+    <a href="${linkRapido}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all;font-weight:600">🔗 Abrir currículo</a>
+  </div>`;
 })()}
   \${curriculos.length?\`
   <div class="rp-section">
