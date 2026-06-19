@@ -1988,6 +1988,8 @@ function renderPainelPerfil(s){
   const primeiraMsgTs=obterTimestampMsg(hist[0])||'';
   const tel=sessaoAtual;
   const curriculos=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos:(s.curriculo?[s.curriculo]:[]);
+  // Fallback: detecta CVs pelo histórico quando s.curriculos está vazio
+  const cvMsgsNoHist = !curriculos.length && hist.some(m=>String(m.content||m.conteudo||'').includes('Documento/Currículo recebido'));
   // Timeline da conversa
   const timeline=gerarTimeline(s);
   div.innerHTML=`
@@ -2045,6 +2047,17 @@ function renderPainelPerfil(s){
       <a href="${linkRapido}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all;font-weight:600">🔗 Abrir currículo</a>
 </div>`;
   })()}
+  ${cvMsgsNoHist?`
+  <div class="rp-section" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+    <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px">📄 CURRÍCULO RECEBIDO</div>
+    <div style="font-size:10px;color:#166534;margin-bottom:6px">Arquivo recebido via WhatsApp</div>
+    <div style="display:flex;gap:6px">
+      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0&inline=1" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">👁️ Visualizar</a>
+      <span style="color:#ccc">|</span>
+      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">⬇️ Baixar</a>
+    </div>
+  </div>
+  `:''}
   ${curriculos.length?`
   <div class="rp-section">
     <div class="rp-section-title">📄 Currículos (${curriculos.length})</div>
@@ -2361,7 +2374,7 @@ async function definirStatusPipeline(status){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
 
   // Toggle: clicar no status já ativo desvincula
-  if(status !== 'Em Vaga' && pipelineMap[sessaoAtual] === status){
+  if(pipelineMap[sessaoAtual] === status){
     delete pipelineMap[sessaoAtual];
     delete statusMap[sessaoAtual];
     salvarLocal();
