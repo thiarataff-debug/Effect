@@ -2581,4 +2581,54 @@ app.post("/supervisor/resumo", async (req, res) => { await supervisor.dispararRe
 
 supervisor.iniciarSupervisor();
 
+// ── BANCO DE TALENTOS ─────────────────────────────────────────────────────
+// GET  /sheets/banco-talentos          → lista todos os talentos
+// POST /sheets/banco-talentos          → salva (cria ou edita) um talento
+// DELETE /sheets/banco-talentos/:id    → remove um talento pelo id
+
+app.get("/sheets/banco-talentos", async (req, res) => {
+  try {
+    if (!CONFIG.VAGAS_URL) return res.json({ talentos: [] });
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const r = await axios.get(`${urlBase}?acao=bancoTalentos`, { timeout: 15000 });
+    res.json(r.data);
+  } catch (e) {
+    console.error("[banco-talentos GET]", e.message);
+    res.json({ talentos: [], erro: e.message });
+  }
+});
+
+app.post("/sheets/banco-talentos", async (req, res) => {
+  try {
+    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const payload = { acao: "salvarTalento", talento: req.body };
+    const r = await axios.post(urlBase, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 15000
+    });
+    res.json(r.data);
+  } catch (e) {
+    console.error("[banco-talentos POST]", e.message);
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+app.delete("/sheets/banco-talentos/:id", async (req, res) => {
+  try {
+    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const payload = { acao: "deletarTalento", id: req.params.id };
+    const r = await axios.post(urlBase, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 15000
+    });
+    res.json(r.data);
+  } catch (e) {
+    console.error("[banco-talentos DELETE]", e.message);
+    res.json({ ok: false, erro: e.message });
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────
+
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
