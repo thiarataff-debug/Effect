@@ -15,6 +15,8 @@ const pdfParse = require("pdf-parse");
 const path = require("path");
 const fs = require("fs");
 const { google } = require("googleapis");
+const calendar   = require("./calendar");
+const supervisor = require("./supervisor");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -2455,7 +2457,11 @@ async function enviarMensagem(toOriginal, body) {
   try {
     const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
     await axios.post(url, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-  } catch (e) { console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message)); }
+    supervisor.contarMensagemEnviada();
+  } catch (e) {
+    console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message));
+    supervisor.registrarErroMeta(e.response?.data?.error?.message || e.message, to);
+  }
 }
 
 async function enviarTemplate(telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR") {
@@ -2525,5 +2531,54 @@ app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
     res.json(r);
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
+
+// ── AGENDA: salvar entrevista no Google Calendar ─────────────────────────
+app.post("/agenda/salvar", async (req, res) => {
+  try {
+    const { candidato, cargo, empresa, data, hora, tipo, local, telefone } = req.body || {};
+    if (!candidato || !data || !hora) return res.json({ ok: false, erro: "Campos obrigatórios: candidato, data, hora" });
+    const result = await calendar.criarEventoEntrevista({ candidato, cargo, empresa, data, hora, tipo, local, telefone });
+    res.json(result);
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── AGENDA: horários livres ───────────────────────────────────────────────
+app.get("/agenda/disponibilidade", async (req, res) => {
+  try {
+    const { data } = req.query;
+    if (!data) return res.json({ ok: false, erro: "Parâmetro 'data' obrigatório (YYYY-MM-DD)" });
+    const result = await calendar.buscarHorariosLivres(data);
+    res.json(result);
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── FINANCEIRO ────────────────────────────────────────────────────────────
+app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
+
+app.post("/financeiro/lancamento", async (req, res) => {
+  try {
+    const dados = req.body || {};
+    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
+    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
+    const resp = await axios.post(urlBase, { acao: "salvarFinanceiro", ...dados }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+    res.json({ ok: true, data: resp.data });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+app.get("/financeiro/dados", async (req, res) => {
+  try {
+    const { mes, ano } = req.query;
+    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
+    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
+    const resp = await axios.get(`${urlBase}?acao=listarFinanceiro&mes=${mes||""}&ano=${ano||""}`, { timeout: 15000 });
+    res.json({ ok: true, data: resp.data });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── SUPERVISOR ────────────────────────────────────────────────────────────
+app.get("/supervisor/status", (req, res) => res.json(supervisor.obterStatusSupervisor()));
+app.post("/supervisor/resumo", async (req, res) => { await supervisor.dispararResumoSemanal(); res.json({ ok: true }); });
+
+supervisor.iniciarSupervisor();
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
