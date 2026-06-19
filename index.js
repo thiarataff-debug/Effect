@@ -865,7 +865,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
       pasta: cv.pasta || "",
       analiseStatus: cv.analiseStatus || "recebido"
     }));
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, discResult: sessaoAtualSheets.discResult || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
@@ -917,7 +917,8 @@ async function carregarSessoesDoSheets() {
         curriculos: curriculosMesclados,
         curriculo: curriculosMesclados[0] || existente.curriculo || null,
         ultimaAnalise: existente.ultimaAnalise || sessao.ultimaAnalise || null,
-        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo"
+        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo",
+        discResult: existente.discResult || sessao.discResult || null
       };
 
       if (pausado) atendimentosManuais.add(tel);
@@ -2629,6 +2630,4 @@ app.delete("/sheets/banco-talentos/:id", async (req, res) => {
     res.json({ ok: false, erro: e.message });
   }
 });
-// ─────────────────────────────────────────────────────────────────────────
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+// ──────────────────────────────────────────────────────────
