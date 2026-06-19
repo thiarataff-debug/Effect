@@ -2509,6 +2509,33 @@ async function confirmarMsgEntrevista(){
   localStorage.setItem('effect-agenda', JSON.stringify(agendaItems));
   toast('📅 Agendado na Agenda','success');
 
+  // ── NOVO: Sincronizar com Google Calendar ──────────────────────────────
+  try {
+    const respCal = await fetch('/agenda/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        candidato: agendaItem.cand,
+        cargo: agendaItem.vagaTitulo,
+        empresa: empresa,
+        data: agendaItem.data,
+        hora: agendaItem.hora,
+        tipo: agendaItem.tipoEntrevista,
+        local: agendaItem.local,
+        telefone: agendaItem.telefone
+      })
+    });
+    const resultCal = await respCal.json();
+    if(resultCal.ok){
+      toast('📅 Evento criado no Google Calendar ✅','success');
+    } else {
+      console.warn('Google Calendar:', resultCal.erro);
+    }
+  } catch(e){
+    console.warn('Erro ao sincronizar Google Calendar:', e.message);
+  }
+  // ── FIM NOVO ───────────────────────────────────────────────────────────
+
   _statusPendente = null;
 }
 
