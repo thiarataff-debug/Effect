@@ -1711,7 +1711,6 @@ all.filter(([t,s])=>
   if(totalNL>0){bNovas.style.display='inline-block';bNovas.textContent=totalNL;}else bNovas.style.display='none';
   document.getElementById('badge-total').textContent=all.length;
   if(!entries.length){lista.innerHTML='<div class="empty">Nenhuma conversa</div>';return;}
-const scrollLista = lista.scrollTop;
   lista.innerHTML=entries.map(([tel,s])=>{
     const hist=ordenarHistorico(s.historico||[]);
     const ultima=hist[hist.length-1];
@@ -2819,7 +2818,6 @@ function renderPainelVagas(busca){
       })()}
     </div>`;
   }).join('');
-  lista.scrollTop = scrollLista;
 }
 
 function usarVagaRef(idx){
