@@ -279,10 +279,77 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
 .reg-del{background:none;border:none;cursor:pointer;color:var(--gray);font-size:13px;padding:2px 4px}
 .reg-del:hover{color:var(--salmon)}
 
-/* NR01 */
-.nr-header{background:var(--white);border-radius:12px;padding:22px;border:1px solid rgba(0,0,0,0.06);margin-bottom:18px}
-.nr-header h3{font-size:15px;font-weight:700;margin-bottom:5px}
-.nr-header p{font-size:12px;color:var(--gray)}
+/* ── BANCO DE TALENTOS ── */
+.bt-kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.bt-kpi{background:var(--white);border-radius:12px;padding:14px 16px;border:1px solid rgba(0,0,0,0.06);border-left:4px solid var(--green);display:flex;flex-direction:column;gap:4px}
+.bt-kpi.azul{border-left-color:var(--blue)}.bt-kpi.salmon{border-left-color:var(--salmon)}.bt-kpi.sage{border-left-color:var(--sage)}.bt-kpi.gray{border-left-color:var(--gray)}
+.bt-kpi-lbl{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.7px}
+.bt-kpi-val{font-size:26px;font-weight:700;line-height:1}
+.bt-kpi-sub{font-size:10px;color:var(--gray)}
+.bt-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.bt-search{flex:1;min-width:200px;padding:8px 13px;border:1.5px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);outline:none}
+.bt-search:focus{border-color:var(--blue)}
+.bt-sel{padding:8px 13px;border:1.5px solid rgba(0,0,0,0.1);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);cursor:pointer;outline:none}
+.bt-toggle{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px}
+.bt-tog-btn{padding:5px 11px;border-radius:6px;border:none;font-size:11px;font-weight:600;font-family:'Montserrat',sans-serif;cursor:pointer;background:transparent;color:var(--gray);transition:.2s}
+.bt-tog-btn.active{background:var(--white);color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,0.12)}
+.bt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.bt-card{background:var(--white);border-radius:12px;padding:16px;border:1px solid rgba(0,0,0,0.07);cursor:pointer;transition:.2s;position:relative}
+.bt-card:hover{box-shadow:0 4px 18px rgba(0,0,0,0.1);transform:translateY(-1px)}
+.bt-card-top{display:flex;align-items:center;gap:11px;margin-bottom:11px}
+.bt-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.bt-name{font-size:13px;font-weight:700;line-height:1.3}
+.bt-cargo{font-size:11px;color:var(--gray);margin-top:1px}
+.bt-status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:9px;font-weight:700;margin-left:auto;flex-shrink:0}
+.bt-pill-disp{background:rgba(142,209,178,0.2);color:#2d7a5a}
+.bt-pill-proc{background:rgba(31,165,240,0.15);color:#0d6fa8}
+.bt-pill-cont{background:rgba(123,142,96,0.15);color:#4a5e23}
+.bt-pill-arq{background:rgba(161,161,170,0.15);color:#6b6b7a}
+.bt-pill-triagem{background:rgba(244,175,161,0.2);color:#a0442a}
+.bt-meta{display:flex;gap:10px;font-size:10px;color:var(--gray);margin-bottom:9px;flex-wrap:wrap}
+.bt-meta span{display:flex;align-items:center;gap:3px}
+.bt-skills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+.bt-skill-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;background:var(--bg);color:var(--dark)}
+.bt-footer{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--gray)}
+.bt-actions{display:flex;gap:5px}
+.bt-btn-sm{padding:4px 9px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;border:none;transition:.2s}
+.bt-btn-edit{background:var(--bg);color:var(--dark)}.bt-btn-edit:hover{background:var(--dark);color:#fff}
+.bt-btn-wa{background:#25D366;color:#fff}
+.bt-btn-del{background:rgba(244,175,161,0.2);color:#c0392b}.bt-btn-del:hover{background:var(--salmon);color:#fff}
+/* Banco Talentos Tabela */
+.bt-tbl-wrap{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,0.06)}
+.bt-tbl{width:100%;border-collapse:collapse}
+.bt-tbl th{background:var(--dark);color:var(--gray);font-size:10px;font-weight:600;padding:11px 13px;text-align:left}
+.bt-tbl td{padding:10px 13px;font-size:11px;border-bottom:1px solid var(--bg)}
+.bt-tbl tr:hover td{background:var(--bg)}
+/* Kanban Talentos */
+.bt-kb-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px;min-height:420px}
+.bt-kb-col{min-width:220px;width:220px;display:flex;flex-direction:column;flex-shrink:0}
+.bt-kb-hdr{padding:9px 12px;border-radius:9px 9px 0 0;font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.bt-kb-cnt{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(0,0,0,0.15)}
+.bt-kb-body{background:rgba(0,0,0,0.025);border-radius:0 0 9px 9px;padding:9px;flex:1;display:flex;flex-direction:column;gap:8px;border:1px solid rgba(0,0,0,0.05);border-top:none;min-height:200px}
+.bt-kb-card{background:var(--white);border-radius:9px;padding:11px;cursor:pointer;transition:.2s;border:1px solid rgba(0,0,0,0.05);border-left:3px solid var(--green)}
+.bt-kb-card:hover{box-shadow:0 3px 12px rgba(0,0,0,0.1)}
+.bt-kc-name{font-size:11px;font-weight:700;margin-bottom:2px}
+.bt-kc-cargo{font-size:10px;color:var(--gray);margin-bottom:6px}
+.bt-kc-footer{display:flex;justify-content:space-between;font-size:9px;color:var(--gray)}
+/* Modal Banco Talentos */
+.bt-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:none;align-items:center;justify-content:center;z-index:800}
+.bt-modal-overlay.show{display:flex}
+.bt-modal{background:#fff;border-radius:16px;width:560px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.28);overflow:hidden}
+.bt-modal-head{padding:20px 24px 14px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.bt-modal-head h3{font-size:15px;font-weight:700}
+.bt-modal-body{padding:20px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:13px}
+.bt-modal-foot{padding:12px 24px 18px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(0,0,0,0.07);flex-shrink:0}
+.bt-fg{display:flex;flex-direction:column;gap:4px}
+.bt-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bt-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.bt-lbl{font-size:10px;font-weight:600;color:var(--dark)}
+.bt-inp{padding:8px 11px;border:1.5px solid rgba(0,0,0,0.11);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;width:100%}
+.bt-inp:focus{border-color:var(--blue)}
+.bt-section-lbl{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;border-bottom:1px solid var(--bg);margin-top:4px}
+.bt-empty{text-align:center;color:var(--gray);font-size:12px;padding:40px 20px}
+.bt-empty i{font-size:32px;margin-bottom:10px;display:block;opacity:.35}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center}
@@ -447,10 +514,11 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
     <div class="nav-item" onclick="gotoView('candidatos',this)"><i class="fas fa-users"></i> Candidatos <span class="badge">41</span></div>
     <div class="nav-item" onclick="gotoView('vagas',this)"><i class="fas fa-briefcase"></i> Vagas <span class="badge">58</span></div>
     <div class="nav-item" onclick="gotoView('kanban',this)"><i class="fas fa-columns"></i> Kanban Pipeline</div>
+    <div class="nav-item" onclick="gotoView('banco-talentos',this)"><i class="fas fa-star"></i> Banco de Talentos <span class="badge" id="bt-badge"></span></div>
     <div class="nav-section">Ferramentas</div>
     <div class="nav-item" onclick="window.open('https://effect-production.up.railway.app/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
     <div class="nav-item" onclick="gotoView('relatorios',this)"><i class="fas fa-chart-bar"></i> Relatórios</div>
-    <div class="nav-item" onclick="gotoView('nr01',this)"><i class="fas fa-shield-alt"></i> NR-01</div>
+
     <div class="nav-item" onclick="gotoView('financeiro',this)"><i class="fas fa-coins"></i> Financeiro</div>
     <div class="nav-item" onclick="gotoView('disc',this)"><i class="fas fa-brain"></i> DISC &amp; Match</div>
   </nav>
@@ -581,6 +649,68 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
           </tr></thead>
           <tbody id="cands-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- BANCO DE TALENTOS -->
+    <div id="banco-talentos-view" class="view">
+      <!-- KPIs -->
+      <div class="bt-kpi-grid">
+        <div class="bt-kpi"><div class="bt-kpi-lbl">Total</div><div class="bt-kpi-val" id="bt-kpi-total">0</div><div class="bt-kpi-sub">talentos cadastrados</div></div>
+        <div class="bt-kpi"><div class="bt-kpi-lbl">Disponíveis</div><div class="bt-kpi-val" id="bt-kpi-disp">0</div><div class="bt-kpi-sub">prontos para indicar</div></div>
+        <div class="bt-kpi azul"><div class="bt-kpi-lbl">Em Processo</div><div class="bt-kpi-val" id="bt-kpi-proc">0</div><div class="bt-kpi-sub">em seleção ativa</div></div>
+        <div class="bt-kpi sage"><div class="bt-kpi-lbl">Contratados</div><div class="bt-kpi-val" id="bt-kpi-cont">0</div><div class="bt-kpi-sub">colocados pela Effect</div></div>
+        <div class="bt-kpi gray"><div class="bt-kpi-lbl">Arquivados</div><div class="bt-kpi-val" id="bt-kpi-arq">0</div><div class="bt-kpi-sub">fora do momento</div></div>
+      </div>
+      <!-- Toolbar -->
+      <div class="bt-toolbar">
+        <input class="bt-search" id="bt-search" placeholder="🔍 Buscar por nome, cargo, cidade..." oninput="btRender()">
+        <select class="bt-sel" id="bt-filtro-status" onchange="btRender()">
+          <option value="">Todos os status</option>
+          <option value="Disponível">Disponível</option>
+          <option value="Triagem">Triagem</option>
+          <option value="Em Processo">Em Processo</option>
+          <option value="Contratado">Contratado</option>
+          <option value="Arquivado">Arquivado</option>
+        </select>
+        <select class="bt-sel" id="bt-filtro-area" onchange="btRender()">
+          <option value="">Todas as áreas</option>
+          <option>Administrativo</option><option>Financeiro</option><option>Comercial / Vendas</option>
+          <option>RH / Pessoas</option><option>Operacional</option><option>Atendimento</option>
+          <option>Gastronomia / F&B</option><option>Logística</option><option>TI / Tecnologia</option>
+          <option>Marketing</option><option>Jurídico</option><option>Outro</option>
+        </select>
+        <select class="bt-sel" id="bt-filtro-disp" onchange="btRender()">
+          <option value="">Qualquer disponibilidade</option>
+          <option>Imediata</option><option>15 dias</option><option>30 dias</option><option>Somente oportunidade certa</option>
+        </select>
+        <div class="bt-toggle">
+          <button class="bt-tog-btn active" id="bt-view-cards" onclick="btSetView('cards',this)"><i class="fas fa-th-large"></i></button>
+          <button class="bt-tog-btn" id="bt-view-table" onclick="btSetView('table',this)"><i class="fas fa-list"></i></button>
+          <button class="bt-tog-btn" id="bt-view-kanban" onclick="btSetView('kanban',this)"><i class="fas fa-columns"></i></button>
+        </div>
+        <button class="btn btn-outline" onclick="btExportarCSV()" style="white-space:nowrap"><i class="fas fa-download"></i> Exportar CSV</button>
+        <button class="btn btn-primary" onclick="btAbrirModal()" style="white-space:nowrap"><i class="fas fa-user-plus"></i> Cadastrar Talento</button>
+      </div>
+      <!-- Cards View -->
+      <div id="bt-cards-wrap">
+        <div class="bt-grid" id="bt-grid"></div>
+      </div>
+      <!-- Table View -->
+      <div id="bt-table-wrap" style="display:none">
+        <div class="bt-tbl-wrap">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>Candidato</th><th>Cargo Pretendido</th><th>Área</th><th>Cidade</th>
+              <th>Disponibilidade</th><th>Status</th><th>Fonte</th><th>Cadastro</th><th></th>
+            </tr></thead>
+            <tbody id="bt-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Kanban View -->
+      <div id="bt-kanban-wrap" style="display:none">
+        <div class="bt-kb-board" id="bt-kb-board"></div>
       </div>
     </div>
 
@@ -753,35 +883,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
           <div class="chart-title">Motivos de Desistência / Reprovação</div>
           <div id="rejection-chart"></div>
         </div>
-      </div>
-    </div>
-
-    <!-- NR-01 -->
-    <div id="nr01-view" class="view">
-      <div class="nr-header">
-        <h3>🛡 Gestão de Riscos Psicossociais · NR-01</h3>
-        <p>Mapeamento e monitoramento conforme nova NR-01 (vigência 2025) — inclusão obrigatória de riscos psicossociais no PGR</p>
-      </div>
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-lbl">Diagnósticos Realizados</div>
-          <div class="metric-big" style="color:var(--green)">4</div>
-          <div class="metric-ctx">Empresas clientes mapeadas</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-lbl">Treinamentos Ministrados</div>
-          <div class="metric-big" style="color:var(--blue)">12h</div>
-          <div class="metric-ctx">Capacitações em 2026</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-lbl">Planos de Ação</div>
-          <div class="metric-big" style="color:var(--salmon)">7</div>
-          <div class="metric-ctx">3 em andamento · 4 concluídos</div>
-        </div>
-      </div>
-      <div class="chart-card" style="max-width:580px">
-        <div class="chart-title">Fatores de Risco Mapeados (média dos clientes)</div>
-        <div id="nr01-chart"></div>
       </div>
     </div>
 
@@ -1458,9 +1559,9 @@ function gotoView(name,el){
     vagas:['Vagas','Pipeline de recrutamento'],
     kanban:['Kanban · Pipeline','Gestão de etapas por candidato'],
     candidatos:['Candidatos','Todos os candidatos em processo'],
+    'banco-talentos':['Banco de Talentos','Talentos cadastrados para oportunidades futuras'],
     calendario:['Calendário','Entrevistas, alinhamentos e follow-ups'],
     relatorios:['Relatórios & Indicadores','Métricas de desempenho'],
-    nr01:['NR-01 · Riscos Psicossociais','Gestão de conformidade'],
     gestor:['Painel do Gestor','Requisição de vaga com perfil DISC'],
     disc:['DISC & Match de Candidatos','Compatibilidade por perfil comportamental'],
     financeiro:['💰 Financeiro','Controle financeiro da Effect'],
@@ -1468,6 +1569,7 @@ function gotoView(name,el){
   };
   if(titles[name]){document.getElementById('ptitle').textContent=titles[name][0];document.getElementById('psub').textContent=titles[name][1];}
   if(name==='financeiro'){ finIrHoje(); finRenderNF(); finVerificarNFVencendo(); }
+  if(name==='banco-talentos'){ btLoad(); btRender(); }
 }
 
 function renderAll(){
@@ -2256,7 +2358,6 @@ function finSalvarMeta(){
   finMetas[ano+'-'+mes]=val; finSaveMeta(); finFecharModal(); finRender(); toast('Meta salva!');
 }
 
-// NOTAS FISCAIS
 function finNFStatusReal(nf){
   if(nf.status==='Paga'||nf.status==='Cancelada')return nf.status;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
@@ -2336,12 +2437,293 @@ function finExportarNFCSV(){
   const linhas=finNFs.map(n=>[n.num,n.emissao,n.vencimento,n.cliente,n.tipo||'',n.valor,finNFStatusReal(n),n.obs||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
   _finDownload([cab.join(','),...linhas].join('\n'),'effect-notas-fiscais.csv');
 }
-function _finDownload(csv,nome){ const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nome; a.click(); URL.revokeObjectURL(url); toast('CSV exportado!'); }
+function _finDownload(csv,nome){ const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nome; a.click(); URL.revokeObjectURL(url); toast('CSV exportado!'); }
 function finFecharModal(){ ['fin-modal-lancamento','fin-modal-meta','fin-modal-nf'].forEach(id=>document.getElementById(id).classList.remove('show')); }
 document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.fin-modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)finFecharModal();})); });
+
+// ═══════════════ BANCO DE TALENTOS ═══════════════════════════════════════
+const BT_KEY = 'effect-banco-talentos-v1';
+let btDados = [];
+let btViewAtual = 'cards';
+let btEditId = null;
+
+function btLoad(){ try{ btDados = JSON.parse(localStorage.getItem(BT_KEY)) || []; }catch{ btDados=[]; } }
+function btSave(){ localStorage.setItem(BT_KEY, JSON.stringify(btDados)); }
+
+function btStatusPill(st){
+  const map = {
+    'Disponível':'bt-pill-disp','Em Processo':'bt-pill-proc',
+    'Contratado':'bt-pill-cont','Arquivado':'bt-pill-arq','Triagem':'bt-pill-triagem'
+  };
+  return `<span class="bt-status-pill ${map[st]||'bt-pill-arq'}">${st||'—'}</span>`;
+}
+
+function btCorCargo(nome){ return CORES_POOL[Math.abs([...String(nome||'')].reduce((h,c)=>((h<<5)-h)+c.charCodeAt(0),0))%CORES_POOL.length]; }
+
+function btFiltrados(){
+  const q = (document.getElementById('bt-search')||{}).value||'';
+  const st = (document.getElementById('bt-filtro-status')||{}).value||'';
+  const ar = (document.getElementById('bt-filtro-area')||{}).value||'';
+  const dp = (document.getElementById('bt-filtro-disp')||{}).value||'';
+  return btDados.filter(t=>{
+    const txt = normT(t.nome+' '+t.cargo+' '+(t.cidade||'')+' '+(t.skills||''));
+    if(q && !txt.includes(normT(q))) return false;
+    if(st && t.status !== st) return false;
+    if(ar && t.area !== ar) return false;
+    if(dp && t.disponibilidade !== dp) return false;
+    return true;
+  });
+}
+
+function btRenderKPIs(){
+  document.getElementById('bt-kpi-total').textContent = btDados.length;
+  document.getElementById('bt-kpi-disp').textContent  = btDados.filter(t=>t.status==='Disponível').length;
+  document.getElementById('bt-kpi-proc').textContent  = btDados.filter(t=>t.status==='Em Processo').length;
+  document.getElementById('bt-kpi-cont').textContent  = btDados.filter(t=>t.status==='Contratado').length;
+  document.getElementById('bt-kpi-arq').textContent   = btDados.filter(t=>t.status==='Arquivado').length;
+  const badge = document.getElementById('bt-badge');
+  if(badge) badge.textContent = btDados.filter(t=>t.status==='Disponível').length || '';
+}
+
+function btRender(){
+  btRenderKPIs();
+  const lista = btFiltrados();
+  if(btViewAtual==='cards') btRenderCards(lista);
+  else if(btViewAtual==='table') btRenderTable(lista);
+  else btRenderKanban(lista);
+}
+
+function btRenderCards(lista){
+  const el = document.getElementById('bt-grid');
+  if(!lista.length){
+    el.innerHTML=`<div class="bt-empty" style="grid-column:1/-1"><i class="fas fa-star"></i>Nenhum talento encontrado.<br><button class="btn btn-primary" style="margin-top:12px" onclick="btAbrirModal()"><i class="fas fa-user-plus"></i> Cadastrar primeiro talento</button></div>`;
+    return;
+  }
+  el.innerHTML = lista.map(t=>{
+    const ini = iniciais(t.nome);
+    const cor = btCorCargo(t.nome);
+    const skills = (t.skills||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,4);
+    const wa = t.telefone ? `<button class="bt-btn-sm bt-btn-wa" onclick="event.stopPropagation();window.open('https://wa.me/55${t.telefone.replace(/\\D/g,'')}','_blank')"><i class="fab fa-whatsapp"></i></button>` : '';
+    return `<div class="bt-card" onclick="btAbrirModal('${t.id}')">
+      <div class="bt-card-top">
+        <div class="bt-av" style="background:${cor}">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div class="bt-name">${t.nome}</div>
+          <div class="bt-cargo">${t.cargo||'—'}</div>
+        </div>
+        ${btStatusPill(t.status)}
+      </div>
+      <div class="bt-meta">
+        ${t.cidade?`<span><i class="fas fa-map-marker-alt"></i> ${t.cidade}</span>`:''}
+        ${t.disponibilidade?`<span><i class="fas fa-clock"></i> ${t.disponibilidade}</span>`:''}
+        ${t.salario?`<span><i class="fas fa-tag"></i> ${t.salario}</span>`:''}
+      </div>
+      ${skills.length?`<div class="bt-skills">${skills.map(s=>`<span class="bt-skill-tag">${s}</span>`).join('')}</div>`:''}
+      <div class="bt-footer">
+        <span>${t.fonte||'—'} · ${t.dataCadastro||''}</span>
+        <div class="bt-actions" onclick="event.stopPropagation()">
+          ${wa}
+          <button class="bt-btn-sm bt-btn-edit" onclick="btAbrirModal('${t.id}')"><i class="fas fa-pen"></i></button>
+          <button class="bt-btn-sm bt-btn-del" onclick="btDeletar('${t.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function btRenderTable(lista){
+  const tb = document.getElementById('bt-tbody');
+  if(!lista.length){ tb.innerHTML=`<tr><td colspan="9" class="bt-empty">Nenhum talento encontrado.</td></tr>`; return; }
+  tb.innerHTML = lista.map(t=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:8px"><div class="bt-av" style="background:${btCorCargo(t.nome)};width:28px;height:28px;font-size:10px">${iniciais(t.nome)}</div><div><strong>${t.nome}</strong>${t.email?`<div style="font-size:10px;color:var(--gray)">${t.email}</div>`:''}</div></div></td>
+    <td>${t.cargo||'—'}</td><td>${t.area||'—'}</td><td>${t.cidade||'—'}</td>
+    <td>${t.disponibilidade||'—'}</td><td>${btStatusPill(t.status)}</td>
+    <td>${t.fonte||'—'}</td><td>${t.dataCadastro||'—'}</td>
+    <td><div style="display:flex;gap:4px">
+      ${t.telefone?`<button class="bt-btn-sm bt-btn-wa" onclick="window.open('https://wa.me/55${t.telefone.replace(/\\D/g,'')}','_blank')"><i class="fab fa-whatsapp"></i></button>`:''}
+      <button class="bt-btn-sm bt-btn-edit" onclick="btAbrirModal('${t.id}')"><i class="fas fa-pen"></i></button>
+      <button class="bt-btn-sm bt-btn-del" onclick="btDeletar('${t.id}')"><i class="fas fa-trash"></i></button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function btRenderKanban(lista){
+  const cols = [
+    {id:'Triagem',    label:'Triagem',     cor:'#f4afa1'},
+    {id:'Disponível', label:'Disponível',  cor:'#8ed1b2'},
+    {id:'Em Processo',label:'Em Processo', cor:'#1fa5f0'},
+    {id:'Contratado', label:'Contratado',  cor:'#7b8e60'},
+    {id:'Arquivado',  label:'Arquivado',   cor:'#a1a1aa'},
+  ];
+  document.getElementById('bt-kb-board').innerHTML = cols.map(col=>{
+    const cards = lista.filter(t=>t.status===col.id);
+    return `<div class="bt-kb-col">
+      <div class="bt-kb-hdr" style="background:${col.cor}22;color:${col.cor}">
+        ${col.label} <span class="bt-kb-cnt">${cards.length}</span>
+      </div>
+      <div class="bt-kb-body">
+        ${cards.length ? cards.map(t=>`
+          <div class="bt-kb-card" style="border-left-color:${col.cor}" onclick="btAbrirModal('${t.id}')">
+            <div class="bt-kc-name">${t.nome}</div>
+            <div class="bt-kc-cargo">${t.cargo||'—'}</div>
+            <div class="bt-kc-footer"><span>${t.cidade||'—'}</span><span>${t.disponibilidade||'—'}</span></div>
+          </div>`).join('') :
+          `<div style="font-size:10px;color:var(--gray);text-align:center;padding:16px 0">Nenhum</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function btSetView(view, btn){
+  btViewAtual = view;
+  document.querySelectorAll('.bt-tog-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('bt-cards-wrap').style.display  = view==='cards'  ? '' : 'none';
+  document.getElementById('bt-table-wrap').style.display  = view==='table'  ? '' : 'none';
+  document.getElementById('bt-kanban-wrap').style.display = view==='kanban' ? '' : 'none';
+  btRender();
+}
+
+function btAbrirModal(id){
+  btEditId = id || null;
+  const t = id ? btDados.find(x=>x.id===id) : null;
+  document.getElementById('bt-modal-titulo').textContent = t ? '✏️ Editar Talento' : '⭐ Cadastrar Talento';
+  const campos = {nome:'',cargo:'',email:'',telefone:'',cidade:'',salario:'',skills:'',obs:'',area:'',status:'Triagem',disponibilidade:'',fonte:''};
+  Object.keys(campos).forEach(k=>{
+    const el=document.getElementById('bt-f-'+k);
+    if(el) el.value = t ? (t[k]||campos[k]) : campos[k];
+  });
+  document.getElementById('bt-modal-overlay').classList.add('show');
+}
+function btFecharModal(){ document.getElementById('bt-modal-overlay').classList.remove('show'); btEditId=null; }
+
+function btSalvar(){
+  const nome = document.getElementById('bt-f-nome').value.trim();
+  if(!nome){ toast('Informe o nome do candidato','error'); return; }
+  const item = {
+    id: btEditId || String(Date.now()),
+    nome,
+    cargo:           document.getElementById('bt-f-cargo').value.trim(),
+    area:            document.getElementById('bt-f-area').value,
+    email:           document.getElementById('bt-f-email').value.trim(),
+    telefone:        document.getElementById('bt-f-telefone').value.trim(),
+    cidade:          document.getElementById('bt-f-cidade').value.trim(),
+    disponibilidade: document.getElementById('bt-f-disponibilidade').value,
+    status:          document.getElementById('bt-f-status').value || 'Triagem',
+    salario:         document.getElementById('bt-f-salario').value.trim(),
+    skills:          document.getElementById('bt-f-skills').value.trim(),
+    fonte:           document.getElementById('bt-f-fonte').value,
+    obs:             document.getElementById('bt-f-obs').value.trim(),
+    dataCadastro:    btEditId ? (btDados.find(x=>x.id===btEditId)?.dataCadastro || new Date().toLocaleDateString('pt-BR')) : new Date().toLocaleDateString('pt-BR'),
+  };
+  if(btEditId){ btDados = btDados.map(x=>x.id===btEditId ? item : x); }
+  else { btDados.unshift(item); }
+  btSave(); btFecharModal(); btRender();
+  toast(btEditId ? '✅ Talento atualizado!' : '✅ Talento cadastrado no banco!');
+}
+
+function btDeletar(id){
+  if(!confirm('Remover este talento do banco?')) return;
+  btDados = btDados.filter(t=>t.id!==id);
+  btSave(); btRender();
+  toast('Talento removido');
+}
+
+function btExportarCSV(){
+  if(!btDados.length){ toast('Nenhum talento para exportar','error'); return; }
+  const cab = ['Nome','Cargo','Área','E-mail','Telefone','Cidade','Disponibilidade','Status','Salário Pretendido','Skills','Fonte','Observação','Cadastro'];
+  const linhas = btDados.map(t=>[
+    t.nome,t.cargo,t.area,t.email,t.telefone,t.cidade,
+    t.disponibilidade,t.status,t.salario,t.skills,t.fonte,t.obs,t.dataCadastro
+  ].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const csv = [cab.join(','), ...linhas].join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='effect-banco-talentos.csv'; a.click();
+  URL.revokeObjectURL(url); toast('CSV exportado!');
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  btLoad();
+  btRenderKPIs();
+  const ov = document.getElementById('bt-modal-overlay');
+  if(ov) ov.addEventListener('click', e=>{ if(e.target===ov) btFecharModal(); });
+});
 // ═════════════════════════════════════════════════════════════════════════
 </script>
 
+<!-- MODAL BANCO DE TALENTOS -->
+<div class="bt-modal-overlay" id="bt-modal-overlay">
+  <div class="bt-modal">
+    <div class="bt-modal-head">
+      <h3 id="bt-modal-titulo">⭐ Cadastrar Talento</h3>
+      <button onclick="btFecharModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray)">✕</button>
+    </div>
+    <div class="bt-modal-body">
+      <div class="bt-section-lbl">Dados Pessoais</div>
+      <div class="bt-row2">
+        <div class="bt-fg"><label class="bt-lbl">Nome completo *</label><input class="bt-inp" id="bt-f-nome" placeholder="Nome do candidato"></div>
+        <div class="bt-fg"><label class="bt-lbl">Cargo pretendido</label><input class="bt-inp" id="bt-f-cargo" placeholder="Ex: Auxiliar de Cozinha"></div>
+      </div>
+      <div class="bt-row2">
+        <div class="bt-fg"><label class="bt-lbl">E-mail</label><input class="bt-inp" id="bt-f-email" type="email" placeholder="email@exemplo.com"></div>
+        <div class="bt-fg"><label class="bt-lbl">WhatsApp / Telefone</label><input class="bt-inp" id="bt-f-telefone" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="bt-row2">
+        <div class="bt-fg"><label class="bt-lbl">Cidade / Estado</label><input class="bt-inp" id="bt-f-cidade" placeholder="Ex: São Paulo – SP"></div>
+        <div class="bt-fg"><label class="bt-lbl">Área de atuação</label>
+          <select class="bt-inp" id="bt-f-area">
+            <option value="">Selecionar...</option>
+            <option>Administrativo</option><option>Financeiro</option><option>Comercial / Vendas</option>
+            <option>RH / Pessoas</option><option>Operacional</option><option>Atendimento</option>
+            <option>Gastronomia / F&amp;B</option><option>Logística</option><option>TI / Tecnologia</option>
+            <option>Marketing</option><option>Jurídico</option><option>Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="bt-section-lbl">Pipeline &amp; Disponibilidade</div>
+      <div class="bt-row3">
+        <div class="bt-fg"><label class="bt-lbl">Status</label>
+          <select class="bt-inp" id="bt-f-status">
+            <option value="Triagem">Triagem</option>
+            <option value="Disponível">Disponível</option>
+            <option value="Em Processo">Em Processo</option>
+            <option value="Contratado">Contratado</option>
+            <option value="Arquivado">Arquivado</option>
+          </select>
+        </div>
+        <div class="bt-fg"><label class="bt-lbl">Disponibilidade</label>
+          <select class="bt-inp" id="bt-f-disponibilidade">
+            <option value="">Selecionar...</option>
+            <option>Imediata</option><option>15 dias</option><option>30 dias</option>
+            <option>Somente oportunidade certa</option>
+          </select>
+        </div>
+        <div class="bt-fg"><label class="bt-lbl">Pretensão salarial</label><input class="bt-inp" id="bt-f-salario" placeholder="Ex: R$ 2.500"></div>
+      </div>
+      <div class="bt-section-lbl">Competências &amp; Origem</div>
+      <div class="bt-fg"><label class="bt-lbl">Skills / Competências <span style="font-weight:400;color:var(--gray)">(separadas por vírgula)</span></label>
+        <input class="bt-inp" id="bt-f-skills" placeholder="Ex: Excel, Atendimento ao cliente, Organização">
+      </div>
+      <div class="bt-row2">
+        <div class="bt-fg"><label class="bt-lbl">Fonte de captação</label>
+          <select class="bt-inp" id="bt-f-fonte">
+            <option value="">Selecionar...</option>
+            <option>WhatsApp</option><option>LinkedIn</option><option>Indicação</option>
+            <option>Portal de vagas</option><option>Evento</option><option>Candidatura espontânea</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="bt-fg"><label class="bt-lbl">Observações</label>
+          <input class="bt-inp" id="bt-f-obs" placeholder="Anotações internas sobre o candidato">
+        </div>
+      </div>
+    </div>
+    <div class="bt-modal-foot">
+      <button class="btn btn-outline" onclick="btFecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="btSalvar()"><i class="fas fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
