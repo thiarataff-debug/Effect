@@ -1822,8 +1822,12 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
 }
 
 // ─── RENDER MENSAGENS ───
-function renderMsgs(s){
+
+  function renderMsgs(s){
   const div=document.getElementById('messages');
+  const distanciaFinal=div.scrollHeight-div.scrollTop-div.clientHeight;
+  const eraVazio=div.scrollHeight<=div.clientHeight+2;
+  const estaNoFinal=eraVazio||(distanciaFinal<150);
   div.innerHTML='';
 
   const hist=ordenarHistorico(s?.historico||[]);
