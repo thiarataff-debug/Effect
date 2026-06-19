@@ -2183,14 +2183,14 @@ function finRenderTabRec(recs){
   const tb=document.getElementById('fin-tbody-rec');
   if(!recs.length){tb.innerHTML='<tr class="fin-empty"><td colspan="6">Nenhuma receita neste mês</td></tr>';return;}
   tb.innerHTML=recs.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(d=>
-    '<tr><td>'+finFmtD(d.data)+'</td><td>'+( d.tipo||'—')+'</td><td>'+( d.cliente||'—')+'</td><td class="fin-val-rec">'+finFmt(d.valor)+'</td><td>'+finBadge(d.st)+'</td><td><span class="fin-del" onclick="finDel(''+d.id+'')">✕</span></td></tr>'
+    '<tr><td>'+finFmtD(d.data)+'</td><td>'+( d.tipo||'—')+'</td><td>'+( d.cliente||'—')+'</td><td class="fin-val-rec">'+finFmt(d.valor)+'</td><td>'+finBadge(d.st)+'</td><td><span class="fin-del" onclick="finDel(\''+d.id+'\')">✕</span></td></tr>'
   ).join('');
 }
 function finRenderTabDesp(desps){
   const tb=document.getElementById('fin-tbody-desp');
   if(!desps.length){tb.innerHTML='<tr class="fin-empty"><td colspan="5">Nenhuma despesa neste mês</td></tr>';return;}
   tb.innerHTML=desps.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(d=>
-    '<tr><td>'+finFmtD(d.data)+'</td><td>'+( d.cat||'—')+'</td><td>'+( d.obs||'—')+'</td><td class="fin-val-desp">'+finFmt(d.valor)+'</td><td><span class="fin-del" onclick="finDel(''+d.id+'')">✕</span></td></tr>'
+    '<tr><td>'+finFmtD(d.data)+'</td><td>'+( d.cat||'—')+'</td><td>'+( d.obs||'—')+'</td><td class="fin-val-desp">'+finFmt(d.valor)+'</td><td><span class="fin-del" onclick="finDel(\''+d.id+'\')">✕</span></td></tr>'
   ).join('');
 }
 function finRenderGrafico(mesAtual,anoAtual){
@@ -2294,7 +2294,7 @@ function finRenderNF(){
     '<td>'+n.cliente+'</td><td>'+(n.tipo||'—')+'</td><td style="font-weight:700">'+finFmt(n.valor)+'</td>'+
     '<td>'+finNFBadge(n._st)+'</td>'+
     '<td style="font-size:10px;color:var(--muted);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(n.obs||'')+'">'+(n.obs||'—')+'</td>'+
-    '<td><span class="fin-del" style="color:var(--blue)" onclick="finAbrirModalNF(''+n.id+'')">✎</span> <span class="fin-del" onclick="finDelNF(''+n.id+'')">✕</span></td></tr>'
+    '<td><span class="fin-del" style="color:var(--blue)" onclick="finAbrirModalNF(\''+n.id+'\')">✎</span> <span class="fin-del" onclick="finDelNF(\''+n.id+'\')">✕</span></td></tr>'
   ).join('');
 }
 function finAbrirModalNF(id){
