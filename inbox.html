@@ -1780,7 +1780,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallbac
           ${s.modo==='camila'?'<span class="cc" style="background:#fce7f3;color:#db2777">📅 Camila</span>':isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
-          ${marcadosRetorno[tel]?'<span class="cc cc-yellow">📌 Retornar</span>':''}
+          ${marcadosRetorno[tel]?`<span class="cc cc-yellow" style="cursor:pointer" title="Clique para desmarcar" onclick="event.stopPropagation();marcadosRetorno['${tel}']=false;salvarLocal();renderLista();toast('Marcação removida','success')">📌 Retornar</span>`:''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
       </div>
