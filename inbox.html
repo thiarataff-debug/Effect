@@ -1711,6 +1711,7 @@ all.filter(([t,s])=>
   if(totalNL>0){bNovas.style.display='inline-block';bNovas.textContent=totalNL;}else bNovas.style.display='none';
   document.getElementById('badge-total').textContent=all.length;
   if(!entries.length){lista.innerHTML='<div class="empty">Nenhuma conversa</div>';return;}
+
   lista.innerHTML=entries.map(([tel,s])=>{
     const hist=ordenarHistorico(s.historico||[]);
     const ultima=hist[hist.length-1];
@@ -2064,7 +2065,7 @@ function renderPainelPerfil(s){
       </div>`;
     }).join('')}
   </div>
-  ` : ''}
+  `:''}
   <div class="rp-section">
     <div class="rp-section-title">📊 Linha do Tempo</div>
     <div class="timeline">${timeline.map(tl=>`
