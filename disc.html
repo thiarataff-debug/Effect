@@ -205,7 +205,7 @@ input[type=text]:focus{border-color:var(--blue)}
         <div class="ep">
           <div class="ep-num">2</div>
           <div class="ep-lbl">O que esperam</div>
-          <div class="ep-desc">Como outros gostariam que você fosse</div>
+          <div class="ep-desc">Como as pessoas no trabalho esperam que você seja</div>
         </div>
       </div>
       <p>São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.</p>
@@ -243,19 +243,12 @@ input[type=text]:focus{border-color:var(--blue)}
         <h2>Etapa 1 concluída!</h2>
         <p>Ótimo trabalho! Agora vem a segunda parte, igualmente importante.</p>
         <div class="destaque">
-          <strong>Etapa 2 — O que os outros esperam de mim</strong><br>
-          Usando os mesmos grupos de palavras, responda agora pelo olhar de outra pessoa: como ela <strong>gostaria que você fosse</strong>?
+          <strong>Etapa 2 — O que o ambiente de trabalho espera de mim</strong><br>
+          Usando os mesmos grupos de palavras, responda agora pensando no trabalho: como as pessoas do seu ambiente profissional <strong>esperam que você seja</strong>?
         </div>
       </div>
-      <p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">Em quem você vai pensar ao responder?</p>
-      <div class="ref-grid">
-        <button class="ref-btn" onclick="selecionarRef(this,'Meu chefe','gostaria que eu fosse')"><span class="ref-icon">👔</span>Meu chefe</button>
-        <button class="ref-btn" onclick="selecionarRef(this,'Minha equipe','gostaria que eu fosse')"><span class="ref-icon">👥</span>Minha equipe</button>
-        <button class="ref-btn" onclick="selecionarRef(this,'Meus clientes','gostariam que eu fosse')"><span class="ref-icon">🤝</span>Meus clientes</button>
-        <button class="ref-btn" onclick="selecionarRef(this,'Minha família','gostaria que eu fosse')"><span class="ref-icon">🏠</span>Minha família</button>
-      </div>
     </div>
-    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()" disabled>Iniciar Etapa 2 →</button>
+    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()">Iniciar Etapa 2 →</button>
   </div>
 
   <!-- ══ TELA: CALCULANDO ══ -->
@@ -322,15 +315,15 @@ const QUESTOES = [
   ["Decidido","Entusiasmado","Paciente","Preciso"],
   ["Competitivo","Sociável","Leal","Analítico"],
   ["Direto","Otimista","Calmo","Cauteloso"],
-  ["Ousado","Expressivo","Colaborativo","Sistemático"],
+  ["Ousado","Expressivo","Cooperativo","Sistemático"],
   ["Determinado","Animado","Estável","Organizado"],
-  ["Assertivo","Comunicativo","Sincero","Detalhista"],
+  ["Assertivo","Comunicativo","Dedicado","Detalhista"],
   ["Exigente","Persuasivo","Confiável","Lógico"],
   ["Independente","Inspirador","Harmonioso","Cuidadoso"],
-  ["Incisivo","Criativo","Atencioso","Criterioso"],
-  ["Pragmático","Espontâneo","Consistente","Exato"],
-  ["Controlador","Divertido","Tranquilo","Meticuloso"],
-  ["Desafiador","Popular","Gentil","Rigoroso"]
+  ["Resoluto","Criativo","Atencioso","Criterioso"],
+  ["Objetivo","Espontâneo","Consistente","Exato"],
+  ["Audacioso","Divertido","Tranquilo","Meticuloso"],
+  ["Ambicioso","Popular","Gentil","Rigoroso"]
 ];
 const KEYS = ['D','I','S','C'];
 const TOTAL = 12;
@@ -341,36 +334,36 @@ const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5f0'};
 // ══════════════════════════════════════════
 const PERFIS = {
   D:{nome:'Dominante',emoji:'🔴',
-     resumo:'Você é orientado a resultados, direto e decisivo. Age com rapidez diante de desafios, busca autonomia e não tem medo de assumir riscos. Tem liderança natural e prefere ambientes onde pode colocar suas ideias em prática.',
-     forcas:['Determinação e foco em resultados concretos','Capacidade de decidir rapidamente sob pressão','Liderança natural e iniciativa para agir'],
-     atencao:['Pode ser visto como impaciente ou autoritário','Tendência a agir sem ouvir o time completamente']},
+     resumo:'Seu estilo natural é agir com rapidez e foco em resultados. Você não espera as coisas acontecerem — toma a frente, decide e executa. Em situações de pressão ou desafio, você tende a se destacar porque não tem medo de assumir responsabilidade e correr riscos calculados. Prefere ambientes onde tem autonomia para agir do que rotinas muito controladas.',
+     forcas:['Toma decisões com agilidade, mesmo sob pressão','Assume a liderança naturalmente, sem precisar ser empurrado','Foco forte em entregar resultados concretos'],
+     atencao:['Pode parecer impaciente ou brusco para pessoas mais sensíveis','Às vezes age antes de ouvir quem está ao redor — o que pode gerar atritos']},
   I:{nome:'Influente',emoji:'🟡',
-     resumo:'Você é comunicativo, entusiasmado e inspira as pessoas ao redor. Constrói relacionamentos com facilidade, é otimista e funciona muito bem em ambientes colaborativos e de contato com o público.',
-     forcas:['Comunicação natural e poder de persuasão','Energia positiva e entusiasmo contagiante','Facilidade em criar vínculos e motivar equipes'],
-     atencao:['Pode ter dificuldade com tarefas repetitivas e rotineiras','Tendência a ser otimista demais e subestimar dificuldades']},
+     resumo:'Você tem um jeito naturalmente comunicativo e contagiante. As pessoas se sentem bem perto de você — você anima o ambiente, cria conexões com facilidade e convence sem parecer forçado. Funciona muito bem em funções que envolvem atendimento, vendas, liderança de pessoas ou trabalho em equipe. Prefere variedade e contato humano a tarefas solitárias e repetitivas.',
+     forcas:['Comunica ideias com clareza e entusiasmo','Cria vínculos de confiança com facilidade — com clientes, colegas e líderes','Motiva e anima as pessoas ao redor naturalmente'],
+     atencao:['Pode ter dificuldade com rotinas repetitivas e detalhes técnicos','Às vezes o otimismo excessivo faz subestimar dificuldades reais']},
   S:{nome:'Estável',emoji:'🟢',
-     resumo:'Você é paciente, leal e extremamente confiável. Valoriza harmonia e consistência, sendo um pilar de equilíbrio para qualquer equipe. Trabalha com dedicação em funções que exigem constância e cuidado com as pessoas.',
-     forcas:['Confiabilidade e comprometimento acima da média','Excelência no trabalho em equipe e suporte ao próximo','Paciência genuína e capacidade de ouvir com atenção'],
-     atencao:['Pode ter dificuldade com mudanças repentinas e imprevistos','Tendência a evitar conflitos mesmo quando necessário']},
+     resumo:'Você é o tipo de pessoa em quem se pode confiar. Constante, paciente e dedicada, você não abandona o que começou e cuida genuinamente das pessoas ao redor. É um pilar de equilíbrio em qualquer equipe — não entra em pânico diante de pressão e prefere resolver as coisas com calma e cooperação. Funciona muito bem em funções que exigem constância, cuidado e trabalho em equipe.',
+     forcas:['Comprometimento real — entrega o que promete','Excelente em trabalhar em equipe e apoiar os colegas','Ouve com atenção e gera um ambiente de confiança ao redor'],
+     atencao:['Mudanças repentinas e imprevistos podem gerar desconforto','Tende a evitar conflitos mesmo quando é necessário se posicionar']},
   C:{nome:'Analítico',emoji:'🔵',
-     resumo:'Você é preciso, sistemático e detalhista. Busca qualidade e exatidão em tudo que faz, seguindo processos com rigor. Ideal para funções que exigem controle, organização, análise e alto padrão de entrega.',
-     forcas:['Alta precisão e atenção rigorosa aos detalhes','Raciocínio lógico, crítico e analítico','Comprometimento profundo com a qualidade do trabalho'],
-     atencao:['Pode ser lento nas decisões pela busca de perfeição','Tendência ao perfeccionismo excessivo que pode travar a execução']}
+     resumo:'Você tem um padrão alto de qualidade — e não abre mão dele. Meticuloso, organizado e cuidadoso, você prefere fazer certo a fazer rápido. Antes de decidir, analisa, pesquisa e verifica. É exatamente o tipo de pessoa que garante que os detalhes não escapem e que os processos sejam seguidos corretamente. Ideal para funções que exigem precisão, controle e raciocínio lógico.',
+     forcas:['Atenção aos detalhes que outros normalmente deixam passar','Raciocínio lógico e analítico — pensa antes de agir','Entrega um trabalho de alta qualidade e confiabilidade'],
+     atencao:['A busca pela perfeição pode tornar as decisões mais lentas','Pode ser percebido como distante ou excessivamente crítico em situações de pressão']}
 };
 
 const COMBOS = {
-  DI:'Executor Inspirador — combina foco em resultados com entusiasmo e boa comunicação.',
-  DS:'Executor Consistente — determinação com estabilidade e alto senso de responsabilidade.',
-  DC:'Analista Decisor — alta exigência de qualidade aliada à determinação e objetividade.',
-  ID:'Influenciador Determinado — comunicação impactante com foco direto em resultados.',
-  IS:'Comunicador Estável — influência com consistência, harmonia e cuidado genuíno.',
-  IC:'Comunicador Criterioso — entusiasmo aliado à atenção cuidadosa aos detalhes.',
-  SD:'Estável Determinado — confiabilidade e constância com foco em superar metas.',
-  SI:'Estável Comunicativo — harmonia e consistência com facilidade de relacionamento.',
-  SC:'Especialista Confiável — estabilidade com rigor técnico e alta qualidade na entrega.',
-  CD:'Analítico Executor — precisão e exigência com foco direto em resultados.',
-  CI:'Analítico Comunicativo — qualidade e rigor com boa habilidade de comunicação.',
-  CS:'Analítico Estável — precisão com paciência, consistência e fidelidade aos processos.'
+  DI:'Você une resultado e relacionamento — age rápido e ainda consegue engajar as pessoas. Perfil valorizado em liderança, vendas e funções que exigem iniciativa com boa comunicação.',
+  DS:'Você combina determinação com responsabilidade. Age com firmeza mas sem atropelar — entrega o que promete e mantém a equipe unida. Ótimo para cargos de gestão e operações.',
+  DC:'Você quer resultado E qualidade. Exigente consigo e com os outros, não aceita entrega pela metade. Ideal para funções que envolvem tomada de decisão com alto padrão técnico.',
+  ID:'Você tem o entusiasmo de quem inspira e a objetividade de quem entrega. Consegue vender ideias e ao mesmo tempo colocar em prática. Perfil forte para liderança e comercial.',
+  IS:'Você constrói relacionamentos duradouros com leveza e cuidado genuíno. Não força — conquista. Ideal para funções de atendimento, RH, educação e trabalho com pessoas.',
+  IC:'Você se comunica bem e ainda cuida dos detalhes. Não deixa as coisas escaparem nas entrelinhas. Bom para funções que exigem clareza, organização e contato com o público.',
+  SD:'Você é confiável e ainda sabe quando precisa assumir o comando. Não corre riscos desnecessários, mas também não paralisa diante de decisões. Perfil sólido para cargos operacionais e de supervisão.',
+  SI:'Você é parceiro de equipe por excelência — colaborativo, comunicativo e presente. Cria um ambiente de trabalho saudável e produtivo ao redor. Ideal para funções de suporte, equipe e atendimento.',
+  SC:'Você entrega com qualidade e constância — sem alardes, mas sem erros. Altamente confiável para funções técnicas, administrativas e de controle de processos.',
+  CD:'Você analisa antes de agir — e quando age, entrega com precisão e foco. Perfil valorizado para funções que envolvem planejamento, qualidade e liderança técnica.',
+  CI:'Você explica bem, detalha sem perder o fio e ainda mantém o clima leve. Ótimo para treinamento, suporte técnico, comunicação e funções que exigem clareza na entrega.',
+  CS:'Você é metódico e paciente — faz o processo funcionar e ainda cuida das pessoas dentro dele. Ideal para funções de back-office, controle, qualidade e suporte.'
 };
 
 const TENSAO_MSGS = {
@@ -494,12 +487,12 @@ function renderQuiz() {
   const grupo = grupos[grupoAtual];
   const frase = etapaAtual === 1
     ? 'Eu naturalmente sou…'
-    : (referencia + ' ' + referenciaVerbo + '…');
+    : 'No trabalho, esperam que eu seja…';
 
   // Header info
   document.getElementById('quiz-num').textContent = 'Grupo ' + (grupoAtual + 1) + ' de ' + TOTAL;
   document.getElementById('quiz-etapa-lbl').textContent = etapaAtual === 1 ? 'Quem eu sou' : 'O que esperam';
-  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperariam de você';
+  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperam de você no trabalho';
   document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
   document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
   document.getElementById('quiz-next').style.opacity = '0';
@@ -539,7 +532,17 @@ function clickCard(i, disc, total) {
     cards[i].classList.add('mais');
     cards[i].querySelector('.wtag').textContent = 'MAIS ✓';
     respostas[etapaAtual][grupoAtual].mais = disc;
-    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperariam';
+    const frMenos = etapaAtual === 1 ? 'Eu naturalmente NÃO sou…' : 'No trabalho, NÃO esperam que eu seja…';
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperam de você no trabalho';
+    // Atualiza enunciado do topo
+    document.getElementById('quiz-instrucao').innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
+    // Atualiza frase dentro dos cards não selecionados
+    cards.forEach((c, idx) => {
+      if (idx !== maisIdx) {
+        const wph = c.querySelector('.wph');
+        if (wph) wph.textContent = frMenos;
+      }
+    });
     hint.innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
     return;
   }
@@ -689,51 +692,4 @@ function renderizarResultado(rel, naturalPct, adaptadoPct) {
   document.getElementById('res-resumo').textContent = pN.resumo;
 
   const comboKey = secundarioNatural ? primarioNatural + secundarioNatural : null;
-  const comboEl  = document.getElementById('res-combo');
-  if (comboKey && COMBOS[comboKey]) {
-    comboEl.textContent = '🔗 ' + COMBOS[comboKey];
-    comboEl.classList.remove('hidden');
-  }
-
-  document.getElementById('res-forcas').innerHTML =
-    pN.forcas.map(f => '<div class="item-lista pos">' + f + '</div>').join('');
-  document.getElementById('res-atencao').innerHTML =
-    pN.atencao.map(a => '<div class="item-lista neg">' + a + '</div>').join('');
-
-  if (tensoes.length > 0) {
-    document.getElementById('card-tensao').style.display = 'block';
-    document.getElementById('res-tensoes').innerHTML = tensoes.map(t => {
-      const direcao = t.gap > 0 ? 'up' : 'down';
-      const nivel   = Math.abs(t.gap) >= 17 ? 'alta' : 'media';
-      return '<div class="tensao-card ' + nivel + '">' +
-        '<div class="tensao-lbl" style="color:' + CORES[t.trait] + '">' +
-          PERFIS[t.trait].emoji + ' Tensão em ' + t.trait +
-          ' (' + (t.gap > 0 ? '+' : '') + t.gap + '%)' +
-        '</div>' +
-        '<div class="tensao-txt">' + TENSAO_MSGS[t.trait][direcao] + '</div>' +
-      '</div>';
-    }).join('');
-  }
-
-  // Anima barras após DOM render
-  setTimeout(() => {
-    document.querySelectorAll('.disc-bar-f').forEach(el => {
-      el.style.width = el.dataset.pct + '%';
-    });
-  }, 200);
-}
-
-function renderBars(pct) {
-  return KEYS.map(k =>
-    '<div class="disc-bar-row">' +
-      '<div class="disc-bar-l" style="color:' + CORES[k] + '">' + k + '</div>' +
-      '<div class="disc-bar-track">' +
-        '<div class="disc-bar-f" style="background:' + CORES[k] + '" data-pct="' + (pct[k]||0) + '"></div>' +
-      '</div>' +
-      '<div class="disc-bar-pct">' + (pct[k]||0) + '%</div>' +
-    '</div>'
-  ).join('');
-}
-</script>
-</body>
-</html>
+  const comboEl  = document.getElement
