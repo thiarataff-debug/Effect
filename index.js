@@ -1187,6 +1187,7 @@ app.post("/disc/submit", async (req, res) => {
     const primarioNatural = req.body.primarioNatural || '';
     const primarioAdaptado = req.body.primarioAdaptado || '';
     const secundarioNatural = req.body.secundarioNatural || null;
+    const relatorioRH = req.body.relatorioRH || null;
 
     const resultado = {
       respondidoEm: new Date().toISOString(),
@@ -1197,7 +1198,8 @@ app.post("/disc/submit", async (req, res) => {
       primarioNatural,
       primarioAdaptado,
       secundario: secundarioNatural,
-      secundarioNatural
+      secundarioNatural,
+      relatorioRH
     };
 
     if (telefone && sessoes[telefone]) {
@@ -1240,34 +1242,146 @@ app.get("/disc/resultado-view/:telefone", (req, res) => {
   const sessao = sessoes[tel];
   if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
   const d = sessao.discResult;
+  const rh = d.relatorioRH || null;
   const nome = d.nome || sessao.nome || tel;
-  const pct = d.percentuais || {};
-  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5ff'};
-  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Analítico'};
+  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
+  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Criterioso'};
   const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC — ${nome}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:30px 20px;max-width:600px;margin:0 auto}
-  .card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 6px rgba(0,0,0,.09);margin-bottom:16px}
-  h1{font-size:20px;font-weight:800;color:#1e3a5f;margin-bottom:4px} .sub{font-size:11px;color:#a1a1aa;margin-bottom:20px}
-  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px} .bar-l{font-size:12px;font-weight:800;width:14px}
-  .bar-t{flex:1;background:#e8ecf1;border-radius:999px;height:14px;overflow:hidden} .bar-f{height:100%;border-radius:999px}
-  .bar-p{font-size:11px;font-weight:700;color:#a1a1aa;width:32px;text-align:right}
-  .sec-t{font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:16px}
-  p{font-size:12.5px;line-height:1.65;color:#374151} li{font-size:12.5px;line-height:1.65;color:#374151;margin-left:16px;margin-bottom:4px}
-  .logo{font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:20px}.logo span{color:#8ed1b2}
-  @media print{body{background:#fff}.card{box-shadow:none;border:1px solid #e5e7eb}}</style></head><body>
-  <div class="logo">Effect <span>Pessoas</span></div>
+  const pctN = d.percentuaisNatural || d.percentuais || {};
+  const pctA = d.percentuaisAdaptado || {};
+  const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
+
+  function barras(pct) {
+    return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;font-weight:800;color:${CORES[k]};width:12px">${k}</div>
+      <div style="flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden">
+        <div style="width:${pct[k]||0}%;height:100%;background:${CORES[k]};border-radius:999px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;width:28px;text-align:right">${pct[k]||0}%</div>
+    </div>`).join('');
+  }
+
+  function lista(arr, cor='#374151') {
+    if (!arr||!arr.length) return '<p style="color:#a1a1aa;font-size:12px">—</p>';
+    return arr.map(i=>`<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${cor};font-size:13px">•</span><span style="font-size:12.5px;color:#374151;line-height:1.5">${i}</span></div>`).join('');
+  }
+
+  function sec(titulo) {
+    return `<div style="font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px">${titulo}</div>`;
+  }
+
+  const matchBloco = rh?.match ? (() => {
+    const m = rh.match;
+    const cor = m.score >= 70 ? '#16a34a' : m.score >= 45 ? '#d97706' : '#dc2626';
+    const emoji = m.score >= 70 ? '✅' : m.score >= 45 ? '⚠️' : '❌';
+    return `<div style="background:#f0fdf4;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="font-size:28px;font-weight:800;color:${cor}">${m.score}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${cor}">${emoji} ${m.nivel} para a vaga</div>
+          <div style="font-size:11px;color:#6b7280">${rh.vaga||'vaga não especificada'}</div>
+        </div>
+      </div>
+      ${m.insights&&m.insights.length?m.insights.map(i=>`<div style="font-size:12px;color:#374151;margin-bottom:4px">• ${i}</div>`).join(''):''}
+    </div>`;
+  })() : '';
+
+  const tensaoBloco = rh?.tensaoAlerta?.length ? `
+    <div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:#b45309;margin-bottom:8px">⚠️ TENSÃO DE ADAPTAÇÃO</div>
+      ${rh.tensaoAlerta.map(t=>`<div style="font-size:12px;color:#374151;margin-bottom:6px;line-height:1.5">• ${t}</div>`).join('')}
+    </div>` : '';
+
+  const comboBloco = rh?.combo ? `
+    <div style="background:#eff6ff;border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">🔗 COMBINAÇÃO DE PERFIL</div>
+      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.combo}</p>
+    </div>` : '';
+
+  const rhBloco = rh ? `
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:14px">📋 ANÁLISE PARA SELEÇÃO</div>
+      ${sec('Resumo do perfil')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.6;margin-bottom:8px">${rh.resumoRH||''}</p>
+
+      ${sec('Ambientes com fit')}
+      ${lista(rh.ambientesFit,'#16a34a')}
+
+      ${sec('Ambientes de risco')}
+      ${lista(rh.ambientesRisco,'#dc2626')}
+
+      ${sec('Liderança ideal')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.5;margin-bottom:6px">${rh.liderancaFit||''}</p>
+      ${rh.liderancaRisco?`<p style="font-size:12px;color:#b45309;line-height:1.5">⚠️ ${rh.liderancaRisco}</p>`:''}
+
+      ${sec('Conflito')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.conflito||''}</p>
+
+      ${sec('Motivação')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.motivacao||''}</p>
+
+      ${sec('Retenção')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.retencao||''}</p>
+
+      ${sec('Autonomia')}
+      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.autonomia||''}</p>
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:12px">✅ Sinais positivos na entrevista</div>
+      ${lista(rh.sinaisVerde,'#16a34a')}
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:12px">⚠️ Pontos de atenção</div>
+      ${lista(rh.alertas,'#dc2626')}
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:12px">❓ Perguntas sugeridas para entrevista</div>
+      ${(rh.perguntasEntrevista||[]).map((p,i)=>`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:#a1a1aa;margin-bottom:3px">PERGUNTA ${i+1}</div><p style="font-size:12.5px;color:#374151;line-height:1.5">${p}</p></div>`).join('')}
+    </div>` : '';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC RH — ${nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:24px 16px;max-width:680px;margin:0 auto}
+    .card{background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 1px 5px rgba(0,0,0,.08);margin-bottom:14px}
+    .logo{font-size:14px;font-weight:800;color:#2a2a2b;margin-bottom:18px}.logo span{color:#8ed1b2}
+    @media print{body{background:#fff;padding:10px}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
+  </style></head><body>
+  <div class="logo">Effect <span>Pessoas</span> · Relatório de Seleção</div>
+
   <div class="card">
-    <h1>${EMOJIS[d.primario]||''} ${NOMES[d.primario]||d.primario}${d.secundario?' / '+NOMES[d.secundario]:''}</h1>
-    <div class="sub">📋 Relatório DISC · ${nome} · ${new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
-    ${['D','I','S','C'].map(k=>`<div class="bar-row">
-      <div class="bar-l" style="color:${CORES[k]}">${k}</div>
-      <div class="bar-t"><div class="bar-f" style="width:${pct[k]||0}%;background:${CORES[k]}"></div></div>
-      <div class="bar-p">${pct[k]||0}%</div>
-    </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#2a2a2b">${EMOJIS[d.primarioNatural||d.primario]||''} ${nome}</div>
+        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${CORES[d.primarioNatural||d.primario]||'#374151'}">${NOMES[d.primarioNatural||d.primario]||''}${d.secundarioNatural?' / '+NOMES[d.secundarioNatural]:''}</div>
+        <div style="font-size:11px;color:#a1a1aa">Perfil predominante</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:10px;font-weight:800;color:#a1a1aa;margin-bottom:8px">PERFIL NATURAL</div>
+        ${barras(pctN)}
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:800;color:#a1a1aa;margin-bottom:8px">PERFIL ADAPTADO${d.referencia?' ('+d.referencia+')':''}</div>
+        ${barras(pctA)}
+      </div>
+    </div>
   </div>
-  <button onclick="window.print()" style="background:#1e3a5f;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:16px">🖨️ Imprimir / Salvar PDF</button>
+
+  ${matchBloco}
+  ${tensaoBloco}
+  ${comboBloco}
+  ${rhBloco}
+
+  <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
   </body></html>`;
   res.send(html);
 });
