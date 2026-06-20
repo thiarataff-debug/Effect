@@ -1007,7 +1007,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
     </div>
 
   <!-- FINANCEIRO -->
-  <div class="page" id="page-financeiro">
+  <div class="view" id="financeiro-view">
     <div class="fin-tabs">
       <button class="fin-tab on" onclick="finAba('lancamentos',this)">💰 Lançamentos</button>
       <button class="fin-tab" onclick="finAba('notas',this)">🧾 Notas Fiscais</button>
@@ -2442,13 +2442,56 @@ function finFecharModal(){ ['fin-modal-lancamento','fin-modal-meta','fin-modal-n
 document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.fin-modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)finFecharModal();})); });
 
 // ═══════════════ BANCO DE TALENTOS ═══════════════════════════════════════
-const BT_KEY = 'effect-banco-talentos-v1';
 let btDados = [];
 let btViewAtual = 'cards';
 let btEditId = null;
+let btLoading = false;
 
-function btLoad(){ try{ btDados = JSON.parse(localStorage.getItem(BT_KEY)) || []; }catch{ btDados=[]; } }
-function btSave(){ localStorage.setItem(BT_KEY, JSON.stringify(btDados)); }
+async function btLoad(){
+  if(btLoading) return;
+  btLoading = true;
+  try{
+    const r = await fetch(`${API}/sheets/banco-talentos`);
+    const data = await r.json();
+    btDados = Array.isArray(data.talentos) ? data.talentos : [];
+  } catch(e){
+    console.warn('[BT] Falha ao carregar, usando cache local:', e.message);
+    try{ btDados = JSON.parse(localStorage.getItem('effect-bt-cache')||'[]'); }catch{ btDados=[]; }
+  } finally { btLoading = false; }
+}
+
+async function btSave(talento){
+  try{
+    const r = await fetch(`${API}/sheets/banco-talentos`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(talento)
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Erro ao salvar');
+    // Atualiza cache local
+    localStorage.setItem('effect-bt-cache', JSON.stringify(btDados));
+    return true;
+  } catch(e){
+    console.error('[BT] Erro ao salvar:', e.message);
+    toast('Erro ao salvar no servidor: '+e.message,'error');
+    return false;
+  }
+}
+
+async function btDelete(id){
+  try{
+    const r = await fetch(`${API}/sheets/banco-talentos/${id}`, { method: 'DELETE' });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Erro ao deletar');
+    localStorage.setItem('effect-bt-cache', JSON.stringify(btDados));
+    return true;
+  } catch(e){
+    console.error('[BT] Erro ao deletar:', e.message);
+    toast('Erro ao remover: '+e.message,'error');
+    return false;
+  }
+}
 
 function btStatusPill(st){
   const map = {
@@ -2597,7 +2640,7 @@ function btAbrirModal(id){
 }
 function btFecharModal(){ document.getElementById('bt-modal-overlay').classList.remove('show'); btEditId=null; }
 
-function btSalvar(){
+async function btSalvar(){
   const nome = document.getElementById('bt-f-nome').value.trim();
   if(!nome){ toast('Informe o nome do candidato','error'); return; }
   const item = {
@@ -2618,15 +2661,14 @@ function btSalvar(){
   };
   if(btEditId){ btDados = btDados.map(x=>x.id===btEditId ? item : x); }
   else { btDados.unshift(item); }
-  btSave(); btFecharModal(); btRender();
-  toast(btEditId ? '✅ Talento atualizado!' : '✅ Talento cadastrado no banco!');
+  const ok = await btSave(item);
+  if(ok){ btFecharModal(); btRender(); toast(btEditId ? '✅ Talento atualizado!' : '✅ Talento cadastrado no banco!'); }
 }
 
-function btDeletar(id){
+async function btDeletar(id){
   if(!confirm('Remover este talento do banco?')) return;
-  btDados = btDados.filter(t=>t.id!==id);
-  btSave(); btRender();
-  toast('Talento removido');
+  const ok = await btDelete(id);
+  if(ok){ btDados = btDados.filter(t=>t.id!==id); btRender(); toast('Talento removido'); }
 }
 
 function btExportarCSV(){
@@ -2644,8 +2686,7 @@ function btExportarCSV(){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  btLoad();
-  btRenderKPIs();
+  btLoad().then(()=>btRenderKPIs());
   const ov = document.getElementById('bt-modal-overlay');
   if(ov) ov.addEventListener('click', e=>{ if(e.target===ov) btFecharModal(); });
 });
