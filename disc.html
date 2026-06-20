@@ -148,6 +148,51 @@ input[type=text]:focus{border-color:var(--blue)}
 .tensao-card.media{background:#f0f9ff;border-color:#bae6fd}
 .tensao-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
 .tensao-txt{font-size:12px;line-height:1.55;color:#374151}
+/* ── TENDÊNCIAS ── */
+.tend-item{padding:11px 0;border-bottom:1px solid #f0f4f8}
+.tend-item:last-child{border-bottom:none;padding-bottom:0}
+.tend-dim{font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.tend-txt{font-size:12px;color:#374151;line-height:1.6}
+
+/* ── MATCH ── */
+.match-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.match-score-box{text-align:center;min-width:64px}
+.match-pct{font-size:30px;font-weight:800}
+.match-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+.match-info{flex:1}
+.match-cargo{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.match-nota{font-size:11.5px;color:#4b5563;line-height:1.55}
+.match-tend{background:#f8fafc;border-radius:9px;padding:11px 13px;font-size:12px;color:#374151;line-height:1.6;margin-top:6px;border-left:3px solid var(--green)}
+/* ── CANDIDATO: crescimento ── */
+.cresc-item{display:flex;gap:8px;margin-bottom:7px;font-size:12px;line-height:1.55;color:#374151}
+.cresc-item::before{content:'🌱';flex-shrink:0}
+.fechamento{text-align:center;padding:18px 10px}
+.fechamento .f-icon{font-size:32px;margin-bottom:8px}
+.fechamento .f-txt{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* ── RECRUTADOR ── */
+.rh-badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.rh-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.rh-cell{border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.55}
+.rh-cell-lbl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.rh-cell.fit{background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
+.rh-cell.risco{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.rh-bloco{margin-bottom:12px}
+.rh-bloco-lbl{font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.rh-bloco-txt{font-size:12px;color:#374151;line-height:1.6}
+.rh-tag{display:inline-block;background:var(--bg);border:1px solid #dde3ea;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;margin:3px 3px 0 0;color:var(--navy)}
+.rh-tag.verde{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.rh-tag.alerta{background:#fef9c3;border-color:#fde68a;color:#78350f}
+.rh-pergunta{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 13px;font-size:12px;color:#1e40af;line-height:1.55;margin-bottom:7px}
+.rh-pergunta::before{content:'"';font-size:18px;font-weight:900;opacity:.4;margin-right:4px}
+.score-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;border:3px solid}
+.rh-header-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.rh-header-info{flex:1}
+.rh-header-nome{font-size:14px;font-weight:800;color:var(--navy)}
+.rh-header-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.tensao-rh{border-radius:9px;padding:11px 13px;font-size:12px;line-height:1.6;margin-bottom:8px}
+.tensao-rh.alta{background:#fef9c3;border:1px solid #fde68a;color:#78350f}
+.tensao-rh.media{background:#f0f9ff;border:1px solid #bae6fd;color:#1e40af}
 
 /* ── PRINT ── */
 .btn-print{background:var(--bg);border:1px solid #dde3ea;border-radius:10px;padding:11px;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px}
@@ -241,14 +286,29 @@ input[type=text]:focus{border-color:var(--blue)}
       <div class="trans-content">
         <div class="icon">✅</div>
         <h2>Etapa 1 concluída!</h2>
-        <p>Ótimo trabalho! Agora vem a segunda parte, igualmente importante.</p>
+        <p>Ótimo trabalho! Agora vem a segunda parte.</p>
         <div class="destaque">
-          <strong>Etapa 2 — O que o ambiente de trabalho espera de mim</strong><br>
-          Usando os mesmos grupos de palavras, responda agora pensando no trabalho: como as pessoas do seu ambiente profissional <strong>esperam que você seja</strong>?
+          <strong>Etapa 2 — O que o trabalho espera de mim</strong><br>
+          Usando os mesmos grupos de palavras, responda agora pensando em como as pessoas abaixo <strong>esperam que você seja</strong> no trabalho.
+        </div>
+        <p style="font-size:12.5px;color:#374151;margin:14px 0 8px;font-weight:700">Pensando em quem você vai responder?</p>
+        <div class="ref-grid">
+          <div class="ref-btn" onclick="selecionarRef(this,'minha liderança','exige','minha liderança exige menos isso de mim…')">
+            <span class="ref-icon">👔</span>Minha liderança
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'minha equipe','espera','minha equipe espera menos isso de mim…')">
+            <span class="ref-icon">👥</span>Minha equipe
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'meus clientes','esperam','meus clientes esperam menos isso de mim…')">
+            <span class="ref-icon">🤝</span>Meus clientes
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'o trabalho em geral','exige','o trabalho em geral exige menos isso de mim…')">
+            <span class="ref-icon">🏢</span>O trabalho em geral
+          </div>
         </div>
       </div>
     </div>
-    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()">Iniciar Etapa 2 →</button>
+    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()" disabled>Iniciar Etapa 2 →</button>
   </div>
 
   <!-- ══ TELA: CALCULANDO ══ -->
@@ -262,7 +322,7 @@ input[type=text]:focus{border-color:var(--blue)}
     </div>
   </div>
 
-  <!-- ══ TELA: RESULTADO ══ -->
+  <!-- ══ TELA: RESULTADO (candidato) ══ -->
   <div id="tela-resultado" class="hidden">
     <div class="card">
       <div class="res-top">
@@ -272,36 +332,40 @@ input[type=text]:focus{border-color:var(--blue)}
       </div>
       <div class="perfis-row">
         <div class="pcard" id="pcard-nat">
-          <div class="pcard-titulo">🧠 Perfil Natural</div>
+          <div class="pcard-titulo">🧠 Quem você é</div>
           <div class="pcard-nome" id="nat-nome"></div>
           <div id="nat-bars"></div>
         </div>
         <div class="pcard" id="pcard-ada" style="background:#fffbeb;border-color:#fde68a">
-          <div class="pcard-titulo">🎭 Perfil Adaptado</div>
+          <div class="pcard-titulo">🎭 Como você se adapta</div>
           <div class="pcard-nome" id="ada-nome"></div>
           <div id="ada-bars"></div>
         </div>
       </div>
-      <div class="sec-titulo">Sobre você — Perfil Natural</div>
-      <p id="res-resumo" style="font-size:12.5px;line-height:1.65;color:#374151"></p>
-      <div id="res-combo" class="combo-box hidden"></div>
+      <p id="res-resumo" style="font-size:12.5px;line-height:1.7;color:#374151;margin-top:12px"></p>
+      <div id="res-combo" class="combo-box hidden" style="margin-top:10px"></div>
     </div>
     <div class="card">
-      <div class="sec-titulo">✅ Pontos fortes</div>
+      <div class="sec-titulo">🌟 O que você traz de melhor</div>
       <div id="res-forcas"></div>
-      <div class="sec-titulo">⚠️ Pontos de atenção</div>
+      <div class="sec-titulo" style="margin-top:14px">🧭 Como você age em diferentes situações</div>
+      <div id="res-tendencias"></div>
+    </div>
+    <div class="card">
+      <div class="sec-titulo">🌱 Para ficar de olho</div>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Não são defeitos — são pontos onde pequenos ajustes fazem grande diferença.</p>
       <div id="res-atencao"></div>
     </div>
-    <div class="card" id="card-tensao" style="display:none">
-      <div class="sec-titulo">⚡ Análise de tensão</div>
-      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Diferenças entre seu perfil natural e o que o ambiente espera de você.</p>
-      <div id="res-tensoes"></div>
+    <div class="card hidden" id="card-tensao-cand">
+      <div class="sec-titulo">⚡ Um ponto importante</div>
+      <p style="font-size:11.5px;color:#374151;margin-bottom:10px;line-height:1.55">Notamos uma diferença entre como você é naturalmente e o que o ambiente de trabalho espera. Isso é normal — todos nos adaptamos. Mas quando a diferença é grande, pode gerar cansaço ao longo do tempo. Vale refletir sobre isso.</p>
+      <div id="res-tensoes-cand"></div>
     </div>
-    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
-    <div class="card" style="margin-top:14px;text-align:center;padding:18px">
-      <div style="font-size:22px;margin-bottom:6px">💙</div>
-      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px">Resultado salvo com sucesso!</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.5">Perfil registrado pela equipe Effect Pessoas.</div>
+    <button class="btn-print" onclick="window.print()">🖨️ Salvar meu resultado</button>
+    <div class="card" style="margin-top:14px;padding:20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">💙</div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px">Obrigado por responder!</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Seu perfil foi registrado pela equipe Effect Pessoas.<br>Em breve entraremos em contato.</div>
     </div>
   </div>
 
@@ -377,6 +441,205 @@ const TENSAO_MSGS = {
      down:'Você é naturalmente mais criterioso do que demonstra — pode estar simplificando sua abordagem para se adaptar ao ritmo do ambiente.'}
 };
 
+
+// ══════════════════════════════════════════
+// RELATÓRIO RH — dados por perfil primário
+// ══════════════════════════════════════════
+const RECRUTA = {
+  D:{
+    resumoRH:'Perfil assertivo e orientado a resultados. Toma decisões rápidas, assume responsabilidade e não espera ser convocado — lidera naturalmente. Indicado para funções com autonomia, metas claras e ritmo acelerado.',
+    ambientesFit:['Dinâmico e desafiador','Alta pressão e urgência','Autonomia real para decidir','Metas claras e mensuráveis','Liderança com desafios constantes'],
+    ambientesRisco:['Muito burocrático ou controlado','Ritmo lento sem novidades','Microgerenciamento','Rotinas rígidas sem espaço para iniciativa'],
+    liderancaFit:'Diretiva com autonomia — define objetivos claros e dá espaço para executar. Explica o porquê das decisões sem microgerir.',
+    liderancaRisco:'Microgerenciamento ou liderança passiva sem direção — ambos geram frustração rápida e risco de desengajamento.',
+    conflito:'Confronta diretamente quando discorda. Pode escalar conflitos com pares. Em cargos de liderança, pode ser percebido como autoritário se não houver equilíbrio relacional.',
+    motivacao:'Resultados concretos, autonomia real, progressão rápida, reconhecimento por performance, desafios constantes.',
+    retencao:'Alto risco de saída se não houver crescimento ou desafio. Fidelidade condicionada à oportunidade — não à empresa.',
+    autonomia:'Alta. Funciona com objetivos definidos e liberdade de método. Não precisa de acompanhamento constante.',
+    sinaisVerde:['Proatividade e iniciativa mesmo sem cargo formal','Alta entrega em situações de pressão e urgência','Capacidade de decisão mesmo sem informação completa'],
+    alertas:['Pode atropelar processos e pessoas na busca por resultados','Impaciência com burocracia ou ritmo lento','Risco de conflito com líderes percebidos como incompetentes ou passivos'],
+    perguntas:[
+      'Me conte de uma situação em que discordou de uma decisão do seu líder. O que fez?',
+      'Como você reage quando um colega não entrega no prazo e afeta o seu trabalho?',
+      'O que te faria sair de um emprego mesmo gostando da função?'
+    ]
+  },
+  I:{
+    resumoRH:'Perfil comunicativo e orientado a pessoas. Cria vínculos com facilidade, engaja equipes e clientes naturalmente. Indicado para funções com alto contato humano, vendas, atendimento e liderança pelo relacionamento.',
+    ambientesFit:['Alto contato humano','Dinâmico e variado','Com reconhecimento frequente','Trabalho em equipe colaborativa','Liberdade para expressar ideias'],
+    ambientesRisco:['Isolado ou solitário','Muito técnico e sem interação','Com críticas constantes e sem reconhecimento','Rotineiro e repetitivo por longo período'],
+    liderancaFit:'Valorizadora e positiva — reconhece o esforço, dá feedback de elogio e cria ambiente de confiança. Liderança próxima e presente.',
+    liderancaRisco:'Liderança fria, punitiva ou que ignora a contribuição individual — gera desmotivação rápida.',
+    conflito:'Evita conflito e tende a suavizar situações. Pode não reportar problemas para não criar mal-estar. Avalie se tem dificuldade em dar feedback negativo ou sinalizar falhas.',
+    motivacao:'Reconhecimento público, relacionamentos positivos, variedade de tarefas, sentido de pertencimento ao grupo.',
+    retencao:'Fidelidade ao clima e às pessoas, não necessariamente à empresa. Pode sair por ambiente ruim mesmo com boa remuneração.',
+    autonomia:'Moderada — precisa de validação e contato frequentes. Funciona bem com autonomia se houver suporte relacional.',
+    sinaisVerde:['Facilidade de criar rapport imediato com clientes e colegas','Capacidade de animar e engajar equipes naturalmente','Alta adaptabilidade social em contextos diferentes'],
+    alertas:['Pode superestimar entregas por otimismo excessivo','Dificuldade com tarefas técnicas isoladas e sem contato humano','Risco de não reportar problemas para preservar o clima'],
+    perguntas:[
+      'Como você lida com metas apertadas que precisam ser cumpridas mesmo sem apoio da equipe?',
+      'Me conte de uma situação em que precisou dar uma notícia negativa a um colega ou cliente.',
+      'Você já deixou de falar algo importante para não prejudicar o clima? O que aconteceu depois?'
+    ]
+  },
+  S:{
+    resumoRH:'Perfil estável, leal e orientado à equipe. Confiável, consistente e paciente. Indicado para funções que exigem constância, trabalho colaborativo e atendimento de qualidade com foco em relacionamento.',
+    ambientesFit:['Estável e previsível','Com processos claros e definidos','Trabalho em equipe com suporte mútuo','Rotina definida e ritmo constante','Liderança consistente e justa'],
+    ambientesRisco:['Muito instável com mudanças frequentes','Conflituoso e sem gestão','Alta pressão por performance individual','Ambiente improdutivo e sem suporte'],
+    liderancaFit:'Consistente, justa e próxima — valoriza a lealdade, dá direção clara e cria sensação de segurança. Não precisa ser carismática; precisa ser confiável.',
+    liderancaRisco:'Liderança imprevisível, que muda regras com frequência ou ignora o esforço da equipe — gera insegurança e desgaste silencioso.',
+    conflito:'Evita conflito ao máximo — pode ser sinal de passividade ou de problemas não reportados. Tende a absorver tensões internamente em vez de verbalizá-las.',
+    motivacao:'Segurança, harmonia no ambiente, sentimento de pertencimento e de ser parte de algo estável e confiável.',
+    retencao:'Alta fidelidade se tratado com respeito e consistência. Um dos perfis com menor rotatividade quando bem alocado.',
+    autonomia:'Moderada a baixa — funciona melhor com direção clara e suporte da liderança. Pode ter dificuldade com iniciativa sem orientação.',
+    sinaisVerde:['Alta confiabilidade — entrega o que promete','Excelente suporte à equipe e ao cliente mesmo em momentos difíceis','Baixo risco de comportamentos impulsivos ou conflituosos'],
+    alertas:['Dificuldade em ambientes de alta mudança ou imprevisibilidade','Tende a não reportar insatisfação — monitorar sinais de desgaste silencioso','Pode ter dificuldade em tomar iniciativa sem orientação clara'],
+    perguntas:[
+      'Como você se sente quando as regras ou processos mudam com frequência?',
+      'Já precisou discordar de um colega ou líder? Como fez isso?',
+      'O que te deixa mais desconfortável em um ambiente de trabalho?'
+    ]
+  },
+  C:{
+    resumoRH:'Perfil analítico e orientado à qualidade. Meticuloso, organizado e criterioso. Indicado para funções que exigem precisão, análise, controle de processos e conformidade com padrões.',
+    ambientesFit:['Estruturado com processos claros','Qualidade valorizada acima do volume','Com tempo adequado para análise e planejamento','Padrões e critérios bem definidos'],
+    ambientesRisco:['Caótico e sem processos','Pressão por volume sobre qualidade','Decisões impulsivas e sem dados','Muito informal ou sem estrutura definida'],
+    liderancaFit:'Competente e baseada em dados — explica decisões com lógica, valoriza a qualidade e respeita o ritmo de análise do colaborador.',
+    liderancaRisco:'Liderança impulsiva que decide sem dados, muda de direção constantemente ou não valoriza a qualidade da entrega.',
+    conflito:'Prefere debate intelectual ao emocional. Pode parecer frio ou excessivamente crítico. Raramente confronta por questões emocionais — mas pode criar resistência passiva diante de decisões que percebe como erradas.',
+    motivacao:'Fazer o trabalho com qualidade, aprofundar expertise, trabalhar em ambiente competente e com padrões elevados.',
+    retencao:'Permanece se perceber competência e qualidade ao redor. Sai se o ambiente for desorganizado ou se a qualidade não for valorizada.',
+    autonomia:'Alta para execução técnica — prefere trabalhar sem interferências no método. Mas precisa de critérios e objetivos claros para começar.',
+    sinaisVerde:['Atenção aos detalhes que outros normalmente deixam passar','Entrega consistente com alta qualidade e baixo índice de erro','Capacidade de identificar riscos e inconsistências antes de agir'],
+    alertas:['Pode ser lento em situações que exigem decisão rápida sem dados completos','Pode parecer distante ou excessivamente crítico em ambientes mais relacionais','Dificuldade em ambientes caóticos ou com mudanças constantes de prioridade'],
+    perguntas:[
+      'Como você reage quando precisa decidir algo importante sem ter todas as informações?',
+      'O que te incomoda mais em um ambiente de trabalho?',
+      'Me conte de uma situação em que identificou um erro que outros não viram. Como agiu?'
+    ]
+  }
+};
+
+function gerarRelatorioRH(primario, secundario, naturalPct, adaptadoPct, vagaCand, tensoes) {
+  const r = RECRUTA[primario];
+  const match = calcularMatch(vagaCand, naturalPct);
+  const tensaoAlerta = tensoes.filter(t => Math.abs(t.gap) >= 20).map(t => {
+    const dir = t.gap > 0 ? 'subindo' : 'caindo';
+    return 'Tensão alta em ' + t.trait + ' (' + (t.gap>0?'+':'') + t.gap + '%): candidato está adaptando seu perfil ' + dir + ' nessa dimensão. ' + TENSAO_MSGS[t.trait][t.gap>0?'up':'down'];
+  });
+  return {
+    perfilNatural: primario + (secundario ? '/' + secundario : ''),
+    perfilAdaptado: Object.entries(adaptadoPct).sort((a,b)=>b[1]-a[1])[0][0],
+    percentuaisNatural: naturalPct,
+    percentuaisAdaptado: adaptadoPct,
+    vaga: vagaCand || '',
+    referencia: referencia || '',
+    match: match,
+    resumoRH: r.resumoRH,
+    ambientesFit: r.ambientesFit,
+    ambientesRisco: r.ambientesRisco,
+    liderancaFit: r.liderancaFit,
+    liderancaRisco: r.liderancaRisco,
+    conflito: r.conflito,
+    motivacao: r.motivacao,
+    retencao: r.retencao,
+    autonomia: r.autonomia,
+    sinaisVerde: r.sinaisVerde,
+    alertas: r.alertas,
+    perguntasEntrevista: r.perguntas,
+    tensaoAlerta: tensaoAlerta,
+    combo: secundario ? (COMBOS[primario+secundario] || COMBOS[secundario+primario] || null) : null
+  };
+}
+
+// ══════════════════════════════════════════
+// TENDÊNCIAS COMPORTAMENTAIS
+// ══════════════════════════════════════════
+const TENDENCIAS = {
+  lideranca:{lbl:'👔 Com sua liderança',
+    D:'Tende a questionar decisões quando discorda. Funciona melhor com líderes que explicam o raciocínio das ordens e dão autonomia — não apenas "faça porque eu disse".',
+    I:'Responde bem ao elogio e ao reconhecimento. Precisa sentir que a liderança valoriza sua contribuição. Críticas frequentes ou líderes frios tendem a desmotivar.',
+    S:'Leal e colaborativo com a liderança. Segue diretrizes sem confronto. Adapta-se a mudanças de gestão, mas precisa de tempo e de explicação para se sentir seguro.',
+    C:'Respeita a liderança que demonstra competência e coerência. Tende a questionar decisões que percebe como inconsistentes ou sem embasamento claro.'},
+  pressao:{lbl:'⚡ Sob pressão',
+    D:'Ativa sob pressão — tende a agir, assumir o controle e buscar soluções rápidas. Situações de urgência costumam despertar seu melhor desempenho.',
+    I:'Busca apoio social sob pressão: conversa, envolve a equipe, tenta aliviar o clima. Pode ter dificuldade com pressão prolongada em ambientes de isolamento.',
+    S:'Mantém a calma em situações de tensão — é um ponto forte. Pressão crônica e ambientes muito imprevisíveis podem gerar desgaste interno ao longo do tempo.',
+    C:'Tende a analisar antes de agir — o que pode ser mais lento em pressão extrema. Performa melhor quando tem um mínimo de tempo para planejar, mesmo que breve.'},
+  equipe:{lbl:'👥 Em equipe',
+    D:'Prefere autonomia dentro do time. Funciona bem com papéis claros, onde possa liderar ou tomar iniciativa sem depender de aprovação constante.',
+    I:'Ponto forte em equipe — cria clima positivo, facilita a comunicação e anima o grupo. Pode ter dificuldade com colegas muito fechados ou ambientes muito silenciosos.',
+    S:'Excelente em equipe — apoia os colegas, evita conflitos e mantém a harmonia. Pode ceder facilmente mesmo quando deveria se posicionar.',
+    C:'Trabalha bem com papéis claros. Pode parecer reservado ou distante, mas é confiável e preciso. Evita discussões desnecessárias.'},
+  clientes:{lbl:'🤝 Com clientes e público',
+    D:'Direto e objetivo. Resolve problemas com rapidez, mas pode parecer impaciente com clientes indecisos ou que exigem muito tempo de atenção.',
+    I:'Excelente com público — cria conexão com facilidade, deixa o cliente à vontade e transmite entusiasmo. Ponto forte em atendimento, vendas e recepção.',
+    S:'Paciente e atencioso, mesmo com clientes difíceis. Não perde a compostura com facilidade e transmite segurança em situações de reclamação.',
+    C:'Preciso e informativo — dá respostas completas e corretas. Pode parecer formal ou distante em contextos que pedem mais calor humano e informalidade.'},
+  mudancas:{lbl:'🔄 Frente a mudanças',
+    D:'Adapta-se bem a mudanças, especialmente se puder influenciar como elas acontecem. Rotinas rígidas e sem evolução tendem a desmotivar.',
+    I:'Abraça mudanças com entusiasmo, principalmente as que envolvem novidades ou pessoas. Prefere variedade a repetição constante.',
+    S:'Prefere ambientes estáveis e previsíveis. Mudanças frequentes sem aviso ou justificativa geram desconforto — mas uma vez convencido, adapta-se bem.',
+    C:'Aceita mudanças desde que bem explicadas e justificadas. Resiste a mudanças impulsivas ou sem planejamento claro.'},
+  decisao:{lbl:'🎯 Na tomada de decisão',
+    D:'Decide com rapidez, mesmo com informação incompleta. Assume riscos calculados e prefere errar agindo a demorar demais analisando.',
+    I:'Decide com base no feeling e nas pessoas. Tem facilidade em decisões sociais, mas pode precisar de apoio em decisões técnicas ou baseadas em dados.',
+    S:'Prefere decidir com consenso e informação suficiente. Evita decisões impulsivas — o que garante consistência, mas pode gerar lentidão em urgências.',
+    C:'Decide com base em análise cuidadosa. Precisa de dados completos e evita achismos — o que garante qualidade, mas pode atrasar entregas em ritmo acelerado.'}
+};
+
+// ══════════════════════════════════════════
+// MATCH COM VAGAS
+// ══════════════════════════════════════════
+const VAGAS_MATCH = [
+  {kw:['garçom','garconete','garçonete','waiter'],lbl:'Garçom/Garçonete',perfil:{D:15,I:35,S:35,C:15},nota:'Requer boa comunicação, paciência com clientes e capacidade de trabalho em equipe constante.',tend:'Tende a se destacar no atendimento e na criação de vínculos com clientes. O desafio costuma ser a consistência e o ritmo em picos de movimento.'},
+  {kw:['bartender','barman','barwoman'],lbl:'Bartender',perfil:{D:30,I:35,S:20,C:15},nota:'Combina rapidez na entrega com interação social intensa com clientes.',tend:'Tende a criar conexão com facilidade no balcão. Pode se destacar em noites movimentadas, mas precisa de atenção ao detalhe das receitas.'},
+  {kw:['gerente','gestor','gestora'],lbl:'Gerente',perfil:{D:40,I:20,S:20,C:20},nota:'Exige liderança firme, tomada de decisão e capacidade de gerir pessoas e processos simultaneamente.',tend:'Avalie a relação com a equipe e como reage a subordinados de perfil mais passivo. Alto D pode parecer muito duro para equipes com alto S.'},
+  {kw:['supervisor','supervisora'],lbl:'Supervisor(a)',perfil:{D:35,I:20,S:25,C:20},nota:'Combina liderança com acompanhamento próximo da equipe operacional.',tend:'Tende a supervisionar com foco em entregas. Pode ter dificuldade em dar feedback delicado a quem erra.'},
+  {kw:['caixa','operador de caixa'],lbl:'Operador(a) de Caixa',perfil:{D:10,I:20,S:30,C:40},nota:'Exige precisão, atenção e paciência com alto volume de atendimentos.',tend:'Avalie tolerância a rotina repetitiva e atenção a detalhes. Alto D costuma ter dificuldade com esse ritmo.'},
+  {kw:['cozinheiro','cozinheira','auxiliar de cozinha','ajudante'],lbl:'Cozinheiro(a)',perfil:{D:20,I:10,S:35,C:35},nota:'Requer consistência, atenção a processos e trabalho sob pressão de tempo.',tend:'Tende a seguir receitas e processos com cuidado. O desafio é manter a qualidade constante em horários de pico.'},
+  {kw:['auxiliar','assistente'],lbl:'Auxiliar/Assistente',perfil:{D:15,I:15,S:45,C:25},nota:'Requer constância, suporte à equipe e foco na execução.',tend:'Tende a ser confiável e consistente. Pode ter dificuldade em situações que exigem iniciativa ou decisões rápidas sem orientação.'},
+  {kw:['recepcionista'],lbl:'Recepcionista',perfil:{D:15,I:40,S:30,C:15},nota:'Exige boa comunicação, atenção ao cliente e organização.',tend:'Tende a criar uma primeira impressão positiva. Avalie capacidade de lidar com imprevistos e múltiplas demandas ao mesmo tempo.'},
+  {kw:['atendente'],lbl:'Atendente',perfil:{D:20,I:35,S:30,C:15},nota:'Combina comunicação ativa com paciência no atendimento ao público.',tend:'Tende a se sair bem em atendimento humanizado. Avalie tolerância a reclamações e repetitividade.'},
+  {kw:['host','hostess','maitre','maître'],lbl:'Host/Maître',perfil:{D:25,I:45,S:20,C:10},nota:'Requer presença, comunicação e capacidade de causar excelente primeira impressão.',tend:'Tende a criar conexão rápida com clientes. Avalie organização e capacidade de gerenciar filas e reservas sob pressão.'},
+  {kw:['recrutador','recrutadora','seleção','selecionador'],lbl:'Recrutador(a)',perfil:{D:20,I:35,S:20,C:25},nota:'Combina habilidade relacional com visão analítica de perfis comportamentais.',tend:'Tende a criar boa relação com candidatos. Avalie capacidade de análise crítica e julgamento objetivo sem se deixar levar apenas pelo feeling.'},
+  {kw:['psicolog'],lbl:'Psicólogo(a)',perfil:{D:10,I:30,S:40,C:20},nota:'Exige escuta, paciência, empatia e análise cuidadosa.',tend:'Tende a ter boa escuta e paciência. Avalie capacidade de estabelecer limites e manter objetividade em situações de alta carga emocional.'},
+  {kw:['treinamento','treinador','facilitador'],lbl:'Treinamento/Facilitação',perfil:{D:25,I:40,S:20,C:15},nota:'Requer comunicação envolvente, energia e estrutura didática.',tend:'Tende a engajar grupos com facilidade. Avalie profundidade técnica e capacidade de adaptar conteúdo a públicos diferentes.'},
+  {kw:['analista de rh','recursos humanos'],lbl:'Analista de RH',perfil:{D:20,I:30,S:25,C:25},nota:'Equilibra relacionamento, análise e execução de processos de gestão de pessoas.',tend:'Tende a equilibrar bem o lado humano e o operacional. Avalie autonomia para lidar com múltiplos processos simultâneos.'},
+  {kw:['consultor','consultora'],lbl:'Consultor(a)',perfil:{D:30,I:25,S:20,C:25},nota:'Exige autonomia, comunicação persuasiva e visão analítica.',tend:'Tende a combinar análise com ação. Avalie como lida com clientes resistentes e cenários de incerteza.'},
+  {kw:['lider','líder','coordenador','coordenadora'],lbl:'Liderança/Coordenação',perfil:{D:40,I:25,S:20,C:15},nota:'Requer tomada de decisão, engajamento de equipe e visão estratégica.',tend:'Avalie o estilo de liderança — excessivamente dominante pode criar resistência em equipes mais estáveis. Equilíbrio com escuta é fundamental.'},
+  {kw:['vendedor','vendedora','vendas','comercial'],lbl:'Vendedor(a)',perfil:{D:30,I:40,S:20,C:10},nota:'Combina assertividade com comunicação e capacidade de persuasão.',tend:'Tende a criar rapport com facilidade e a persistir nas negociações. Avalie organização do funil e disciplina com metas e follow-up.'},
+  {kw:['segurança','porteiro','porteira'],lbl:'Segurança/Porteiro',perfil:{D:35,I:15,S:35,C:15},nota:'Requer firmeza, atenção ao ambiente e capacidade de agir em situações de risco.',tend:'Tende a ser firme e presente. Avalie equilíbrio entre assertividade e controle emocional em situações de conflito.'},
+];
+
+function calcularMatch(vaga, pctNatural) {
+  if (!vaga) return null;
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const vagaN = norm(vaga);
+  let found = null;
+  for (const v of VAGAS_MATCH) {
+    if (v.kw.some(k => vagaN.includes(norm(k)))) { found = v; break; }
+  }
+  if (!found) return null;
+  const total = ['D','I','S','C'].reduce((s,k) => s + (pctNatural[k]||0), 0) || 1;
+  let dist = 0;
+  ['D','I','S','C'].forEach(k => dist += Math.abs((pctNatural[k]/total*100) - found.perfil[k]));
+  const score = Math.max(0, Math.min(100, Math.round(100 - dist/2)));
+  let lbl, cor;
+  if      (score >= 80) { lbl = 'Excelente compatibilidade'; cor = '#16a34a'; }
+  else if (score >= 65) { lbl = 'Boa compatibilidade';       cor = '#1fa5f0'; }
+  else if (score >= 50) { lbl = 'Compatibilidade parcial';   cor = '#d97706'; }
+  else                  { lbl = 'Baixa compatibilidade';     cor = '#dc2626'; }
+  return { ...found, score, lbl, cor };
+}
+
+function gerarTendencias(primario) {
+  return Object.entries(TENDENCIAS).map(([,dim]) =>
+    '<div class="tend-item"><div class="tend-dim">' + dim.lbl + '</div>' +
+    '<div class="tend-txt">' + dim[primario] + '</div></div>'
+  ).join('');
+}
+
 // ══════════════════════════════════════════
 // ESTADO
 // ══════════════════════════════════════════
@@ -387,12 +650,13 @@ let vagaCandidato = '';
 let telefone = '';
 let referencia = '';
 let referenciaVerbo = '';
+let referenciaFrMenos = '';
 let maisIdx = null;   // índice visual do card selecionado como MAIS
 let menosIdx = null;  // índice visual do card selecionado como MENOS
 
 // grupos embaralhados: [{palavra, disc}][]
-let gruposE1 = [];
-let gruposE2 = [];
+let gruposE1 = embaralhar();
+let gruposE2 = embaralhar();
 
 const respostas = {
   1: Array.from({length:TOTAL}, () => ({mais:null, menos:null})),
@@ -434,7 +698,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Lock check — pula para 'interno' (uso pessoal da Thiara)
   const isInterno = (telefone === 'interno');
-  if (!isInterno && telefone) {
+  if (!isInterno && telefone && location.protocol !== 'file:') {
     try {
       const r = await fetch('/disc/resultado/' + encodeURIComponent(telefone));
       const data = await r.json();
@@ -444,9 +708,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     } catch(e) {/* servidor offline — continua normalmente */}
   }
-
-  gruposE1 = embaralhar();
-  gruposE2 = embaralhar();
 
   document.getElementById('nome-input').focus();
 });
@@ -487,12 +748,12 @@ function renderQuiz() {
   const grupo = grupos[grupoAtual];
   const frase = etapaAtual === 1
     ? 'Eu naturalmente sou…'
-    : 'No trabalho, esperam que eu seja…';
+    : referencia + ' ' + referenciaVerbo + ' que eu seja…';
 
   // Header info
   document.getElementById('quiz-num').textContent = 'Grupo ' + (grupoAtual + 1) + ' de ' + TOTAL;
   document.getElementById('quiz-etapa-lbl').textContent = etapaAtual === 1 ? 'Quem eu sou' : 'O que esperam';
-  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperam de você no trabalho';
+  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
   document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
   document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
   document.getElementById('quiz-next').style.opacity = '0';
@@ -532,8 +793,8 @@ function clickCard(i, disc, total) {
     cards[i].classList.add('mais');
     cards[i].querySelector('.wtag').textContent = 'MAIS ✓';
     respostas[etapaAtual][grupoAtual].mais = disc;
-    const frMenos = etapaAtual === 1 ? 'Eu naturalmente NÃO sou…' : 'No trabalho, NÃO esperam que eu seja…';
-    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que esperam de você no trabalho';
+    const frMenos = etapaAtual === 1 ? 'Eu naturalmente NÃO sou…' : referenciaFrMenos;
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
     // Atualiza enunciado do topo
     document.getElementById('quiz-instrucao').innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
     // Atualiza frase dentro dos cards não selecionados
@@ -588,11 +849,12 @@ function atualizarBadge() {
 // ══════════════════════════════════════════
 // TRANSIÇÃO — seleção de referência
 // ══════════════════════════════════════════
-function selecionarRef(el, ref, verbo) {
+function selecionarRef(el, ref, verbMais, frMenos) {
   document.querySelectorAll('.ref-btn').forEach(b => b.classList.remove('sel'));
   el.classList.add('sel');
   referencia = ref;
-  referenciaVerbo = verbo;
+  referenciaVerbo = verbMais;
+  referenciaFrMenos = frMenos;
   document.getElementById('btn-e2').disabled = false;
 }
 
@@ -620,6 +882,14 @@ async function finalizarQuestionario() {
   renderizarResultado(relatorio, naturalPct, adaptadoPct);
 
   try {
+    const relatorioRH = gerarRelatorioRH(
+      relatorio.primarioNatural,
+      relatorio.secundarioNatural,
+      naturalPct,
+      adaptadoPct,
+      vagaCandidato,
+      relatorio.tensoes
+    );
     await fetch('/disc/submit', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -634,7 +904,8 @@ async function finalizarQuestionario() {
         percentuaisAdaptado: adaptadoPct,
         primarioNatural:    relatorio.primarioNatural,
         primarioAdaptado:   relatorio.primarioAdaptado,
-        secundarioNatural:  relatorio.secundarioNatural
+        secundarioNatural:  relatorio.secundarioNatural,
+        relatorioRH
       })
     });
   } catch(e) {
@@ -692,4 +963,72 @@ function renderizarResultado(rel, naturalPct, adaptadoPct) {
   document.getElementById('res-resumo').textContent = pN.resumo;
 
   const comboKey = secundarioNatural ? primarioNatural + secundarioNatural : null;
-  const comboEl  = document.getElement
+  const comboEl  = document.getElementById('res-combo');
+  if (comboKey && COMBOS[comboKey]) {
+    comboEl.textContent = '🔗 ' + COMBOS[comboKey];
+    comboEl.classList.remove('hidden');
+  }
+
+  // ── RELATÓRIO CANDIDATO ──
+  // Pontos fortes
+  document.getElementById('res-forcas').innerHTML =
+    pN.forcas.map(f => '<div class="item-lista pos">' + f + '</div>').join('');
+
+  // Tendências (linguagem candidato-friendly)
+  document.getElementById('res-tendencias').innerHTML = gerarTendencias(primarioNatural);
+
+  // Para ficar de olho (growth framing)
+  document.getElementById('res-atencao').innerHTML =
+    pN.atencao.map(a => '<div class="cresc-item">' + a + '</div>').join('');
+
+  // Tensão simplificada para candidato
+  if (tensoes.length > 0) {
+    const tc = document.getElementById('card-tensao-cand');
+    if (tc) {
+      tc.classList.remove('hidden');
+      document.getElementById('res-tensoes-cand').innerHTML = tensoes.slice(0,2).map(t => {
+        const msg = t.gap > 0
+          ? 'No trabalho, você tende a agir com mais <strong>' + PERFIS[t.trait].nome + '</strong> do que é natural para você.'
+          : 'No trabalho, você contém um pouco de <strong>' + PERFIS[t.trait].nome + '</strong> que faz parte do seu jeito natural.';
+        return '<p style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:6px">' + msg + '</p>';
+      }).join('');
+    }
+  }
+
+  if (tensoes.length > 0) {
+    document.getElementById('card-tensao').style.display = 'block';
+    document.getElementById('res-tensoes').innerHTML = tensoes.map(t => {
+      const direcao = t.gap > 0 ? 'up' : 'down';
+      const nivel   = Math.abs(t.gap) >= 17 ? 'alta' : 'media';
+      return '<div class="tensao-card ' + nivel + '">' +
+        '<div class="tensao-lbl" style="color:' + CORES[t.trait] + '">' +
+          PERFIS[t.trait].emoji + ' Tensão em ' + t.trait +
+          ' (' + (t.gap > 0 ? '+' : '') + t.gap + '%)' +
+        '</div>' +
+        '<div class="tensao-txt">' + TENSAO_MSGS[t.trait][direcao] + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // Anima barras após DOM render
+  setTimeout(() => {
+    document.querySelectorAll('.disc-bar-f').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 200);
+}
+
+function renderBars(pct) {
+  return KEYS.map(k =>
+    '<div class="disc-bar-row">' +
+      '<div class="disc-bar-l" style="color:' + CORES[k] + '">' + k + '</div>' +
+      '<div class="disc-bar-track">' +
+        '<div class="disc-bar-f" style="background:' + CORES[k] + '" data-pct="' + (pct[k]||0) + '"></div>' +
+      '</div>' +
+      '<div class="disc-bar-pct">' + (pct[k]||0) + '%</div>' +
+    '</div>'
+  ).join('');
+}
+</script>
+</body>
+</html>
