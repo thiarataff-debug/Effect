@@ -2631,3 +2631,4 @@ app.delete("/sheets/banco-talentos/:id", async (req, res) => {
   }
 });
 // ──────────────────────────────────────────────────────────
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
