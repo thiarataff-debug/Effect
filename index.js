@@ -1,2748 +1,1053 @@
-// VERSÃO FINAL ENXUTA — travas mínimas + template detalhado + limpeza de manuais antigos
-// INDEX CONSOLIDADO — 10/06/2026
-// CORREÇÃO: horário real das mensagens recebido pelo timestamp do WhatsApp — versão Gemini
-// Ajustes principais:
-// 1) Travas menos agressivas: Lia não pausa por conversa longa sem avanço, retorno, entrevista, urgência, indicação ou cargo estratégico.
-// 2) Mensagem enviada pela Laura: /inbox/enviar grava e devolve o evento salvo no histórico do servidor.
-// 3) Mantém manual apenas para pedido explícito de humano/responsável, dados sensíveis, saúde/PCD, jurídico, irritação/risco ou possível cliente.
-// 4) CORREÇÃO 10/06/2026 (parte 2): salvamento periódico no Sheets em paralelo e só para sessões com mudança
-//    + chamarClaude com retry/log de erro real + Lia não envia mais a mensagem genérica de "instabilidade"
-//    repetidamente ao candidato (evita spam); em vez disso alerta Thiara e tenta de novo silenciosamente.
-
-const express = require("express");
-const axios = require("axios");
-const pdfParse = require("pdf-parse");
-const path = require("path");
-const fs = require("fs");
-const { google } = require("googleapis");
-const calendar   = require("./calendar");
-const supervisor = require("./supervisor");
-
-const app = express();
-app.use(express.json({ limit: "20mb" }));
-app.use((req, res, next) => { res.header("Access-Control-Allow-Origin", "*"); res.header("Access-Control-Allow-Headers", "Content-Type, Authorization"); res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); if (req.method === "OPTIONS") return res.sendStatus(200); next(); });
-
-const PORT = process.env.PORT || 3000;
-const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
-try { fs.mkdirSync(CURRICULOS_DIR, { recursive: true }); } catch (e) { console.error("Erro criando pasta local de currículos:", e.message); }
-
-const CONFIG = {
-  AI_PROVIDER: process.env.AI_PROVIDER || "gemini",
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.0-flash",
-  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
-  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN,
-  PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
-  VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
-  VAGAS_URL: process.env.VAGAS_URL,
-  THIARA_WHATSAPP: "5527997925288",
-  DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD",
-  DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
-  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-};
-
-const sessoes = {};
-const mensagensProcessadas = new Set();
-const curriculosProcessados = new Set();
-const atendimentosManuais = new Set();
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Perfil Comportamental DISC · Effect Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1e3a5f;
+  --navy2:#162440;
+  --bg:#f5f7fa;
+  --white:#ffffff;
+  --muted:#a1a1aa;
+  --green:#8ed1b2;
+  --blue:#1fa5f0;
+  --pink:#f4afa1;
+  --text:#2a2a2b;
+  --shadow:0 1px 6px rgba(0,0,0,.09);
 }
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
 
-function limparTelefone(telefone) {
-  return String(telefone || "").replace(/\D/g, "");
+/* ── HEADER ── */
+.header{background:var(--navy2);width:100%;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.22)}
+.logo{font-size:16px;font-weight:800;color:#fff}.logo span{color:var(--green)}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.etapa-badge{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#fff;display:none}
+.prog-wrap{display:none;align-items:center;gap:6px}
+.prog-track{width:90px;height:4px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:99px;transition:width .35s ease}
+.prog-txt{font-size:10px;color:rgba(255,255,255,.65);font-weight:700;white-space:nowrap}
+
+/* ── CONTAINER ── */
+.container{width:100%;max-width:480px;padding:18px 14px 70px}
+
+/* ── CARD ── */
+.card{background:var(--white);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card h2{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:10px}
+.card p{font-size:12.5px;color:#374151;line-height:1.65;margin-bottom:6px}
+
+/* ── INTRO ── */
+.dica{background:#f0fdf4;border-left:3px solid var(--green);padding:10px 14px;border-radius:8px;font-size:11.5px;color:#065f46;margin-top:10px;line-height:1.5}
+.etapas-prev{display:flex;gap:10px;margin:14px 0}
+.ep{flex:1;background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:2px solid #dde3ea}
+.ep-num{font-size:22px;font-weight:800;color:var(--navy)}
+.ep-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px;letter-spacing:.04em}
+.ep-desc{font-size:11px;color:#4b5563;margin-top:4px;line-height:1.4}
+
+/* ── CAMPOS ── */
+.fl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+input[type=text]{width:100%;padding:12px 14px;border:2px solid #dde3ea;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
+input[type=text]:focus{border-color:var(--blue)}
+
+/* ── BOTÕES ── */
+.btn{width:100%;border:none;border-radius:10px;padding:13px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s,opacity .15s;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover:not(:disabled){background:var(--blue)}
+.btn-green{background:#16a34a;color:#fff}.btn-green:hover:not(:disabled){background:#15803d}
+.btn:disabled{background:#c8d0da;cursor:not-allowed;color:#8a9ab0}
+
+/* ── ALERTA ── */
+.alerta{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 13px;font-size:11.5px;color:#991b1b;margin-bottom:10px;display:none}
+
+/* ── REFERÊNCIA ── */
+.ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.ref-btn{background:var(--white);border:2px solid #dde3ea;border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--text);transition:all .15s;-webkit-tap-highlight-color:transparent}
+.ref-btn:hover{border-color:var(--green)}
+.ref-btn.sel{border-color:var(--green);background:#f0fdf4;color:#14532d}
+.ref-icon{font-size:22px;display:block;margin-bottom:4px}
+
+/* ── CARD-CLICK UX ── */
+.grupo-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.grupo-num{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.etapa-lbl-q{font-size:10px;font-weight:700;color:var(--green)}
+.instrucao-q{font-size:12px;color:#374151;line-height:1.5;margin-bottom:14px;padding:10px 12px;background:#f8fafc;border-radius:8px;border-left:3px solid var(--navy)}
+
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wcard{
+  background:var(--white);
+  border:2px solid #dde3ea;
+  border-radius:14px;
+  padding:16px 10px 13px;
+  text-align:center;
+  cursor:pointer;
+  user-select:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+  min-height:90px;
 }
+.wcard:active{transform:scale(.95)}
+.wcard .wph{font-size:8px;color:var(--muted);line-height:1.4;font-style:italic}
+.wcard .wwd{font-size:15px;font-weight:800;color:var(--text);line-height:1.2}
+.wcard .wtag{font-size:9px;font-weight:800;padding:3px 10px;border-radius:99px;opacity:0;transition:opacity .15s;margin-top:3px}
 
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+.wcard.mais{background:#f0fdf4;border-color:#16a34a}
+.wcard.mais .wwd{color:#14532d}
+.wcard.mais .wtag{background:#16a34a;color:#fff;opacity:1}
+.wcard.menos{background:#fef2f2;border-color:#dc2626}
+.wcard.menos .wwd{color:#991b1b}
+.wcard.menos .wtag{background:#dc2626;color:#fff;opacity:1}
+.wcard.off{opacity:.25;cursor:default;pointer-events:none}
+
+.quiz-hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:13px;min-height:18px}
+.next-ind{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:11px;font-weight:800;color:#16a34a;opacity:0;transition:opacity .3s}
+
+/* ── TRANSIÇÃO ── */
+.trans-content{text-align:center;padding:8px 0}
+.trans-content .icon{font-size:46px;margin-bottom:12px}
+.trans-content h2{font-size:17px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.trans-content p{font-size:12.5px;color:#4b5563;line-height:1.6;margin-bottom:6px}
+.destaque{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#78350f;margin:12px 0;line-height:1.5;text-align:left}
+
+/* ── CONCLUÍDO (lock) ── */
+.lock-box{text-align:center;padding:28px 10px}
+.lock-box .icon{font-size:52px;margin-bottom:14px}
+.lock-box h2{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.lock-box p{font-size:12.5px;color:#4b5563;line-height:1.65}
+
+/* ── CÁLCULO ── */
+.calc-box{text-align:center;padding:44px 20px}
+
+/* ── RESULTADO ── */
+.res-top{text-align:center;padding:4px 0 14px}
+.res-emoji{font-size:44px;display:block;margin-bottom:6px}
+.res-titulo{font-size:18px;font-weight:800;color:var(--navy)}
+.res-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.perfis-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.pcard{border-radius:10px;padding:12px;border:1px solid #dde3ea}
+.pcard-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.pcard-nome{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.disc-bar-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.disc-bar-l{font-size:11px;font-weight:800;width:12px;flex-shrink:0}
+.disc-bar-track{flex:1;background:#e8ecf1;border-radius:999px;height:10px;overflow:hidden}
+.disc-bar-f{height:100%;border-radius:999px;width:0;transition:width 1.2s ease}
+.disc-bar-pct{font-size:10px;font-weight:700;color:var(--muted);width:28px;text-align:right;flex-shrink:0}
+.sec-titulo{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:14px}
+.item-lista{display:flex;gap:7px;margin-bottom:6px;font-size:12px;line-height:1.55;color:#374151}
+.item-lista::before{content:'•';font-weight:900;flex-shrink:0}
+.item-lista.pos::before{color:#16a34a}
+.item-lista.neg::before{color:var(--pink)}
+.combo-box{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 13px;font-size:12px;color:#1e40af;font-weight:600;line-height:1.5;margin-top:8px}
+.tensao-card{border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid}
+.tensao-card.alta{background:#fef9c3;border-color:#fde68a}
+.tensao-card.media{background:#f0f9ff;border-color:#bae6fd}
+.tensao-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.tensao-txt{font-size:12px;line-height:1.55;color:#374151}
+/* ── TENDÊNCIAS ── */
+.tend-item{padding:11px 0;border-bottom:1px solid #f0f4f8}
+.tend-item:last-child{border-bottom:none;padding-bottom:0}
+.tend-dim{font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.tend-txt{font-size:12px;color:#374151;line-height:1.6}
+
+/* ── MATCH ── */
+.match-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.match-score-box{text-align:center;min-width:64px}
+.match-pct{font-size:30px;font-weight:800}
+.match-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+.match-info{flex:1}
+.match-cargo{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.match-nota{font-size:11.5px;color:#4b5563;line-height:1.55}
+.match-tend{background:#f8fafc;border-radius:9px;padding:11px 13px;font-size:12px;color:#374151;line-height:1.6;margin-top:6px;border-left:3px solid var(--green)}
+/* ── CANDIDATO: crescimento ── */
+.cresc-item{display:flex;gap:8px;margin-bottom:7px;font-size:12px;line-height:1.55;color:#374151}
+.cresc-item::before{content:'🌱';flex-shrink:0}
+.fechamento{text-align:center;padding:18px 10px}
+.fechamento .f-icon{font-size:32px;margin-bottom:8px}
+.fechamento .f-txt{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* ── RECRUTADOR ── */
+.rh-badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.rh-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.rh-cell{border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.55}
+.rh-cell-lbl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.rh-cell.fit{background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
+.rh-cell.risco{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.rh-bloco{margin-bottom:12px}
+.rh-bloco-lbl{font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.rh-bloco-txt{font-size:12px;color:#374151;line-height:1.6}
+.rh-tag{display:inline-block;background:var(--bg);border:1px solid #dde3ea;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;margin:3px 3px 0 0;color:var(--navy)}
+.rh-tag.verde{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.rh-tag.alerta{background:#fef9c3;border-color:#fde68a;color:#78350f}
+.rh-pergunta{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 13px;font-size:12px;color:#1e40af;line-height:1.55;margin-bottom:7px}
+.rh-pergunta::before{content:'"';font-size:18px;font-weight:900;opacity:.4;margin-right:4px}
+.score-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;border:3px solid}
+.rh-header-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.rh-header-info{flex:1}
+.rh-header-nome{font-size:14px;font-weight:800;color:var(--navy)}
+.rh-header-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.tensao-rh{border-radius:9px;padding:11px 13px;font-size:12px;line-height:1.6;margin-bottom:8px}
+.tensao-rh.alta{background:#fef9c3;border:1px solid #fde68a;color:#78350f}
+.tensao-rh.media{background:#f0f9ff;border:1px solid #bae6fd;color:#1e40af}
+
+/* ── PRINT ── */
+.btn-print{background:var(--bg);border:1px solid #dde3ea;border-radius:10px;padding:11px;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px}
+.btn-print:hover{background:#dde3ea}
+
+.hidden{display:none!important}
+@media(max-width:380px){.container{padding:14px 10px 50px}.card{padding:15px}.wcard{padding:13px 8px 11px;min-height:80px}.wcard .wwd{font-size:14px}}
+
+@media print{
+  .header,.btn,.btn-print,.card:last-child{display:none!important}
+  body{background:#fff}
+  .container{max-width:100%;padding:10px}
+  .card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}
+  .disc-bar-f{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-
-function campo(vaga, nomes, padrao = "") {
-  for (const nome of nomes) {
-    if (vaga && vaga[nome] !== undefined && vaga[nome] !== null && String(vaga[nome]).trim() !== "") {
-      return vaga[nome];
-    }
-  }
-  return padrao;
-}
-
-function agora() {
-  return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
-function agoraMs() {
-  return Date.now();
-}
-
-function agoraHorarioBR() {
-  return new Date().toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  });
-}
-
-function carimboTempo() {
-  const ms = Date.now();
-  return {
-    timestampMs: ms,
-    timestampISO: new Date(ms).toISOString(),
-    horarioFormatado: agoraHorarioBR()
-  };
-}
-
-function agoraISO() {
-  return new Date().toISOString();
-}
-
-function parseDataFlexivel(valor) {
-  if (!valor) return null;
-  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
-  if (typeof valor === "number") {
-    const d = new Date(valor);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  const texto = String(valor).trim();
-  if (!texto) return null;
-
-  const direto = new Date(texto);
-  if (!isNaN(direto.getTime())) return direto;
-
-  // Aceita formatos do Brasil salvos anteriormente: 10/06/2026, 14:27:05
-  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if (m) {
-    let dia = Number(m[1]);
-    let mes = Number(m[2]);
-    let ano = Number(m[3]);
-    if (ano < 100) ano += 2000;
-    if (mes > 12) { const tmp = dia; dia = mes; mes = tmp; }
-    const hora = Number(m[4] || 0);
-    const minuto = Number(m[5] || 0);
-    const segundo = Number(m[6] || 0);
-    const pad = n => String(n).padStart(2, '0');
-    const isoStr = `${ano}-${pad(mes)}-${pad(dia)}T${pad(hora)}:${pad(minuto)}:${pad(segundo)}-03:00`;
-    const d = new Date(isoStr);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  return null;
-}
-
-function formatarDataWhatsApp(valor) {
-  const date = parseDataFlexivel(valor);
-  if (!date) return "";
-
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((startToday - startDate) / 86400000);
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-  }
-  if (diffDays === 1) return "Ontem";
-  if (diffDays >= 2 && diffDays < 7) {
-    return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()];
-  }
-  return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-}
-
-function prepararEventoHistorico(role, content, timestampMs = null) {
-  const ms = timestampMs || Date.now();
-  const iso = new Date(ms).toISOString();
-  return {
-    role,
-    content,
-    timestamp: iso,
-    timestampISO: iso,
-    timestampMs: ms,
-    horario: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-    horarioFormatado: formatarDataWhatsApp(ms)
-  };
-}
-
-function normalizarEventoHistorico(evento) {
-  function paraMs(valor) {
-    if (!valor) return 0;
-
-    if (typeof valor === "number") {
-      return valor < 10000000000 ? valor * 1000 : valor;
-    }
-
-    const s = String(valor).trim();
-    if (!s) return 0;
-
-    if (/^\d{13,}$/.test(s)) return Number(s);
-    if (/^\d{10}$/.test(s)) return Number(s) * 1000;
-
-    // ISO: 2026-06-11T12:02:00.000Z
-    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
-    }
-
-    // Formato BR: 11/06/2026, 09:02:33
-    const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-    if (br) {
-      const dia = Number(br[1]);
-      const mes = Number(br[2]);
-      const ano = Number(br[3]);
-      const hora = Number(br[4] || 0);
-      const minuto = Number(br[5] || 0);
-      const segundo = Number(br[6] || 0);
-
-      const diaFinal = dia > 12 ? dia : (mes > 12 ? mes : dia);
-      const mesFinal = dia > 12 ? mes : (mes > 12 ? dia : mes);
-      // -03:00 explícito: Railway roda em UTC, sem isso fica 3h errado
-      const pad2 = n => String(n).padStart(2, '0');
-      const iso2 = `${ano}-${pad2(mesFinal)}-${pad2(diaFinal)}T${pad2(hora)}:${pad2(minuto)}:${pad2(segundo)}-03:00`;
-      const d = new Date(iso2);
-      return isNaN(d.getTime()) ? 0 : d.getTime();
-    }
-
-    // Não usar new Date() livre para texto curto tipo "09:02".
-    // Isso foi uma das causas de o Inbox assumir o horário atual.
-    return 0;
-  }
-
-  const candidatos = [
-    evento?.timestampMs,
-    evento?.timestampISO,
-    evento?.timestamp,
-    evento?.createdAt,
-    evento?.dataHora,
-    evento?.horario
-  ];
-
-  let ms = 0;
-
-  for (const c of candidatos) {
-    const tentativa = paraMs(c);
-    if (tentativa && tentativa > 0) {
-      ms = tentativa;
-      break;
-    }
-  }
-
-  const iso = ms ? new Date(ms).toISOString() : "";
-
-  return {
-    ...(evento || {}),
-    timestamp: iso || (evento?.timestamp || ""),
-    timestampISO: iso || (evento?.timestampISO || ""),
-    timestampMs: ms,
-    horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : (evento?.horario || ""),
-    horarioFormatado: ms ? formatarDataWhatsApp(ms) : (evento?.horarioFormatado || "")
-  };
-}
-
-function obterUltimaMensagem(sessao) {
-  const historico = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
-  if (!historico.length) return null;
-  return historico.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0))[historico.length - 1];
-}
-
-function calcularUnreadSessao(sessao) {
-  if (Number.isFinite(Number(sessao?.unreadCount))) return Number(sessao.unreadCount || 0);
-  const historico = Array.isArray(sessao?.historico) ? sessao.historico : [];
-  let count = 0;
-  for (let i = historico.length - 1; i >= 0; i--) {
-    if (historico[i]?.role === "user") count++;
-    else if (historico[i]?.role === "assistant") break;
-  }
-  return count;
-}
-
-function normalizarSessaoParaInbox(telefone, sessao) {
-  const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
-  historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
-
-  const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
-  const lastMessageAtMs = ultima?.timestampMs || 0;
-  const unreadCount = calcularUnreadSessao(sessao);
-
-  return {
-    historico: historicoNormalizado,
-    nome: sessao?.nome || null,
-    modo: sessao?.modo || "automatico",
-    pausado: sessao?.pausado === true || atendimentosManuais.has(telefone),
-    motivoPausa: sessao?.motivoPausa || "",
-    aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
-    ultimaAnalise: sessao?.ultimaAnalise || null,
-    discResult: sessao?.discResult || null,
-    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
-    curriculos: normalizarCurriculosParaInbox(sessao),
-    lastMessage: ultima?.content || "",
-    lastMessageRole: ultima?.role || "",
-    lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
-    lastMessageAtMs,
-    dataWhatsapp: formatarDataWhatsApp(lastMessageAtMs),
-    formattedLastMessageAt: formatarDataWhatsApp(lastMessageAtMs),
-    unreadCount,
-    semResposta: ultima?.role === "user", // candidato aguardando resposta
-    raiox: Array.isArray(sessao?.raiox) ? sessao.raiox.slice(-5) : []
-  };
-}
-
-function registrarEntradaSessao(sessao, role, content, timestampMs = null) {
-  const evento = prepararEventoHistorico(role, content, timestampMs);
-
-  sessao.historico.push(evento);
-  sessao.historico = sessao.historico.slice(-500);
-
-  sessao.lastMessageAtMs = evento.timestampMs || Date.now();
-  sessao.lastMessageAt = evento.timestampISO || new Date(sessao.lastMessageAtMs).toISOString();
-  sessao.formattedLastMessageAt = evento.horarioFormatado || "";
-  sessao.lastMessage = content || "";
-  sessao.lastMessageRole = role;
-
-  return evento;
-}
-
-function marcarMensagemRecebida(sessao, timestampMs = null) {
-  sessao.unreadCount = Number(sessao.unreadCount || 0) + 1;
-  sessao.lastMessageAtMs = timestampMs || Date.now();
-}
-
-function marcarConversaRespondida(sessao) {
-  sessao.unreadCount = 0;
-  // Preserva lastMessageAtMs real
-}
-
-const AREA_SYNONYMS = {
-  rh: [
-    "rh", "recursos humanos", "gente e gestao", "gente e gestão",
-    "departamento pessoal", "dp", "recrutamento", "selecao", "seleção",
-    "r&s", "rs", "treinamento", "endomarketing", "clima", "cultura",
-    "administracao de pessoal", "administração de pessoal",
-    "analista administrativo rh", "administrativo rh", "carreira", "remuneracao", "remuneração"
-  ],
-  logistica: [
-    "logistica", "logístico", "auxiliar de logistica", "assistente de logistica",
-    "operador de logistica", "estoque", "almoxarifado", "expedicao", "expedição",
-    "armazem", "armazém", "separacao", "separação", "conferente", "inventario",
-    "carga e descarga", "carregamento", "descarga", "empilhadeira", "paletizacao",
-    "supply chain", "cadeia de suprimentos", "transportadora", "frota", "deposito"
-  ],
-  administrativo: [
-    "administrativo", "administracao", "administração", "assistente administrativo",
-    "auxiliar administrativo", "secretaria", "secretario", "secretária", "recepcao", "recepção",
-    "recepcionista", "backoffice", "back office", "suporte administrativo", "rotinas administrativas",
-    "digitacao", "digitação", "financeiro", "contas a pagar", "contas a receber",
-    "faturamento", "cobranca", "cobrança", "tesouraria", "fiscal", "notas fiscais",
-    "sesmt", "seguranca do trabalho", "segurança do trabalho"
-  ],
-  operacional: [
-    "operacional", "operacoes", "operações", "producao", "produção", "operador",
-    "auxiliar de producao", "auxiliar de produção", "linha de producao", "linha de produção",
-    "montagem", "embalagem", "qualidade", "controle de qualidade", "manutencao", "manutenção",
-    "tecnico", "técnico", "operador de maquina", "operador de máquina"
-  ],
-  projetos: [
-    "projetos", "assistente de projetos", "analista de projetos", "gerente de projetos",
-    "pmo", "engenharia", "engenheiro", "engenheira", "vistoriador", "instalacao", "instalação",
-    "obras", "construcao", "construção"
-  ],
-  alimentos: [
-    "garcom", "garçom", "garconete", "garçonete", "barman", "bartender",
-    "cozinha", "cozinheiro", "cozinheira", "auxiliar de cozinha", "ajudante de cozinha",
-    "pizzaiolo", "churrasco", "chefe de cozinha", "sous chef", "confeiteiro", "confeitaria",
-    "atendente de restaurante", "atendente de bar", "restaurante", "buffet", "lanchonete",
-    "padeiro", "panificacao", "panificação"
-  ],
-  limpeza: [
-    "limpeza", "servicos gerais", "serviços gerais", "faxina", "faxineira", "faxineiro",
-    "zelador", "zeladora", "auxiliar de limpeza", "copeira", "copeiro",
-    "lavanderia", "higienizacao", "higienização", "portaria", "porteiro", "diaria", "diária"
-  ],
-  vendas: [
-    "vendas", "vendedor", "vendedora", "comercial", "representante", "consultor de vendas",
-    "atendimento ao cliente", "atendente", "balconista", "caixa", "promotor", "promotora",
-    "televendas", "telemarketing", "call center", "sdr"
-  ]
-};
-
-function contemSinonimoArea(texto = "", area) {
-  const clean = normalizarTexto(texto);
-  return (AREA_SYNONYMS[area] || []).some(term => clean.includes(normalizarTexto(term)));
-}
-
-function contemSinonimoRH(texto = "") {
-  return contemSinonimoArea(texto, "rh");
-}
-
-function textoDaVagaParaArea(vaga) {
-  return normalizarTexto([
-    campo(vaga, ["cargo", "Cargo", "CARGO"]),
-    campo(vaga, ["area", "Área/Setor", "Area/Setor", "Área", "Area"]),
-    campo(vaga, ["perfilResumido", "Perfil Resumido", "Perfil"]),
-    campo(vaga, ["palavrasChave", "Palavras-chave", "Palavras Chave"]),
-    campo(vaga, ["requisitosDaVaga", "Requisitos da Vaga", "Requisitos"]),
-    campo(vaga, ["observacoes", "Observações", "Observacoes"])
-  ].join(" "));
-}
-
-function isVagaDaArea(vaga, area) {
-  return contemSinonimoArea(textoDaVagaParaArea(vaga), area);
-}
-
-function isRHVaga(vaga) {
-  return isVagaDaArea(vaga, "rh");
-}
-
-function candidatoTemPerfilArea(texto = "", area) {
-  return contemSinonimoArea(texto, area);
-}
-
-function candidatoTemPerfilRH(texto = "") {
-  return candidatoTemPerfilArea(texto, "rh");
-}
-
-function buscarVagaDaArea(vagas = [], area) {
-  return vagas.find(v => vagaEstaAtiva(v) && isVagaDaArea(v, area));
-}
-
-function buscarVagaRH(vagas = []) {
-  return buscarVagaDaArea(vagas, "rh");
-}
-
-function detectarAreaCandidato(texto = "") {
-  const areas = ["logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
-  return areas.find(area => candidatoTemPerfilArea(texto, area)) || null;
-}
-
-// ============================================================
-// GOOGLE DRIVE — currículos organizados por pasta de cargo
-// ============================================================
-
-let driveClient = null;
-const pastaPorCargoCache = {}; // { "auxiliar de servicos gerais": "folderId" }
-
-function getDriveClient() {
-  if (driveClient) return driveClient;
-  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    console.error("Drive: variável GOOGLE_SERVICE_ACCOUNT_JSON ausente.");
-    return null;
-  }
-  try {
-    const credentials = JSON.parse(CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/drive"]
-    });
-    driveClient = google.drive({ version: "v3", auth });
-    return driveClient;
-  } catch (e) {
-    console.error("Erro ao iniciar Google Drive client:", e.message);
-    return null;
-  }
-}
-
-
-function nomeArquivoSeguro(nome) {
-  return String(nome || "curriculo")
-    .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120) || "curriculo";
-}
-
-function salvarCurriculoLocal(buffer, filename, telefone, recebidoEmMs) {
-  try {
-    if (!buffer) return null;
-    const tel = limparTelefone(telefone);
-    const seguro = nomeArquivoSeguro(filename || `curriculo_${tel}`);
-    const finalName = `${tel}_${recebidoEmMs || Date.now()}_${seguro}`;
-    const fullPath = path.join(CURRICULOS_DIR, finalName);
-    fs.writeFileSync(fullPath, buffer);
-    return { localPath: fullPath, localFilename: finalName };
-  } catch (e) {
-    console.error("Erro salvarCurriculoLocal:", e.message);
-    return null;
-  }
-}
-
-function curriculoTemArquivo(cv) {
-  if (!cv) return false;
-  if (cv.base64) return true;
-  if (cv.driveLink) return true;
-  if (cv.localPath && fs.existsSync(cv.localPath)) return true;
-  return false;
-}
-
-function nomePastaCargo(cargo) {
-  const limpo = String(cargo || "Sem Cargo Identificado").trim();
-  return limpo
-    .replace(/[\\/:*?"<>|]/g, "-") // remove caracteres inválidos para nome de pasta
-    .slice(0, 100) || "Sem Cargo Identificado";
-}
-
-async function obterOuCriarPastaCargo(drive, cargo) {
-  const nomePasta = nomePastaCargo(cargo);
-  const chave = nomePasta.toLowerCase();
-  if (pastaPorCargoCache[chave]) return pastaPorCargoCache[chave];
-
-  // Procura subpasta existente com esse nome dentro da pasta raiz
-  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomePasta.replace(/'/g, "\\'")}' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: "files(id, name)", supportsAllDrives: true, includeItemsFromAllDrives: true });
-
-  let folderId;
-  if (busca.data.files && busca.data.files.length > 0) {
-    folderId = busca.data.files[0].id;
-  } else {
-    const criada = await drive.files.create({
-      requestBody: {
-        name: nomePasta,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [CONFIG.DRIVE_ROOT_FOLDER_ID]
-      },
-      fields: "id",
-      supportsAllDrives: true
-    });
-    folderId = criada.data.id;
-  }
-  pastaPorCargoCache[chave] = folderId;
-  return folderId;
-}
-
-async function uploadCurriculoDrive(buffer, filename, cargo, telefone, mimeType = 'application/octet-stream') {
-  const nomeFinal = `${telefone}_${filename}`.replace(/[\/:*?"<>|]/g, "-");
-
-  // ── MÉTODO 1: Service Account direto (mesmo mecanismo dos backups) ──────────
-  try {
-    const drive = getDriveClient();
-    if (drive) {
-      const pastaId = await obterOuCriarPastaCargo(drive, cargo || "Currículos Recebidos");
-      const { Readable } = require("stream");
-      const file = await drive.files.create({
-        requestBody: {
-          name: nomeFinal,
-          parents: [pastaId],
-          mimeType: mimeType || "application/octet-stream"
-        },
-        media: {
-          mimeType: mimeType || "application/octet-stream",
-          body: Readable.from(buffer)
-        },
-        fields: "id, webViewLink",
-        supportsAllDrives: true
-      });
-      if (file.data?.id) {
-        // Torna o arquivo acessível para qualquer pessoa com o link
-        await drive.permissions.create({
-          fileId: file.data.id,
-          requestBody: { role: "reader", type: "anyone" },
-          supportsAllDrives: true
-        }).catch(e => console.warn("uploadCurriculoDrive: permissão pública não aplicada:", e.message));
-        const link = file.data.webViewLink || `https://drive.google.com/file/d/${file.data.id}/view`;
-        console.log(`✅ CV NO DRIVE via Service Account: ${telefone} | ${link}`);
-        return { link, fileId: file.data.id, pasta: cargo };
-      }
-    }
-  } catch (e) {
-    console.error(`uploadCurriculoDrive Service Account falhou: ${e.message} — tentando Apps Script...`);
-  }
-
-  // ── MÉTODO 2: Apps Script (fallback) ─────────────────────────────────────────
-  const scriptUrl = CONFIG.DRIVE_SCRIPT_URL;
-  if (!scriptUrl) { console.error("DRIVE_SCRIPT_URL não configurado"); return null; }
-  const base64 = buffer.toString("base64");
-
-  for (let tent = 1; tent <= 3; tent++) {
-    try {
-      const r = await axios.post(scriptUrl, {
-        base64,
-        filename: nomeFinal,
-        mimeType: mimeType || "application/octet-stream",
-        folderId: CONFIG.DRIVE_ROOT_FOLDER_ID,
-        subfolder: cargo || "Currículos Recebidos"
-      }, { timeout: 30000 });
-
-      if (r.data?.ok && r.data?.link) {
-        console.log(`✅ CV NO DRIVE via Apps Script (tent ${tent}): ${telefone} | ${r.data.link}`);
-        return { link: r.data.link, fileId: r.data.id, pasta: cargo };
-      }
-      console.error(`Drive Script tentativa ${tent}: resposta sem link —`, r.data);
-    } catch (e) {
-      console.error(`Drive Script tentativa ${tent} falhou: ${e.message}`);
-      if (tent < 3) await new Promise(res => setTimeout(res, 2000 * tent));
-    }
-  }
-
-  console.error(`⚠️ CV NÃO SALVO NO DRIVE após todas as tentativas — ${telefone} | ${filename}`);
-  return null;
-}
-
-
-function normalizarCurriculosParaInbox(sessao) {
-  const lista = Array.isArray(sessao?.curriculos) ? sessao.curriculos : [];
-  return lista.map((cv, idx) => ({
-    idx,
-    filename: cv.filename || `curriculo_${idx + 1}.pdf`,
-    mimeType: cv.mimeType || "application/octet-stream",
-    sizeBytes: cv.sizeBytes || null,
-    mediaId: cv.mediaId || null,
-    recebidoEm: cv.recebidoEm || "",
-    recebidoEmMs: cv.recebidoEmMs || 0,
-    recebidoEmFormatado: formatarDataWhatsApp(cv.recebidoEmMs || cv.recebidoEm),
-    driveLink: cv.driveLink || null,
-    pasta: cv.pasta || null,
-    analiseStatus: cv.analiseStatus || "recebido",
-    arquivoDisponivel: curriculoTemArquivo(cv),
-    local: !!cv.localPath
-  })).sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0));
-}
-
-function registrarCurriculoNaSessao(sessao, dados) {
-  if (!sessao.curriculos) sessao.curriculos = [];
-  const mediaId = dados.mediaId || null;
-  if (mediaId) {
-    const existente = sessao.curriculos.find(cv => cv.mediaId === mediaId);
-    if (existente) {
-      Object.assign(existente, dados);
-      sessao.curriculo = existente;
-      return existente;
-    }
-  }
-
-  const recebidoEmMs = dados.recebidoEmMs || Date.now();
-  const filename = dados.filename || `curriculo_${recebidoEmMs}.pdf`;
-
-  // Evita duplicidade visual quando o mesmo arquivo chega repetido em poucos segundos.
-  const duplicado = sessao.curriculos.find(cv =>
-    String(cv.filename || "") === String(filename || "") &&
-    Math.abs(Number(cv.recebidoEmMs || 0) - Number(recebidoEmMs || 0)) < 120000
-  );
-  if (duplicado) {
-    Object.assign(duplicado, dados, { filename, recebidoEmMs });
-    sessao.curriculo = duplicado;
-    return duplicado;
-  }
-
-  const cv = {
-    filename,
-    mimeType: dados.mimeType || "application/octet-stream",
-    sizeBytes: dados.sizeBytes || null,
-    mediaId,
-    base64: dados.base64 || "",
-    localPath: dados.localPath || "",
-    localFilename: dados.localFilename || "",
-    recebidoEmMs,
-    recebidoEm: dados.recebidoEm || new Date(recebidoEmMs).toISOString(),
-    driveLink: dados.driveLink || null,
-    pasta: dados.pasta || null,
-    analiseStatus: dados.analiseStatus || "recebido"
-  };
-  sessao.curriculos.push(cv);
-  sessao.curriculos = sessao.curriculos
-    .sort((a, b) => Number(b.recebidoEmMs || 0) - Number(a.recebidoEmMs || 0))
-    .slice(0, 20);
-  sessao.curriculo = cv;
-  return cv;
-}
-
-// Quando true, toda NOVA conversa (primeiro contato) já nasce em modo manual,
-// pausada — a Lia não responde até alguém liberar manualmente no Inbox.
-let novaConversaIniciaManual = false;
-
-function garantirSessao(telefoneOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  if (!sessoes[telefone]) {
-    if (novaConversaIniciaManual) {
-      sessoes[telefone] = { historico: [], nome: null, modo: "manual", pausado: true, motivoPausa: "Iniciado em modo manual (configuração ativa no Inbox)" };
-      atendimentosManuais.add(telefone);
-    } else {
-      sessoes[telefone] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
-    }
-  }
-  if (atendimentosManuais.has(telefone)) {
-    sessoes[telefone].modo = "manual";
-    sessoes[telefone].pausado = true;
-  }
-  return sessoes[telefone];
-}
-
-function estaEmManual(telefoneOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  return atendimentosManuais.has(telefone) || sessao.pausado === true || sessao.modo === "manual";
-}
-
-// ============================================================
-// TRAVAS / MODO SUPERVISOR
-// ============================================================
-
-const TRAVAS = {
-  // PAUSA REAL: somente pedido explícito de humano/responsável.
-  humano: [
-    "quero falar com alguém","quero falar com alguem","quero falar com uma pessoa",
-    "quero falar com o responsável","quero falar com o responsavel",
-    "quero falar com responsável","quero falar com responsavel",
-    "quero falar com atendente","quero falar com humano","quero falar com recrutador",
-    "falar com alguém","falar com alguem","falar com uma pessoa",
-    "falar com o responsável","falar com o responsavel",
-    "falar com responsável","falar com responsavel",
-    "falar com atendente","falar com humano","falar com recrutador",
-    "não quero falar com robo","nao quero falar com robo",
-    "pessoa de verdade","alguém da effect","alguem da effect"
-  ],
-
-  // ALERTA, mas NÃO pausa automaticamente.
-  entrevista: ["tenho entrevista","marcaram minha entrevista","vim para entrevista","qual horario da entrevista","qual horário da entrevista","onde e a entrevista","onde é a entrevista","confirmar entrevista","marcar entrevista","agendar entrevista"],
-  retorno: ["fui aprovado","fui aprovada","fui reprovado","fui reprovada","nao tive retorno","não tive retorno","cadê meu retorno","cade meu retorno","estou aguardando retorno","ninguém me respondeu","ninguem me respondeu","já faz dias","ja faz dias"],
-  exFuncionario: ["ja trabalhei ai","já trabalhei aí","ja trabalhei nessa empresa","já trabalhei nessa empresa","fui funcionario","fui funcionário","fui colaborador","trabalhei anteriormente","ex funcionario","ex funcionário"],
-  urgencia: ["urgente","urgencia","urgência","preciso trabalhar","estou desempregado","estou desempregada","preciso muito","estou passando necessidade"],
-  indicacao: ["fulano me indicou","fui indicado","fui indicada","recebi indicação","recebi indicacao","indicação","indicacao"],
-  cargoEstrategico: ["supervisor","supervisora","coordenador","coordenadora","gerente","analista senior","analista sênior","especialista","engenheiro","engenheira","liderança","lideranca","gestão de equipe","gestao de equipe"],
-
-  // PAUSA REAL: temas sensíveis/risco.
-  pcdSaude: ["sou pcd","tenho laudo","deficiencia","deficiência","cota pcd","laudo medico","laudo médico","afastamento","atestado","cirurgia","gravidez","gestante","limitação","limitacao","tratamento"],
-  irritacao: ["não entendeu","nao entendeu","isso está errado","isso esta errado","péssimo atendimento","pessimo atendimento","ridículo","ridiculo","reclamação","reclamacao","processo","advogado","procon","isso não ajuda","isso nao ajuda"],
-  dadosSensiveis: ["cpf","rg","cnh","pis","ctps","conta bancária","conta bancaria","pix","cartão","cartao","dados bancários","dados bancarios","nome da mãe","nome da mae","nome do pai","data de nascimento"],
-  juridico: ["fgts","férias","ferias","13º","13°","décimo terceiro","decimo terceiro","rescisão","rescisao","processo trabalhista","direitos trabalhistas","justa causa","advogado trabalhista"],
-  empresa: ["preciso contratar","quero contratar","quero divulgar vaga","procuro recrutamento","minha empresa","sou empresa","contratar funcionário","contratar funcionario","tenho uma vaga","serviço de recrutamento","servico de recrutamento"],
-
-  // Não pausar por baixa confiança. Usar só para alerta.
-  baixaConfianca: ["não encontrei","nao encontrei","não consegui localizar","nao consegui localizar","não tenho certeza","nao tenho certeza","talvez","provavelmente","tive uma instabilidade","pode me mandar novamente","não consegui entender","nao consegui entender"],
-  salario: ["salário","salario","quanto ganha","remuneração","remuneracao","benefícios","beneficios","vale transporte","vale alimentação","vale alimentacao","ticket","vr","va"],
-  vagaNaoEncontrada: ["vaga do instagram","vaga que vi","vi uma vaga","anúncio","anuncio","vaga administrativa","postagem","publicação","publicacao"]
-};
-
-function contemAlguma(texto, lista) {
-  const t = normalizarTexto(texto);
-  return lista.some(p => t.includes(normalizarTexto(p)));
-}
-
-function detectarMenorIdade(texto) {
-  const t = normalizarTexto(texto);
-  return /\b(14|15|16|17)\s*anos\b/.test(t);
-}
-
-function ultimasPerguntasRepetidas(sessao) {
-  const falasLia = (sessao.historico || []).filter(h => h.role === "assistant").map(h => normalizarTexto(h.content || "")).filter(Boolean).slice(-3);
-  if (falasLia.length < 2) return false;
-  const ultima = falasLia[falasLia.length - 1];
-  const anterior = falasLia[falasLia.length - 2];
-  if (!ultima || !anterior) return false;
-  return ultima === anterior || ultima.includes(anterior) || anterior.includes(ultima);
-}
-
-function conversaSemAvanco(sessao) {
-  const historico = sessao.historico || [];
-  if (historico.length < 12) return false;
-  const texto = normalizarTexto(historico.map(h => h.content || "").join(" "));
-  const temNome = !!sessao.nome || texto.includes("meu nome") || texto.includes("sou ");
-  const temCidade = texto.includes("vitoria") || texto.includes("vitória") || texto.includes("vila velha") || texto.includes("serra") || texto.includes("cariacica") || texto.includes("linhares") || texto.includes("guarapari");
-  const temVaga = texto.includes("vaga") || texto.includes("cargo") || texto.includes("oportunidade") || texto.includes("trabalho");
-  return !(temNome && temCidade && temVaga);
-}
-
-async function enviarAlertaSimplesThiara(telefoneOriginal, titulo, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const alerta = `${titulo}\n\n📱 Candidato:\n+${telefone}\n\n💬 Mensagem:\n${mensagem || "Não informada"}`;
-  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
-}
-
-async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, respostaSegura = null) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  atendimentosManuais.add(telefone);
-  sessao.modo = "manual";
-  sessao.pausado = true;
-  sessao.motivoPausa = motivo;
-  const alerta = `🚨 INTERVENÇÃO NECESSÁRIA — LIA PAUSADA\n\n📱 Candidato:\n+${telefone}\n\n⚠️ Motivo:\n${motivo}\n\n💬 Última mensagem:\n${ultimaMensagem || "Não informada"}\n\n✅ A conversa foi colocada em modo MANUAL.`;
-  await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
-  if (respostaSegura) {
-    await enviarMensagem(telefone, respostaSegura);
-    registrarEntradaSessao(sessao, "assistant", respostaSegura);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", respostaSegura, sessao.nome || "");
-  }
-  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-  return true;
-}
-
-async function aplicarTravasEntrada(telefoneOriginal, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const texto = mensagem || "";
-
-  // VERSÃO ENXUTA: a Lia NÃO deve jogar candidatos normais para manual.
-  // Manual automático fica restrito a pedido explícito de humano/responsável.
-  // Todo o restante no máximo gera alerta para Thiara, mas a Lia continua atendendo.
-
-  if (contemAlguma(texto, TRAVAS.humano)) {
-    return await pausarPorTrava(
-      telefone,
-      "Candidato pediu atendimento humano/responsável",
-      texto,
-      "Claro. Vou direcionar sua mensagem para a equipe da Effect dar continuidade ao atendimento com você. 💙"
-    );
-  }
-
-  // Alertas sem pausar a Lia.
-  if (contemAlguma(texto, TRAVAS.entrevista)) await enviarAlertaSimplesThiara(telefone, "📅 CANDIDATO FALOU SOBRE ENTREVISTA", texto);
-  if (contemAlguma(texto, TRAVAS.retorno)) await enviarAlertaSimplesThiara(telefone, "🔁 CANDIDATO PEDIU RETORNO DO PROCESSO", texto);
-  if (contemAlguma(texto, TRAVAS.exFuncionario)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO DISSE QUE JÁ TRABALHOU NA EMPRESA", texto);
-  if (contemAlguma(texto, TRAVAS.urgencia)) await enviarAlertaSimplesThiara(telefone, "⚠️ CANDIDATO EM URGÊNCIA/VULNERABILIDADE", texto);
-  if (contemAlguma(texto, TRAVAS.indicacao)) await enviarAlertaSimplesThiara(telefone, "📌 CANDIDATO COM INDICAÇÃO", texto);
-  if (contemAlguma(texto, TRAVAS.cargoEstrategico)) await enviarAlertaSimplesThiara(telefone, "⭐ CANDIDATO/CARGO ESTRATÉGICO IDENTIFICADO", texto);
-  if (contemAlguma(texto, TRAVAS.pcdSaude)) await enviarAlertaSimplesThiara(telefone, "♿ MENSAGEM ENVOLVE PCD/SAÚDE/LAUDO", texto);
-  if (contemAlguma(texto, TRAVAS.dadosSensiveis)) await enviarAlertaSimplesThiara(telefone, "🔒 MENSAGEM ENVOLVE DADOS PESSOAIS", texto);
-  if (contemAlguma(texto, TRAVAS.juridico)) await enviarAlertaSimplesThiara(telefone, "⚖️ MENSAGEM ENVOLVE TEMA TRABALHISTA/JURÍDICO", texto);
-  if (contemAlguma(texto, TRAVAS.empresa)) await enviarAlertaSimplesThiara(telefone, "🏢 POSSÍVEL CLIENTE/EMPRESA", texto);
-  if (detectarMenorIdade(texto)) await enviarAlertaSimplesThiara(telefone, "🚸 POSSÍVEL CANDIDATO MENOR DE IDADE", texto);
-  if (ultimasPerguntasRepetidas(garantirSessao(telefone))) await enviarAlertaSimplesThiara(telefone, "🔁 POSSÍVEL LOOP DE PERGUNTA DA LIA", texto);
-
-  return false;
-}
-
-async function aplicarTravasResposta(telefoneOriginal, resposta, mensagemOriginal) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const texto = resposta || "";
-
-  // Nunca pausar por resposta de baixa confiança. Apenas alerta.
-  if (contemAlguma(texto, TRAVAS.baixaConfianca)) {
-    await enviarAlertaSimplesThiara(
-      telefone,
-      "⚠️ RESPOSTA DA LIA COM BAIXA CONFIANÇA",
-      `Mensagem do candidato: ${mensagemOriginal || ""}\n\nResposta da Lia: ${resposta || ""}`
-    );
-  }
-
-  return false;
-}
-
-// ============================================================
-// SHEETS
-// ============================================================
-
-async function salvarMensagemSheets(telefoneOriginal, role, mensagem, nome, timestampMs = null) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const MAX_TENTATIVAS = 3;
-  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
-    try {
-      if (!CONFIG.VAGAS_URL) return;
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const ms = timestampMs || Date.now();
-      const payload = JSON.stringify({
-        acao: "salvarMensagem",
-        telefone,
-        role,
-        mensagem,
-        nome: nome || "",
-        timestamp: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-        timestampISO: new Date(ms).toISOString(),
-        timestampMs: ms
-      });
-      await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 15000, maxRedirects: 5 });
-      return;
-    } catch (e) {
-      console.error(`Erro salvarMensagemSheets (${tentativa}/3):`, e.message);
-      if (tentativa < MAX_TENTATIVAS) await sleep(2000 * tentativa);
-    }
-  }
-}
-
-async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
-  const telefone = limparTelefone(telefoneOriginal);
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const sessaoAtualSheets = sessoes[telefone] || {};
-    const curriculosMeta = (Array.isArray(sessaoAtualSheets.curriculos) ? sessaoAtualSheets.curriculos : (sessaoAtualSheets.curriculo ? [sessaoAtualSheets.curriculo] : [])).map(cv => ({
-      filename: cv.filename || "",
-      mimeType: cv.mimeType || "",
-      sizeBytes: cv.sizeBytes || null,
-      mediaId: cv.mediaId || null,
-      recebidoEm: cv.recebidoEm || "",
-      recebidoEmMs: cv.recebidoEmMs || 0,
-      driveLink: cv.driveLink || "",
-      pasta: cv.pasta || "",
-      analiseStatus: cv.analiseStatus || "recebido"
-    }));
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, discResult: sessaoAtualSheets.discResult || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
-    await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
-  } catch (e) {
-    console.error("Erro salvarConversaCompletaSheets:", e.message);
-  }
-}
-
-async function carregarSessoesDoSheets() {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=conversas`, { timeout: 15000, maxRedirects: 5 });
-    const data = r.data;
-    if (!data.sucesso || !data.sessoes) return;
-
-    Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
-      const tel = limparTelefone(telOriginal);
-      const motivoOriginal = sessao.motivoPausa || "";
-      const motivoNormalizado = normalizarTexto(motivoOriginal);
-
-      // Limpa praticamente todos os manuais antigos criados por travas automáticas.
-      // Mantém manual somente quando foi assumido no Inbox/Laura ou pedido explícito de humano.
-      const motivoMantemManual =
-        motivoNormalizado.includes("pausado manualmente no inbox") ||
-        motivoNormalizado.includes("atendimento assumido manualmente") ||
-        motivoNormalizado.includes("candidato pediu atendimento humano") ||
-        motivoNormalizado.includes("humano/responsavel") ||
-        motivoNormalizado.includes("humano/responsável");
-
-      const modoOriginal = sessao.modo || (sessao.pausado ? "manual" : "automatico");
-      const manualAntigoIndevido = modoOriginal === "manual" && !motivoMantemManual;
-      const modo = manualAntigoIndevido ? "automatico" : modoOriginal;
-      const pausado = manualAntigoIndevido ? false : (modo === "manual" || sessao.pausado === true);
-      const motivoPausa = manualAntigoIndevido ? "" : motivoOriginal;
-
-      const existente = sessoes[tel] || {};
-      const curriculosExistentes = Array.isArray(existente.curriculos) ? existente.curriculos : (existente.curriculo ? [existente.curriculo] : []);
-      const curriculosSheets = Array.isArray(sessao.curriculos) ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
-      const curriculosMesclados = curriculosExistentes.length ? curriculosExistentes : curriculosSheets;
-
-      sessoes[tel] = {
-        historico: Array.isArray(sessao.historico)
-          ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
-          : [],
-        nome: sessao.nome || null,
-        modo,
-        pausado,
-        motivoPausa,
-        unreadCount: Number(sessao.unreadCount || 0),
-        curriculos: curriculosMesclados,
-        curriculo: curriculosMesclados[0] || existente.curriculo || null,
-        ultimaAnalise: existente.ultimaAnalise || sessao.ultimaAnalise || null,
-        statusProcesso: existente.statusProcesso || sessao.statusProcesso || "Novo",
-        discResult: existente.discResult || sessao.discResult || null
-      };
-
-      if (pausado) atendimentosManuais.add(tel);
-      else atendimentosManuais.delete(tel);
-    });
-
-    console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
-  } catch (e) {
-    console.error("Erro carregarSessoesDoSheets:", e.message);
-  }
-}
-
-carregarSessoesDoSheets();
-
-// Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
-// (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
-// sozinho ultrapassava o intervalo de 5min e sobrecarregava o servidor, derrubando
-// também as chamadas à API da Claude.)
-const ultimoSaveSessao = {};
-
-setInterval(async () => {
-  const tarefas = Object.entries(sessoes)
-    .filter(([telefone, sessao]) => {
-      if (!sessao.historico || sessao.historico.length === 0) return false;
-      const ultima = sessao.historico[sessao.historico.length - 1];
-      const assinatura = `${sessao.historico.length}|${ultima?.timestampMs || ultima?.content || ""}`;
-      if (ultimoSaveSessao[telefone] === assinatura) return false;
-      ultimoSaveSessao[telefone] = assinatura;
-      return true;
-    })
-    .map(([telefone, sessao]) =>
-      salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome)
-        .catch(e => console.error(`Erro ao salvar ${telefone} no ciclo periódico:`, e.message))
-    );
-
-  if (tarefas.length) {
-    console.log(`Salvamento periódico: ${tarefas.length} sessão(ões) com mudanças.`);
-    await Promise.allSettled(tarefas);
-  }
-}, 5 * 60 * 1000);
-
-// ============================================================
-// BACKUP AUTOMÁTICO (DIÁRIO + SEMANAL) → Google Drive
-// ============================================================
-
-let ultimoBackupDiario = null;
-let ultimoBackupSemanal = null;
-
-async function fazerBackup(tipo = "diario") {
-  const drive = getDriveClient();
-  if (!drive) { console.warn("Backup: Drive não disponível."); return false; }
-
-  try {
-    // Garante pasta "Backups" dentro da pasta raiz do Drive
-    const nomeBackupFolder = "Backups-Lia";
-    let backupFolderId = null;
-
-    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeBackupFolder}' and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)" });
-    if (busca.data.files?.length) {
-      backupFolderId = busca.data.files[0].id;
-    } else {
-      const nova = await drive.files.create({
-        requestBody: { name: nomeBackupFolder, mimeType: "application/vnd.google-apps.folder", parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-        fields: "id"
-      });
-      backupFolderId = nova.data.id;
-    }
-
-    // Monta snapshot
-    const agora = new Date();
-    const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const snapshot = {
-      tipo,
-      geradoEm: agora.toISOString(),
-      totalSessoes: Object.keys(sessoes).length,
-      sessoes: Object.fromEntries(
-        Object.entries(sessoes).map(([tel, s]) => [tel, {
-          nome: s.nome,
-          modo: s.modo,
-          pausado: s.pausado,
-          motivoPausa: s.motivoPausa,
-          totalMensagens: s.historico?.length || 0,
-          ultimaMensagem: s.historico?.slice(-1)[0]?.content?.slice(0, 100) || "",
-          ultimaAnalise: s.ultimaAnalise || null,
-          historico: s.historico || []
-        }])
-      )
-    };
-
-    const { Readable } = require("stream");
-    const conteudo = JSON.stringify(snapshot, null, 2);
-    const stream = Readable.from(Buffer.from(conteudo, "utf8"));
-
-    await drive.files.create({
-      requestBody: {
-        name: `backup-${tipo}-${ts}.json`,
-        parents: [backupFolderId],
-        mimeType: "application/json"
-      },
-      media: { mimeType: "application/json", body: stream },
-      fields: "id"
-    });
-
-    console.log(`✅ Backup ${tipo} salvo no Drive — ${ts} — ${Object.keys(sessoes).length} sessões`);
-    if (tipo === "diario") ultimoBackupDiario = agora;
-    if (tipo === "semanal") ultimoBackupSemanal = agora;
-    return true;
-  } catch (e) {
-    console.error(`Erro backup ${tipo}:`, e.message);
-    return false;
-  }
-}
-
-// Backup diário — executa a cada 24h
-setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
-
-// Backup semanal — executa a cada 7 dias
-setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
-
-// Primeiro backup diário roda 5min após o servidor subir
-setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
-
-// Endpoint para backup manual via Inbox
-app.post("/inbox/backup", async (req, res) => {
-  const ok = await fazerBackup("manual");
-  return res.json({
-    ok,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null
-  });
-});
-
-// Endpoint de status do backup
-app.get("/inbox/backup/status", (req, res) => {
-  res.json({
-    ok: true,
-    ultimoBackupDiario: ultimoBackupDiario?.toISOString() || null,
-    ultimoBackupSemanal: ultimoBackupSemanal?.toISOString() || null,
-    totalSessoes: Object.keys(sessoes).length
-  });
-});
-
-// ============================================================
-// ROTAS PRINCIPAIS
-// ============================================================
-
-app.get("/", (req, res) => {
-  res.send("Lia Effect rodando — modo supervisor + Linhares via planilha ✅");
-});
-
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === CONFIG.VERIFY_TOKEN) return res.status(200).send(challenge);
-  return res.sendStatus(403);
-});
-
-app.post("/webhook", async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!message) return;
-    if (message.id && mensagensProcessadas.has(message.id)) return;
-    if (message.id) { mensagensProcessadas.add(message.id); if (mensagensProcessadas.size > 1000) mensagensProcessadas.clear(); }
-    if (!message.text?.body && !message.document && !message.audio) return;
-    const from = limparTelefone(message.from);
-    const sessaoAtual = garantirSessao(from);
-    const messageTimestampMs = message.timestamp ? Number(message.timestamp) * 1000 : Date.now();
-    if (message.text?.body) {
-      const texto = message.text.body;
-      registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "user", texto, sessaoAtual.nome || "", messageTimestampMs);
-      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
-      const travou = await aplicarTravasEntrada(from, texto);
-      if (travou) return;
-      const resposta = await processarMensagem(from, texto);
-      if (resposta) await enviarMensagem(from, resposta);
-      return;
-    }
-    if (message.audio) {
-      registrarEntradaSessao(sessaoAtual, "user", "[Áudio recebido]", messageTimestampMs);
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "user", "[Áudio recebido]", sessaoAtual.nome || "", messageTimestampMs);
-      if (estaEmManual(from)) { console.log("LIA BLOQUEADA — ÁUDIO EM ATENDIMENTO MANUAL:", from); await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome); return; }
-      const respostaAudio = "Recebi seu áudio! 🎧 No momento ainda não consigo ouvir áudios por aqui — pode me escrever a mesma informação por texto? Assim consigo te ajudar melhor. 💙";
-      registrarEntradaSessao(sessaoAtual, "assistant", respostaAudio);
-      marcarConversaRespondida(sessaoAtual);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-      await salvarMensagemSheets(from, "assistant", respostaAudio, sessaoAtual.nome || "");
-      await salvarConversaCompletaSheets(from, sessaoAtual.historico, sessaoAtual.nome);
-      await enviarMensagem(from, respostaAudio);
-      return;
-    }
-    if (message.document) {
-      const emManual = estaEmManual(from);
-      const conteudoDoc = `[Documento/Currículo recebido]`;
-
-      // Evita duplicar a mesma linha no histórico quando a Meta reenvia o evento.
-      const ultimo = sessaoAtual.historico?.[sessaoAtual.historico.length - 1];
-      const ultimoMs = Number(ultimo?.timestampMs || 0);
-      if (!(ultimo && ultimo.role === "user" && String(ultimo.content || "").includes("Documento/Currículo") && Math.abs(ultimoMs - messageTimestampMs) < 120000)) {
-        registrarEntradaSessao(sessaoAtual, "user", conteudoDoc, messageTimestampMs);
-        await salvarMensagemSheets(from, "user", conteudoDoc, sessaoAtual.nome || "", messageTimestampMs);
-      }
-
-      marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
-      sessaoAtual.historico = sessaoAtual.historico.slice(-500);
-
-      if (!emManual) {
-        await enviarMensagem(from, "Perfeito, recebi seu currículo. 💙");
-      } else {
-        console.log("CURRÍCULO RECEBIDO EM MANUAL — salvando silenciosamente:", from);
-      }
-
-      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual, timestampMs: messageTimestampMs });
-      if (!emManual && resposta) await enviarMensagem(from, resposta);
-      return;
-    }
-  } catch (erro) {
-    console.error("Erro no webhook:", JSON.stringify(erro.response?.data || erro.message));
-  }
-});
-
-// ============================================================
-// ROTAS HTML — PÁGINAS
-// ============================================================
-
-app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
-app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
-app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
-app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
-
-
-// ─── ENVIAR DISC (sem ativar modo manual) ───
-app.post("/inbox/enviar-disc", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || '');
-    const mensagem = req.body.mensagem || '';
-    if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
-    const sessao = garantirSessao(telefone);
-    await enviarMensagem(telefone, mensagem);
-    registrarEntradaSessao(sessao, "assistant", mensagem);
-    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || "");
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('Erro /inbox/enviar-disc:', e.message);
-    return res.json({ ok: false, erro: e.message });
-  }
-});
-
-// ─── DISC ASSESSMENT ───
-app.get("/disc/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc.html")));
-
-app.post("/disc/submit", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || '');
-    const nome = String(req.body.nome || '').trim();
-    const vaga = String(req.body.vaga || '').trim();
-    const percentuaisNatural = req.body.percentuaisNatural || {};
-    const percentuaisAdaptado = req.body.percentuaisAdaptado || {};
-    const primarioNatural = req.body.primarioNatural || '';
-    const primarioAdaptado = req.body.primarioAdaptado || '';
-    const secundarioNatural = req.body.secundarioNatural || null;
-    const relatorioRH = req.body.relatorioRH || null;
-
-    const resultado = {
-      respondidoEm: new Date().toISOString(),
-      nome, vaga,
-      percentuaisNatural,
-      percentuaisAdaptado,
-      primario: primarioNatural,          // compatibilidade com inbox
-      primarioNatural,
-      primarioAdaptado,
-      secundario: secundarioNatural,
-      secundarioNatural,
-      relatorioRH
-    };
-
-    if (telefone && sessoes[telefone]) {
-      sessoes[telefone].discResult = resultado;
-      if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
-    }
-
-    await salvarDiscNoDrive(telefone, nome, resultado).catch(e => console.error('Erro DISC Drive:', e.message));
-
-    // Notificar candidato que o DISC foi recebido
-    if (telefone) {
-      const nomeFirst = (nome || 'Candidato').split(' ')[0];
-      const perfisDesc = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Criterioso' };
-      const descPrimario = perfisDesc[resultado.primario] || resultado.primario || '';
-      const msgConfirm = `✅ ${nomeFirst}, recebemos seu questionário DISC!\n\nSeu perfil predominante é *${resultado.primario}${descPrimario ? ' — ' + descPrimario : ''}*. Nossa equipe irá considerar essas informações na avaliação do seu perfil. 💙`;
-      enviarMensagem(telefone, msgConfirm).catch(e => console.error('Erro ao notificar DISC:', e.message));
-      // Salvar no Sheets
-      if (sessoes[telefone]) {
-        salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, sessoes[telefone].nome || nome || '').catch(()=>{});
-      }
-    }
-
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('Erro /disc/submit:', e.message);
-    return res.json({ ok: false, erro: e.message });
-  }
-});
-
-app.get("/disc/resultado/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.json({ ok: false });
-  return res.json({ ok: true, resultado: sessao.discResult });
-});
-
-// Relatório visual completo (abre em nova aba pelo inbox)
-app.get("/disc/resultado-view/:telefone", (req, res) => {
-  const tel = limparTelefone(req.params.telefone);
-  const sessao = sessoes[tel];
-  if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
-  const d = sessao.discResult;
-  const rh = d.relatorioRH || null;
-  const nome = d.nome || sessao.nome || tel;
-  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
-  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Criterioso'};
-  const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
-  const pctN = d.percentuaisNatural || d.percentuais || {};
-  const pctA = d.percentuaisAdaptado || {};
-  const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
-
-  function barras(pct) {
-    return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-      <div style="font-size:11px;font-weight:800;color:${CORES[k]};width:12px">${k}</div>
-      <div style="flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden">
-        <div style="width:${pct[k]||0}%;height:100%;background:${CORES[k]};border-radius:999px"></div></div>
-      <div style="font-size:11px;font-weight:700;color:#6b7280;width:28px;text-align:right">${pct[k]||0}%</div>
-    </div>`).join('');
-  }
-
-  function lista(arr, cor='#374151') {
-    if (!arr||!arr.length) return '<p style="color:#a1a1aa;font-size:12px">—</p>';
-    return arr.map(i=>`<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${cor};font-size:13px">•</span><span style="font-size:12.5px;color:#374151;line-height:1.5">${i}</span></div>`).join('');
-  }
-
-  function sec(titulo) {
-    return `<div style="font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px">${titulo}</div>`;
-  }
-
-  const matchBloco = rh?.match ? (() => {
-    const m = rh.match;
-    const cor = m.score >= 70 ? '#16a34a' : m.score >= 45 ? '#d97706' : '#dc2626';
-    const emoji = m.score >= 70 ? '✅' : m.score >= 45 ? '⚠️' : '❌';
-    return `<div style="background:#f0fdf4;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-        <div style="font-size:28px;font-weight:800;color:${cor}">${m.score}%</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:${cor}">${emoji} ${m.nivel} para a vaga</div>
-          <div style="font-size:11px;color:#6b7280">${rh.vaga||'vaga não especificada'}</div>
-        </div>
-      </div>
-      ${m.insights&&m.insights.length?m.insights.map(i=>`<div style="font-size:12px;color:#374151;margin-bottom:4px">• ${i}</div>`).join(''):''}
-    </div>`;
-  })() : '';
-
-  const tensaoBloco = rh?.tensaoAlerta?.length ? `
-    <div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:11px;font-weight:800;color:#b45309;margin-bottom:8px">⚠️ TENSÃO DE ADAPTAÇÃO</div>
-      ${rh.tensaoAlerta.map(t=>`<div style="font-size:12px;color:#374151;margin-bottom:6px;line-height:1.5">• ${t}</div>`).join('')}
-    </div>` : '';
-
-  const comboBloco = rh?.combo ? `
-    <div style="background:#eff6ff;border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">🔗 COMBINAÇÃO DE PERFIL</div>
-      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.combo}</p>
-    </div>` : '';
-
-  const rhBloco = rh ? `
-    <div class="card">
-      <div style="font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:14px">📋 ANÁLISE PARA SELEÇÃO</div>
-      ${sec('Resumo do perfil')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.6;margin-bottom:8px">${rh.resumoRH||''}</p>
-
-      ${sec('Ambientes com fit')}
-      ${lista(rh.ambientesFit,'#16a34a')}
-
-      ${sec('Ambientes de risco')}
-      ${lista(rh.ambientesRisco,'#dc2626')}
-
-      ${sec('Liderança ideal')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.5;margin-bottom:6px">${rh.liderancaFit||''}</p>
-      ${rh.liderancaRisco?`<p style="font-size:12px;color:#b45309;line-height:1.5">⚠️ ${rh.liderancaRisco}</p>`:''}
-
-      ${sec('Conflito')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.conflito||''}</p>
-
-      ${sec('Motivação')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.motivacao||''}</p>
-
-      ${sec('Retenção')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.retencao||''}</p>
-
-      ${sec('Autonomia')}
-      <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.autonomia||''}</p>
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Effect <span>Pessoas</span></div>
+  <div class="header-right">
+    <div class="etapa-badge" id="etapa-badge"></div>
+    <div class="prog-wrap" id="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <span class="prog-txt" id="prog-txt">0/12</span>
     </div>
+  </div>
+</div>
 
+<div class="container">
+
+  <!-- ══ TELA: CONCLUÍDO (lock) ══ -->
+  <div id="tela-concluido" class="hidden">
     <div class="card">
-      <div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:12px">✅ Sinais positivos na entrevista</div>
-      ${lista(rh.sinaisVerde,'#16a34a')}
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:12px">⚠️ Pontos de atenção</div>
-      ${lista(rh.alertas,'#dc2626')}
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:12px">❓ Perguntas sugeridas para entrevista</div>
-      ${(rh.perguntasEntrevista||[]).map((p,i)=>`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:#a1a1aa;margin-bottom:3px">PERGUNTA ${i+1}</div><p style="font-size:12.5px;color:#374151;line-height:1.5">${p}</p></div>`).join('')}
-    </div>` : '';
-
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC RH — ${nome}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:24px 16px;max-width:680px;margin:0 auto}
-    .card{background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 1px 5px rgba(0,0,0,.08);margin-bottom:14px}
-    .logo{font-size:14px;font-weight:800;color:#2a2a2b;margin-bottom:18px}.logo span{color:#8ed1b2}
-    @media print{body{background:#fff;padding:10px}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
-  </style></head><body>
-  <div class="logo">Effect <span>Pessoas</span> · Relatório de Seleção</div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-      <div>
-        <div style="font-size:18px;font-weight:800;color:#2a2a2b">${EMOJIS[d.primarioNatural||d.primario]||''} ${nome}</div>
-        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:13px;font-weight:700;color:${CORES[d.primarioNatural||d.primario]||'#374151'}">${NOMES[d.primarioNatural||d.primario]||''}${d.secundarioNatural?' / '+NOMES[d.secundarioNatural]:''}</div>
-        <div style="font-size:11px;color:#a1a1aa">Perfil predominante</div>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div>
-        <div style="font-size:10px;font-weight:800;color:#a1a1aa;margin-bottom:8px">PERFIL NATURAL</div>
-        ${barras(pctN)}
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:800;color:#a1a1aa;margin-bottom:8px">PERFIL ADAPTADO${d.referencia?' ('+d.referencia+')':''}</div>
-        ${barras(pctA)}
+      <div class="lock-box">
+        <div class="icon">✅</div>
+        <h2>Questionário já preenchido</h2>
+        <p>Você já respondeu este questionário anteriormente. Seu perfil comportamental foi registrado com sucesso.<br><br>Entre em contato com a equipe Effect para mais informações.</p>
       </div>
     </div>
   </div>
 
-  ${matchBloco}
-  ${tensaoBloco}
-  ${comboBloco}
-  ${rhBloco}
-
-  <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
-  </body></html>`;
-  res.send(html);
-});
-
-async function salvarDiscNoDrive(telefone, nome, resultado) {
-  const drive = getDriveClient();
-  if (!drive) return;
-
-  // Garante pasta DISC-Resultados
-  const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='DISC-Resultados' and trashed=false`;
-  const busca = await drive.files.list({ q, fields: 'files(id)' });
-  let folderId;
-  if (busca.data.files?.length) {
-    folderId = busca.data.files[0].id;
-  } else {
-    const nova = await drive.files.create({
-      requestBody: { name: 'DISC-Resultados', mimeType: 'application/vnd.google-apps.folder', parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-      fields: 'id'
-    });
-    folderId = nova.data.id;
-  }
-
-  const { Readable } = require('stream');
-  const ts = new Date().toISOString().slice(0, 10);
-  const nomeArq = `DISC-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
-  const conteudo = JSON.stringify({ telefone, nome, ...resultado }, null, 2);
-
-  await drive.files.create({
-    requestBody: { name: nomeArq, parents: [folderId], mimeType: 'application/json' },
-    media: { mimeType: 'application/json', body: Readable.from(Buffer.from(conteudo, 'utf8')) },
-    fields: 'id'
-  });
-  console.log(`✅ DISC salvo no Drive: ${nomeArq}`);
-}
-app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
-app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
-app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
-
-// ============================================================
-// ROTAS API — SHEETS
-// ============================================================
-
-app.get("/sheets/candidatos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ candidatos: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) { res.json({ candidatos: [], erro: e.message }); }
-});
-
-app.get("/sheets/vagas", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ vagas: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=vagas`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) { res.json({ vagas: [], erro: e.message }); }
-});
-
-app.post("/sheets/candidatos/status", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone: req.body.telefone, status: req.body.status, observacoes: req.body.observacao }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-    res.json({ ok: true, sucesso: true });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ============================================================
-// ROTAS API — INBOX
-// ============================================================
-
-app.post("/inbox/config-novas-conversas", (req, res) => {
-  novaConversaIniciaManual = req.body.manual === true;
-  res.json({ ok: true, novaConversaIniciaManual });
-});
-
-app.get("/inbox/sessoes", (req, res) => {
-  try {
-    const lista = Object.entries(sessoes).map(([tel, sessao]) => {
-      const telefone = limparTelefone(tel);
-      garantirSessao(telefone);
-
-      // Segurança extra: se restou motivo antigo agressivo em memória, não mostrar como manual.
-      const motivoNormalizado = normalizarTexto(sessao.motivoPausa || "");
-      const manualAntigoIndevido =
-        motivoNormalizado.includes("conversa longa sem avanco") ||
-        motivoNormalizado.includes("conversa longa sem avanço") ||
-        motivoNormalizado.includes("baixa confianca") ||
-        motivoNormalizado.includes("baixa confiança") ||
-        motivoNormalizado.includes("solicitacao de retorno") ||
-        motivoNormalizado.includes("solicitação de retorno") ||
-        motivoNormalizado.includes("assunto relacionado a entrevista") ||
-        motivoNormalizado.includes("assunto relacionado à entrevista") ||
-        motivoNormalizado.includes("possivel repeticao") ||
-        motivoNormalizado.includes("possível repetição");
-
-      if (manualAntigoIndevido) {
-        atendimentosManuais.delete(telefone);
-        sessao.modo = "automatico";
-        sessao.pausado = false;
-        sessao.motivoPausa = "";
-      }
-
-      return [telefone, normalizarSessaoParaInbox(telefone, sessao)];
-    }).sort((a, b) => Number(b[1].lastMessageAtMs || 0) - Number(a[1].lastMessageAtMs || 0));
-
-    const dados = {};
-    lista.forEach(([telefone, sessao]) => { dados[telefone] = sessao; });
-
-    const totalConversas = lista.length;
-    const totalNaoLidas = lista.filter(([, sessao]) => Number(sessao.unreadCount || 0) > 0).length;
-    const totalMensagensNaoLidas = lista.reduce((acc, [, sessao]) => acc + Number(sessao.unreadCount || 0), 0);
-
-    res.json({
-      sessoes: dados,
-      totalConversas,
-      totalNaoLidas,
-      totalMensagensNaoLidas,
-      novaConversaIniciaManual,
-      atualizadoEm: new Date().toISOString(),
-      atualizadoEmFormatado: formatarDataWhatsApp(Date.now())
-    });
-  } catch (erro) {
-    res.json({ sessoes: {}, totalConversas: 0, totalNaoLidas: 0, totalMensagensNaoLidas: 0, erro: erro.message });
-  }
-});
-
-app.post("/inbox/marcar-lida", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    sessao.unreadCount = 0;
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, unreadCount: 0 });
-  } catch (erro) {
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.post("/inbox/pausar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const devePausar = req.body.pausado === true || req.body.manual === true || req.body.modo === "manual" || req.body.mode === "manual" || req.body.status === "manual";
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    if (devePausar) { atendimentosManuais.add(telefone); sessao.modo = "manual"; sessao.pausado = true; sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox"; }
-    else { atendimentosManuais.delete(telefone); sessao.modo = "automatico"; sessao.pausado = false; sessao.motivoPausa = ""; }
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
-  } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
-});
-
-app.post("/inbox/modo", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const modo = req.body.modo || req.body.mode;
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    if (modo === "manual") { atendimentosManuais.add(telefone); sessao.modo = "manual"; sessao.pausado = true; sessao.motivoPausa = sessao.motivoPausa || "Pausado manualmente no inbox"; }
-    else { atendimentosManuais.delete(telefone); sessao.modo = "automatico"; sessao.pausado = false; sessao.motivoPausa = ""; }
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return res.json({ ok: true, telefone, modo: sessao.modo, pausado: sessao.pausado, motivoPausa: sessao.motivoPausa || "" });
-  } catch (erro) { return res.json({ ok: false, erro: erro.message }); }
-});
-
-// ─── RESUMIR CONVERSA com IA ───
-app.post("/inbox/resumir", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-    const sessao = garantirSessao(telefone);
-    const hist = sessao.historico || [];
-    if (!hist.length) return res.json({ ok: false, erro: "Sem histórico para resumir" });
-
-    const ultimas = hist.slice(-30);
-    const transcript = ultimas.map(h => `${h.role === 'user' ? 'Candidato' : 'Lia'}: ${h.content || ''}`).join('\n');
-
-    const prompt = `Você é um assistente de RH. Com base no histórico de conversa abaixo, forneça um resumo estruturado e objetivo.
-
-HISTÓRICO:
-${transcript}
-
-Responda EXATAMENTE neste formato (sem markdown, sem asteriscos):
-Nome: [nome do candidato ou "não identificado"]
-Cidade/Bairro: [cidade e/ou bairro mencionado ou "não informado"]
-Vaga de interesse: [cargo ou vaga ou "não mencionado"]
-Experiência: [resumo breve da experiência ou "não informado"]
-Pendências: [o que ainda falta coletar ou confirmar — seja específico]
-Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "Aguardar envio de currículo", "Analisar perfil"]`;
-
-    const resumo = await chamarGeminiJSON(prompt).catch(() => chamarGemini(prompt));
-    if (!resumo) return res.json({ ok: false, erro: "IA não retornou resposta" });
-
-    const texto = typeof resumo === 'string' ? resumo : JSON.stringify(resumo, null, 2);
-    return res.json({ ok: true, resumo: texto });
-  } catch (erro) {
-    console.error("Erro /inbox/resumir:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.post("/inbox/enviar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
-    const mensagem = req.body.mensagem || req.body.message || req.body.texto || req.body.text;
-    if (!telefone || !mensagem) return res.json({ ok: false, erro: "Dados incompletos" });
-
-    const sessao = garantirSessao(telefone);
-
-    // Quando a Laura envia pelo Inbox, a conversa deve ficar em manual.
-    atendimentosManuais.add(telefone);
-    sessao.modo = "manual";
-    sessao.pausado = true;
-    sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
-
-    // Primeiro envia para o WhatsApp.
-    await enviarMensagem(telefone, mensagem);
-
-    // Depois grava imediatamente no histórico do servidor.
-    // Isso permite que o Inbox recarregue e já encontre a mensagem enviada.
-    const eventoSalvo = registrarEntradaSessao(sessao, "assistant", mensagem);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-
-    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-
-    return res.json({
-      ok: true,
-      telefone,
-      modo: "manual",
-      pausado: true,
-      mensagem: eventoSalvo,
-      historicoLength: sessao.historico.length
-    });
-  } catch (erro) {
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.get("/inbox/curriculo/:telefone", async (req, res) => {
-  try {
-    const tel = limparTelefone(req.params.telefone);
-    let sessao = sessoes[tel];
-
-    // Se sessão não existe ou não tem currículo, tenta recarregar do Sheets
-    let lista = sessao
-      ? (Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []))
-      : [];
-
-    if (!lista.length && CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        const r = await axios.get(`${urlBase}?acao=conversas&telefone=${tel}`, { timeout: 8000, maxRedirects: 3 });
-        const d = r.data;
-        if (d?.sessoes) {
-          const telKey = Object.keys(d.sessoes).find(k => limparTelefone(k) === tel);
-          if (telKey) {
-            const s = d.sessoes[telKey];
-            const cvs = Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
-            if (cvs.length) {
-              // Salva de volta na sessão em memória
-              if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: s.nome || null, modo: "automatico", pausado: false, motivoPausa: "", unreadCount: 0, curriculos: [], curriculo: null, ultimaAnalise: null };
-              sessoes[tel].curriculos = cvs;
-              sessoes[tel].curriculo = cvs[0];
-              sessao = sessoes[tel];
-              lista = cvs;
-            }
-          }
-        }
-      } catch (e) { console.error("Fallback Sheets curriculo:", e.message); }
-    }
-
-    if (!lista.length) {
-      const nomeCandidato = sessao?.nome || tel;
-      const nomeArquivo = sessao?.curriculo?.filename || '';
-      const termoBusca = nomeCandidato !== tel ? nomeCandidato : nomeArquivo || nomeCandidato;
-      const driveSearchLink = `https://drive.google.com/drive/search?q=${encodeURIComponent(termoBusca)}`;
-      return res.status(404).send(`
-        <html><head><style>
-          body{font-family:sans-serif;padding:32px;max-width:520px;color:#1e293b}
-          .nome-box{display:flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin:12px 0}
-          .nome-text{font-size:15px;font-weight:700;flex:1}
-          .copy-btn{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;white-space:nowrap}
-          .copy-btn:active{opacity:.8}
-          a{color:#2563eb}
-        </style></head>
-        <body>
-        <h3>📄 Currículo não disponível</h3>
-        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado após reinicialização do servidor.</p>
-        <p><strong>Copie o nome e busque no Drive:</strong></p>
-        <div class="nome-box">
-          <span class="nome-text" id="nome">${termoBusca}</span>
-          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('nome').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',1500)})">Copiar</button>
+  <!-- ══ TELA: INTRO ══ -->
+  <div id="tela-intro">
+    <div class="card">
+      <h2>📊 Perfil Comportamental DISC</h2>
+      <p>Identifica seu estilo de comportamento natural e como você age no trabalho. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.</p>
+      <div class="etapas-prev">
+        <div class="ep">
+          <div class="ep-num">1</div>
+          <div class="ep-lbl">Quem eu sou</div>
+          <div class="ep-desc">Como você se vê naturalmente</div>
         </div>
-        <p><a href="${driveSearchLink}" target="_blank">🔍 Tentar abrir Drive com busca</a></p>
-        <p style="margin-top:16px"><a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato via WhatsApp</a></p>
-        </body></html>`);
-    }
+        <div class="ep">
+          <div class="ep-num">2</div>
+          <div class="ep-lbl">O que esperam</div>
+          <div class="ep-desc">Como as pessoas no trabalho esperam que você seja</div>
+        </div>
+      </div>
+      <p>São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.</p>
+      <div class="dica">💡 Responda pelo primeiro instinto — a resposta mais espontânea é a mais honesta. Tempo estimado: <strong>5 a 8 minutos</strong>.</div>
+    </div>
+    <div class="alerta" id="alerta-nome">Por favor, informe seu nome para continuar.</div>
+    <div class="card">
+      <div class="fl">Seu nome completo</div>
+      <input type="text" id="nome-input" placeholder="Digite seu nome..." autocomplete="name" onkeydown="if(event.key==='Enter')iniciar()">
+      <div class="fl" style="margin-top:14px">Vaga de interesse <span style="font-weight:400;text-transform:none">(opcional)</span></div>
+      <input type="text" id="vaga-input" placeholder="Ex: Garçom, Bartender, Gerente..." autocomplete="off">
+    </div>
+    <button class="btn btn-primary" onclick="iniciar()">Começar questionário →</button>
+  </div>
 
-    const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
-    const cv = lista[idx];
+  <!-- ══ TELA: QUIZ ══ -->
+  <div id="tela-quiz" class="hidden">
+    <div class="card">
+      <div class="grupo-hdr">
+        <span class="grupo-num" id="quiz-num">Grupo 1 de 12</span>
+        <span class="etapa-lbl-q" id="quiz-etapa-lbl">Quem eu sou</span>
+      </div>
+      <div class="instrucao-q" id="quiz-instrucao">Toque na palavra que <strong>mais</strong> representa você</div>
+      <div class="card-grid" id="quiz-cards"></div>
+      <div class="quiz-hint" id="quiz-hint">Toque na palavra que <strong>mais</strong> representa você</div>
+      <div class="next-ind" id="quiz-next">✓ Próximo grupo…</div>
+    </div>
+  </div>
 
-    // Se tem driveLink, redireciona diretamente para o Drive
-    if (cv?.driveLink) return res.redirect(cv.driveLink);
+  <!-- ══ TELA: TRANSIÇÃO (+ seleção de referência) ══ -->
+  <div id="tela-transicao" class="hidden">
+    <div class="card">
+      <div class="trans-content">
+        <div class="icon">✅</div>
+        <h2>Etapa 1 concluída!</h2>
+        <p>Ótimo trabalho! Agora vem a segunda parte.</p>
+        <div class="destaque">
+          <strong>Etapa 2 — O que o trabalho espera de mim</strong><br>
+          Usando os mesmos grupos de palavras, responda agora pensando em como as pessoas abaixo <strong>esperam que você seja</strong> no trabalho.
+        </div>
+        <p style="font-size:12.5px;color:#374151;margin:14px 0 8px;font-weight:700">Pensando em quem você vai responder?</p>
+        <div class="ref-grid">
+          <div class="ref-btn" onclick="selecionarRef(this,'minha liderança','exige','minha liderança exige menos isso de mim…')">
+            <span class="ref-icon">👔</span>Minha liderança
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'minha equipe','espera','minha equipe espera menos isso de mim…')">
+            <span class="ref-icon">👥</span>Minha equipe
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'meus clientes','esperam','meus clientes esperam menos isso de mim…')">
+            <span class="ref-icon">🤝</span>Meus clientes
+          </div>
+          <div class="ref-btn" onclick="selecionarRef(this,'o trabalho em geral','exige','o trabalho em geral exige menos isso de mim…')">
+            <span class="ref-icon">🏢</span>O trabalho em geral
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green" id="btn-e2" onclick="iniciarEtapa2()" disabled>Iniciar Etapa 2 →</button>
+  </div>
 
-    let buffer = null;
-    if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
-    else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+  <!-- ══ TELA: CALCULANDO ══ -->
+  <div id="tela-calc" class="hidden">
+    <div class="card">
+      <div class="calc-box">
+        <div style="font-size:38px;margin-bottom:14px">⏳</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">Analisando seu perfil…</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Cruzando Perfil Natural × Perfil Adaptado</div>
+      </div>
+    </div>
+  </div>
 
-    if (!buffer) {
-      // Arquivo local sumiu (reinício do Railway) — tenta driveLink da análise
-      const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
-      if (dlFallback) return res.redirect(dlFallback);
-      return res.status(404).send(`
-        <html><body style="font-family:sans-serif;padding:32px">
-        <h3>📄 Arquivo indisponível</h3>
-        <p>O arquivo do currículo foi apagado após reinicialização do servidor (armazenamento temporário).</p>
-        <p>Acesse o <strong>Google Drive</strong> para encontrar o currículo salvo, ou solicite reenvio pelo WhatsApp.</p>
-        </body></html>`);
-    }
+  <!-- ══ TELA: RESULTADO (candidato) ══ -->
+  <div id="tela-resultado" class="hidden">
+    <div class="card">
+      <div class="res-top">
+        <span class="res-emoji" id="res-emoji">📊</span>
+        <div class="res-titulo" id="res-titulo">Perfil</div>
+        <div class="res-sub" id="res-sub"></div>
+      </div>
+      <div class="perfis-row">
+        <div class="pcard" id="pcard-nat">
+          <div class="pcard-titulo">🧠 Quem você é</div>
+          <div class="pcard-nome" id="nat-nome"></div>
+          <div id="nat-bars"></div>
+        </div>
+        <div class="pcard" id="pcard-ada" style="background:#fffbeb;border-color:#fde68a">
+          <div class="pcard-titulo">🎭 Como você se adapta</div>
+          <div class="pcard-nome" id="ada-nome"></div>
+          <div id="ada-bars"></div>
+        </div>
+      </div>
+      <p id="res-resumo" style="font-size:12.5px;line-height:1.7;color:#374151;margin-top:12px"></p>
+      <div id="res-combo" class="combo-box hidden" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="sec-titulo">🌟 O que você traz de melhor</div>
+      <div id="res-forcas"></div>
+      <div class="sec-titulo" style="margin-top:14px">🧭 Como você age em diferentes situações</div>
+      <div id="res-tendencias"></div>
+    </div>
+    <div class="card">
+      <div class="sec-titulo">🌱 Para ficar de olho</div>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Não são defeitos — são pontos onde pequenos ajustes fazem grande diferença.</p>
+      <div id="res-atencao"></div>
+    </div>
+    <div class="card hidden" id="card-tensao-cand">
+      <div class="sec-titulo">⚡ Um ponto importante</div>
+      <p style="font-size:11.5px;color:#374151;margin-bottom:10px;line-height:1.55">Notamos uma diferença entre como você é naturalmente e o que o ambiente de trabalho espera. Isso é normal — todos nos adaptamos. Mas quando a diferença é grande, pode gerar cansaço ao longo do tempo. Vale refletir sobre isso.</p>
+      <div id="res-tensoes-cand"></div>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨️ Salvar meu resultado</button>
+    <div class="card" style="margin-top:14px;padding:20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">💙</div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px">Obrigado por responder!</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Seu perfil foi registrado pela equipe Effect Pessoas.<br>Em breve entraremos em contato.</div>
+    </div>
+  </div>
 
-    const inline = req.query.inline === "1" || req.query.inline === "true";
-    res.set("Content-Type", cv.mimeType || "application/octet-stream");
-    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
-    res.send(buffer);
-  } catch (erro) {
-    console.error("Erro /inbox/curriculo:", erro.message);
-    res.status(500).send("Erro ao obter currículo");
+</div><!-- /container -->
+
+<script>
+// ══════════════════════════════════════════
+// QUESTÕES — 12 GRUPOS  [D, I, S, C]
+// ══════════════════════════════════════════
+const QUESTOES = [
+  ["Decidido","Entusiasmado","Paciente","Preciso"],
+  ["Competitivo","Sociável","Leal","Analítico"],
+  ["Direto","Otimista","Calmo","Cauteloso"],
+  ["Ousado","Expressivo","Cooperativo","Sistemático"],
+  ["Determinado","Animado","Estável","Organizado"],
+  ["Assertivo","Comunicativo","Dedicado","Detalhista"],
+  ["Exigente","Persuasivo","Confiável","Lógico"],
+  ["Independente","Inspirador","Harmonioso","Cuidadoso"],
+  ["Resoluto","Criativo","Atencioso","Criterioso"],
+  ["Objetivo","Espontâneo","Consistente","Exato"],
+  ["Audacioso","Divertido","Tranquilo","Meticuloso"],
+  ["Ambicioso","Popular","Gentil","Rigoroso"]
+];
+const KEYS = ['D','I','S','C'];
+const TOTAL = 12;
+const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5f0'};
+
+// ══════════════════════════════════════════
+// PERFIS, COMBOS, TENSÃO
+// ══════════════════════════════════════════
+const PERFIS = {
+  D:{nome:'Dominante',emoji:'🔴',
+     resumo:'Seu estilo natural é agir com rapidez e foco em resultados. Você não espera as coisas acontecerem — toma a frente, decide e executa. Em situações de pressão ou desafio, você tende a se destacar porque não tem medo de assumir responsabilidade e correr riscos calculados. Prefere ambientes onde tem autonomia para agir do que rotinas muito controladas.',
+     forcas:['Toma decisões com agilidade, mesmo sob pressão','Assume a liderança naturalmente, sem precisar ser empurrado','Foco forte em entregar resultados concretos'],
+     atencao:['Pode parecer impaciente ou brusco para pessoas mais sensíveis','Às vezes age antes de ouvir quem está ao redor — o que pode gerar atritos']},
+  I:{nome:'Influente',emoji:'🟡',
+     resumo:'Você tem um jeito naturalmente comunicativo e contagiante. As pessoas se sentem bem perto de você — você anima o ambiente, cria conexões com facilidade e convence sem parecer forçado. Funciona muito bem em funções que envolvem atendimento, vendas, liderança de pessoas ou trabalho em equipe. Prefere variedade e contato humano a tarefas solitárias e repetitivas.',
+     forcas:['Comunica ideias com clareza e entusiasmo','Cria vínculos de confiança com facilidade — com clientes, colegas e líderes','Motiva e anima as pessoas ao redor naturalmente'],
+     atencao:['Pode ter dificuldade com rotinas repetitivas e detalhes técnicos','Às vezes o otimismo excessivo faz subestimar dificuldades reais']},
+  S:{nome:'Estável',emoji:'🟢',
+     resumo:'Você é o tipo de pessoa em quem se pode confiar. Constante, paciente e dedicada, você não abandona o que começou e cuida genuinamente das pessoas ao redor. É um pilar de equilíbrio em qualquer equipe — não entra em pânico diante de pressão e prefere resolver as coisas com calma e cooperação. Funciona muito bem em funções que exigem constância, cuidado e trabalho em equipe.',
+     forcas:['Comprometimento real — entrega o que promete','Excelente em trabalhar em equipe e apoiar os colegas','Ouve com atenção e gera um ambiente de confiança ao redor'],
+     atencao:['Mudanças repentinas e imprevistos podem gerar desconforto','Tende a evitar conflitos mesmo quando é necessário se posicionar']},
+  C:{nome:'Analítico',emoji:'🔵',
+     resumo:'Você tem um padrão alto de qualidade — e não abre mão dele. Meticuloso, organizado e cuidadoso, você prefere fazer certo a fazer rápido. Antes de decidir, analisa, pesquisa e verifica. É exatamente o tipo de pessoa que garante que os detalhes não escapem e que os processos sejam seguidos corretamente. Ideal para funções que exigem precisão, controle e raciocínio lógico.',
+     forcas:['Atenção aos detalhes que outros normalmente deixam passar','Raciocínio lógico e analítico — pensa antes de agir','Entrega um trabalho de alta qualidade e confiabilidade'],
+     atencao:['A busca pela perfeição pode tornar as decisões mais lentas','Pode ser percebido como distante ou excessivamente crítico em situações de pressão']}
+};
+
+const COMBOS = {
+  DI:'Você une resultado e relacionamento — age rápido e ainda consegue engajar as pessoas. Perfil valorizado em liderança, vendas e funções que exigem iniciativa com boa comunicação.',
+  DS:'Você combina determinação com responsabilidade. Age com firmeza mas sem atropelar — entrega o que promete e mantém a equipe unida. Ótimo para cargos de gestão e operações.',
+  DC:'Você quer resultado E qualidade. Exigente consigo e com os outros, não aceita entrega pela metade. Ideal para funções que envolvem tomada de decisão com alto padrão técnico.',
+  ID:'Você tem o entusiasmo de quem inspira e a objetividade de quem entrega. Consegue vender ideias e ao mesmo tempo colocar em prática. Perfil forte para liderança e comercial.',
+  IS:'Você constrói relacionamentos duradouros com leveza e cuidado genuíno. Não força — conquista. Ideal para funções de atendimento, RH, educação e trabalho com pessoas.',
+  IC:'Você se comunica bem e ainda cuida dos detalhes. Não deixa as coisas escaparem nas entrelinhas. Bom para funções que exigem clareza, organização e contato com o público.',
+  SD:'Você é confiável e ainda sabe quando precisa assumir o comando. Não corre riscos desnecessários, mas também não paralisa diante de decisões. Perfil sólido para cargos operacionais e de supervisão.',
+  SI:'Você é parceiro de equipe por excelência — colaborativo, comunicativo e presente. Cria um ambiente de trabalho saudável e produtivo ao redor. Ideal para funções de suporte, equipe e atendimento.',
+  SC:'Você entrega com qualidade e constância — sem alardes, mas sem erros. Altamente confiável para funções técnicas, administrativas e de controle de processos.',
+  CD:'Você analisa antes de agir — e quando age, entrega com precisão e foco. Perfil valorizado para funções que envolvem planejamento, qualidade e liderança técnica.',
+  CI:'Você explica bem, detalha sem perder o fio e ainda mantém o clima leve. Ótimo para treinamento, suporte técnico, comunicação e funções que exigem clareza na entrega.',
+  CS:'Você é metódico e paciente — faz o processo funcionar e ainda cuida das pessoas dentro dele. Ideal para funções de back-office, controle, qualidade e suporte.'
+};
+
+const TENSAO_MSGS = {
+  D:{up:'Você está agindo de forma mais assertiva do que é natural — o ambiente exige uma postura de liderança que demanda esforço extra.',
+     down:'Você é naturalmente mais decidido do que o ambiente espera — pode estar contendo sua assertividade.'},
+  I:{up:'Você está sendo mais comunicativo do que seu perfil natural — o ambiente pode exigir mais interação do que você gerencia confortavelmente.',
+     down:'Você é naturalmente mais expressivo do que demonstra — pode estar moderando seu entusiasmo para se adaptar.'},
+  S:{up:'Você está sendo mais paciente do que sente naturalmente — pode estar se esforçando para corresponder às expectativas de harmonia.',
+     down:'Você é naturalmente mais estável do que o ambiente espera — pode estar sendo pressionado a agir com mais agilidade.'},
+  C:{up:'Você está sendo mais detalhista do que seu perfil natural — o ambiente pode exigir uma precisão que demanda esforço adicional.',
+     down:'Você é naturalmente mais criterioso do que demonstra — pode estar simplificando sua abordagem para se adaptar ao ritmo do ambiente.'}
+};
+
+
+// ══════════════════════════════════════════
+// RELATÓRIO RH — dados por perfil primário
+// ══════════════════════════════════════════
+const RECRUTA = {
+  D:{
+    resumoRH:'Perfil assertivo e orientado a resultados. Toma decisões rápidas, assume responsabilidade e não espera ser convocado — lidera naturalmente. Indicado para funções com autonomia, metas claras e ritmo acelerado.',
+    ambientesFit:['Dinâmico e desafiador','Alta pressão e urgência','Autonomia real para decidir','Metas claras e mensuráveis','Liderança com desafios constantes'],
+    ambientesRisco:['Muito burocrático ou controlado','Ritmo lento sem novidades','Microgerenciamento','Rotinas rígidas sem espaço para iniciativa'],
+    liderancaFit:'Diretiva com autonomia — define objetivos claros e dá espaço para executar. Explica o porquê das decisões sem microgerir.',
+    liderancaRisco:'Microgerenciamento ou liderança passiva sem direção — ambos geram frustração rápida e risco de desengajamento.',
+    conflito:'Confronta diretamente quando discorda. Pode escalar conflitos com pares. Em cargos de liderança, pode ser percebido como autoritário se não houver equilíbrio relacional.',
+    motivacao:'Resultados concretos, autonomia real, progressão rápida, reconhecimento por performance, desafios constantes.',
+    retencao:'Alto risco de saída se não houver crescimento ou desafio. Fidelidade condicionada à oportunidade — não à empresa.',
+    autonomia:'Alta. Funciona com objetivos definidos e liberdade de método. Não precisa de acompanhamento constante.',
+    sinaisVerde:['Proatividade e iniciativa mesmo sem cargo formal','Alta entrega em situações de pressão e urgência','Capacidade de decisão mesmo sem informação completa'],
+    alertas:['Pode atropelar processos e pessoas na busca por resultados','Impaciência com burocracia ou ritmo lento','Risco de conflito com líderes percebidos como incompetentes ou passivos'],
+    perguntas:[
+      'Me conte de uma situação em que discordou de uma decisão do seu líder. O que fez?',
+      'Como você reage quando um colega não entrega no prazo e afeta o seu trabalho?',
+      'O que te faria sair de um emprego mesmo gostando da função?'
+    ]
+  },
+  I:{
+    resumoRH:'Perfil comunicativo e orientado a pessoas. Cria vínculos com facilidade, engaja equipes e clientes naturalmente. Indicado para funções com alto contato humano, vendas, atendimento e liderança pelo relacionamento.',
+    ambientesFit:['Alto contato humano','Dinâmico e variado','Com reconhecimento frequente','Trabalho em equipe colaborativa','Liberdade para expressar ideias'],
+    ambientesRisco:['Isolado ou solitário','Muito técnico e sem interação','Com críticas constantes e sem reconhecimento','Rotineiro e repetitivo por longo período'],
+    liderancaFit:'Valorizadora e positiva — reconhece o esforço, dá feedback de elogio e cria ambiente de confiança. Liderança próxima e presente.',
+    liderancaRisco:'Liderança fria, punitiva ou que ignora a contribuição individual — gera desmotivação rápida.',
+    conflito:'Evita conflito e tende a suavizar situações. Pode não reportar problemas para não criar mal-estar. Avalie se tem dificuldade em dar feedback negativo ou sinalizar falhas.',
+    motivacao:'Reconhecimento público, relacionamentos positivos, variedade de tarefas, sentido de pertencimento ao grupo.',
+    retencao:'Fidelidade ao clima e às pessoas, não necessariamente à empresa. Pode sair por ambiente ruim mesmo com boa remuneração.',
+    autonomia:'Moderada — precisa de validação e contato frequentes. Funciona bem com autonomia se houver suporte relacional.',
+    sinaisVerde:['Facilidade de criar rapport imediato com clientes e colegas','Capacidade de animar e engajar equipes naturalmente','Alta adaptabilidade social em contextos diferentes'],
+    alertas:['Pode superestimar entregas por otimismo excessivo','Dificuldade com tarefas técnicas isoladas e sem contato humano','Risco de não reportar problemas para preservar o clima'],
+    perguntas:[
+      'Como você lida com metas apertadas que precisam ser cumpridas mesmo sem apoio da equipe?',
+      'Me conte de uma situação em que precisou dar uma notícia negativa a um colega ou cliente.',
+      'Você já deixou de falar algo importante para não prejudicar o clima? O que aconteceu depois?'
+    ]
+  },
+  S:{
+    resumoRH:'Perfil estável, leal e orientado à equipe. Confiável, consistente e paciente. Indicado para funções que exigem constância, trabalho colaborativo e atendimento de qualidade com foco em relacionamento.',
+    ambientesFit:['Estável e previsível','Com processos claros e definidos','Trabalho em equipe com suporte mútuo','Rotina definida e ritmo constante','Liderança consistente e justa'],
+    ambientesRisco:['Muito instável com mudanças frequentes','Conflituoso e sem gestão','Alta pressão por performance individual','Ambiente improdutivo e sem suporte'],
+    liderancaFit:'Consistente, justa e próxima — valoriza a lealdade, dá direção clara e cria sensação de segurança. Não precisa ser carismática; precisa ser confiável.',
+    liderancaRisco:'Liderança imprevisível, que muda regras com frequência ou ignora o esforço da equipe — gera insegurança e desgaste silencioso.',
+    conflito:'Evita conflito ao máximo — pode ser sinal de passividade ou de problemas não reportados. Tende a absorver tensões internamente em vez de verbalizá-las.',
+    motivacao:'Segurança, harmonia no ambiente, sentimento de pertencimento e de ser parte de algo estável e confiável.',
+    retencao:'Alta fidelidade se tratado com respeito e consistência. Um dos perfis com menor rotatividade quando bem alocado.',
+    autonomia:'Moderada a baixa — funciona melhor com direção clara e suporte da liderança. Pode ter dificuldade com iniciativa sem orientação.',
+    sinaisVerde:['Alta confiabilidade — entrega o que promete','Excelente suporte à equipe e ao cliente mesmo em momentos difíceis','Baixo risco de comportamentos impulsivos ou conflituosos'],
+    alertas:['Dificuldade em ambientes de alta mudança ou imprevisibilidade','Tende a não reportar insatisfação — monitorar sinais de desgaste silencioso','Pode ter dificuldade em tomar iniciativa sem orientação clara'],
+    perguntas:[
+      'Como você se sente quando as regras ou processos mudam com frequência?',
+      'Já precisou discordar de um colega ou líder? Como fez isso?',
+      'O que te deixa mais desconfortável em um ambiente de trabalho?'
+    ]
+  },
+  C:{
+    resumoRH:'Perfil analítico e orientado à qualidade. Meticuloso, organizado e criterioso. Indicado para funções que exigem precisão, análise, controle de processos e conformidade com padrões.',
+    ambientesFit:['Estruturado com processos claros','Qualidade valorizada acima do volume','Com tempo adequado para análise e planejamento','Padrões e critérios bem definidos'],
+    ambientesRisco:['Caótico e sem processos','Pressão por volume sobre qualidade','Decisões impulsivas e sem dados','Muito informal ou sem estrutura definida'],
+    liderancaFit:'Competente e baseada em dados — explica decisões com lógica, valoriza a qualidade e respeita o ritmo de análise do colaborador.',
+    liderancaRisco:'Liderança impulsiva que decide sem dados, muda de direção constantemente ou não valoriza a qualidade da entrega.',
+    conflito:'Prefere debate intelectual ao emocional. Pode parecer frio ou excessivamente crítico. Raramente confronta por questões emocionais — mas pode criar resistência passiva diante de decisões que percebe como erradas.',
+    motivacao:'Fazer o trabalho com qualidade, aprofundar expertise, trabalhar em ambiente competente e com padrões elevados.',
+    retencao:'Permanece se perceber competência e qualidade ao redor. Sai se o ambiente for desorganizado ou se a qualidade não for valorizada.',
+    autonomia:'Alta para execução técnica — prefere trabalhar sem interferências no método. Mas precisa de critérios e objetivos claros para começar.',
+    sinaisVerde:['Atenção aos detalhes que outros normalmente deixam passar','Entrega consistente com alta qualidade e baixo índice de erro','Capacidade de identificar riscos e inconsistências antes de agir'],
+    alertas:['Pode ser lento em situações que exigem decisão rápida sem dados completos','Pode parecer distante ou excessivamente crítico em ambientes mais relacionais','Dificuldade em ambientes caóticos ou com mudanças constantes de prioridade'],
+    perguntas:[
+      'Como você reage quando precisa decidir algo importante sem ter todas as informações?',
+      'O que te incomoda mais em um ambiente de trabalho?',
+      'Me conte de uma situação em que identificou um erro que outros não viram. Como agiu?'
+    ]
   }
-});
-
-
-app.post("/inbox/observacao", async (req, res) => {
-  const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-  const observacao = req.body.observacao || req.body.note || "";
-  if (!telefone) return res.json({ ok: false });
-  try {
-    if (CONFIG.VAGAS_URL) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      await axios.post(urlBase, { acao: "salvarMensagem", telefone, role: "observacao", mensagem: observacao, nome: sessoes[telefone]?.nome || "" }, { headers: { "Content-Type": "application/json" }, timeout: 10000 });
-    }
-  } catch (e) { console.error("Erro salvar obs:", e.message); }
-  res.json({ ok: true });
-});
-
-
-app.post("/inbox/status", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-    const status = String(req.body.status || "").trim();
-    const prioritario = req.body.prioritario === true;
-    const enviar = req.body.enviarMensagem === true;
-    const mensagem = String(req.body.mensagem || "").trim();
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-
-    const sessao = garantirSessao(telefone);
-    sessao.statusProcesso = status || sessao.statusProcesso || "Novo";
-    if (prioritario) sessao.motivoPausa = "Prioritário";
-
-    if (CONFIG.VAGAS_URL && status) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      await axios.post(urlBase, {
-        acao: "salvarAnalise",
-        telefone,
-        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-        status,
-        observacoes: `${status}${prioritario ? " | Prioritário" : ""}`,
-        vagaInteresse: sessao.ultimaAnalise?.vagaInteresse || "",
-        idVaga: sessao.ultimaAnalise?.idVaga || "",
-        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || ""
-      }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-    }
-
-    if (enviar && mensagem) {
-      await enviarMensagem(telefone, mensagem);
-      registrarEntradaSessao(sessao, "assistant", mensagem);
-      marcarConversaRespondida(sessao);
-      await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || sessao.ultimaAnalise?.nome || "");
-    }
-
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
-
-    // Banco de Talentos: registra em aba dedicada no Sheets
-    if (status === "Banco de Talentos" && CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, {
-          acao: "bancoTalentos",
-          telefone,
-          nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-          cargo: sessao.ultimaAnalise?.vagaInteresse || sessao.vagaInteresse || "",
-          cidade: sessao.ultimaAnalise?.cidade || sessao.cidade || "",
-          driveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-          perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || "",
-          discPrimario: sessao.discResult?.primario || "",
-          dataEntrada: new Date().toLocaleDateString("pt-BR"),
-          timestampMs: Date.now()
-        }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-        console.log(`Banco de Talentos: ${telefone} (${sessao.nome || ""})`);
-      } catch (e) { console.error("Erro bancoTalentos Sheets:", e.message); }
-    }
-
-    return res.json({ ok: true, telefone, status: sessao.statusProcesso, prioritario });
-  } catch (erro) {
-    console.error("Erro /inbox/status:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-app.post("/inbox/encaminhar", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
-    if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
-
-    const sessao = garantirSessao(telefone);
-    const idVaga = String(req.body.idVaga || req.body.id || "").trim();
-    const vagaInteresse = String(req.body.vagaInteresse || req.body.cargo || "").trim();
-    const vaga = req.body.vaga || {};
-    const agoraLocal = agora();
-
-    sessao.statusProcesso = "Interessado";
-    sessao.aguardandoConfirmacaoInteresse = false;
-    sessao.ultimaAnalise = {
-      ...(sessao.ultimaAnalise || {}),
-      idVaga,
-      vagaInteresse,
-      status: "Interessado",
-      curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || ""
-    };
-
-    if (CONFIG.VAGAS_URL) {
-      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-      const basePayload = {
-        telefone,
-        nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-        status: "Interessado",
-        vagaInteresse,
-        idVaga,
-        proximaAcao: "Encaminhado manualmente pelo Inbox",
-        observacoes: `Encaminhado manualmente pelo Inbox em ${agoraLocal}.`,
-        curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
-        perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || sessao.ultimaAnalise?.pontosFortes || ""
-      };
-      await axios.post(urlBase, { acao: "salvarAnalise", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-      try {
-        await axios.post(urlBase, { acao: "confirmarInteresse", ...basePayload }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-      } catch (e) {
-        console.error("confirmarInteresse manual falhou, mas salvarAnalise rodou:", e.message);
-      }
-    }
-
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
-    return res.json({ ok: true, telefone, idVaga, vagaInteresse, status: "Interessado" });
-  } catch (erro) {
-    console.error("Erro /inbox/encaminhar:", erro.message);
-    return res.json({ ok: false, erro: erro.message });
-  }
-});
-
-
-// ============================================================
-// ROTA — PORTAL DO CLIENTE
-// ============================================================
-
-app.post("/cliente/solicitar", async (req, res) => {
-  try {
-    const d = req.body;
-    const msg = `🆕 NOVA SOLICITAÇÃO DE VAGA — Effect
-
-🏢 EMPRESA
-• Nome: ${d.empresa_nome || ''}
-• Responsável: ${d.responsavel_nome || ''} ${d.responsavel_cargo ? '('+d.responsavel_cargo+')' : ''}
-• WhatsApp: ${d.responsavel_whatsapp || ''}
-• E-mail: ${d.responsavel_email || ''}
-• Segmento: ${d.segmento || ''}
-
-💼 VAGA
-• Cargo: ${d.vaga_cargo || ''} (${d.vaga_quantidade || '1'} vaga(s))
-• Cidade: ${d.vaga_cidade || ''}
-• Salário: ${d.vaga_salario || 'A combinar'}
-• Horário: ${d.vaga_horario || ''}
-• Benefícios: ${d.vaga_beneficios || ''}
-• Responsabilidades: ${d.vaga_responsabilidades || ''}
-• Requisitos: ${d.vaga_requisitos || ''}
-
-👤 PERFIL
-• Escolaridade: ${d.perfil_escolaridade || ''}
-• Experiência: ${d.perfil_experiencia || ''}
-• Competências: ${d.perfil_competencias || ''}
-${d.perfil_obs ? '• Obs: '+d.perfil_obs : ''}
-
-📄 CONTRATO
-• Razão social: ${d.contrato_razao || ''}
-• CNPJ: ${d.contrato_cnpj || ''}
-• Endereço: ${d.contrato_endereco || ''}
-• Serviço: ${d.contrato_servico || ''}
-• Valor: ${d.contrato_valor || 'A definir'}
-• Pagamento: ${d.contrato_pagamento || ''}
-${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
-
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
-
-    if (CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, { acao: "salvarAnalise", cargo: d.vaga_cargo, cliente: d.empresa_nome, cidade: d.vaga_cidade, salario: d.vaga_salario, horario: d.vaga_horario, beneficios: d.vaga_beneficios, responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos, escolaridade: d.perfil_escolaridade, experiencia: d.perfil_experiencia, contato: d.responsavel_whatsapp, origem: "Portal do Cliente" }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-      } catch(e) { console.error("Erro salvar vaga cliente:", e.message); }
-    }
-
-    res.json({ ok: true });
-  } catch (e) {
-    console.error("Erro /cliente/solicitar:", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
-
-app.post("/cliente/disponibilidade", async (req, res) => {
-  try {
-    const { slots, empresa } = req.body;
-    if (!slots || !slots.length) return res.json({ ok: false });
-    const msg = `📅 DISPONIBILIDADE DE AGENDA RECEBIDA\n\n🏢 Empresa: ${empresa || 'Cliente'}\n\nHorários disponíveis para entrevistas:\n${slots.sort().map(s => {
-      const [data, hora] = s.split('_');
-      const d = new Date(data + 'T12:00:00');
-      return `• ${d.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})} às ${hora}`;
-    }).join('\n')}\n\nAgende pelo painel: /painel → 📅 Agenda`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
-    res.json({ ok: true });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ============================================================
-// ROTA — TRANSIÇÃO LIA → LAURA
-// ============================================================
-
-app.post("/inbox/transicao", async (req, res) => {
-  try {
-    const telefone = limparTelefone(req.body.telefone);
-    if (!telefone) return res.json({ ok: false });
-    const msg = "Olá! 😊 A partir de agora, a Laura da nossa equipe Effect dará continuidade ao seu atendimento. Pode falar! 💙";
-    await enviarMensagem(telefone, msg);
-    const sessao = garantirSessao(telefone);
-    registrarEntradaSessao(sessao, "assistant", msg);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
-    res.json({ ok: true });
-  } catch(e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ============================================================
-// PROCESSAMENTO
-// ============================================================
-
-const FALLBACK_INSTABILIDADE = "Tive uma instabilidade aqui. Pode me mandar novamente?";
-const FALLBACK_RATE_LIMIT = "Estou processando suas informações, só preciso de um instantinho. Pode me responder novamente em alguns segundos?";
-
-async function processarMensagem(telefoneOriginal, mensagem) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const sessao = garantirSessao(telefone);
-  if (estaEmManual(telefone)) { console.log("BLOQUEIO INTERNO — IA NÃO CHAMADA:", telefone); return null; }
-  if (ehSaudacaoSimples(mensagem) && sessao.historico.length <= 1) {
-    const candidatoExistente = await buscarCandidatoNaPlanilha(telefone);
-    if (candidatoExistente?.encontrado) {
-      const nome = candidatoExistente.candidato?.Nome || "";
-      const resposta = `Olá${nome ? ", " + primeiroNome(nome) : ""}! 😊\n\nSeu currículo já está cadastrado em nosso Banco de Talentos.\n\nQuando surgir uma oportunidade compatível com seu perfil, entraremos em contato. 💙\n\nCaso queira atualizar alguma informação profissional ou buscar uma vaga específica, estou à disposição.`;
-      registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-      sessao.historico = sessao.historico.slice(-500);
-      await salvarMensagemSheets(telefone, "assistant", resposta, nome);
-      await salvarConversaCompletaSheets(telefone, sessao.historico, nome);
-      return resposta;
-    }
-  }
-  if (sessao.aguardandoConfirmacaoInteresse && ehConfirmacaoInteresse(mensagem)) {
-    await confirmarInteresseNaPlanilha(telefone, sessao.ultimaAnalise);
-    await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
-    sessao.aguardandoConfirmacaoInteresse = false;
-    const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
-    registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return resposta;
-  }
-  const vagas = await buscarVagas();
-
-  // RAIO-X: registra diagnóstico da busca de vagas para cada mensagem
-  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagem, sessao.historico);
-  const areaDetectada = detectarAreaCandidato(normalizarTexto(mensagem + " " + (sessao.historico||[]).slice(-4).map(h=>h.content||"").join(" ")));
-  const raiox = {
-    ts: new Date().toISOString(),
-    mensagem: mensagem.slice(0, 100),
-    totalVagasDisp: vagas.length,
-    vagasFiltradasQtd: vagasFiltradas.length,
-    areaDetectada: areaDetectada || "nenhuma",
-    vagasEncontradas: vagasFiltradas.slice(0,3).map(v => campo(v,["cargo","Cargo"]) + " / " + campo(v,["cidade","Cidade/Bairro","Cidade"]))
-  };
-  if (!sessao.raiox) sessao.raiox = [];
-  sessao.raiox = [...sessao.raiox.slice(-9), raiox]; // guarda os 10 mais recentes
-  if (vagas.length === 0) {
-    console.warn(`RAIO-X VAGAS — ${telefone}: lista de vagas VAZIA ao processar mensagem. Cache: ${vagasCache.length} vagas em cache.`);
-  } else if (vagasFiltradas.length === 0) {
-    console.warn(`RAIO-X VAGAS — ${telefone}: ${vagas.length} vagas disponíveis mas NENHUMA filtrada. Área: ${areaDetectada||"não detectada"}`);
-  }
-
-  const prompt = montarPromptConversa(sessao, mensagem, vagas);
-  const resposta = await chamarClaudeTexto(prompt);
-
-  // Se a chamada à Claude falhou (mensagem genérica de instabilidade/rate-limit),
-  // NÃO manda isso pro candidato e NÃO grava no histórico — evita o spam de
-  // "Tive uma instabilidade aqui..." em loop. Só alerta a Thiara uma vez.
-  if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
-    if (!sessao._alertaInstabilidadeEnviado || (Date.now() - sessao._alertaInstabilidadeEnviado) > 10 * 60 * 1000) {
-      sessao._alertaInstabilidadeEnviado = Date.now();
-      await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA NÃO RESPONDEU", mensagem);
-    }
-    return null;
-  }
-
-  const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
-  if (respostaTravada) return null;
-  registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
-  sessao.historico = sessao.historico.slice(-500);
-  await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
-  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-  return resposta;
-}
-
-async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
-  const telefone = limparTelefone(telefoneOriginal);
-  const silencioso = opcoes.silencioso === true;
-  const recebidoEmMs = opcoes.timestampMs || Date.now();
-  const sessao = garantirSessao(telefone);
-  let cvSalvo = null;
-
-  try {
-    // ══════════════════════════════════════════════════════
-    // PASSO 1 — DOWNLOAD DO BINÁRIO
-    // Se isso falhar, é problema real (Meta API fora). Nada pode ser feito.
-    // ══════════════════════════════════════════════════════
-    const { buffer: arquivoBuffer, filename: arquivoNome, mimeType, sizeBytes } = await baixarArquivo(documento.id, documento.filename, documento.mime_type || documento.mimeType);
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 2 — SALVAR NO GOOGLE DRIVE IMEDIATAMENTE
-    // Isso é feito ANTES de qualquer análise. É o armazenamento permanente.
-    // Se falhar, tenta mais 2 vezes com delay crescente antes de desistir.
-    // ══════════════════════════════════════════════════════
-    let driveLink = null;
-    let drivePasta = null;
-    for (let tentDrive = 1; tentDrive <= 3; tentDrive++) {
-      try {
-        const driveInfo = await uploadCurriculoDrive(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, "Currículos Recebidos", telefone, mimeType);
-        if (driveInfo?.link) {
-          driveLink = driveInfo.link;
-          drivePasta = driveInfo.pasta;
-          console.log(`✅ CV NO DRIVE (tentativa ${tentDrive}) — ${telefone} — ${driveLink}`);
-          break;
-        }
-      } catch (e) {
-        console.error(`Drive tentativa ${tentDrive}/3 falhou: ${e.message}`);
-        if (tentDrive < 3) await sleep(2000 * tentDrive);
-      }
-    }
-    if (!driveLink) {
-      console.error(`⚠️ CV NÃO SALVO NO DRIVE após 3 tentativas — ${telefone} | ${arquivoNome}`);
-      await enviarAlertaSimplesThiara(telefone, "🔥 CURRÍCULO NÃO FOI SALVO NO DRIVE", `Arquivo: ${arquivoNome || "desconhecido"}`);
-    }
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 3 — REGISTRAR NA SESSÃO E SALVAR NO SHEETS
-    // Agora com driveLink já disponível. Registro permanente.
-    // ══════════════════════════════════════════════════════
-    const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
-    cvSalvo = registrarCurriculoNaSessao(sessao, {
-      mediaId: documento.id || null,
-      base64: arquivoBuffer.toString("base64"),
-      localPath: localInfo.localPath || "",
-      localFilename: localInfo.localFilename || "",
-      filename: arquivoNome || `curriculo_${telefone}`,
-      mimeType,
-      sizeBytes,
-      recebidoEmMs,
-      recebidoEm: new Date(recebidoEmMs).toISOString(),
-      driveLink,
-      pasta: drivePasta,
-      analiseStatus: driveLink ? "salvo_drive" : "drive_indisponivel"
-    });
-    sessao.curriculo = cvSalvo;
-    console.log(`CV REGISTRADO — ${telefone} — Drive: ${driveLink ? "✅" : "❌"} — Local: ${localInfo.localPath ? "✅" : "❌"}`);
-
-    // Salva no Sheets imediatamente com driveLink. Se o servidor reiniciar agora, o link está lá.
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-
-    // ══════════════════════════════════════════════════════
-    // PASSO 4 — EXTRAIR TEXTO PARA ANÁLISE (opcional)
-    // Falha aqui não afeta o que já foi salvo.
-    // ══════════════════════════════════════════════════════
-    const textoCurriculo = await extrairTextoPdf(arquivoBuffer, arquivoNome, mimeType);
-
-    // Se não houver texto legível, currículo está salvo no Drive — só avisa.
-    if (!textoCurriculo || textoCurriculo.length < 50) {
-      if (cvSalvo) cvSalvo.analiseStatus = cvSalvo.analiseStatus === "salvo_drive" ? "salvo_drive_sem_texto" : cvSalvo.analiseStatus;
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática não conseguiu ler o conteúdo do arquivo, mas ele ficou salvo para avaliação da equipe. 💙";
-    }
-
-    // 2) ANÁLISE DA IA — opcional. Se falhar, não invalida o currículo.
-    let analise;
-    try {
-      const vagas = await buscarVagas();
-      let vagasFiltradas = filtrarVagasRelevantes(vagas, textoCurriculo, sessao.historico).slice(0, 5);
-      const vagaRH = candidatoTemPerfilRH(textoCurriculo) ? buscarVagaRH(vagas) : null;
-      if (vagaRH && !vagasFiltradas.some(v => campo(v, ["idVaga", "ID Vaga", "ID"]) === campo(vagaRH, ["idVaga", "ID Vaga", "ID"]))) {
-        vagasFiltradas = [vagaRH, ...vagasFiltradas].slice(0, 5);
-      }
-
-      const prompt = montarPromptAnaliseEstruturada(textoCurriculo, vagasFiltradas);
-      analise = await chamarGeminiJSON(prompt).catch(() => chamarClaudeJSON(prompt));
-
-      if (vagaRH) {
-        const cargoRH = campo(vagaRH, ["cargo", "Cargo", "CARGO"]);
-        const cidadeRH = campo(vagaRH, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-        const idRH = campo(vagaRH, ["idVaga", "ID Vaga", "ID"]);
-        const semMatch = !analise.vagaInteresse || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas") || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas");
-        if (semMatch || !isRHVaga({ cargo: analise.vagaInteresse, area: analise.areaInteresse, palavrasChave: analise.motivoMatch })) {
-          analise.vagaInteresse = cargoRH || "Analista Administrativo (RH)";
-          analise.idVaga = idRH || analise.idVaga || "";
-          analise.cidade = analise.cidade || cidadeRH || "Serra/ES";
-          analise.areaInteresse = analise.areaInteresse || "Recursos Humanos";
-          analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 75);
-          analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 75);
-          analise.classificacao = analise.classificacao || "Bom";
-          analise.motivoMatch = analise.motivoMatch || "Experiência/aderência com RH, Recursos Humanos, DP, R&S ou Gente e Gestão.";
-          analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!
-
-Analisei seu currículo e encontrei uma vaga que pode ter aderência ao seu perfil:
-
-📍 ${cargoRH || "Analista Administrativo (RH)"}
-📍 ${cidadeRH || "Serra/ES"}
-
-Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa equipe. Você teria interesse em participar deste processo seletivo? 💙`;
-        }
-      }
-
-      // Força match por área para candidatos não-RH
-      if (!vagaRH) {
-        const areaCv = detectarAreaCandidato(textoCurriculo);
-        if (areaCv) {
-          const vagaArea = buscarVagaDaArea(vagas, areaCv);
-          if (vagaArea) {
-            const cargoArea = campo(vagaArea, ["cargo", "Cargo", "CARGO"]);
-            const cidadeArea = campo(vagaArea, ["cidade", "Cidade/Bairro", "Cidade", "Local"]);
-            const idArea = campo(vagaArea, ["idVaga", "ID Vaga", "ID"]);
-            const semMatch = !analise.vagaInteresse
-              || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas")
-              || normalizarTexto(analise.mensagemCandidato || "").includes("oportunidade em aberto");
-            if (semMatch) {
-              analise.vagaInteresse = cargoArea || analise.vagaInteresse;
-              analise.idVaga = idArea || analise.idVaga || "";
-              analise.cidade = analise.cidade || cidadeArea || "";
-              analise.areaInteresse = analise.areaInteresse || areaCv;
-              analise.scoreGeral = Math.max(Number(analise.scoreGeral || 0), 70);
-              analise.scoreVaga = Math.max(Number(analise.scoreVaga || 0), 70);
-              analise.classificacao = analise.classificacao || "Bom";
-              analise.motivoMatch = analise.motivoMatch || `Aderência com a área de ${areaCv}.`;
-              analise.mensagemCandidato = `😊 Olá, ${analise.nome || "tudo bem"}!\n\nAnalisei seu currículo e encontrei uma vaga com aderência ao seu perfil:\n\n📌 ${cargoArea}\n📍 ${cidadeArea || "ES"}\n\nVou registrar seu interesse e encaminhar seu perfil para avaliação. Você teria interesse em participar? 💙`;
-            }
-          }
-        }
-      }
-
-      if (cvSalvo) {
-        cvSalvo.analiseStatus = "analisado";
-        analise.curriculoDriveLink = cvSalvo.driveLink || null;
-      }
-
-      await salvarAnaliseNaPlanilha(telefone, analise);
-      await enviarAlertaThiara(analise, telefone);
-      sessao.aguardandoConfirmacaoInteresse = true;
-      sessao.ultimaAnalise = analise;
-      sessao.nome = analise.nome || sessao.nome;
-
-      if (!silencioso) {
-        registrarEntradaSessao(sessao, "assistant", analise.mensagemCandidato);
-        marcarConversaRespondida(sessao);
-        sessao.historico = sessao.historico.slice(-500);
-        await salvarMensagemSheets(telefone, "assistant", analise.mensagemCandidato, analise.nome);
-      } else {
-        console.log(`CURRÍCULO DE ${telefone} SALVO/ANALISADO EM MODO MANUAL — sem resposta automática ao candidato.`);
-      }
-
-      await salvarConversaCompletaSheets(telefone, sessao.historico, analise.nome || sessao.nome || "");
-      return silencioso ? null : analise.mensagemCandidato;
-    } catch (erroIA) {
-      if (cvSalvo) cvSalvo.analiseStatus = "analise_indisponivel";
-      console.error("Análise automática indisponível, mas currículo foi salvo:", JSON.stringify(erroIA.response?.data || erroIA.message || erroIA));
-      await enviarAlertaSimplesThiara(telefone, "⚠️ CURRÍCULO SALVO, MAS IA NÃO ANALISOU", String(erroIA.message || erroIA));
-      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
-      return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática está temporariamente indisponível, mas o arquivo ficou salvo para avaliação da equipe. 💙";
-    }
-  } catch (erro) {
-    console.error("Erro ao receber/salvar currículo:", JSON.stringify(erro.response?.data || erro.message || erro));
-    await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO RECEBER/SALVAR CURRÍCULO", String(erro.message || erro));
-    return silencioso ? null : "Recebi seu arquivo, mas tive uma falha técnica para salvar o currículo. Pode me encaminhar novamente, por favor?";
-  }
-}
-
-
-// Apenas faz o download do arquivo. Não tenta parsear. Mais rápido e nunca bloqueia o salvamento.
-async function baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal = "", tentativa = 1) {
-  try {
-    const mediaInfo = await axios.get(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, timeout: 15000 });
-    const arquivo = await axios.get(mediaInfo.data.url, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}` }, responseType: "arraybuffer", timeout: 45000 });
-    const buffer = Buffer.from(arquivo.data);
-    const filename = filenameOriginal || "curriculo";
-    const mimeType = mimeTypeOriginal || arquivo.headers?.["content-type"] || "application/octet-stream";
-    return { buffer, filename, mimeType, sizeBytes: buffer.length };
-  } catch (e) {
-    if (tentativa < 3) {
-      console.error(`baixarArquivo tentativa ${tentativa} falhou: ${e.message} — retentando...`);
-      await sleep(2000 * tentativa);
-      return baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal, tentativa + 1);
-    }
-    throw e;
-  }
-}
-
-// Extrai texto do PDF para análise. Totalmente opcional — falha aqui não afeta o salvamento.
-async function extrairTextoPdf(buffer, filename, mimeType) {
-  const ehPdf = /pdf/i.test(mimeType) || /\.pdf$/i.test(filename);
-  if (!ehPdf) return "";
-  try {
-    const pdfData = await pdfParse(buffer);
-    return String(pdfData.text || "").slice(0, 12000);
-  } catch (e) {
-    console.error("Leitura do texto do PDF falhou (arquivo já salvo no Drive):", e.message);
-    return "";
-  }
-}
-
-// Mantida para compatibilidade, mas processarCurriculo usa as funções separadas agora.
-async function baixarELerPdf(mediaId, filenameOriginal, mimeTypeOriginal = "") {
-  const { buffer, filename, mimeType, sizeBytes } = await baixarArquivo(mediaId, filenameOriginal, mimeTypeOriginal);
-  const texto = await extrairTextoPdf(buffer, filename, mimeType);
-  return { texto, buffer, filename, mimeType, sizeBytes };
-}
-
-
-async function buscarCandidatoNaPlanilha(telefone) {
-  try {
-    if (!CONFIG.VAGAS_URL) return null;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=candidato&telefone=${encodeURIComponent(telefone)}`, { timeout: 15000 });
-    return r.data;
-  } catch (e) { return null; }
-}
-
-function vagaEstaAtiva(vaga) {
-  const status = normalizarTexto(campo(vaga, ["status", "Status"]));
-  if (!status) return true;
-  return !["encerrada","cancelada","inativa","suspensa","fechada","finalizada"].includes(status);
-}
-
-// Cache de vagas — evita retornar lista vazia quando o Sheets está lento ou fora
-let vagasCache = [];
-let vagasCacheTs = 0;
-const VAGAS_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-async function buscarVagas() {
-  // Se o cache ainda é válido, usa sem bater no Sheets
-  if (vagasCache.length && (Date.now() - vagasCacheTs) < VAGAS_CACHE_TTL) {
-    return vagasCache;
-  }
-  try {
-    const vagasSheets = [];
-    if (CONFIG.VAGAS_URL) {
-      const r = await axios.get(CONFIG.VAGAS_URL, { timeout: 15000 });
-      if (r.data?.vagas) vagasSheets.push(...r.data.vagas.filter(vagaEstaAtiva));
-    }
-    if (vagasSheets.length) {
-      vagasCache = vagasSheets;
-      vagasCacheTs = Date.now();
-    }
-    // Se Sheets retornou vazio mas temos cache, usa o cache (evita "não temos vagas" falso)
-    return vagasSheets.length ? vagasSheets : vagasCache;
-  } catch (e) {
-    console.error("Erro buscarVagas:", e.message);
-    return vagasCache; // usa cache antigo em vez de retornar []
-  }
-}
-
-function primeiroNome(nome) { return String(nome || "").trim().split(/\s+/)[0]; }
-
-function ehSaudacaoSimples(mensagem) {
-  const texto = normalizarTexto(mensagem).trim();
-  return ["oi","ola","olá","bom dia","boa tarde","boa noite","tudo bem","td bem"].includes(texto);
-}
-
-function textoDaVaga(vaga) {
-  return normalizarTexto([campo(vaga,["idVaga","ID Vaga","ID"]),campo(vaga,["cargo","Cargo","CARGO"]),campo(vaga,["area","Área/Setor","Area/Setor","Área","Area"]),campo(vaga,["cidade","Cidade/Bairro","Cidade","Local"]),campo(vaga,["perfilResumido","Perfil Resumido","Perfil"]),campo(vaga,["palavrasChave","Palavras-chave","Palavras Chave"]),campo(vaga,["requisitosDaVaga","Requisitos da Vaga","Requisitos"]),campo(vaga,["requisitoObrigatorio","Requisito Obrigatório","Requisito Obrigatorio"]),campo(vaga,["observacoes","Observações","Observacoes"]),campo(vaga,["status","Status"])].join(" "));
-}
-
-function filtrarVagasRelevantes(vagas, texto, historico) {
-  const textoBusca = normalizarTexto(texto + " " + historico.map(h => h.content).join(" "));
-  const areaCandidato = detectarAreaCandidato(textoBusca);
-  const CIDADES_ES = ["linhares", "serra", "vitoria", "vila velha", "cariacica", "guarapari",
-    "colatina", "cachoeiro", "aracruz", "viana", "fundao", "fundão", "santa teresa",
-    "piuma", "anchieta", "itapemirim", "marataizes", "marataízes"];
-  const vagasComScore = vagas.map(vaga => {
-    const textoVaga = textoDaVaga(vaga);
-    let score = 0;
-    textoBusca.split(/\s+/).filter(p => p.length >= 4).slice(0, 100).forEach(p => { if (textoVaga.includes(p)) score++; });
-    if (areaCandidato && isVagaDaArea(vaga, areaCandidato)) {
-      const boosts = { rh: 80, logistica: 60, administrativo: 50, operacional: 50, projetos: 50, alimentos: 50, limpeza: 50, vendas: 50 };
-      score += boosts[areaCandidato] || 40;
-    }
-    CIDADES_ES.forEach(cidade => { if (textoBusca.includes(cidade) && textoVaga.includes(cidade)) score += 35; });
-    return { vaga, score };
+};
+
+function gerarRelatorioRH(primario, secundario, naturalPct, adaptadoPct, vagaCand, tensoes) {
+  const r = RECRUTA[primario];
+  const match = calcularMatch(vagaCand, naturalPct);
+  const tensaoAlerta = tensoes.filter(t => Math.abs(t.gap) >= 20).map(t => {
+    const dir = t.gap > 0 ? 'subindo' : 'caindo';
+    return 'Tensão alta em ' + t.trait + ' (' + (t.gap>0?'+':'') + t.gap + '%): candidato está adaptando seu perfil ' + dir + ' nessa dimensão. ' + TENSAO_MSGS[t.trait][t.gap>0?'up':'down'];
   });
-  const filtradas = vagasComScore.filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(i => i.vaga);
-  if (filtradas.length === 0 && areaCandidato) {
-    const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
-    if (porArea.length > 0) return porArea.slice(0, 8);
+  return {
+    perfilNatural: primario + (secundario ? '/' + secundario : ''),
+    perfilAdaptado: Object.entries(adaptadoPct).sort((a,b)=>b[1]-a[1])[0][0],
+    percentuaisNatural: naturalPct,
+    percentuaisAdaptado: adaptadoPct,
+    vaga: vagaCand || '',
+    referencia: referencia || '',
+    match: match,
+    resumoRH: r.resumoRH,
+    ambientesFit: r.ambientesFit,
+    ambientesRisco: r.ambientesRisco,
+    liderancaFit: r.liderancaFit,
+    liderancaRisco: r.liderancaRisco,
+    conflito: r.conflito,
+    motivacao: r.motivacao,
+    retencao: r.retencao,
+    autonomia: r.autonomia,
+    sinaisVerde: r.sinaisVerde,
+    alertas: r.alertas,
+    perguntasEntrevista: r.perguntas,
+    tensaoAlerta: tensaoAlerta,
+    combo: secundario ? (COMBOS[primario+secundario] || COMBOS[secundario+primario] || null) : null
+  };
+}
+
+// ══════════════════════════════════════════
+// TENDÊNCIAS COMPORTAMENTAIS
+// ══════════════════════════════════════════
+const TENDENCIAS = {
+  lideranca:{lbl:'👔 Com sua liderança',
+    D:'Tende a questionar decisões quando discorda. Funciona melhor com líderes que explicam o raciocínio das ordens e dão autonomia — não apenas "faça porque eu disse".',
+    I:'Responde bem ao elogio e ao reconhecimento. Precisa sentir que a liderança valoriza sua contribuição. Críticas frequentes ou líderes frios tendem a desmotivar.',
+    S:'Leal e colaborativo com a liderança. Segue diretrizes sem confronto. Adapta-se a mudanças de gestão, mas precisa de tempo e de explicação para se sentir seguro.',
+    C:'Respeita a liderança que demonstra competência e coerência. Tende a questionar decisões que percebe como inconsistentes ou sem embasamento claro.'},
+  pressao:{lbl:'⚡ Sob pressão',
+    D:'Ativa sob pressão — tende a agir, assumir o controle e buscar soluções rápidas. Situações de urgência costumam despertar seu melhor desempenho.',
+    I:'Busca apoio social sob pressão: conversa, envolve a equipe, tenta aliviar o clima. Pode ter dificuldade com pressão prolongada em ambientes de isolamento.',
+    S:'Mantém a calma em situações de tensão — é um ponto forte. Pressão crônica e ambientes muito imprevisíveis podem gerar desgaste interno ao longo do tempo.',
+    C:'Tende a analisar antes de agir — o que pode ser mais lento em pressão extrema. Performa melhor quando tem um mínimo de tempo para planejar, mesmo que breve.'},
+  equipe:{lbl:'👥 Em equipe',
+    D:'Prefere autonomia dentro do time. Funciona bem com papéis claros, onde possa liderar ou tomar iniciativa sem depender de aprovação constante.',
+    I:'Ponto forte em equipe — cria clima positivo, facilita a comunicação e anima o grupo. Pode ter dificuldade com colegas muito fechados ou ambientes muito silenciosos.',
+    S:'Excelente em equipe — apoia os colegas, evita conflitos e mantém a harmonia. Pode ceder facilmente mesmo quando deveria se posicionar.',
+    C:'Trabalha bem com papéis claros. Pode parecer reservado ou distante, mas é confiável e preciso. Evita discussões desnecessárias.'},
+  clientes:{lbl:'🤝 Com clientes e público',
+    D:'Direto e objetivo. Resolve problemas com rapidez, mas pode parecer impaciente com clientes indecisos ou que exigem muito tempo de atenção.',
+    I:'Excelente com público — cria conexão com facilidade, deixa o cliente à vontade e transmite entusiasmo. Ponto forte em atendimento, vendas e recepção.',
+    S:'Paciente e atencioso, mesmo com clientes difíceis. Não perde a compostura com facilidade e transmite segurança em situações de reclamação.',
+    C:'Preciso e informativo — dá respostas completas e corretas. Pode parecer formal ou distante em contextos que pedem mais calor humano e informalidade.'},
+  mudancas:{lbl:'🔄 Frente a mudanças',
+    D:'Adapta-se bem a mudanças, especialmente se puder influenciar como elas acontecem. Rotinas rígidas e sem evolução tendem a desmotivar.',
+    I:'Abraça mudanças com entusiasmo, principalmente as que envolvem novidades ou pessoas. Prefere variedade a repetição constante.',
+    S:'Prefere ambientes estáveis e previsíveis. Mudanças frequentes sem aviso ou justificativa geram desconforto — mas uma vez convencido, adapta-se bem.',
+    C:'Aceita mudanças desde que bem explicadas e justificadas. Resiste a mudanças impulsivas ou sem planejamento claro.'},
+  decisao:{lbl:'🎯 Na tomada de decisão',
+    D:'Decide com rapidez, mesmo com informação incompleta. Assume riscos calculados e prefere errar agindo a demorar demais analisando.',
+    I:'Decide com base no feeling e nas pessoas. Tem facilidade em decisões sociais, mas pode precisar de apoio em decisões técnicas ou baseadas em dados.',
+    S:'Prefere decidir com consenso e informação suficiente. Evita decisões impulsivas — o que garante consistência, mas pode gerar lentidão em urgências.',
+    C:'Decide com base em análise cuidadosa. Precisa de dados completos e evita achismos — o que garante qualidade, mas pode atrasar entregas em ritmo acelerado.'}
+};
+
+// ══════════════════════════════════════════
+// MATCH COM VAGAS
+// ══════════════════════════════════════════
+const VAGAS_MATCH = [
+  {kw:['garçom','garconete','garçonete','waiter'],lbl:'Garçom/Garçonete',perfil:{D:15,I:35,S:35,C:15},nota:'Requer boa comunicação, paciência com clientes e capacidade de trabalho em equipe constante.',tend:'Tende a se destacar no atendimento e na criação de vínculos com clientes. O desafio costuma ser a consistência e o ritmo em picos de movimento.'},
+  {kw:['bartender','barman','barwoman'],lbl:'Bartender',perfil:{D:30,I:35,S:20,C:15},nota:'Combina rapidez na entrega com interação social intensa com clientes.',tend:'Tende a criar conexão com facilidade no balcão. Pode se destacar em noites movimentadas, mas precisa de atenção ao detalhe das receitas.'},
+  {kw:['gerente','gestor','gestora'],lbl:'Gerente',perfil:{D:40,I:20,S:20,C:20},nota:'Exige liderança firme, tomada de decisão e capacidade de gerir pessoas e processos simultaneamente.',tend:'Avalie a relação com a equipe e como reage a subordinados de perfil mais passivo. Alto D pode parecer muito duro para equipes com alto S.'},
+  {kw:['supervisor','supervisora'],lbl:'Supervisor(a)',perfil:{D:35,I:20,S:25,C:20},nota:'Combina liderança com acompanhamento próximo da equipe operacional.',tend:'Tende a supervisionar com foco em entregas. Pode ter dificuldade em dar feedback delicado a quem erra.'},
+  {kw:['caixa','operador de caixa'],lbl:'Operador(a) de Caixa',perfil:{D:10,I:20,S:30,C:40},nota:'Exige precisão, atenção e paciência com alto volume de atendimentos.',tend:'Avalie tolerância a rotina repetitiva e atenção a detalhes. Alto D costuma ter dificuldade com esse ritmo.'},
+  {kw:['cozinheiro','cozinheira','auxiliar de cozinha','ajudante'],lbl:'Cozinheiro(a)',perfil:{D:20,I:10,S:35,C:35},nota:'Requer consistência, atenção a processos e trabalho sob pressão de tempo.',tend:'Tende a seguir receitas e processos com cuidado. O desafio é manter a qualidade constante em horários de pico.'},
+  {kw:['auxiliar','assistente'],lbl:'Auxiliar/Assistente',perfil:{D:15,I:15,S:45,C:25},nota:'Requer constância, suporte à equipe e foco na execução.',tend:'Tende a ser confiável e consistente. Pode ter dificuldade em situações que exigem iniciativa ou decisões rápidas sem orientação.'},
+  {kw:['recepcionista'],lbl:'Recepcionista',perfil:{D:15,I:40,S:30,C:15},nota:'Exige boa comunicação, atenção ao cliente e organização.',tend:'Tende a criar uma primeira impressão positiva. Avalie capacidade de lidar com imprevistos e múltiplas demandas ao mesmo tempo.'},
+  {kw:['atendente'],lbl:'Atendente',perfil:{D:20,I:35,S:30,C:15},nota:'Combina comunicação ativa com paciência no atendimento ao público.',tend:'Tende a se sair bem em atendimento humanizado. Avalie tolerância a reclamações e repetitividade.'},
+  {kw:['host','hostess','maitre','maître'],lbl:'Host/Maître',perfil:{D:25,I:45,S:20,C:10},nota:'Requer presença, comunicação e capacidade de causar excelente primeira impressão.',tend:'Tende a criar conexão rápida com clientes. Avalie organização e capacidade de gerenciar filas e reservas sob pressão.'},
+  {kw:['recrutador','recrutadora','seleção','selecionador'],lbl:'Recrutador(a)',perfil:{D:20,I:35,S:20,C:25},nota:'Combina habilidade relacional com visão analítica de perfis comportamentais.',tend:'Tende a criar boa relação com candidatos. Avalie capacidade de análise crítica e julgamento objetivo sem se deixar levar apenas pelo feeling.'},
+  {kw:['psicolog'],lbl:'Psicólogo(a)',perfil:{D:10,I:30,S:40,C:20},nota:'Exige escuta, paciência, empatia e análise cuidadosa.',tend:'Tende a ter boa escuta e paciência. Avalie capacidade de estabelecer limites e manter objetividade em situações de alta carga emocional.'},
+  {kw:['treinamento','treinador','facilitador'],lbl:'Treinamento/Facilitação',perfil:{D:25,I:40,S:20,C:15},nota:'Requer comunicação envolvente, energia e estrutura didática.',tend:'Tende a engajar grupos com facilidade. Avalie profundidade técnica e capacidade de adaptar conteúdo a públicos diferentes.'},
+  {kw:['analista de rh','recursos humanos'],lbl:'Analista de RH',perfil:{D:20,I:30,S:25,C:25},nota:'Equilibra relacionamento, análise e execução de processos de gestão de pessoas.',tend:'Tende a equilibrar bem o lado humano e o operacional. Avalie autonomia para lidar com múltiplos processos simultâneos.'},
+  {kw:['consultor','consultora'],lbl:'Consultor(a)',perfil:{D:30,I:25,S:20,C:25},nota:'Exige autonomia, comunicação persuasiva e visão analítica.',tend:'Tende a combinar análise com ação. Avalie como lida com clientes resistentes e cenários de incerteza.'},
+  {kw:['lider','líder','coordenador','coordenadora'],lbl:'Liderança/Coordenação',perfil:{D:40,I:25,S:20,C:15},nota:'Requer tomada de decisão, engajamento de equipe e visão estratégica.',tend:'Avalie o estilo de liderança — excessivamente dominante pode criar resistência em equipes mais estáveis. Equilíbrio com escuta é fundamental.'},
+  {kw:['vendedor','vendedora','vendas','comercial'],lbl:'Vendedor(a)',perfil:{D:30,I:40,S:20,C:10},nota:'Combina assertividade com comunicação e capacidade de persuasão.',tend:'Tende a criar rapport com facilidade e a persistir nas negociações. Avalie organização do funil e disciplina com metas e follow-up.'},
+  {kw:['segurança','porteiro','porteira'],lbl:'Segurança/Porteiro',perfil:{D:35,I:15,S:35,C:15},nota:'Requer firmeza, atenção ao ambiente e capacidade de agir em situações de risco.',tend:'Tende a ser firme e presente. Avalie equilíbrio entre assertividade e controle emocional em situações de conflito.'},
+];
+
+function calcularMatch(vaga, pctNatural) {
+  if (!vaga) return null;
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const vagaN = norm(vaga);
+  let found = null;
+  for (const v of VAGAS_MATCH) {
+    if (v.kw.some(k => vagaN.includes(norm(k)))) { found = v; break; }
   }
-  // FIX: se nenhuma vaga filtrada, retorna TODAS as vagas ativas (não esconde vagas do prompt)
-  return filtradas.length > 0 ? filtradas : vagas;
+  if (!found) return null;
+  const total = ['D','I','S','C'].reduce((s,k) => s + (pctNatural[k]||0), 0) || 1;
+  let dist = 0;
+  ['D','I','S','C'].forEach(k => dist += Math.abs((pctNatural[k]/total*100) - found.perfil[k]));
+  const score = Math.max(0, Math.min(100, Math.round(100 - dist/2)));
+  let lbl, cor;
+  if      (score >= 80) { lbl = 'Excelente compatibilidade'; cor = '#16a34a'; }
+  else if (score >= 65) { lbl = 'Boa compatibilidade';       cor = '#1fa5f0'; }
+  else if (score >= 50) { lbl = 'Compatibilidade parcial';   cor = '#d97706'; }
+  else                  { lbl = 'Baixa compatibilidade';     cor = '#dc2626'; }
+  return { ...found, score, lbl, cor };
 }
 
-function resumirVagas(vagas) {
-  return vagas.map(vaga => ({
-    idVaga: campo(vaga,["idVaga","ID Vaga","ID"]),
-    cargo: campo(vaga,["cargo","Cargo","CARGO"]),
-    area: campo(vaga,["area","Área/Setor","Area/Setor","Área","Area"]),
-    cidade: campo(vaga,["cidade","Cidade/Bairro","Cidade","Local"]),
-    horario: campo(vaga,["horario","Horário","Escala/Horário","Escala/Horario"]),
-    escala: campo(vaga,["escala","Escala","Escala/Horário","Escala/Horario"]),
-    salario: campo(vaga,["salario","Salário Base","Salario Base","Salário","Salario"]),
-    beneficios: campo(vaga,["beneficios","Benefícios","Beneficios"]),
-    escolaridade: campo(vaga,["escolaridade","Escolaridade"]),
-    experienciaMinima: campo(vaga,["experienciaMinima","Exp. Mínima","Exp. Minima"]),
-    requisitoObrigatorio: campo(vaga,["requisitoObrigatorio","Requisito Obrigatório","Requisito Obrigatorio"]),
-    aceitaSemExperiencia: campo(vaga,["aceitaSemExperiencia","Aceita Sem Experiência","Aceita Sem Experiencia"]),
-    perfilResumido: campo(vaga,["perfilResumido","Perfil Resumido"]),
-    palavrasChave: campo(vaga,["palavrasChave","Palavras-chave","Palavras Chave"]),
-    status: campo(vaga,["status","Status"]),
-    observacoes: campo(vaga,["observacoes","Observações","Observacoes"])
-  }));
+function gerarTendencias(primario) {
+  return Object.entries(TENDENCIAS).map(([,dim]) =>
+    '<div class="tend-item"><div class="tend-dim">' + dim.lbl + '</div>' +
+    '<div class="tend-txt">' + dim[primario] + '</div></div>'
+  ).join('');
 }
 
-function montarPromptConversa(sessao, mensagemAtual, vagas) {
-  const vagasFiltradas = filtrarVagasRelevantes(vagas, mensagemAtual, sessao.historico);
-  const vagasResumidas = resumirVagas(vagasFiltradas);
-  const historicoCurto = sessao.historico.slice(-8).map(h => `${h.role}: ${h.content}`).join("\n");
-  const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
-  const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
-  const areaDetectada = detectarAreaCandidato(textoConversa);
-  const instrucaoCurriculo = ehLinhares
-    ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
-    : areaDetectada
-    ? `COLETA DIRECIONADA — ÁREA: ${areaDetectada.toUpperCase()}:\n- O candidato demonstrou interesse ou experiência em ${areaDetectada}.\n- Priorize vagas da área de ${areaDetectada} disponíveis na lista.\n- Colete: nome, cidade/bairro, experiência na área, escolaridade, disponibilidade e currículo.\n- Se houver vaga compatível, apresente com cargo, local, regime, remuneração, benefícios, jornada e requisitos.\n- Se o currículo já foi recebido, confirme o interesse e informe os próximos passos.`
-    : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
-- Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
-- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes.\n- Se não houver vaga exatamente igual ao pedido, apresente as vagas similares disponíveis e diga: \"No momento não temos exatamente essa vaga, mas temos essas oportunidades que podem te interessar.\"\n- NUNCA diga \"não temos vagas\" ou \"não há vagas disponíveis\". Se a lista estiver vazia ou sem compatibilidade, diga: \"Vou verificar com a equipe Effect as vagas disponíveis para o seu perfil e te retorno em breve. 💙\"\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
-}
+// ══════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════
+let etapaAtual = 0;
+let grupoAtual = 0;
+let nomeCandidata = '';
+let vagaCandidato = '';
+let telefone = '';
+let referencia = '';
+let referenciaVerbo = '';
+let referenciaFrMenos = '';
+let maisIdx = null;   // índice visual do card selecionado como MAIS
+let menosIdx = null;  // índice visual do card selecionado como MENOS
 
-function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
-  const vagasResumidas = resumirVagas(vagas);
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nAnalise o currículo abaixo e compare com as vagas disponíveis.\n\nResponda SOMENTE em JSON válido, sem markdown, sem explicação fora do JSON.\n\nUse exatamente esta estrutura:\n\n{\n  "nome": "",\n  "cidade": "",\n  "areaInteresse": "",\n  "vagaInteresse": "",\n  "idVaga": "",\n  "scoreGeral": 0,\n  "scoreVaga": 0,\n  "classificacao": "",\n  "motivoMatch": "",\n  "status": "",\n  "requisitoObrigatorio": "",\n  "escolaridadeCompativel": "",\n  "experienciaCompativel": "",\n  "anosExperiencia": "",\n  "pontosFortes": "",\n  "pontosAtencao": "",\n  "analiseIA": "",\n  "transporteProprio": "",\n  "cltImediato": "",\n  "observacoes": "",\n  "mensagemCandidato": ""\n}\n\nREGRAS DE CLASSIFICAÇÃO:\n- 90 a 100: Excelente\n- 70 a 89: Bom\n- 50 a 69: Regular\n- abaixo de 50: Reprovado\n- Nunca use Excelente se faltar requisito obrigatório.\n- Não prometa contratação.\n\nFORMATO DA mensagemCandidato:\n😊 Olá, {NOME}!\n\nAnalisei seu currículo e identifiquei uma oportunidade que possui compatibilidade com sua experiência profissional.\n\n📍 {CARGO}\n📍 {CIDADE}\n\nOs principais pontos observados foram:\n\n• {PONTO FORTE 1}\n• {PONTO FORTE 2}\n• {PONTO FORTE 3}\n\nVocê teria interesse em participar deste processo seletivo?\n\nFico à disposição. 💙\n\nREGRAS:\n- Não mostrar score.\n- Não mostrar classificação.\n- Não falar em IA ou análise automática.\n- Não elogiar o nome.\n- Não usar textos longos.\n- Não prometer contratação.\n\nVAGAS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nCURRÍCULO:\n${textoCurriculo}`;
-}
+// grupos embaralhados: [{palavra, disc}][]
+let gruposE1 = embaralhar();
+let gruposE2 = embaralhar();
 
-async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
+const respostas = {
+  1: Array.from({length:TOTAL}, () => ({mais:null, menos:null})),
+  2: Array.from({length:TOTAL}, () => ({mais:null, menos:null}))
+};
 
-async function chamarClaudeJSON(prompt) {
-  const texto = await chamarClaude(prompt);
-  // FIX: se a IA retornou fallback de instabilidade, não tenta parsear JSON
-  if (texto === FALLBACK_INSTABILIDADE || texto === FALLBACK_RATE_LIMIT) {
-    throw new Error("IA indisponível para análise de currículo");
-  }
-  try { return JSON.parse(texto); }
-  catch (e) {
-    const match = texto.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("Claude não retornou JSON válido: " + texto);
-  }
-}
-
-// Versão JSON-only do Gemini — usada exclusivamente para análise de currículo
-async function chamarGeminiJSON(prompt) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) return null;
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const { default: axios2 } = await import("axios").catch(() => ({ default: require("axios") }));
-    const axiosFn = axios2 || require("axios");
-    const response = await axiosFn.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" }
-      },
-      { headers: { "Content-Type": "application/json" }, timeout: 45000 }
-    );
-    const texto = response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
-    if (!texto) throw new Error("Gemini retornou resposta vazia");
-    try { return JSON.parse(texto); }
-    catch (e) {
-      const match = texto.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-      throw new Error("GeminiJSON não retornou JSON válido: " + texto.slice(0, 200));
+// ══════════════════════════════════════════
+// EMBARALHAR
+// ══════════════════════════════════════════
+function embaralhar() {
+  const result = [];
+  for (let gi = 0; gi < TOTAL; gi++) {
+    const arr = QUESTOES[gi].map((palavra, i) => ({palavra, disc: KEYS[i]}));
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-  } catch (e) {
-    throw e;
+    result.push(arr);
   }
+  return result;
 }
 
-// chamarClaude agora:
-// - loga o erro REAL (status + corpo da resposta da API), não só um JSON resumido
-// - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
-// - timeout maior (45s) para reduzir falsos timeouts sob carga
-async function chamarGemini(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.GEMINI_API_KEY) {
-      console.error("chamarGemini: GEMINI_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
+// ══════════════════════════════════════════
+// TELAS
+// ══════════════════════════════════════════
+function mostrarTela(id) {
+  ['tela-concluido','tela-intro','tela-quiz','tela-transicao','tela-calc','tela-resultado']
+    .forEach(t => document.getElementById(t).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
 
-    const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192
-        }
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 45000
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  const segs = location.pathname.split('/');
+  telefone = segs[segs.length - 1] || '';
+
+  // Lock check — pula para 'interno' (uso pessoal da Thiara)
+  const isInterno = (telefone === 'interno');
+  if (!isInterno && telefone && location.protocol !== 'file:') {
+    try {
+      const r = await fetch('/disc/resultado/' + encodeURIComponent(telefone));
+      const data = await r.json();
+      if (data.ok && data.resultado) {
+        mostrarTela('tela-concluido');
+        return;
       }
+    } catch(e) {/* servidor offline — continua normalmente */}
+  }
+
+  document.getElementById('nome-input').focus();
+});
+
+// ══════════════════════════════════════════
+// INTRO → iniciar
+// ══════════════════════════════════════════
+function iniciar() {
+  const inp = document.getElementById('nome-input');
+  nomeCandidata = inp.value.trim();
+  vagaCandidato = document.getElementById('vaga-input').value.trim();
+
+  if (!nomeCandidata) {
+    const al = document.getElementById('alerta-nome');
+    al.style.display = 'block';
+    inp.style.borderColor = '#f4afa1';
+    inp.focus();
+    setTimeout(() => { al.style.display='none'; inp.style.borderColor='#dde3ea'; }, 2500);
+    return;
+  }
+
+  etapaAtual = 1;
+  grupoAtual = 0;
+  respostas[1] = Array.from({length:TOTAL}, () => ({mais:null, menos:null}));
+  atualizarBadge();
+  renderQuiz();
+  mostrarTela('tela-quiz');
+}
+
+// ══════════════════════════════════════════
+// QUIZ — renderizar grupo atual
+// ══════════════════════════════════════════
+function renderQuiz() {
+  maisIdx = null;
+  menosIdx = null;
+
+  const grupos = etapaAtual === 1 ? gruposE1 : gruposE2;
+  const grupo = grupos[grupoAtual];
+  const frase = etapaAtual === 1
+    ? 'Eu naturalmente sou…'
+    : referencia + ' ' + referenciaVerbo + ' que eu seja…';
+
+  // Header info
+  document.getElementById('quiz-num').textContent = 'Grupo ' + (grupoAtual + 1) + ' de ' + TOTAL;
+  document.getElementById('quiz-etapa-lbl').textContent = etapaAtual === 1 ? 'Quem eu sou' : 'O que esperam';
+  const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
+  document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+  document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+  document.getElementById('quiz-next').style.opacity = '0';
+
+  // Progress bar
+  const pct = Math.round(grupoAtual / TOTAL * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-txt').textContent = grupoAtual + '/' + TOTAL;
+  document.getElementById('prog-wrap').style.display = 'flex';
+
+  // Renderiza cards
+  const grid = document.getElementById('quiz-cards');
+  grid.innerHTML = '';
+  grupo.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'wcard';
+    card.setAttribute('data-idx', i);
+    card.innerHTML =
+      '<span class="wph">' + frase + '</span>' +
+      '<span class="wwd">' + item.palavra + '</span>' +
+      '<span class="wtag">—</span>';
+    card.addEventListener('click', () => clickCard(i, item.disc, grupo.length));
+    grid.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════
+// QUIZ — click no card
+// ══════════════════════════════════════════
+function clickCard(i, disc, total) {
+  const cards = document.querySelectorAll('.wcard');
+  const hint = document.getElementById('quiz-hint');
+
+  // Primeiro click → MAIS
+  if (maisIdx === null) {
+    maisIdx = i;
+    cards[i].classList.add('mais');
+    cards[i].querySelector('.wtag').textContent = 'MAIS ✓';
+    respostas[etapaAtual][grupoAtual].mais = disc;
+    const frMenos = etapaAtual === 1 ? 'Eu naturalmente NÃO sou…' : referenciaFrMenos;
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
+    // Atualiza enunciado do topo
+    document.getElementById('quiz-instrucao').innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
+    // Atualiza frase dentro dos cards não selecionados
+    cards.forEach((c, idx) => {
+      if (idx !== maisIdx) {
+        const wph = c.querySelector('.wph');
+        if (wph) wph.textContent = frMenos;
+      }
+    });
+    hint.innerHTML = 'Agora toque na que <strong>menos</strong> representa ' + ctxPessoa;
+    return;
+  }
+
+  // Clicou no mesmo card do MAIS → deseleciona
+  if (i === maisIdx && menosIdx === null) {
+    cards[i].classList.remove('mais');
+    cards[i].querySelector('.wtag').textContent = '—';
+    respostas[etapaAtual][grupoAtual].mais = null;
+    maisIdx = null;
+    const fraseMais = etapaAtual === 1 ? 'Eu naturalmente sou…' : referencia + ' ' + referenciaVerbo + ' que eu seja…';
+    cards.forEach(c => {
+      const wph = c.querySelector('.wph');
+      if (wph) wph.textContent = fraseMais;
+    });
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
+    document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+    document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+    return;
+  }
+
+  // Já escolheu menos → ignora
+  if (menosIdx !== null) return;
+
+  // Segundo click → MENOS
+  menosIdx = i;
+  cards[i].classList.add('menos');
+  cards[i].querySelector('.wtag').textContent = 'MENOS ✗';
+  respostas[etapaAtual][grupoAtual].menos = disc;
+
+  // Fade nos outros
+  cards.forEach((c, idx) => {
+    if (idx !== maisIdx && idx !== menosIdx) c.classList.add('off');
+  });
+  hint.textContent = '';
+  document.getElementById('quiz-next').style.opacity = '1';
+
+  // Avança automaticamente
+  setTimeout(() => {
+    grupoAtual++;
+    if (grupoAtual >= TOTAL) {
+      if (etapaAtual === 1) {
+        document.getElementById('prog-wrap').style.display = 'none';
+        mostrarTela('tela-transicao');
+      } else {
+        finalizarQuestionario();
+      }
+    } else {
+      renderQuiz();
+    }
+  }, 750);
+}
+
+function atualizarBadge() {
+  const b = document.getElementById('etapa-badge');
+  b.style.display = 'block';
+  b.textContent = 'Etapa ' + etapaAtual + ' de 2';
+}
+
+// ══════════════════════════════════════════
+// TRANSIÇÃO — seleção de referência
+// ══════════════════════════════════════════
+function selecionarRef(el, ref, verbMais, frMenos) {
+  document.querySelectorAll('.ref-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  referencia = ref;
+  referenciaVerbo = verbMais;
+  referenciaFrMenos = frMenos;
+  document.getElementById('btn-e2').disabled = false;
+}
+
+function iniciarEtapa2() {
+  etapaAtual = 2;
+  grupoAtual = 0;
+  respostas[2] = Array.from({length:TOTAL}, () => ({mais:null, menos:null}));
+  atualizarBadge();
+  renderQuiz();
+  mostrarTela('tela-quiz');
+}
+
+// ══════════════════════════════════════════
+// FINALIZAR
+// ══════════════════════════════════════════
+async function finalizarQuestionario() {
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('etapa-badge').style.display = 'none';
+  mostrarTela('tela-calc');
+
+  const naturalPct  = calcularPerfil(1);
+  const adaptadoPct = calcularPerfil(2);
+  const relatorio   = gerarRelatorio(naturalPct, adaptadoPct);
+
+  renderizarResultado(relatorio, naturalPct, adaptadoPct);
+
+  // Mostra resultado imediatamente (não bloqueia na chamada ao servidor)
+  mostrarTela('tela-resultado');
+
+  // Envia para o servidor em background
+  try {
+    const relatorioRH = gerarRelatorioRH(
+      relatorio.primarioNatural,
+      relatorio.secundarioNatural,
+      naturalPct,
+      adaptadoPct,
+      vagaCandidato,
+      relatorio.tensoes
     );
+    fetch('/disc/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        telefone,
+        nome: nomeCandidata,
+        vaga: vagaCandidato,
+        referencia,
+        respostasNatural:  respostas[1].map(r => ({mais: r.mais, menos: r.menos})),
+        respostasAdaptado: respostas[2].map(r => ({mais: r.mais, menos: r.menos})),
+        percentuaisNatural:  naturalPct,
+        percentuaisAdaptado: adaptadoPct,
+        primarioNatural:    relatorio.primarioNatural,
+        primarioAdaptado:   relatorio.primarioAdaptado,
+        secundarioNatural:  relatorio.secundarioNatural,
+        relatorioRH
+      })
+    }).catch(e => console.warn('Servidor offline — resultado calculado localmente.'));
+  } catch(e) {
+    console.warn('Erro ao enviar resultado:', e);
+  }
+}
 
-    return response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim() || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-    console.error(`Erro chamarGemini (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+// ══════════════════════════════════════════
+// CÁLCULO
+// ══════════════════════════════════════════
+function calcularPerfil(etapa) {
+  const scores = {D:0, I:0, S:0, C:0};
+  respostas[etapa].forEach(r => {
+    if (r.mais !== null) scores[r.mais]++;
+  });
+  const pct = {};
+  KEYS.forEach(k => pct[k] = Math.round(scores[k] / TOTAL * 100));
+  return pct;
+}
 
-    const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
-    const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+function gerarRelatorio(naturalPct, adaptadoPct) {
+  const sortedNat = Object.entries(naturalPct).sort((a,b) => b[1]-a[1]);
+  const sortedAda = Object.entries(adaptadoPct).sort((a,b) => b[1]-a[1]);
+  const primarioNatural   = sortedNat[0][0];
+  const secundarioNatural = sortedNat[1][1] >= 17 ? sortedNat[1][0] : null;
+  const primarioAdaptado  = sortedAda[0][0];
+  const tensoes = KEYS
+    .map(k => ({trait: k, gap: adaptadoPct[k] - naturalPct[k]}))
+    .filter(t => Math.abs(t.gap) >= 8)
+    .sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  return {primarioNatural, secundarioNatural, primarioAdaptado, tensoes};
+}
 
-    if (ehRateLimit && tentativa < 3) {
-      await sleep(3000 * tentativa);
-      return chamarGemini(prompt, tentativa + 1);
+// ══════════════════════════════════════════
+// RENDERIZAR RESULTADO
+// ══════════════════════════════════════════
+function renderizarResultado(rel, naturalPct, adaptadoPct) {
+  const {primarioNatural, secundarioNatural, primarioAdaptado, tensoes} = rel;
+  const pN = PERFIS[primarioNatural];
+  const pA = PERFIS[primarioAdaptado];
+
+  document.getElementById('res-emoji').textContent = pN.emoji;
+  document.getElementById('res-titulo').textContent =
+    pN.nome + (secundarioNatural ? ' / ' + PERFIS[secundarioNatural].nome : '');
+  document.getElementById('res-sub').textContent =
+    nomeCandidata + (vagaCandidato ? ' · ' + vagaCandidato : '') + ' · Análise DISC';
+
+  document.getElementById('nat-nome').textContent = pN.emoji + ' ' + pN.nome;
+  document.getElementById('nat-bars').innerHTML = renderBars(naturalPct);
+  document.getElementById('ada-nome').textContent = pA.emoji + ' ' + pA.nome;
+  document.getElementById('ada-bars').innerHTML = renderBars(adaptadoPct);
+
+  document.getElementById('res-resumo').textContent = pN.resumo;
+
+  const comboKey = secundarioNatural ? primarioNatural + secundarioNatural : null;
+  const comboEl  = document.getElementById('res-combo');
+  if (comboKey && COMBOS[comboKey]) {
+    comboEl.textContent = '🔗 ' + COMBOS[comboKey];
+    comboEl.classList.remove('hidden');
+  }
+
+  // ── RELATÓRIO CANDIDATO ──
+  // Pontos fortes
+  document.getElementById('res-forcas').innerHTML =
+    pN.forcas.map(f => '<div class="item-lista pos">' + f + '</div>').join('');
+
+  // Tendências (linguagem candidato-friendly)
+  document.getElementById('res-tendencias').innerHTML = gerarTendencias(primarioNatural);
+
+  // Para ficar de olho (growth framing)
+  document.getElementById('res-atencao').innerHTML =
+    pN.atencao.map(a => '<div class="cresc-item">' + a + '</div>').join('');
+
+  // Tensão simplificada para candidato
+  if (tensoes.length > 0) {
+    const tc = document.getElementById('card-tensao-cand');
+    if (tc) {
+      tc.classList.remove('hidden');
+      document.getElementById('res-tensoes-cand').innerHTML = tensoes.slice(0,2).map(t => {
+        const msg = t.gap > 0
+          ? 'No trabalho, você tende a agir com mais <strong>' + PERFIS[t.trait].nome + '</strong> do que é natural para você.'
+          : 'No trabalho, você contém um pouco de <strong>' + PERFIS[t.trait].nome + '</strong> que faz parte do seu jeito natural.';
+        return '<p style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:6px">' + msg + '</p>';
+      }).join('');
     }
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 4) {
-      await sleep(1500 * tentativa);
-      return chamarGemini(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
-  }
-}
-
-async function chamarClaudeOriginal(prompt, tentativa = 1) {
-  try {
-    if (!CONFIG.CLAUDE_API_KEY) {
-      console.error("chamarClaudeOriginal: CLAUDE_API_KEY não configurada.");
-      return FALLBACK_INSTABILIDADE;
-    }
-    const response = await axios.post("https://api.anthropic.com/v1/messages", {
-      model: "claude-sonnet-4-6",
-      max_tokens: 1800,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }]
-    }, { headers: { "x-api-key": CONFIG.CLAUDE_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, timeout: 45000 });
-    return response.data?.content?.[0]?.text || FALLBACK_INSTABILIDADE;
-  } catch (erro) {
-    const status = erro.response?.status;
-    const corpo = erro.response?.data;
-    console.error(`Erro chamarClaudeOriginal (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
-
-    const ehRateLimit = status === 429 || JSON.stringify(corpo || "").toLowerCase().includes("rate_limit");
-    const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
-
-    if (ehRateLimit && tentativa < 3) {
-      await sleep(3000 * tentativa);
-      return chamarClaudeOriginal(prompt, tentativa + 1);
-    }
-    if (ehRateLimit) return FALLBACK_RATE_LIMIT;
-
-    if (ehTimeoutOuRede && tentativa < 4) {
-      await sleep(1500 * tentativa);
-      return chamarClaudeOriginal(prompt, tentativa + 1);
-    }
-
-    return FALLBACK_INSTABILIDADE;
-  }
-}
-
-// Função central de IA.
-// Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
-// Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
-async function chamarClaude(prompt, tentativa = 1) {
-  const provider = String(CONFIG.AI_PROVIDER || "gemini").toLowerCase().trim();
-
-  if (provider === "claude") {
-    return chamarClaudeOriginal(prompt, tentativa);
   }
 
-  const respostaGemini = await chamarGemini(prompt, tentativa);
-
-  if (
-    (respostaGemini === FALLBACK_INSTABILIDADE || respostaGemini === FALLBACK_RATE_LIMIT) &&
-    CONFIG.CLAUDE_API_KEY
-  ) {
-    console.error("Gemini falhou. Tentando Claude como fallback temporário.");
-    return chamarClaudeOriginal(prompt, tentativa);
+  if (tensoes.length > 0) {
+    document.getElementById('card-tensao').style.display = 'block';
+    document.getElementById('res-tensoes').innerHTML = tensoes.map(t => {
+      const direcao = t.gap > 0 ? 'up' : 'down';
+      const nivel   = Math.abs(t.gap) >= 17 ? 'alta' : 'media';
+      return '<div class="tensao-card ' + nivel + '">' +
+        '<div class="tensao-lbl" style="color:' + CORES[t.trait] + '">' +
+          PERFIS[t.trait].emoji + ' Tensão em ' + t.trait +
+          ' (' + (t.gap > 0 ? '+' : '') + t.gap + '%)' +
+        '</div>' +
+        '<div class="tensao-txt">' + TENSAO_MSGS[t.trait][direcao] + '</div>' +
+      '</div>';
+    }).join('');
   }
 
-  return respostaGemini;
-}
-
-async function salvarAnaliseNaPlanilha(telefone, analise) {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao salvar análise:", e.message); }
-}
-
-async function confirmarInteresseNaPlanilha(telefone, analise) {
-  try {
-    if (!CONFIG.VAGAS_URL) return;
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    await axios.post(urlBase, { acao: "confirmarInteresse", telefone, vagaInteresse: analise?.vagaInteresse || "", idVaga: analise?.idVaga || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
-  } catch (e) { console.error("Erro ao confirmar interesse:", e.message); }
-}
-
-function ehConfirmacaoInteresse(mensagem) {
-  const texto = normalizarTexto(mensagem);
-  return ["sim","tenho interesse","quero","quero participar","aceito","tenho sim","pode ser","tenho disponibilidade","tenho","ok"].some(p => texto === p || texto.includes(p));
-}
-
-async function enviarAlertaThiara(analise, telefone) {
-  try {
-    const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
-    const classificacao = String(analise.classificacao || "").toLowerCase();
-    if (score < 80 && !classificacao.includes("excelente")) return;
-    const destaque = score >= 90 || classificacao.includes("excelente") ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO" : "🚨 NOVO MATCH IDENTIFICADO";
-    const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta Thiara:", e.message); }
-}
-
-async function enviarAlertaInteresseThiara(analise, telefone) {
-  try {
-    const texto = `✅ CANDIDATO CONFIRMOU INTERESSE\n\n👤 ${analise?.nome || "Não identificado"}\n\n📌 Vaga:\n${analise?.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise?.cidade || "Não informada"}\n\n⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise?.classificacao || "Não informada"}\n\n📱 WhatsApp:\n+${telefone}\n\n✅ O candidato confirmou interesse na oportunidade.`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta interesse:", e.message); }
-}
-
-function formatarLista(texto) {
-  if (!texto) return "Não informado";
-  const partes = String(texto).split(/;|,|\n/).map(p => p.trim()).filter(Boolean).slice(0, 5);
-  return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
-}
-
-async function enviarMensagem(toOriginal, body) {
-  const to = limparTelefone(toOriginal);
-  if (!to) return;
-  try {
-    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
-    await axios.post(url, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-    supervisor.contarMensagemEnviada();
-  } catch (e) {
-    console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message));
-    supervisor.registrarErroMeta(e.response?.data?.error?.message || e.message, to);
-  }
-}
-
-async function enviarTemplate(telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR") {
-  const to = limparTelefone(telefone);
-  if (!to) return { sucesso: false, erro: "Telefone inválido" };
-  try {
-    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
-    await axios.post(url, { messaging_product: "whatsapp", to, type: "template", template: { name: templateName, language: { code: languageCode } } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
-    console.log(`Template ${templateName} enviado para ${to}`);
-    return { sucesso: true };
-  } catch (e) {
-    console.error("Erro ao enviar template:", JSON.stringify(e.response?.data || e.message));
-    return { sucesso: false, erro: e.message };
-  }
-}
-
-async function coletarTelefonesReengajamento() {
-  const agora = Date.now();
-  const INATIVO_MS = 3 * 24 * 60 * 60 * 1000;
-  return Object.entries(sessoes)
-    .filter(([tel, s]) => s.cvSalvo && (agora - (s.ultimaMensagem || 0)) > INATIVO_MS)
-    .map(([tel]) => tel);
-}
-
-app.get("/inbox/reengajamento/status", async (req, res) => {
-  try {
-    const telefones = await coletarTelefonesReengajamento();
-    res.json({ total: telefones.length, telefones });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.post("/inbox/reengajamento/disparar", async (req, res) => {
-  try {
-    const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
-    const telefones = forceTelefones || await coletarTelefonesReengajamento();
-    const lista = limite ? telefones.slice(0, Number(limite)) : telefones;
-    const resultados = [];
-    for (const tel of lista) {
-      const r = await enviarTemplate(tel, templateName, languageCode);
-      resultados.push({ telefone: tel, ...r });
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-app.get("/inbox/curriculo/:telefone/pedir-reenvio", async (req, res) => {
-  try {
-    const tel = limparTelefone(req.params.telefone);
-    const sessao = sessoes[tel] || {};
-    const nome = (sessao.nome || 'Candidato').split(' ')[0];
-    const msg = `Olá, ${nome}! Precisamos do seu currículo atualizado para dar continuidade ao processo seletivo. Por favor, envie seu currículo aqui pelo WhatsApp. 😊`;
-    await enviarMensagem(tel, msg);
-    registrarEntradaSessao(sessao, 'assistant', msg);
-    salvarConversaCompletaSheets(tel, sessao.historico || [], sessao.nome || '').catch(() => {});
-    res.send('<html><body style="font-family:sans-serif;padding:32px"><h3>✅ Solicitação enviada!</h3><p>Mensagem enviada pedindo reenvio do currículo.</p><p><a href="javascript:window.close()">Fechar</a></p></body></html>');
-  } catch (e) {
-    res.status(500).send('Erro ao enviar mensagem: ' + e.message);
-  }
-});
-
-app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
-  try {
-    const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
-    if (!telefone) return res.status(400).json({ erro: "telefone obrigatório" });
-    const r = await enviarTemplate(telefone, templateName, languageCode);
-    res.json(r);
-  } catch (e) { res.status(500).json({ erro: e.message }); }
-});
-
-// ── AGENDA: salvar entrevista no Google Calendar ─────────────────────────
-app.post("/agenda/salvar", async (req, res) => {
-  try {
-    const { candidato, cargo, empresa, data, hora, tipo, local, telefone } = req.body || {};
-    if (!candidato || !data || !hora) return res.json({ ok: false, erro: "Campos obrigatórios: candidato, data, hora" });
-    const result = await calendar.criarEventoEntrevista({ candidato, cargo, empresa, data, hora, tipo, local, telefone });
-    res.json(result);
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ── AGENDA: horários livres ───────────────────────────────────────────────
-app.get("/agenda/disponibilidade", async (req, res) => {
-  try {
-    const { data } = req.query;
-    if (!data) return res.json({ ok: false, erro: "Parâmetro 'data' obrigatório (YYYY-MM-DD)" });
-    const result = await calendar.buscarHorariosLivres(data);
-    res.json(result);
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ── FINANCEIRO ────────────────────────────────────────────────────────────
-app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
-
-app.post("/financeiro/lancamento", async (req, res) => {
-  try {
-    const dados = req.body || {};
-    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
-    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
-    const resp = await axios.post(urlBase, { acao: "salvarFinanceiro", ...dados }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-    res.json({ ok: true, data: resp.data });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-app.get("/financeiro/dados", async (req, res) => {
-  try {
-    const { mes, ano } = req.query;
-    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
-    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
-    const resp = await axios.get(`${urlBase}?acao=listarFinanceiro&mes=${mes||""}&ano=${ano||""}`, { timeout: 15000 });
-    res.json({ ok: true, data: resp.data });
-  } catch (e) { res.json({ ok: false, erro: e.message }); }
-});
-
-// ── SUPERVISOR ────────────────────────────────────────────────────────────
-app.get("/supervisor/status", (req, res) => res.json(supervisor.obterStatusSupervisor()));
-app.post("/supervisor/resumo", async (req, res) => { await supervisor.dispararResumoSemanal(); res.json({ ok: true }); });
-
-supervisor.iniciarSupervisor();
-
-// ── BANCO DE TALENTOS ─────────────────────────────────────────────────────
-// GET  /sheets/banco-talentos          → lista todos os talentos
-// POST /sheets/banco-talentos          → salva (cria ou edita) um talento
-// DELETE /sheets/banco-talentos/:id    → remove um talento pelo id
-
-app.get("/sheets/banco-talentos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ talentos: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=bancoTalentos`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos GET]", e.message);
-    res.json({ talentos: [], erro: e.message });
-  }
-});
-
-app.post("/sheets/banco-talentos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = { acao: "salvarTalento", talento: req.body };
-    const r = await axios.post(urlBase, payload, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 15000
+  // Anima barras após DOM render
+  setTimeout(() => {
+    document.querySelectorAll('.disc-bar-f').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
     });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos POST]", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
+  }, 200);
+}
 
-app.delete("/sheets/banco-talentos/:id", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = { acao: "deletarTalento", id: req.params.id };
-    const r = await axios.post(urlBase, payload, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 15000
-    });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos DELETE]", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
-// ──────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+function renderBars(pct) {
+  return KEYS.map(k =>
+    '<div class="disc-bar-row">' +
+      '<div class="disc-bar-l" style="color:' + CORES[k] + '">' + k + '</div>' +
+      '<div class="disc-bar-track">' +
+        '<div class="disc-bar-f" style="background:' + CORES[k] + '" data-pct="' + (pct[k]||0) + '"></div>' +
+      '</div>' +
+      '<div class="disc-bar-pct">' + (pct[k]||0) + '%</div>' +
+    '</div>'
+  ).join('');
+}
+</script>
+</body>
+</html>
