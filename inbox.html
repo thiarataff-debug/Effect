@@ -600,7 +600,7 @@ font-family:'Montserrat',sans-serif
       <div class="sb-title-row">
         <span class="sb-title">💬 Conversas</span>
         <div class="sb-badges">
-          <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()">☑ Selecionar</button>
+          <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()" title="Ativar seleção em lote [Shift+S]">☑ Selecionar</button>
           <span class="badge badge-red" id="badge-novas" style="display:none">0</span>
           <span class="badge badge-blue" id="badge-total">0</span>
         </div>
@@ -644,7 +644,7 @@ font-family:'Montserrat',sans-serif
       <span class="bulk-count" id="bulk-count">0 selecionadas</span>
       <button class="bulk-btn bulk-btn-ghost" onclick="selecionarTodasVissiveis()">Todas</button>
       <button class="bulk-btn bulk-btn-ghost" onclick="desselecionarTodas()">Nenhuma</button>
-      <button class="bulk-btn bulk-btn-primary" onclick="bulkArquivar()">📦 Arquivar</button>
+      <button class="bulk-btn bulk-btn-primary" onclick="bulkArquivar()" title="Arquivar selecionadas [E]">📦 Arquivar [E]</button>
       <button class="bulk-btn bulk-btn-ghost" onclick="bulkMarcarLidas()">✅ Lidas</button>
       <button class="bulk-btn bulk-btn-cancel" onclick="cancelarSelecao()" title="Cancelar seleção">✕</button>
     </div>
@@ -1065,11 +1065,34 @@ const PALAVRAS_HUMANO_JS=[
 ];
 function precisaHumano(tel,s){
   const motivo=normalizarTextoJS(s.motivoPausa||'');
-  if(motivo.includes('pediu atendimento humano')||motivo.includes('responsav'))return true;
+  // motivoPausa só conta se Laura ainda NÃO interveio
+  if(motivo.includes('pediu atendimento humano')||motivo.includes('responsav')){
+    // Checar se há mensagem de Laura/Thiara no histórico após o motivo ser gerado
+    const meta=getMeta(tel);
+    if(meta.humanoAtendidoEm){
+      // Se a intervenção foi registrada após o último pedido, tag some
+      const hist=s.historico||[];
+      const ultimoPedidoTs=hist.slice().reverse().find(h=>
+        h.role==='user'&&PALAVRAS_HUMANO_JS.some(p=>normalizarTextoJS(h.content||'').includes(p))
+      )?.timestampMs||0;
+      if(meta.humanoAtendidoEm>ultimoPedidoTs)return false;
+    }
+    return true;
+  }
   const hist=s.historico||[];
-  return hist.filter(h=>h.role==='user').slice(-5).some(m=>
+  const temPalavra=hist.filter(h=>h.role==='user').slice(-5).some(m=>
     PALAVRAS_HUMANO_JS.some(p=>normalizarTextoJS(m.content||'').includes(p))
   );
+  if(!temPalavra)return false;
+  // Se Laura/Thiara já respondeu após o pedido de humano, remover a tag
+  const meta=getMeta(tel);
+  if(meta.humanoAtendidoEm){
+    const ultimoPedidoTs=hist.slice().reverse().find(h=>
+      h.role==='user'&&PALAVRAS_HUMANO_JS.some(p=>normalizarTextoJS(h.content||'').includes(p))
+    )?.timestampMs||0;
+    if(meta.humanoAtendidoEm>ultimoPedidoTs)return false;
+  }
+  return true;
 }
 
 const STATUS_LIST = [
@@ -2707,6 +2730,8 @@ async function enviarMsg(){
       todasSessoes[telefoneAtual].pausado=true;
       renderMsgs(todasSessoes[telefoneAtual]);
       renderLista();
+      // Se Laura/Thiara interveio, registrar timestamp para remover tag "precisa humano"
+      if(isLaura) setMeta(telefoneAtual,{humanoAtendidoEm:Date.now()});
       setMeta(telefoneAtual,{ultimaMsgVista:todasSessoes[telefoneAtual].historico.length});
     }
 
@@ -4150,31 +4175,4 @@ function renderStatusFilterBar(){
   const all=Object.entries(todasSessoes||{});
   bar.innerHTML=['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st=>{
     const count=all.filter(([t,s])=>(statusMap[t]||'Novo')===st).length;
-    if(count===0)return '';
-    const ativo=statusFiltro===st;
-    return `<button class="spill${ativo?' ativo':''}" onclick="selecionarStatusFiltro('${st.replace(/'/g,"\'")}')">${st} <span style="opacity:.65">(${count})</span></button>`;
-  }).filter(Boolean).join('');
-}
-function selecionarStatusFiltro(st){
-  statusFiltro = statusFiltro===st ? null : st;
-  renderStatusFilterBar();
-  renderLista();
-}
-function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
-function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
-function atualizarTitulo(){
-  const n=Object.entries(todasSessoes).filter(([t,s])=>contarNaoLidas(t,s)>0).length;
-  document.title=n>0?`(${n}) Effect Lia Inbox`:'Effect — Lia Inbox';
-}
-
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'){
-    ['modal-status-rapido','modal-entrevista','modal-corrigir','modal-vagas','modal-encaminhar','modal-obs-rapida','modal-template','modal-horarios'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el && el.classList.contains('show')) el.classList.remove('show');
-    });
-  }
-});
-</script>
-</body>
-</html>
+    if(count=
