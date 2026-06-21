@@ -1014,20 +1014,7 @@ function renderizarResultado(rel, naturalPct, adaptadoPct) {
     }
   }
 
-  if (tensoes.length > 0) {
-    document.getElementById('card-tensao').style.display = 'block';
-    document.getElementById('res-tensoes').innerHTML = tensoes.map(t => {
-      const direcao = t.gap > 0 ? 'up' : 'down';
-      const nivel   = Math.abs(t.gap) >= 17 ? 'alta' : 'media';
-      return '<div class="tensao-card ' + nivel + '">' +
-        '<div class="tensao-lbl" style="color:' + CORES[t.trait] + '">' +
-          PERFIS[t.trait].emoji + ' Tensão em ' + t.trait +
-          ' (' + (t.gap > 0 ? '+' : '') + t.gap + '%)' +
-        '</div>' +
-        '<div class="tensao-txt">' + TENSAO_MSGS[t.trait][direcao] + '</div>' +
-      '</div>';
-    }).join('');
-  }
+
 
   // Anima barras após DOM render
   setTimeout(() => {
