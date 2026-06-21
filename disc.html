@@ -808,8 +808,25 @@ function clickCard(i, disc, total) {
     return;
   }
 
-  // Clicou no mesmo card ou já escolheu menos → ignora
-  if (i === maisIdx || menosIdx !== null) return;
+  // Clicou no mesmo card do MAIS → deseleciona
+  if (i === maisIdx && menosIdx === null) {
+    cards[i].classList.remove('mais');
+    cards[i].querySelector('.wtag').textContent = '—';
+    respostas[etapaAtual][grupoAtual].mais = null;
+    maisIdx = null;
+    const fraseMais = etapaAtual === 1 ? 'Eu naturalmente sou…' : referencia + ' ' + referenciaVerbo + ' que eu seja…';
+    cards.forEach(c => {
+      const wph = c.querySelector('.wph');
+      if (wph) wph.textContent = fraseMais;
+    });
+    const ctxPessoa = etapaAtual === 1 ? 'você' : 'o que ' + referencia + ' espera de você';
+    document.getElementById('quiz-instrucao').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+    document.getElementById('quiz-hint').innerHTML = 'Toque na palavra que <strong>mais</strong> representa ' + ctxPessoa;
+    return;
+  }
+
+  // Já escolheu menos → ignora
+  if (menosIdx !== null) return;
 
   // Segundo click → MENOS
   menosIdx = i;
@@ -881,6 +898,10 @@ async function finalizarQuestionario() {
 
   renderizarResultado(relatorio, naturalPct, adaptadoPct);
 
+  // Mostra resultado imediatamente (não bloqueia na chamada ao servidor)
+  mostrarTela('tela-resultado');
+
+  // Envia para o servidor em background
   try {
     const relatorioRH = gerarRelatorioRH(
       relatorio.primarioNatural,
@@ -890,7 +911,7 @@ async function finalizarQuestionario() {
       vagaCandidato,
       relatorio.tensoes
     );
-    await fetch('/disc/submit', {
+    fetch('/disc/submit', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -907,12 +928,10 @@ async function finalizarQuestionario() {
         secundarioNatural:  relatorio.secundarioNatural,
         relatorioRH
       })
-    });
+    }).catch(e => console.warn('Servidor offline — resultado calculado localmente.'));
   } catch(e) {
-    console.warn('Servidor offline — resultado calculado localmente.');
+    console.warn('Erro ao enviar resultado:', e);
   }
-
-  mostrarTela('tela-resultado');
 }
 
 // ══════════════════════════════════════════
