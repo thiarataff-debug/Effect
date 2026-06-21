@@ -2381,7 +2381,7 @@ const TEMPLATES_ENTREVISTA = {
   'Entrevista Agendada': (nome, cargo, empresa, semana, horario, tipo='Online', local='') => {
     const tipoTxt = tipo==='Presencial' ? 'presencial' : 'online';
     const localTxt = tipo==='Presencial' && local ? `\n📍 *Endereço:* ${local}` : (tipo==='Online' && local ? `\n🔗 *Link:* ${local}` : '');
-    return `Olá, ${nome}! 😊 Gostaríamos de convidá-lo(a) a participar de uma entrevista ${tipoTxt} para o cargo de *${cargo}* junto à empresa *${empresa}*. Podemos agendar para *${semana}* às *${horario}*?${localTxt} — Camila, Equipe Effect`;
+    return `Olá, ${nome}! 😊 \n\nGostaríamos de convidá-lo(a) a participar de uma entrevista ${tipoTxt} para o cargo de *${cargo}* junto à empresa *${empresa}*. \nPodemos agendar para *${semana}* às *${horario}*? \nGentileza encaminhar as seguintes informações para cadastro:\nNome completo:\nCPF:${localTxt}\n\n— Camila, Equipe Effect`;
   },
   'Entrevista Gestor Agendada': (nome, cargo, empresa, semana, horario, tipo='Presencial', local='') => {
     const tipoTxt = tipo==='Presencial' ? 'presencial' : 'online';
@@ -2527,23 +2527,26 @@ async function confirmarMsgEntrevista(){
   fecharModal('modal-msg-entrevista');
   await _salvarStatus(_statusPendente, true, texto);
 
-  // Salvar na Agenda
+  // Salvar na Agenda (no objeto entrevistas, que é o que o calendário lê)
   const dataAgenda = _parseDateBR(semana);
+  const horaFormatada = horario.replace('h',':').replace(/^(\d):/, '0$1:').padEnd(5,'0');
+  if(!entrevistas[sessaoAtual]) entrevistas[sessaoAtual] = [];
   const agendaItem = {
-    id: Date.now(),
-    cand: s.nome || s.ultimaAnalise?.nome || nome,
-    tipo: _statusPendente.includes('Gestor') ? 'Entrevista Gestor' : 'Entrevista RH',
-    vagaTitulo: s.ultimaAnalise?.vagaInteresse || cargo,
+    id: 'ent_' + Date.now(),
     data: dataAgenda,
-    hora: horario.replace('h',':').replace(/^(\d):/, '0$1:').padEnd(5,'0'),
-    telefone: sessaoAtual,
-    status: 'Agendada',
-    cor: corPorNome(s.nome||nome),
+    hora: horaFormatada,
+    tipo: tipo,
+    responsavel: 'Camila',
+    obs: '',
+    status: 'Pendente',
+    // campos extras para uso no Google Calendar
+    cand: s.nome || s.ultimaAnalise?.nome || nome,
+    vagaTitulo: s.ultimaAnalise?.vagaInteresse || cargo,
     tipoEntrevista: tipo,
     local: local
   };
-  agendaItems.push(agendaItem);
-  localStorage.setItem('effect-agenda', JSON.stringify(agendaItems));
+  entrevistas[sessaoAtual].push(agendaItem);
+  salvarLocal();
   toast('📅 Agendado na Agenda','success');
 
   // ── NOVO: Sincronizar com Google Calendar ──────────────────────────────
@@ -2559,7 +2562,7 @@ async function confirmarMsgEntrevista(){
         hora: agendaItem.hora,
         tipo: agendaItem.tipoEntrevista,
         local: agendaItem.local,
-        telefone: agendaItem.telefone
+        telefone: sessaoAtual
       })
     });
     const resultCal = await respCal.json();
@@ -4173,6 +4176,324 @@ function setTab(el,t){
 function renderStatusFilterBar(){
   const bar=document.getElementById('status-filter-bar');
   const all=Object.entries(todasSessoes||{});
-  bar.innerHTML=['Novo','Em atendimento','Aguardando candidato','Aguardando recrutador','Finalizado'].map(st=>{
-    const count=all.filter(([t,s])=>(statusMap[t]||'Novo')===st).length;
-    if(count=
+  bar.innerHTML=['Novo','Em
+  bar.innerHTML=[...Object.keys(PIPELINE_CORES),'Novo contato','Em atendimento'].map(st=>{
+    const cnt=all.filter(([tel])=>(statusMap[tel]||'Novo contato')===st).length;
+    if(!cnt)return'';
+    const ativo=statusFiltro===st;
+    const cor=PIPELINE_CORES[st]||'#64748b';
+    return`<button onclick="statusFiltro='${st}';renderLista()" style="padding:3px 10px;border-radius:20px;border:2px solid ${cor};background:${ativo?cor:'transparent'};color:${ativo?'#fff':cor};font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:.2s">${st} <span style="opacity:.7">${cnt}</span></button>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NOVAS FUNCIONALIDADES — EFFECT LIA
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── #18 TERMÔMETRO DE ENGAJAMENTO ───────────────────────────────
+function calcularEngajamento(tel, s){
+  if(!s)return{emoji:'⬜',label:'Sem dados',cor:'#a1a1aa'};
+  const hist=s.historico||[];
+  const ultCand=hist.filter(m=>m.role==='user').slice(-1)[0];
+  if(!ultCand)return{emoji:'🧊',label:'Frio',cor:'#64748b'};
+  const agora=Date.now();
+  const diff=(agora-(ultCand.timestampMs||0))/1000/60; // minutos
+  const isManual=s.modo==='manual'||s.pausado===true;
+  // Velocidade de resposta média
+  let somaResp=0,ctResp=0;
+  for(let i=1;i<Math.min(hist.length,10);i++){
+    if(hist[i].role==='user'&&hist[i-1].role==='assistant'){
+      somaResp+=(hist[i].timestampMs||0)-(hist[i-1].timestampMs||0);
+      ctResp++;
+    }
+  }
+  const mediaRespMin=ctResp>0?(somaResp/ctResp/1000/60):999;
+  if(diff<30&&mediaRespMin<15)return{emoji:'🔥',label:'Quente',cor:'#ef4444'};
+  if(diff<120&&mediaRespMin<60)return{emoji:'🟡',label:'Morno',cor:'#f59e0b'};
+  return{emoji:'🧊',label:'Frio',cor:'#64748b'};
+}
+
+// ─── #2 RESUMO AO ASSUMIR (manual) ───────────────────────────────
+function mostrarResumoCandidato(s, tel){
+  if(!s)return;
+  const nome=s.nome||telDisplay(tel)||'Candidato';
+  const cargo=s.ultimaAnalise?.vagaInteresse||'—';
+  const status=statusMap[tel]||'—';
+  const ents=(entrevistas[tel]||[]);
+  const pendentes=ents.filter(e=>e.status==='Pendente'||e.status==='Confirmada').length;
+  const realizadas=ents.filter(e=>e.status==='Realizada').length;
+  const faltou=ents.filter(e=>e.status==='Não Compareceu'||e.status==='Cancelada').length;
+  const ultMsgs=(s.historico||[]).slice(-3).filter(m=>m.role==='user').map(m=>`"${(m.content||'').substring(0,60)}..."`).join(' | ');
+  const eng=calcularEngajamento(tel,s);
+  const resumoEl=document.getElementById('resumo-candidato-card');
+  if(!resumoEl)return;
+  resumoEl.innerHTML=`
+    <div style="background:#fff;border-radius:10px;padding:12px;border-left:4px solid var(--green);box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:8px;font-size:11px">
+      <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:6px">📋 Resumo — ${nome}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
+        <span>🎯 <b>Cargo:</b> ${cargo}</span>
+        <span>📌 <b>Status:</b> ${status}</span>
+        <span>${eng.emoji} <b>Engajamento:</b> <span style="color:${eng.cor}">${eng.label}</span></span>
+        <span>📅 <b>Entrevistas:</b> ${pendentes} pend. · ${realizadas} ok · ${faltou} faltou</span>
+      </div>
+      ${ultMsgs?`<div style="color:var(--muted);font-size:10px;border-top:1px solid var(--border);padding-top:4px">💬 Últimas msgs do candidato: ${ultMsgs}</div>`:''}
+      <button onclick="document.getElementById('resumo-candidato-card').innerHTML=''" style="margin-top:6px;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:9px;cursor:pointer;font-family:'Montserrat',sans-serif">✕ fechar</button>
+    </div>`;
+  resumoEl.style.display='block';
+}
+
+// ─── #22 CHECK-IN 30MIN ANTES ─────────────────────────────────────
+async function enviarCheckIn(tel, e){
+  try{
+    const s=todasSessoes[tel];
+    const nome=s?.nome?.split(' ')[0]||'candidato';
+    const msg=`Oi, ${nome}! 😊 Sua entrevista é daqui a 30 minutos (${e.hora}). Está tudo confirmado para participar? 💙\n\n— Camila, Equipe Effect`;
+    await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:tel,status:'',enviarMensagem:true,mensagem:msg})});
+    toast(`✉️ Check-in enviado para ${s?.nome||tel}`,'success');
+  }catch(err){console.warn('Check-in erro:',err);}
+}
+
+// ─── #29 NPS PÓS-ENTREVISTA ──────────────────────────────────────
+async function enviarNPS(tel){
+  try{
+    const s=todasSessoes[tel];
+    const nome=s?.nome?.split(' ')[0]||'';
+    const msg=`Oi${nome?', '+nome:''}! 😊 Obrigada por participar da entrevista conosco!\n\nGostaríamos de saber: como foi sua experiência no processo seletivo da Effect?\n\nResponda com um número de 1 a 5:\n⭐ 1 — Muito ruim\n⭐⭐ 2 — Ruim\n⭐⭐⭐ 3 — Regular\n⭐⭐⭐⭐ 4 — Boa\n⭐⭐⭐⭐⭐ 5 — Excelente\n\n💙 — Equipe Effect`;
+    await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:tel,status:'',enviarMensagem:true,mensagem:msg})});
+    toast('⭐ NPS enviado!','success');
+  }catch(err){console.warn('NPS erro:',err);}
+}
+
+// ─── #25 PRAZO DE VALIDADE ────────────────────────────────────────
+async function arquivarInativos(diasLimite=30){
+  const agora=Date.now();
+  const limite=diasLimite*24*60*60*1000;
+  let arquivados=0;
+  for(const [tel,s] of Object.entries(todasSessoes||{})){
+    if(s.arquivado||s.modo==='manual')continue;
+    const ultAt=s.lastMessageAtMs||s.ultimaAtMs||0;
+    if(!ultAt)continue;
+    if(agora-ultAt>limite){
+      try{
+        const msg=`Oi${s.nome?' '+s.nome.split(' ')[0]:''}! 😊 Notamos que faz um tempo que não nos falamos.\nCaso ainda tenha interesse em oportunidades de emprego, é só nos chamar aqui! Ficamos à disposição. 💙\n\n— Laura, Equipe Effect`;
+        await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({telefone:tel,status:'Arquivado',enviarMensagem:true,mensagem:msg})});
+        arquivados++;
+      }catch(e){}
+    }
+  }
+  if(arquivados>0)toast(`📦 ${arquivados} conversa(s) arquivada(s) por inatividade`,'info');
+  else toast('✅ Nenhuma conversa inativa encontrada','info');
+}
+
+// ─── #40 PAINEL DE SAÚDE ─────────────────────────────────────────
+function renderPainelSaude(){
+  const el=document.getElementById('view-saude');
+  if(!el)return;
+  const todas=Object.entries(todasSessoes||{});
+  const agora=Date.now();
+
+  // Conversas travadas (+24h sem resposta do candidato, ainda ativa)
+  const travadas=todas.filter(([tel,s])=>{
+    if(s.arquivado||s.modo==='manual')return false;
+    const hist=s.historico||[];
+    const ultCand=hist.filter(m=>m.role==='user').slice(-1)[0];
+    if(!ultCand)return false;
+    return(agora-(ultCand.timestampMs||0))>24*60*60*1000;
+  });
+
+  // Conversas em manual há mais de 2h
+  const manualLongo=todas.filter(([tel,s])=>{
+    if(s.modo!=='manual'&&!s.pausado)return false;
+    const ints=(intervencoes[tel]||[]);
+    const ultInt=ints.slice(-1)[0];
+    if(!ultInt)return true;
+    const ts=new Date(ultInt.quando||'').getTime();
+    return(agora-ts)>2*60*60*1000;
+  });
+
+  // Entrevistas pendentes hoje
+  const hoje=new Date().toISOString().split('T')[0];
+  const entsHoje=[];
+  Object.entries(entrevistas).forEach(([tel,ents])=>{
+    ents.forEach(e=>{if(e.data===hoje&&e.status!=='Realizada'&&e.status!=='Cancelada')entsHoje.push({...e,tel});});
+  });
+
+  // Pipeline por status
+  const porStatus={};
+  todas.forEach(([tel,s])=>{
+    const st=statusMap[tel]||'Sem status';
+    porStatus[st]=(porStatus[st]||0)+1;
+  });
+
+  // Candidatos quentes
+  const quentes=todas.filter(([tel,s])=>calcularEngajamento(tel,s).label==='Quente').length;
+
+  el.innerHTML=`
+  <div style="padding:16px;flex:1;overflow-y:auto;background:#f5f7fa">
+    <div style="font-weight:800;font-size:16px;color:var(--navy);margin-bottom:16px">🩺 Painel de Saúde da Operação</div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #ef4444">
+        <div style="font-size:24px;font-weight:800;color:#ef4444">${travadas.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">⚠️ Travadas +24h</div>
+        ${travadas.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${travadas.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${travadas.length>3?'...':''}</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #f59e0b">
+        <div style="font-size:24px;font-weight:800;color:#f59e0b">${manualLongo.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">👩 Manual +2h</div>
+        ${manualLongo.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${manualLongo.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${manualLongo.length>3?'...':''}</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #8ed1b2">
+        <div style="font-size:24px;font-weight:800;color:#8ed1b2">${entsHoje.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">📅 Entrevistas Hoje</div>
+        ${entsHoje.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${entsHoje.map(e=>`${e.hora}`).join(', ')}</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #ef4444">
+        <div style="font-size:24px;font-weight:800;color:#ef4444">${quentes}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">🔥 Candidatos Quentes</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid var(--navy)">
+        <div style="font-size:24px;font-weight:800;color:var(--navy)">${todas.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">👥 Total Conversas</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+        <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:10px">📌 Candidatos por Status</div>
+        ${Object.entries(porStatus).sort((a,b)=>b[1]-a[1]).map(([st,cnt])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+            <span style="color:${PIPELINE_CORES[st]||'var(--muted)'};font-weight:600">${st}</span>
+            <span style="font-weight:800">${cnt}</span>
+          </div>`).join('')}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+        <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:10px">⚠️ Ações Necessárias</div>
+        ${!travadas.length&&!manualLongo.length?'<div style="font-size:11px;color:var(--green)">✅ Tudo em ordem!</div>':''}
+        ${travadas.slice(0,5).map(([tel,s])=>`
+          <div style="background:#fef2f2;border-radius:8px;padding:8px;margin-bottom:6px;font-size:11px;cursor:pointer" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${tel}'),200)">
+            <b>${s.nome||telDisplay(tel)}</b><br>
+            <span style="color:#ef4444">⚠️ Sem resposta há +24h</span>
+          </div>`).join('')}
+        ${manualLongo.slice(0,3).map(([tel,s])=>`
+          <div style="background:#fffbeb;border-radius:8px;padding:8px;margin-bottom:6px;font-size:11px;cursor:pointer" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${tel}'),200)">
+            <b>${s.nome||telDisplay(tel)}</b><br>
+            <span style="color:#f59e0b">👩 Em manual há mais de 2h</span>
+          </div>`).join('')}
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+          <button onclick="arquivarInativos(30)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--navy)">📦 Arquivar inativos (30+ dias)</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── PATCH: mostrarView — adiciona 'saude' ────────────────────────
+const _mostrarViewOrig=mostrarView;
+function mostrarView(v){
+  _mostrarViewOrig(v);
+  const saudeEl=document.getElementById('view-saude');
+  if(saudeEl)saudeEl.style.display=v==='saude'?'flex':'none';
+  const navSaude=document.getElementById('nav-saude');
+  if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
+  if(v==='saude')renderPainelSaude();
+}
+
+// ─── PATCH: marcarEntrevista — NPS ao marcar Realizada ───────────
+const _marcarEntrevistaOrig=marcarEntrevista;
+function marcarEntrevista(tel,id,status){
+  _marcarEntrevistaOrig(tel,id,status);
+  if(status==='Realizada'){
+    setTimeout(()=>{
+      if(confirm(`Enviar pesquisa NPS para ${todasSessoes[tel]?.nome||tel}?`)){
+        enviarNPS(tel);
+      }
+    },500);
+  }
+}
+
+// ─── PATCH: abrirConversa — resumo quando manual ─────────────────
+const _abrirConversaOrig=abrirConversa;
+function abrirConversa(tel){
+  _abrirConversaOrig(tel);
+  const s=todasSessoes[tel];
+  const isManual=s&&(s.modo==='manual'||s.pausado===true);
+  if(isManual){
+    setTimeout(()=>mostrarResumoCandidato(s,tel),100);
+  } else {
+    const r=document.getElementById('resumo-candidato-card');
+    if(r){r.innerHTML='';r.style.display='none';}
+  }
+}
+
+// ─── PATCH: iniciarTimerEntrevistas — check-in 30min ─────────────
+const _iniciarTimerOrig=iniciarTimerEntrevistas;
+function iniciarTimerEntrevistas(){
+  _iniciarTimerOrig();
+  // Adiciona check-in via WhatsApp no intervalo existente
+  setInterval(()=>{
+    const agora=new Date();
+    Object.entries(entrevistas).forEach(([tel,ents])=>{
+      ents.forEach(e=>{
+        if(e.status==='Realizada'||e.status==='Cancelada'||e.status==='Não Compareceu')return;
+        const dt=new Date(`${e.data}T${e.hora}`);
+        const diff=dt-agora;
+        if(diff>0&&diff<=30*60*1000&&!e._checkIn30){
+          e._checkIn30=true;salvarLocal();
+          enviarCheckIn(tel,e);
+        }
+      });
+    });
+  },60000);
+}
+
+// ─── INJETAR HTML: resumo card + painel saúde + nav botão ────────
+document.addEventListener('DOMContentLoaded',()=>{
+  // Card de resumo no painel direito (inserir antes do rp-tabs)
+  const rpTabs=document.querySelector('.rp-tabs');
+  if(rpTabs){
+    const cardDiv=document.createElement('div');
+    cardDiv.id='resumo-candidato-card';
+    cardDiv.style.cssText='display:none;padding:8px 10px 0;';
+    rpTabs.parentNode.insertBefore(cardDiv,rpTabs);
+  }
+
+  // View painel de saúde
+  const viewInbox=document.getElementById('view-inbox');
+  if(viewInbox&&viewInbox.parentNode){
+    const saudeDiv=document.createElement('div');
+    saudeDiv.id='view-saude';
+    saudeDiv.style.cssText='display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa';
+    viewInbox.parentNode.insertBefore(saudeDiv,viewInbox.nextSibling);
+  }
+
+  // Botão nav painel de saúde
+  const navAgenda=document.getElementById('nav-agenda');
+  if(navAgenda&&navAgenda.parentNode){
+    const btnSaude=document.createElement('button');
+    btnSaude.id='nav-saude';
+    btnSaude.className='rbtn';
+    btnSaude.textContent='🩺 Saúde';
+    btnSaude.onclick=()=>mostrarView('saude');
+    navAgenda.parentNode.insertBefore(btnSaude,navAgenda.nextSibling);
+  }
+
+  // Indicadores de engajamento na lista (refresh periódico)
+  setInterval(()=>{
+    document.querySelectorAll('[data-tel-eng]').forEach(el=>{
+      const tel=el.dataset.telEng;
+      const s=todasSessoes[tel];
+      if(!s)return;
+      const eng=calcularEngajamento(tel,s);
+      el.textContent=eng.emoji;
+      el.title=eng.label;
+    });
+  },30000);
+});
+
+</script>
+</body>
+</html>
