@@ -669,6 +669,7 @@ font-family:'Montserrat',sans-serif
           <div class="ftab-mais-item" id="ftabm-manual" onclick="setTabMais('manual','ftabm-manual')">👩 Laura <span class="ftab-mais-cnt" id="cntm-manual">0</span></div>
           <div class="ftab-mais-item" id="ftabm-lia" onclick="setTabMais('lia','ftabm-lia')">🤖 Lia <span class="ftab-mais-cnt" id="cntm-lia">0</span></div>
           <div class="ftab-mais-item" id="ftabm-curriculos" onclick="setTabMais('curriculos','ftabm-curriculos')">📄 CVs <span class="ftab-mais-cnt" id="cntm-curriculos">0</span></div>
+          <div class="ftab-mais-item" id="ftabm-aguardando-recrutador" onclick="setTabMais('aguardando-recrutador','ftabm-aguardando-recrutador')">🟠 Aguardando <span class="ftab-mais-cnt" id="cntm-aguardando-recrutador">0</span></div>
           <div class="ftab-mais-item" id="ftabm-retornar" onclick="setTabMais('retornar','ftabm-retornar')">📌 Retornar <span class="ftab-mais-cnt" id="cntm-retornar">0</span></div>
           <div class="ftab-mais-item" id="ftabm-arquivadas" onclick="setTabMais('arquivadas','ftabm-arquivadas')">📦 Arquivadas <span class="ftab-mais-cnt" id="cntm-arquivadas">0</span></div>
           <div class="ftab-mais-item" id="ftabm-camila" onclick="setTabMais('camila','ftabm-camila')">📅 Camila <span class="ftab-mais-cnt" id="cntm-camila">0</span></div>
@@ -1756,6 +1757,7 @@ function renderLista(){
     const mb=!busca||(s.nome||'').toLowerCase().includes(_b)||tel.includes(busca)||(s.historico||[]).some(h=>(h.content||'').toLowerCase().includes(_b))||(s.vagaInteresse||s.vaga||'').toLowerCase().includes(_b)||(s.cidade||'').toLowerCase().includes(_b)||(s.areaInteresse||'').toLowerCase().includes(_b);
     if(!mb)return false;
     if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
+    if(tab==='aguardando-recrutador'){return statusMap[tel]==='Aguardando recrutador';}
     if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
     if(tab==='aguardando-effect'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
@@ -1876,6 +1878,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallbac
           ${s.modo==='camila'?'<span class="cc" style="background:#fce7f3;color:#db2777">📅 Camila</span>':isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
+          ${statusMap[tel]==='Aguardando recrutador'?'<span class="cc" style="background:#f59e0b;color:#fff">🟠 Aguardando</span>':''}
           ${marcadosRetorno[tel]?`<span class="cc cc-yellow" style="cursor:pointer" title="Clique para desmarcar" onclick="event.stopPropagation();marcadosRetorno['${tel}']=false;salvarLocal();renderLista();toast('Marcação removida','success')">📌 Retornar</span>`:''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
@@ -4262,7 +4265,7 @@ function setTabMais(t,id){
 }
 // Sincroniza contadores do menu com os spans ocultos
 function syncMaisContadores(){
-  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas'};
+  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas','aguardando-recrutador':'cntm-aguardando-recrutador'};
   Object.entries(map).forEach(([k,id])=>{
     const src=document.getElementById('cnt-'+k);
     const dst=document.getElementById(id);
