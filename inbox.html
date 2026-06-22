@@ -515,12 +515,18 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 <!-- HEADER -->
 <header>
-  <div style="display:flex;align-items:center;gap:12px">
-    <div class="hlogo">Effect <span>Lia</span></div>
+  <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
+    <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">🗓️ Agenda</button>
+    <div style="width:1px;height:18px;background:rgba(255,255,255,0.25);flex-shrink:0"></div>
+    <button class="rbtn" onclick="mostrarView('saude')" id="nav-saude">🩺 Saúde</button>
+    <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard">📊 Dashboard</button>
+    <button class="rbtn" onclick="mostrarView('ats')" id="nav-ats">📑 Sheet Viewer</button>
+    <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
+    <button class="rbtn" onclick="window.open('file:///C:/Users/ADM/Downloads/meu-app_6.html','_blank')" id="nav-meuapp">🖥️ Meu App</button>
   </div>
-  <div class="hright">
+  <div class="hright" style="flex-shrink:0">
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
@@ -1362,7 +1368,7 @@ async function carregarSessoes(){
       // Auto-status: Lia encerrou conversa → Aguardando recrutador
       if(ultima&&ultima.role==='assistant'){
         const stAtual=statusMap[tel]||'';
-        const statusBloqueados=['Finalizado','Em Vaga','Reprovado Triagem','Rep. 1ª Etapa','Rep. 2ª Etapa','Rep. 3ª Etapa','Banco de Talentos'];
+        const statusBloqueados=['Finalizado','Em Vaga','Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor','Banco de Talentos','Banco de talentos','Aprovado para entrevista'];
         if(!statusBloqueados.includes(stAtual)){
           const texto=(ultima.content||'').toLowerCase();
           const frasesEncerramento=['qualquer novidade','entrará em contato','em contato em breve','boa sorte','obrigada pelo interesse','obrigado pelo interesse','ficamos à disposição','até mais','até logo'];
@@ -2673,6 +2679,10 @@ async function _salvarStatus(status, enviar, mensagem){
   try{
     await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
   }catch(e){ console.error('Erro ao salvar status:', e); }
+  // Auto-arquivar após qualquer status Reprovado
+  if(status && status.toLowerCase().startsWith('reprovado')){
+    setTimeout(()=>arquivarConversa(), 900);
+  }
 }
 function atualizarPipelineAtivo(statusAtual){
   const TRACK=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Em Admissão'];
@@ -4577,34 +4587,4 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(viewInbox&&viewInbox.parentNode){
     const saudeDiv=document.createElement('div');
     saudeDiv.id='view-saude';
-    saudeDiv.style.cssText='display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa';
-    viewInbox.parentNode.insertBefore(saudeDiv,viewInbox.nextSibling);
-  }
-
-  // Botão nav painel de saúde
-  const navAgenda=document.getElementById('nav-agenda');
-  if(navAgenda&&navAgenda.parentNode){
-    const btnSaude=document.createElement('button');
-    btnSaude.id='nav-saude';
-    btnSaude.className='rbtn';
-    btnSaude.textContent='🩺 Saúde';
-    btnSaude.onclick=()=>mostrarView('saude');
-    navAgenda.parentNode.insertBefore(btnSaude,navAgenda.nextSibling);
-  }
-
-  // Indicadores de engajamento na lista (refresh periódico)
-  setInterval(()=>{
-    document.querySelectorAll('[data-tel-eng]').forEach(el=>{
-      const tel=el.dataset.telEng;
-      const s=todasSessoes[tel];
-      if(!s)return;
-      const eng=calcularEngajamento(tel,s);
-      el.textContent=eng.emoji;
-      el.title=eng.label;
-    });
-  },30000);
-});
-
-</script>
-</body>
-</html>
+    saudeDiv.style.cs
