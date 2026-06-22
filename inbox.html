@@ -1358,6 +1358,20 @@ async function carregarSessoes(){
           salvarLocal();
         }
       }
+
+      // Auto-status: Lia encerrou conversa → Aguardando recrutador
+      if(ultima&&ultima.role==='assistant'){
+        const stAtual=statusMap[tel]||'';
+        const statusBloqueados=['Finalizado','Em Vaga','Reprovado Triagem','Rep. 1ª Etapa','Rep. 2ª Etapa','Rep. 3ª Etapa','Banco de Talentos'];
+        if(!statusBloqueados.includes(stAtual)){
+          const texto=(ultima.content||'').toLowerCase();
+          const frasesEncerramento=['qualquer novidade','entrará em contato','em contato em breve','boa sorte','obrigada pelo interesse','obrigado pelo interesse','ficamos à disposição','até mais','até logo'];
+          if(frasesEncerramento.some(f=>texto.includes(f))){
+            statusMap[tel]='Aguardando recrutador';
+            salvarLocal();
+          }
+        }
+      }
     });
     todasSessoes=novas;
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
