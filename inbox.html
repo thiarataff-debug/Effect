@@ -1878,7 +1878,7 @@ const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallbac
           ${s.modo==='camila'?'<span class="cc" style="background:#fce7f3;color:#db2777">📅 Camila</span>':isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
-          ${statusMap[tel]==='Aguardando recrutador'?'<span class="cc" style="background:#f59e0b;color:#fff">🟠 Aguardando</span>':''}
+          ${statusMap[tel]==='Aguardando recrutador'?`<span class="cc" style="background:#f59e0b;color:#fff;cursor:pointer" title="Clique para remover e arquivar" onclick="event.stopPropagation();resolverAguardando('${tel}')">🟠 Aguardando ✕</span>`:''}
           ${marcadosRetorno[tel]?`<span class="cc cc-yellow" style="cursor:pointer" title="Clique para desmarcar" onclick="event.stopPropagation();marcadosRetorno['${tel}']=false;salvarLocal();renderLista();toast('Marcação removida','success')">📌 Retornar</span>`:''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
@@ -2094,7 +2094,7 @@ function renderPainelPerfil(s){
   div.innerHTML=`
   <div class="rp-section">
     <div class="rp-section-title">📋 Status do Processo</div>
-    <div style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)}">${st||'Novo'}</div>
+    <div onclick="abrirModalStatus()" title="Clique para alterar o status" style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)};cursor:pointer">${st||'Novo'} ✎</div>
   </div>
   ${anal.nome?`
   <div class="rp-section">
@@ -3214,6 +3214,26 @@ async function encaminharParaVaga(idx){
   }catch(e){toast('Vinculado localmente. Falha ao salvar no servidor.','error');}
 }
 
+function resolverAguardando(tel){
+  // Pergunta o que fazer após remover a tag
+  statusMap[tel]='';
+  salvarLocal();
+  renderLista();
+  // Mini-modal de ação
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;padding:22px 24px;max-width:300px;width:90%;font-family:Montserrat,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-weight:800;font-size:14px;color:#1a2a4a;margin-bottom:6px">O que fazer com esta conversa?</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-bottom:18px">Tag "Aguardando recrutador" removida.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="this.closest('div[style*=fixed]').remove();if(sessaoAtual==='${tel}'){arquivarConversa();}else{arquivadas['${tel}']=true;salvarLocal();renderLista();}toast('📦 Arquivada','success')" style="padding:11px;background:#1a2a4a;color:#fff;border:none;border-radius:9px;font-family:Montserrat,sans-serif;font-weight:700;font-size:13px;cursor:pointer">📦 Arquivar</button>
+        <button onclick="this.closest('div[style*=fixed]').remove();if(todasSessoes['${tel}']){todasSessoes['${tel}'].modo='lia';todasSessoes['${tel}'].pausado=false;}fetch(window.location.origin+'/inbox/pausar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:'${tel}',pausado:false,modo:'lia'})}).then(()=>fetch(window.location.origin+'/inbox/transicao-lia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:'${tel}'})})).catch(()=>{});renderLista();toast('🤖 Devolvida para Lia','success')" style="padding:11px;background:#8ed1b2;color:#1a2a4a;border:none;border-radius:9px;font-family:Montserrat,sans-serif;font-weight:700;font-size:13px;cursor:pointer">🤖 Devolver para Lia</button>
+        <button onclick="this.closest('div[style*=fixed]').remove();toast('Tag removida','success')" style="padding:9px;background:#f3f4f6;color:#6b7280;border:none;border-radius:9px;font-family:Montserrat,sans-serif;font-weight:600;font-size:12px;cursor:pointer">Só remover tag</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
 function abrirModalStatus(){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
   const grid=document.getElementById('status-grid');
