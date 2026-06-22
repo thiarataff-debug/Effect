@@ -218,6 +218,7 @@ header{background:var(--navy);color:#fff;padding:13px 24px;display:flex;align-it
   <div class="hright">
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarTudo()">⟳</button>
+    <a href="/inbox" style="padding:6px 14px;background:#8ed1b2;color:#1a2a4a;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;text-decoration:none">← Lia</a>
   </div>
 </header>
 <div class="content">
@@ -333,6 +334,12 @@ header{background:var(--navy);color:#fff;padding:13px 24px;display:flex;align-it
 <div class="toast" id="toast"></div>
 <script>
 const SENHA = "effect2026";
+(function autoLogin(){
+  try{
+    const saved=localStorage.getItem('effect_saved_pwd');
+    if(saved){const pwd=atob(saved);if(pwd===SENHA){document.getElementById('login').classList.add('hidden');carregarTudo();setInterval(carregarTudo,30000);return;}}
+  }catch(e){}
+})();
 const API = window.location.origin;
 let candidatos=[], vagas=[], sessoes={}, convRows=[], talentos=[];
 let fClass='', fInt=false, fVaga='todas', fConvTab='todas', fConvBusca='';
