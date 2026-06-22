@@ -718,6 +718,7 @@ font-family:'Montserrat',sans-serif
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
       <!-- Pipeline de Status — Opção C -->
       <div class="pipeline-bar" id="pipeline-bar">
+        <div id="pl-status-label" style="display:none;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.3px"></div>
         <div class="pl-track">
           <div class="pl-step" data-pl="Triado" onclick="definirStatusPipeline('Triado')"><div class="pl-step-dot"></div><div class="pl-step-label">Triado</div></div>
           <div class="pl-conn"></div>
@@ -2647,6 +2648,17 @@ function atualizarPipelineAtivo(statusAtual){
   document.querySelectorAll('#pipeline-bar .pl-rbtn').forEach(btn=>{
     btn.classList.toggle('ativo',btn.dataset.pl===statusAtual);
   });
+  // Label de status atual visível
+  const lbl=document.getElementById('pl-status-label');
+  if(lbl){
+    if(statusAtual){
+      const cor=PIPELINE_CORES[statusAtual]||'#64748b';
+      lbl.innerHTML=`<span style="color:${cor}">● ${statusAtual}</span>`;
+      lbl.style.display='block';
+    } else {
+      lbl.style.display='none';
+    }
+  }
 }
 
 // ─── MODO LIA/MANUAL ───
@@ -4455,12 +4467,14 @@ function renderPainelSaude(){
   };
 })();
 
-// ─── PATCH: abrirConversa — resumo quando manual ─────────────────
+// ─── PATCH: abrirConversa — resumo quando manual + pipeline ──────
 (function(){
   var _orig=abrirConversa;
   window.abrirConversa=function(tel){
     _orig(tel);
     const s=todasSessoes[tel];
+    // Atualiza pipeline com status atual do candidato
+    setTimeout(()=>atualizarPipelineAtivo(s?.status||s?.statusPipeline||''),50);
     const isManual=s&&(s.modo==='manual'||s.pausado===true);
     if(isManual){
       setTimeout(()=>mostrarResumoCandidato(s,tel),100);
