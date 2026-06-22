@@ -518,13 +518,13 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
     <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
-    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agente de Entrevistas</button>
+    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda de Entrevistas</button>
     <div style="width:1px;height:18px;background:rgba(255,255,255,0.25);flex-shrink:0"></div>
     <button class="rbtn" onclick="mostrarView('saude')" id="nav-saude">🩺 Saúde</button>
     <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard">📊 Dashboard</button>
     <button class="rbtn" onclick="mostrarView('ats')" id="nav-ats">📑 Sheet Viewer</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="window.open('/meu-app','_blank')" id="nav-meuapp">🖥️ Meu App</button>
+    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🖥️ Meu App</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <div class="dot-live"></div>
@@ -1002,6 +1002,7 @@ font-family:'Montserrat',sans-serif
     </div>
     <div class="modal-footer" style="margin-top:12px">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-msg-entrevista')">Cancelar</button>
+      <button class="modal-btn" style="background:#6b7280;color:#fff" onclick="agendarSemEnviar()">💾 Salvar sem enviar</button>
       <button class="modal-btn modal-confirm" onclick="confirmarMsgEntrevista()">📤 Enviar e agendar</button>
     </div>
   </div>
@@ -1030,6 +1031,9 @@ font-family:'Montserrat',sans-serif
   <iframe src="/sheets" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
 </div>
 <div id="view-financeiro" style="display:none;flex:1;flex-direction:column">
+<div id="view-meu-app" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+  <iframe src="/meu-app" style="width:100%;height:100%;border:none;flex:1" id="iframe-meu-app"></iframe>
+</div>
   <iframe src="/financeiro" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
 </div>
 
@@ -1037,7 +1041,7 @@ font-family:'Montserrat',sans-serif
 <div class="agenda-view" id="view-agenda">
   <div class="ev-header" style="display:flex;justify-content:space-between;align-items:center">
     <div>
-      <div class="ev-title">📅 Agente de Entrevistas</div>
+      <div class="ev-title">📅 Agenda de Entrevistas</div>
       <div class="ev-subtitle">Calendário de entrevistas + Faltosos</div>
     </div>
     <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários Lia</button>
@@ -1385,12 +1389,16 @@ function mostrarView(v){
   document.getElementById('view-entrevistas').style.display=v==='entrevistas'?'flex':'none';
   const agendaEl=document.getElementById('view-agenda');
   if(agendaEl)agendaEl.style.display=v==='agenda'?'flex':'none';
+  const meuAppEl=document.getElementById('view-meu-app');
+  if(meuAppEl)meuAppEl.style.display=v==='meu-app'?'flex':'none';
   const ni=document.getElementById('nav-inbox');if(ni)ni.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   const ne=document.getElementById('nav-entrevistas');if(ne)ne.style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
   const navAg=document.getElementById('nav-agenda');
   if(navAg)navAg.style.background=v==='agenda'?'rgba(255,255,255,.22)':'';
   const navConv=document.getElementById('nav-conversas');
   if(navConv)navConv.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
+  const navMeuApp=document.getElementById('nav-meuapp');
+  if(navMeuApp)navMeuApp.style.background=v==='meu-app'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
   if(v==='agenda') renderAgenda();
 }
@@ -2580,6 +2588,36 @@ async function confirmarMsgStatus(enviar){
   _statusPendente = null;
 }
 
+async function agendarSemEnviar(){
+  if(!_statusPendente) return;
+  const s = todasSessoes[sessaoAtual] || {};
+  const semana = document.getElementById('ent-msg-semana').value;
+  const horario = document.getElementById('ent-msg-horario').value;
+  if(!semana || !horario){ toast('Preencha dia e horário','error'); return; }
+  const tipo = _tipoEntrevista || 'Online';
+  const local = tipo === 'Presencial' ? (document.getElementById('ent-msg-endereco')?.value || '') : (document.getElementById('ent-msg-link')?.value || '');
+  fecharModal('modal-msg-entrevista');
+  await _salvarStatus(_statusPendente, false, '');
+  const dataAgenda = _parseDateBR(semana);
+  const horaFormatada = horario.replace('h',':').replace(/^(\d):/,'0$1:').padEnd(5,'0');
+  if(!entrevistas[sessaoAtual]) entrevistas[sessaoAtual] = [];
+  entrevistas[sessaoAtual].push({
+    id: 'ent_' + Date.now(),
+    data: dataAgenda,
+    hora: horaFormatada,
+    tipo: tipo,
+    responsavel: 'Camila',
+    obs: '',
+    status: 'Pendente',
+    cand: s.nome || s.ultimaAnalise?.nome || '',
+    vagaTitulo: s.ultimaAnalise?.vagaInteresse || '',
+    tipoEntrevista: tipo,
+    local: local
+  });
+  salvarLocal();
+  toast('📅 Agendado sem enviar mensagem ao candidato','success');
+  _statusPendente = null;
+}
 async function confirmarMsgEntrevista(){
   if(!_statusPendente) return;
   const s = todasSessoes[sessaoAtual] || {};
