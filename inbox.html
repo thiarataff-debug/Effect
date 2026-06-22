@@ -4428,26 +4428,27 @@ function abrirConversa(tel){
   }
 }
 
-// ─── PATCH: iniciarTimerEntrevistas — check-in 30min ─────────────
-const _iniciarTimerOrig=iniciarTimerEntrevistas;
-function iniciarTimerEntrevistas(){
-  _iniciarTimerOrig();
-  // Adiciona check-in via WhatsApp no intervalo existente
-  setInterval(()=>{
-    const agora=new Date();
-    Object.entries(entrevistas).forEach(([tel,ents])=>{
-      ents.forEach(e=>{
-        if(e.status==='Realizada'||e.status==='Cancelada'||e.status==='Não Compareceu')return;
-        const dt=new Date(`${e.data}T${e.hora}`);
-        const diff=dt-agora;
-        if(diff>0&&diff<=30*60*1000&&!e._checkIn30){
-          e._checkIn30=true;salvarLocal();
-          enviarCheckIn(tel,e);
-        }
-      });
-    });
-  },60000);
+// ─── ATUALIZAR TÍTULO DA ABA ─────────────────────────────────────
+function atualizarTitulo(){
+  const naoLidas=Object.values(todasSessoes||{}).filter(s=>(s.naoLidas||0)>0).length;
+  document.title=naoLidas>0?`(${naoLidas}) Effect — Lia Inbox`:'Effect — Lia Inbox';
 }
+
+// ─── TIMER ADICIONAL: check-in 30min antes da entrevista ─────────
+setInterval(()=>{
+  const agora=new Date();
+  Object.entries(entrevistas||{}).forEach(([tel,ents])=>{
+    (ents||[]).forEach(e=>{
+      if(e.status==='Realizada'||e.status==='Cancelada'||e.status==='Não Compareceu')return;
+      const dt=new Date(`${e.data}T${e.hora}`);
+      const diff=dt-agora;
+      if(diff>0&&diff<=30*60*1000&&!e._checkIn30){
+        e._checkIn30=true;salvarLocal();
+        enviarCheckIn(tel,e);
+      }
+    });
+  });
+},60000);
 
 // ─── INJETAR HTML: resumo card + painel saúde + nav botão ────────
 document.addEventListener('DOMContentLoaded',()=>{
