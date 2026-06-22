@@ -4176,7 +4176,6 @@ function setTab(el,t){
 function renderStatusFilterBar(){
   const bar=document.getElementById('status-filter-bar');
   const all=Object.entries(todasSessoes||{});
-  bar.innerHTML=['Novo','Em
   bar.innerHTML=[...Object.keys(PIPELINE_CORES),'Novo contato','Em atendimento'].map(st=>{
     const cnt=all.filter(([tel])=>(statusMap[tel]||'Novo contato')===st).length;
     if(!cnt)return'';
