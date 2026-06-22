@@ -728,7 +728,7 @@ font-family:'Montserrat',sans-serif
       <!-- Pipeline de Status — Opção C (colapsável) -->
       <div class="pipeline-bar" id="pipeline-bar">
         <div class="pl-toggle" onclick="togglePipeline()" id="pl-toggle">
-          <div id="pl-status-label" style="font-size:10px;font-weight:700;letter-spacing:.3px;color:#94a3b8">● Nenhum status</div>
+          <div id="pl-status-label" style="font-size:10px;font-weight:700;letter-spacing:.3px;color:#94a3b8">📍 Pipeline</div>
           <span class="pl-toggle-arrow">▼</span>
         </div>
         <div class="pl-body">
@@ -2672,7 +2672,7 @@ function atualizarPipelineAtivo(statusAtual){
       const cor=PIPELINE_CORES[statusAtual]||'#64748b';
       lbl.innerHTML=`<span style="color:${cor}">● ${statusAtual}</span>`;
     } else {
-      lbl.innerHTML='<span style="color:#94a3b8">● Nenhum status</span>';
+      lbl.innerHTML='<span style="color:#94a3b8">📍 Pipeline</span>';
     }
   }
 }
