@@ -526,7 +526,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
     <button class="rbtn" onclick="window.open('file:///C:/Users/ADM/Downloads/meu-app_6.html','_blank')" id="nav-meuapp">🖥️ Meu App</button>
   </div>
-  <div class="hright" style="flex-shrink:0;margin-left:10px">
+  <div class="hright" style="flex-shrink:0">
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
@@ -2679,7 +2679,7 @@ async function _salvarStatus(status, enviar, mensagem){
   try{
     await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
   }catch(e){ console.error('Erro ao salvar status:', e); }
-  // Auto-arquivar após Reprovado
+  // Auto-arquivar após qualquer status Reprovado
   if(status && status.toLowerCase().startsWith('reprovado')){
     setTimeout(()=>arquivarConversa(), 900);
   }
@@ -4587,29 +4587,4 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(viewInbox&&viewInbox.parentNode){
     const saudeDiv=document.createElement('div');
     saudeDiv.id='view-saude';
-    saudeDiv.style.cssText='display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa';
-    viewInbox.parentNode.insertBefore(saudeDiv,viewInbox.nextSibling);
-  }
-
-  // Botão nav painel de saúde
-  const navAgenda=document.getElementById('nav-agenda');
-  if(navAgenda&&navAgenda.parentNode){
-
-  }
-
-  // Indicadores de engajamento na lista (refresh periódico)
-  setInterval(()=>{
-    document.querySelectorAll('[data-tel-eng]').forEach(el=>{
-      const tel=el.dataset.telEng;
-      const s=todasSessoes[tel];
-      if(!s)return;
-      const eng=calcularEngajamento(tel,s);
-      el.textContent=eng.emoji;
-      el.title=eng.label;
-    });
-  },30000);
-});
-
-</script>
-</body>
-</html>
+    saudeDiv.style.cs
