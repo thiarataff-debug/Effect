@@ -2742,6 +2742,13 @@ async function setModo(modo){
       registrarIntervencao(nomeAtend,pausado?'Assumiu conversa':'Devolveu para Lia','');
       renderLista();renderPainelDireito();
       if(pausado&&eraLia){
+        // Auto-status: recrutador assumiu → Aguardando recrutador
+        const stAtual = statusMap[sessaoAtual] || '';
+        const naoSobrescrever = ['Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor','Finalizado','Banco de Talentos','Banco de talentos'];
+        if(!naoSobrescrever.includes(stAtual)){
+          statusMap[sessaoAtual] = 'Aguardando recrutador';
+          salvarLocal();
+        }
         if(modo==='camila'){
           toast('📅 Camila assumiu — agendamento de entrevista','success');
         } else {
