@@ -4391,42 +4391,48 @@ function renderPainelSaude(){
 }
 
 // ─── PATCH: mostrarView — adiciona 'saude' ────────────────────────
-const _mostrarViewOrig=mostrarView;
-function mostrarView(v){
-  _mostrarViewOrig(v);
-  const saudeEl=document.getElementById('view-saude');
-  if(saudeEl)saudeEl.style.display=v==='saude'?'flex':'none';
-  const navSaude=document.getElementById('nav-saude');
-  if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
-  if(v==='saude')renderPainelSaude();
-}
+(function(){
+  var _orig=mostrarView;
+  window.mostrarView=function(v){
+    _orig(v);
+    const saudeEl=document.getElementById('view-saude');
+    if(saudeEl)saudeEl.style.display=v==='saude'?'flex':'none';
+    const navSaude=document.getElementById('nav-saude');
+    if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
+    if(v==='saude')renderPainelSaude();
+  };
+})();
 
 // ─── PATCH: marcarEntrevista — NPS ao marcar Realizada ───────────
-const _marcarEntrevistaOrig=marcarEntrevista;
-function marcarEntrevista(tel,id,status){
-  _marcarEntrevistaOrig(tel,id,status);
-  if(status==='Realizada'){
-    setTimeout(()=>{
-      if(confirm(`Enviar pesquisa NPS para ${todasSessoes[tel]?.nome||tel}?`)){
-        enviarNPS(tel);
-      }
-    },500);
-  }
-}
+(function(){
+  var _orig=marcarEntrevista;
+  window.marcarEntrevista=function(tel,id,status){
+    _orig(tel,id,status);
+    if(status==='Realizada'){
+      setTimeout(()=>{
+        if(confirm(`Enviar pesquisa NPS para ${todasSessoes[tel]?.nome||tel}?`)){
+          enviarNPS(tel);
+        }
+      },500);
+    }
+  };
+})();
 
 // ─── PATCH: abrirConversa — resumo quando manual ─────────────────
-const _abrirConversaOrig=abrirConversa;
-function abrirConversa(tel){
-  _abrirConversaOrig(tel);
-  const s=todasSessoes[tel];
-  const isManual=s&&(s.modo==='manual'||s.pausado===true);
-  if(isManual){
-    setTimeout(()=>mostrarResumoCandidato(s,tel),100);
-  } else {
-    const r=document.getElementById('resumo-candidato-card');
-    if(r){r.innerHTML='';r.style.display='none';}
-  }
-}
+(function(){
+  var _orig=abrirConversa;
+  window.abrirConversa=function(tel){
+    _orig(tel);
+    const s=todasSessoes[tel];
+    const isManual=s&&(s.modo==='manual'||s.pausado===true);
+    if(isManual){
+      setTimeout(()=>mostrarResumoCandidato(s,tel),100);
+    } else {
+      const r=document.getElementById('resumo-candidato-card');
+      if(r){r.innerHTML='';r.style.display='none';}
+    }
+  };
+})();
 
 // ─── ATUALIZAR TÍTULO DA ABA ─────────────────────────────────────
 function atualizarTitulo(){
