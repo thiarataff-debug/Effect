@@ -9,16 +9,16 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb;--purple:#8b5cf6}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.hlogo{font-weight:800;font-size:15px}.hlogo span{color:var(--green)}
-.hdate{font-size:11px;color:var(--muted)}
+header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:10px}
+.hlogo{font-weight:800;font-size:15px;flex-shrink:0}.hlogo span{color:var(--green)}
+.hdate{font-size:11px;color:var(--muted);flex-shrink:0}
+.hback{padding:7px 14px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;flex-shrink:0}
 .tabs-bar{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;position:sticky;top:51px;z-index:40}
 .tabs-bar::-webkit-scrollbar{height:0}
 .tab{padding:11px 16px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:all .15s}
 .tab.active{color:var(--navy);border-bottom-color:var(--blue)}
 .page{display:none;padding:16px}
 .page.active{display:block}
-/* CARDS */
 .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
 .card-title{font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:7px}
 /* FOCO */
@@ -48,9 +48,6 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
 .task-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px}
 .task-del:hover{color:var(--pink)}
 .prio-sel{padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex-shrink:0}
-.prio-u{border-color:#dc2626;color:#dc2626;background:#fff0f0}
-.prio-i{border-color:#f59e0b;color:#f59e0b;background:#fffbeb}
-.prio-n{border-color:var(--muted);color:var(--muted)}
 /* HUMOR */
 .humor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
 .humor-btn{padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;text-align:center;font-size:20px;transition:all .15s}
@@ -80,33 +77,8 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
 .sos-sub{font-size:12px;color:var(--muted)}
 @keyframes inhale{0%{transform:scale(1);background:var(--blue)}100%{transform:scale(1.5);background:var(--green)}}
 @keyframes exhale{0%{transform:scale(1.5);background:var(--green)}100%{transform:scale(1);background:var(--blue)}}
-/* GAMIFICAÇÃO */
-.xp-bar-wrap{background:#f3f4f6;border-radius:8px;height:14px;overflow:hidden;margin:8px 0}
-.xp-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:8px;transition:width .5s}
-.badges-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.badge-item{text-align:center;padding:10px 6px;border-radius:10px;background:#f8fafc;border:2px solid var(--border)}
-.badge-item.unlocked{border-color:var(--green);background:#edfaf4}
-.badge-icon{font-size:22px;margin-bottom:3px}
-.badge-name{font-size:9px;font-weight:700;color:var(--muted)}
-.badge-item.unlocked .badge-name{color:var(--navy)}
-/* REFLEXÃO */
-.reflexao-box{background:linear-gradient(135deg,var(--navy),#0f1e3a);border-radius:12px;padding:20px;color:#fff;margin-bottom:12px}
-.reflexao-text{font-size:13px;line-height:1.65;font-style:italic;margin-bottom:10px}
-.reflexao-btn{padding:8px 16px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
-/* FECHAMENTO */
-.fechamento-item{margin-bottom:14px}
-.fechamento-label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
-.fechamento-input{width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;resize:none;min-height:70px}
-.fechamento-input:focus{border-color:var(--blue)}
-/* CHIPS */
-.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s}
+.chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
 .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-/* STATS */
-.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.stat-box{background:#f8fafc;border-radius:10px;padding:14px;text-align:center}
-.stat-num{font-size:24px;font-weight:800;color:var(--navy)}
-.stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(10px);background:#2a2a2b;color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{background:var(--green);color:var(--navy)}
@@ -115,6 +87,7 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
 <body>
 <header>
   <div class="hlogo">🧠 <span>Meu</span> App</div>
+  <a href="/inbox" class="hback">← Lia</a>
   <div class="hdate" id="hdate"></div>
 </header>
 
@@ -124,8 +97,6 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
-  <button class="tab" onclick="irAba('conquistas',this)">🏆 XP</button>
-  <button class="tab" onclick="irAba('reflexao',this)">🌙 Fechar Dia</button>
 </div>
 
 <!-- FOCO -->
@@ -186,10 +157,16 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
   </div>
   <div class="card">
     <div class="card-title">🏃 Exercício</div>
-    <div class="chip-row" id="ex-chips">
-      ${['Caminhada','Yoga','Academia','Bike','Dança','Respiração','Alongamento'].map(e=>`<div class="chip" onclick="toggleChip(this)">${e}</div>`).join('')}
+    <div id="ex-chips">
+      <div class="chip" onclick="toggleChip(this)">Caminhada</div>
+      <div class="chip" onclick="toggleChip(this)">Yoga</div>
+      <div class="chip" onclick="toggleChip(this)">Academia</div>
+      <div class="chip" onclick="toggleChip(this)">Bike</div>
+      <div class="chip" onclick="toggleChip(this)">Dança</div>
+      <div class="chip" onclick="toggleChip(this)">Respiração</div>
+      <div class="chip" onclick="toggleChip(this)">Alongamento</div>
     </div>
-    <input class="task-input" id="ex-obs" placeholder="Observações..." style="width:100%;margin-top:4px">
+    <input class="task-input" id="ex-obs" placeholder="Observações..." style="width:100%;margin-top:10px">
     <button onclick="salvarEx()" style="margin-top:8px;padding:8px 16px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer;width:100%">💾 Salvar exercício</button>
   </div>
 </div>
@@ -199,10 +176,11 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
   <div class="card">
     <div class="card-title">😊 Como você está agora?</div>
     <div class="humor-grid">
-      ${[['😴','Exausta'],['😰','Ansiosa'],['😐','Neutro'],['🙂','Bem'],['🔥','Focada']].map(([e,l],i)=>`
-      <div class="humor-btn" onclick="setHumor(${i},this)">
-        ${e}<div class="humor-label">${l}</div>
-      </div>`).join('')}
+      <div class="humor-btn" onclick="setHumor(0,this)">😴<div class="humor-label">Exausta</div></div>
+      <div class="humor-btn" onclick="setHumor(1,this)">😰<div class="humor-label">Ansiosa</div></div>
+      <div class="humor-btn" onclick="setHumor(2,this)">😐<div class="humor-label">Neutro</div></div>
+      <div class="humor-btn" onclick="setHumor(3,this)">🙂<div class="humor-label">Bem</div></div>
+      <div class="humor-btn" onclick="setHumor(4,this)">🔥<div class="humor-label">Focada</div></div>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px">Energia (1-10):</div>
     <input type="range" min="1" max="10" value="5" id="energia-range" oninput="updateEnergia(this.value)" style="width:100%">
@@ -219,6 +197,11 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
 
 <!-- SOS -->
 <div class="page" id="page-sos">
+  <div class="card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fff);border:2px solid #f59e0b">
+    <div class="card-title" style="color:#92400e">⚡ Foque em uma coisa só agora</div>
+    <div id="sos-tarefa-txt" style="font-size:15px;font-weight:700;color:var(--navy);padding:6px 0 4px"></div>
+    <div style="font-size:11px;color:var(--muted)">Só isso. O resto pode esperar.</div>
+  </div>
   <div class="card">
     <button class="sos-btn" onclick="iniciarSOS()">😰 SOS ANSIEDADE — Respiração 4-7-8</button>
     <div class="sos-anim" id="sos-anim">
@@ -230,7 +213,7 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
   </div>
   <div class="card">
     <div class="card-title">🧘 Grounding 5-4-3-2-1</div>
-    <div style="font-size:12px;line-height:1.8;color:var(--text)">
+    <div style="font-size:12px;line-height:1.9;color:var(--text)">
       Olhe ao redor e nomeie:<br>
       <strong>👁️ 5 coisas</strong> que você vê<br>
       <strong>🤚 4 coisas</strong> que você pode tocar<br>
@@ -246,60 +229,11 @@ header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-it
   </div>
 </div>
 
-<!-- CONQUISTAS -->
-<div class="page" id="page-conquistas">
-  <div class="card">
-    <div class="card-title">⚡ Seu XP</div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-num" id="xp-total">0</div><div class="stat-lbl">XP Total</div></div>
-      <div class="stat-box"><div class="stat-num" id="streak">0</div><div class="stat-lbl">🔥 Dias seguidos</div></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Nível: <strong id="nivel-nome">Iniciante</strong></div>
-    <div class="xp-bar-wrap"><div class="xp-bar" id="xp-bar" style="width:0%"></div></div>
-    <div style="font-size:10px;color:var(--muted)" id="xp-prox">0 XP para o próximo nível</div>
-  </div>
-  <div class="card">
-    <div class="card-title">🎖️ Conquistas</div>
-    <div class="badges-grid" id="badges-grid"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">📈 Hoje</div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-num" id="tarefas-feitas">0</div><div class="stat-lbl">Tarefas feitas</div></div>
-      <div class="stat-box"><div class="stat-num" id="pomodoros-feitos">0</div><div class="stat-lbl">🍅 Pomodoros</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- FECHAR DIA -->
-<div class="page" id="page-reflexao">
-  <div class="reflexao-box">
-    <div class="reflexao-text" id="reflexao-text">Carregando sua reflexão do dia...</div>
-    <button class="reflexao-btn" onclick="carregarReflexao()">🔄 Nova reflexão</button>
-  </div>
-  <div class="card">
-    <div class="card-title">🌙 Ritual de Fechamento</div>
-    <div class="fechamento-item">
-      <div class="fechamento-label">✅ O que foi bom hoje?</div>
-      <textarea class="fechamento-input" id="fech-bom" placeholder="Pelo menos uma coisa..."></textarea>
-    </div>
-    <div class="fechamento-item">
-      <div class="fechamento-label">😤 O que foi difícil?</div>
-      <textarea class="fechamento-input" id="fech-dificil" placeholder="Sem julgamento..."></textarea>
-    </div>
-    <div class="fechamento-item">
-      <div class="fechamento-label">🌅 O que quero amanhã?</div>
-      <textarea class="fechamento-input" id="fech-amanha" placeholder="Uma intenção para amanhã..."></textarea>
-    </div>
-    <button onclick="salvarFechamento()" style="width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer">🌙 Fechar o dia</button>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-// ── DADOS ──
-let dados = JSON.parse(localStorage.getItem('meuapp')||'{"tarefas":[],"remedios":[],"humor":[],"agua":0,"xp":0,"streak":0,"pomodoros":0,"fechamentos":[],"ultimoDia":""}');
+let dados = JSON.parse(localStorage.getItem('meuapp')||'{"tarefas":[],"remedios":[],"humor":[],"agua":0,"pomodoros":0}');
+function salvar(){ localStorage.setItem('meuapp',JSON.stringify(dados)); }
 
 const lembretes = [
   "Você não precisa fazer tudo hoje. Fazer uma coisa bem feita já é suficiente.",
@@ -314,62 +248,6 @@ const lembretes = [
   "Hoje você não precisa ser heroína. Pode só existir."
 ];
 
-const badges = [
-  {id:'primeiro_pom',icon:'🍅',nome:'Primeiro Foco',desc:'Complete 1 Pomodoro'},
-  {id:'cinco_pom',icon:'🔥',nome:'Em Chamas',desc:'5 Pomodoros'},
-  {id:'agua_dia',icon:'💧',nome:'Hidratada',desc:'8 copos de água'},
-  {id:'humor_reg',icon:'😊',nome:'Autoconhecimento',desc:'Registre humor 3x'},
-  {id:'tarefa_u',icon:'⚡',nome:'Urgente Feita',desc:'Conclua tarefa urgente'},
-  {id:'sos_usou',icon:'🧘',nome:'Respirei',desc:'Use o SOS'},
-  {id:'fechou_dia',icon:'🌙',nome:'Dia Fechado',desc:'Faça o ritual'},
-  {id:'streak3',icon:'🏆',nome:'3 Dias Seguidos',desc:'Streak de 3 dias'},
-];
-
-const niveis = [
-  {nome:'Iniciante',xp:0},{nome:'Aprendiz',xp:50},{nome:'Consultora',xp:150},
-  {nome:'Especialista',xp:300},{nome:'Mestre Effect',xp:500},{nome:'Thiara Effect 🌟',xp:800}
-];
-
-function salvar(){ localStorage.setItem('meuapp',JSON.stringify(dados)); }
-
-function ganharXP(qt,msg){
-  dados.xp+=qt; salvar(); atualizarXP();
-  toast(`+${qt} XP — ${msg}`,'success');
-}
-
-function atualizarXP(){
-  document.getElementById('xp-total').textContent=dados.xp;
-  document.getElementById('streak').textContent=dados.streak;
-  document.getElementById('pomodoros-feitos').textContent=dados.pomodoros;
-  document.getElementById('tarefas-feitas').textContent=dados.tarefas.filter(t=>t.done).length;
-  const nivel=niveis.filter(n=>dados.xp>=n.xp).pop();
-  const proximo=niveis.find(n=>n.xp>dados.xp);
-  document.getElementById('nivel-nome').textContent=nivel.nome;
-  if(proximo){
-    const pct=Math.min(((dados.xp-nivel.xp)/(proximo.xp-nivel.xp))*100,100);
-    document.getElementById('xp-bar').style.width=pct+'%';
-    document.getElementById('xp-prox').textContent=`${proximo.xp-dados.xp} XP para "${proximo.nome}"`;
-  } else {
-    document.getElementById('xp-bar').style.width='100%';
-    document.getElementById('xp-prox').textContent='Nível máximo! 🌟';
-  }
-  renderBadges();
-}
-
-function renderBadges(){
-  const unlocked=dados.badges||[];
-  document.getElementById('badges-grid').innerHTML=badges.map(b=>`
-    <div class="badge-item ${unlocked.includes(b.id)?'unlocked':''}" title="${b.desc}">
-      <div class="badge-icon">${b.icon}</div>
-      <div class="badge-name">${b.nome}</div>
-    </div>`).join('');
-}
-
-function desbloquear(id){
-  if(!dados.badges) dados.badges=[];
-  if(!dados.badges.includes(id)){dados.badges.push(id);salvar();renderBadges();}
-}
-
 // ── POMODORO ──
 let pomInterval=null, pomSeg=25*60, pomRodando=false, pomSessoes=0, pomTipo='foco';
 function pomStart(){
@@ -379,18 +257,16 @@ function pomStart(){
   pomInterval=setInterval(()=>{
     pomSeg--;
     const m=Math.floor(pomSeg/60), s=pomSeg%60;
-    document.getElementById('pom-timer').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('pom-timer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
     if(pomSeg<=0){
       clearInterval(pomInterval);pomRodando=false;
       if(pomTipo==='foco'){
-        pomSessoes++;dados.pomodoros++;salvar();
-        ganharXP(10,'Pomodoro concluído! 🍅');
-        desbloquear('primeiro_pom');
-        if(dados.pomodoros>=5)desbloquear('cinco_pom');
+        pomSessoes++;dados.pomodoros=(dados.pomodoros||0)+1;salvar();
         pomTipo='pausa';pomSeg=5*60;
         document.getElementById('pom-label').textContent='☕ Pausa — respire!';
         document.getElementById('pom-timer').textContent='05:00';
         document.getElementById('pom-start').textContent='▶ Iniciar pausa';
+        toast('🍅 Pomodoro concluído!','success');
       } else {
         pomTipo='foco';pomSeg=25*60;
         document.getElementById('pom-label').textContent='Foco total';
@@ -398,15 +274,13 @@ function pomStart(){
         document.getElementById('pom-start').textContent='▶ Iniciar';
       }
       renderSessoes();
-      atualizarXP();
-      if('Notification' in window&&Notification.permission==='granted') new Notification('Effect App',{body:pomTipo==='foco'?'Pausa terminada! Hora de focar.':'Pomodoro concluído! Faça uma pausa.'});
     }
   },1000);
 }
 function pomPause(){clearInterval(pomInterval);pomRodando=false;document.getElementById('pom-start').textContent='▶ Continuar';}
 function pomReset(){clearInterval(pomInterval);pomRodando=false;pomSeg=25*60;pomTipo='foco';document.getElementById('pom-timer').textContent='25:00';document.getElementById('pom-label').textContent='Foco total';document.getElementById('pom-start').textContent='▶ Iniciar';}
 function renderSessoes(){
-  document.getElementById('pom-sessions').innerHTML=Array.from({length:4},(_,i)=>`<div class="pom-dot ${i<pomSessoes?'done':i===pomSessoes?'current':''}"></div>`).join('');
+  document.getElementById('pom-sessions').innerHTML=Array.from({length:4},(_,i)=>`<div class="pom-dot ${i<pomSessoes?'done':i===pomSessoes?'current':''}}"></div>`).join('');
 }
 
 // ── TAREFAS ──
@@ -415,32 +289,32 @@ function addTask(){
   const texto=input.value.trim();if(!texto)return;
   const prio=document.getElementById('task-prio').value;
   dados.tarefas.push({id:Date.now(),texto,prio,done:false});
-  salvar();input.value='';renderTarefas();
+  salvar();input.value='';renderTarefas();mostrarTarefaSOS();
 }
 function toggleTask(id){
-  const t=dados.tarefas.find(t=>t.id===id);
-  if(!t)return;
-  t.done=!t.done;
-  if(t.done){ganharXP(t.prio==='u'?20:t.prio==='i'?10:5,'Tarefa concluída!');if(t.prio==='u')desbloquear('tarefa_u');}
-  salvar();renderTarefas();atualizarXP();
+  const t=dados.tarefas.find(t=>t.id===id);if(!t)return;
+  t.done=!t.done;salvar();renderTarefas();mostrarTarefaSOS();
+  if(t.done)toast('✅ Concluída!','success');
 }
-function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();}
+function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();mostrarTarefaSOS();}
 function renderTarefas(){
   const prioLabel={u:'🔴',i:'🟡',n:'⚪'};
   const sorted=[...dados.tarefas].sort((a,b)=>{const o={u:0,i:1,n:2};return o[a.prio]-o[b.prio];});
   document.getElementById('task-list').innerHTML=sorted.length?sorted.map(t=>`
-    <div class="task-item ${t.done?'done':''}">
+    <div class="task-item ${t.done?'done':''}}">
       <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <span class="task-text ${t.done?'done':''}">${prioLabel[t.prio]} ${t.texto}</span>
       <button class="task-del" onclick="delTask(${t.id})">×</button>
-    </div>`).join(''):'<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Nenhuma tarefa. Adicione acima! ✨</div>';
+    </div>`).join('')+'<div style="margin-top:10px;text-align:center"><button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button></div>'
+    :'<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Nenhuma tarefa. Adicione acima! ✨</div>';
 }
+function limparConcluidas(){dados.tarefas=dados.tarefas.filter(t=>!t.done);salvar();renderTarefas();}
 function sugerirTarefa(){
   const urgentes=dados.tarefas.filter(t=>!t.done&&t.prio==='u');
   const importantes=dados.tarefas.filter(t=>!t.done&&t.prio==='i');
   const todas=dados.tarefas.filter(t=>!t.done);
-  const sug=urgentes[0]||importantes[0]||todos[0]||null;
-  document.getElementById('sugestao-tarefa').textContent=sug?`👉 ${sug.texto}`:'🎉 Todas as tarefas concluídas!';
+  const sug=urgentes[0]||importantes[0]||todas[0]||null;
+  document.getElementById('sugestao-tarefa').textContent=sug?'👉 '+sug.texto:'🎉 Todas as tarefas concluídas!';
 }
 
 // ── REMÉDIOS ──
@@ -453,14 +327,15 @@ function addRem(){
 }
 function toggleRem(id){
   const r=dados.remedios.find(r=>r.id===id);if(!r)return;
-  r.tomado=!r.tomado;if(r.tomado)ganharXP(5,'Remédio tomado 💊');
-  salvar();renderRem();
+  r.tomado=!r.tomado;salvar();renderRem();
+  if(r.tomado)toast('💊 Remédio registrado!','success');
 }
 function renderRem(){
   document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`
     <div class="rem-item">
       <div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div>
       <div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div>
+      <button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button>
     </div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';
 }
 
@@ -472,11 +347,10 @@ function renderAgua(){
       <div class="copo-fill"></div>
     </div>`).join('');
   document.getElementById('agua-label').textContent=`${dados.agua} de 8 copos`;
-  if(dados.agua>=8)desbloquear('agua_dia');
 }
 function toggleCopo(i){
   dados.agua=i<dados.agua?i:i+1;
-  if(dados.agua===8)ganharXP(10,'Meta de água atingida! 💧');
+  if(dados.agua===8)toast('💧 Meta de água atingida!','success');
   salvar();renderAgua();
 }
 
@@ -492,10 +366,7 @@ function salvarHumor(){
   const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   if(!dados.humor)dados.humor=[];
   dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});
-  const contagemHumor=dados.humor.length;
-  if(contagemHumor>=3)desbloquear('humor_reg');
-  ganharXP(5,'Humor registrado!');salvar();
-  document.getElementById('humor-obs').value='';
+  salvar();document.getElementById('humor-obs').value='';
   renderHumorHist();toast('😊 Humor registrado!','success');
 }
 function renderHumorHist(){
@@ -512,8 +383,15 @@ function renderHumorHist(){
 
 // ── SOS ──
 let sosInterval=null;
+function mostrarTarefaSOS(){
+  const urgentes=dados.tarefas.filter(t=>!t.done&&t.prio==='u');
+  const importantes=dados.tarefas.filter(t=>!t.done&&t.prio==='i');
+  const tarefa=urgentes[0]||importantes[0]||null;
+  const card=document.getElementById('sos-tarefa-card');
+  if(tarefa){card.style.display='block';document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto;}
+  else{card.style.display='none';}
+}
 function iniciarSOS(){
-  desbloquear('sos_usou');ganharXP(5,'SOS usado 🧘');
   document.getElementById('sos-anim').style.display='block';
   const fases=[
     {texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},
@@ -527,8 +405,7 @@ function iniciarSOS(){
     document.getElementById('sos-text').textContent=f.texto;
     document.getElementById('sos-sub').textContent=f.sub;
     circle.style.animation=f.anim;
-    fase++;
-    sosInterval=setTimeout(proxFase,f.dur);
+    fase++;sosInterval=setTimeout(proxFase,f.dur);
   }
   proxFase();
 }
@@ -538,47 +415,10 @@ function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim'
 function toggleChip(el){el.classList.toggle('on');}
 function salvarEx(){
   const selecionados=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);
-  if(!selecionados.length){toast('Selecione pelo menos um exercício','error');return}
-  ganharXP(15,'Exercício registrado! 🏃');toast('🏃 Exercício salvo!','success');
+  if(!selecionados.length){toast('Selecione pelo menos um','error');return}
+  toast('🏃 Exercício salvo!','success');
   document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));
   document.getElementById('ex-obs').value='';
-}
-
-// ── REFLEXÃO ──
-const reflexoes = [
-  "Thiara, você está construindo algo que antes não existia — uma empresa, uma automação, uma presença. Isso é raro. Não subestime o que já fez.",
-  "Mãe de Henrique e Maria, psicóloga, empreendedora, e ainda encontra tempo para crescer. Você é mais do que suficiente.",
-  "TDAH não é um defeito de fábrica. É um sistema operacional diferente em um mundo feito para outro padrão. Você aprendeu a adaptar. Isso é força.",
-  "Altas habilidades significam que você sente tudo mais intensamente — inclusive os dias difíceis. E você segue em frente. Todo dia.",
-  "A Effect existe porque você existiu primeiro. Cuide da fonte.",
-  "Você não precisa provar nada para ninguém hoje. Só existir já é suficiente.",
-  "Henrique e Maria te veem como referência. Não porque você é perfeita — mas porque você não desiste.",
-];
-function carregarReflexao(){
-  const r=reflexoes[Math.floor(Math.random()*reflexoes.length)];
-  document.getElementById('reflexao-text').textContent='"'+r+'"';
-}
-
-// ── FECHAMENTO ──
-function salvarFechamento(){
-  const bom=document.getElementById('fech-bom').value.trim();
-  if(!bom){toast('Escreva pelo menos o que foi bom hoje','error');return}
-  const f={data:new Date().toLocaleDateString('pt-BR'),bom,dificil:document.getElementById('fech-dificil').value,amanha:document.getElementById('fech-amanha').value};
-  if(!dados.fechamentos)dados.fechamentos=[];
-  dados.fechamentos.push(f);
-  desbloquear('fechou_dia');
-  ganharXP(20,'Dia fechado com intenção! 🌙');
-  // Verificar streak
-  const hoje=new Date().toDateString();
-  if(dados.ultimoDia!==hoje){
-    const ontem=new Date(Date.now()-86400000).toDateString();
-    dados.streak=dados.ultimoDia===ontem?dados.streak+1:1;
-    dados.ultimoDia=hoje;
-    if(dados.streak>=3)desbloquear('streak3');
-  }
-  salvar();atualizarXP();
-  document.getElementById('fech-bom').value='';document.getElementById('fech-dificil').value='';document.getElementById('fech-amanha').value='';
-  toast('🌙 Boa noite! Dia fechado com sucesso.','success');
 }
 
 // ── UTILS ──
@@ -587,14 +427,14 @@ function irAba(aba,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+aba).classList.add('active');
   el.classList.add('active');
+  if(aba==='sos')mostrarTarefaSOS();
 }
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 // ── INIT ──
 document.getElementById('hdate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-document.getElementById('lembrete-gentil').textContent='"'+lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas();renderRem();renderAgua();renderSessoes();renderHumorHist();atualizarXP();carregarReflexao();
-if('Notification' in window)Notification.requestPermission();
+document.getElementById('lembrete-gentil').textContent='"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
+renderTarefas();renderRem();renderAgua();renderSessoes();renderHumorHist();sugerirTarefa();
 </script>
 </body>
 </html>
