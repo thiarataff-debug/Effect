@@ -535,9 +535,9 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <button class="hmais-btn" onclick="fazerBackupManual();fecharHmais()">💾 Backup</button>
         <button class="hmais-btn" style="color:#1fa5f0" onclick="abrirReengajamento();fecharHmais()">📢 Reengajamento</button>
         <hr style="border:none;border-top:1px solid #f1f5f9;margin:4px 0">
-        <a class="hmais-btn" style="color:#0d9488;text-decoration:none" href="/dashboard" target="_blank" onclick="fecharHmais()">📊 Dashboard</a>
-        <a class="hmais-btn" style="color:#6366f1;text-decoration:none" href="/sheets" target="_blank" onclick="fecharHmais()">📑 ATS Viewer</a>
-        <a class="hmais-btn" style="color:#b45309;text-decoration:none" href="/financeiro" target="_blank" onclick="fecharHmais()">💰 Financeiro</a>
+        <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
+        <button class="hmais-btn" style="color:#6366f1" onclick="mostrarView('ats');fecharHmais()">📑 ATS Viewer</button>
+        <button class="hmais-btn" style="color:#b45309" onclick="mostrarView('financeiro');fecharHmais()">💰 Financeiro</button>
       </div>
     </div>
   </div>
@@ -1013,6 +1013,17 @@ font-family:'Montserrat',sans-serif
       <button class="modal-btn modal-confirm" onclick="salvarObsRapida()">Salvar observação</button>
     </div>
   </div>
+</div>
+
+<!-- VIEWS: IFRAME (Dashboard / ATS / Financeiro) -->
+<div id="view-dashboard" style="display:none;flex:1;flex-direction:column">
+  <iframe src="/dashboard" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
+</div>
+<div id="view-ats" style="display:none;flex:1;flex-direction:column">
+  <iframe src="/sheets" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
+</div>
+<div id="view-financeiro" style="display:none;flex:1;flex-direction:column">
+  <iframe src="/financeiro" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
 </div>
 
 <!-- VIEW: AGENDA (CALENDÁRIO) -->
@@ -4469,6 +4480,11 @@ function renderPainelSaude(){
     const navSaude=document.getElementById('nav-saude');
     if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
     if(v==='saude')renderPainelSaude();
+    // iframe views
+    ['dashboard','ats','financeiro'].forEach(id=>{
+      const el=document.getElementById('view-'+id);
+      if(el) el.style.display=v===id?'flex':'none';
+    });
   };
 })();
 
