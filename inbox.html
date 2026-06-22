@@ -4473,8 +4473,7 @@ function renderPainelSaude(){
   window.abrirConversa=function(tel){
     _orig(tel);
     const s=todasSessoes[tel];
-    // Atualiza pipeline com status atual do candidato
-    setTimeout(()=>atualizarPipelineAtivo(s?.status||s?.statusPipeline||''),50);
+    // Pipeline já é atualizado pelo abrirConversa original via statusMap[tel]
     const isManual=s&&(s.modo==='manual'||s.pausado===true);
     if(isManual){
       setTimeout(()=>mostrarResumoCandidato(s,tel),100);
