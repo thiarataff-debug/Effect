@@ -1921,6 +1921,21 @@ app.post("/cliente/disponibilidade", async (req, res) => {
 // ROTA — TRANSIÇÃO LIA → LAURA
 // ============================================================
 
+app.post("/inbox/transicao-lia", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone);
+    if (!telefone) return res.json({ ok: false });
+    const msg = "Olá! 😊 Lia está de volta para continuar te acompanhando. Pode falar! 💙";
+    await enviarMensagem(telefone, msg);
+    const sessao = garantirSessao(telefone);
+    registrarEntradaSessao(sessao, "assistant", msg);
+    marcarConversaRespondida(sessao);
+    sessao.historico = sessao.historico.slice(-500);
+    await salvarMensagemSheets(telefone, "assistant", msg, sessao.nome || "");
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
 app.post("/inbox/transicao", async (req, res) => {
   try {
     const telefone = limparTelefone(req.body.telefone);
