@@ -1164,36 +1164,26 @@ const STATUS_LIST = [
 ];
 
 const STATUS_ATALHOS = [
-  {
-    id: 'novo',
-    label: '🔵 Novo',
-    status: 'Novo',
-    msg: ``
-  },
-  {
-    id: 'em_atendimento',
-    label: '🟢 Em atendimento',
-    status: 'Em atendimento',
-    msg: ``
-  },
-  {
-    id: 'aguard_candidato',
-    label: '🟡 Aguardando candidato',
-    status: 'Aguardando candidato',
-    msg: `Perfeito! Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.`
-  },
-  {
-    id: 'aguard_recrutador',
-    label: '🟠 Aguardando recrutador',
-    status: 'Aguardando recrutador',
-    msg: ``
-  },
-  {
-    id: 'finalizado',
-    label: '⚫ Finalizado',
-    status: 'Finalizado',
-    msg: `Obrigado pelo seu contato! Seu processo foi finalizado. Qualquer dúvida, estamos à disposição.`
-  }
+  // ── Status conversacional ──
+  { id: 'novo', label: '🔵 Novo', status: 'Novo', msg: `` },
+  { id: 'em_atendimento', label: '🟢 Em atendimento', status: 'Em atendimento', msg: `` },
+  { id: 'aguard_candidato', label: '🟡 Aguardando candidato', status: 'Aguardando candidato', msg: `Perfeito! Ficaremos aguardando seu retorno para prosseguir com as próximas etapas do processo.` },
+  { id: 'aguard_recrutador', label: '🟠 Aguardando recrutador', status: 'Aguardando recrutador', msg: `` },
+  { id: 'finalizado', label: '⚫ Finalizado', status: 'Finalizado', msg: `Obrigado pelo seu contato! Seu processo foi finalizado. Qualquer dúvida, estamos à disposição.` },
+  // ── Etapas do pipeline ──
+  { id: '_sep_pipeline', separador: true, label: 'Pipeline' },
+  { id: 'triado', label: '📋 Triado', status: 'Triado', tipo: 'pipeline', msg: `` },
+  { id: 'em_vaga', label: '📌 Em Vaga', status: 'Em Vaga', tipo: 'pipeline', msg: `` },
+  { id: 'entrev_ag', label: '🗓️ Entrevista Agendada', status: 'Entrevista Agendada', tipo: 'pipeline', msg: `` },
+  { id: 'aprov_1', label: '✅ Aprovado 1ª Etapa', status: 'Aprovado 1ª Etapa', tipo: 'pipeline', msg: `` },
+  { id: 'entr_gestor', label: '🤝 Entrevista Gestor', status: 'Entrevista Gestor Agendada', tipo: 'pipeline', msg: `` },
+  { id: 'em_teste', label: '🧪 Em Teste', status: 'Em Teste', tipo: 'pipeline', msg: `` },
+  { id: 'aprov_gestor', label: '✅ Aprovado Gestor', status: 'Aprovado Gestor', tipo: 'pipeline', msg: `` },
+  { id: 'em_admissao', label: '📝 Em Admissão', status: 'Em Admissão', tipo: 'pipeline', msg: `` },
+  { id: 'rep_triagem', label: '❌ Rep. Triagem', status: 'Reprovado Triagem', tipo: 'pipeline', msg: `` },
+  { id: 'rep_1', label: '❌ Rep. 1ª Etapa', status: 'Reprovado 1ª Etapa', tipo: 'pipeline', msg: `` },
+  { id: 'rep_gestor', label: '❌ Rep. Gestor', status: 'Reprovado Gestor', tipo: 'pipeline', msg: `` },
+  { id: 'banco', label: '📦 Banco de Talentos', status: 'Banco de Talentos', tipo: 'pipeline', msg: `` },
 ];
 
 let sessaoAtual = null;
@@ -3237,11 +3227,12 @@ function resolverAguardando(tel){
 function abrirModalStatus(){
   if(!sessaoAtual){toast('Selecione uma conversa','error');return;}
   const grid=document.getElementById('status-grid');
-  grid.innerHTML=STATUS_ATALHOS.map((a,i)=>`<div class="corrigir-option" onclick="aplicarStatusRapido(${i})">${a.label}</div>`).join('');
+  grid.innerHTML=STATUS_ATALHOS.map((a,i)=>a.separador?`<div style="font-size:9px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:.5px;padding:8px 4px 2px;width:100%">${a.label}</div>`:`<div class="corrigir-option" onclick="aplicarStatusRapido(${i})">${a.label}</div>`).join('');
   document.getElementById('modal-status-rapido').classList.add('show');
 }
 async function aplicarStatusRapido(idx){
-  const a=STATUS_ATALHOS[idx];if(!a||!sessaoAtual)return;
+  const a=STATUS_ATALHOS[idx];if(!a||!sessaoAtual||a.separador)return;
+  if(a.tipo==='pipeline'){fecharModal('modal-status-rapido');definirStatusPipeline(a.status);return;}
   statusMap[sessaoAtual]=a.status;
   registrarIntervencao('Thiara','Status atualizado',a.status);
   salvarLocal();renderLista();renderPainelDireito();fecharModal('modal-status-rapido');
