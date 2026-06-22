@@ -7,7 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb;--purple:#8b5cf6}
+:root{
+  --navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;
+  --green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;
+  --text:#2a2a2b;--border:#e5e7eb;--purple:#8b5cf6
+}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:10px}
 .hlogo{font-weight:800;font-size:15px;flex-shrink:0}.hlogo span{color:var(--green)}
@@ -21,62 +25,67 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .page.active{display:block}
 .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
 .card-title{font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:7px}
-/* FOCO */
-.pomodoro{text-align:center;padding:20px 0}
-.pom-timer{font-size:56px;font-weight:800;color:var(--navy);line-height:1;margin-bottom:8px}
-.pom-label{font-size:12px;color:var(--muted);margin-bottom:20px}
-.pom-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.pbtn{padding:10px 20px;border-radius:9px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
-.pbtn.start{background:var(--green);color:var(--navy)}
-.pbtn.pause{background:#fef9c3;color:#a16207}
-.pbtn.reset{background:#f3f4f6;color:var(--muted)}
-.pom-sessions{display:flex;gap:5px;justify-content:center;margin-top:14px}
-.pom-dot{width:10px;height:10px;border-radius:50%;background:#f3f4f6}
-.pom-dot.done{background:var(--green)}
-.pom-dot.current{background:var(--blue)}
-/* TAREFAS */
-.task-input-wrap{display:flex;gap:8px;margin-bottom:12px}
-.task-input{flex:1;padding:9px 12px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none}
+
+/* ── EISENHOWER MATRIX ── */
+.matrix-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.quadrant{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:4px solid var(--border)}
+.quadrant.q1{border-top-color:#ef4444}
+.quadrant.q2{border-top-color:#22c55e}
+.quadrant.q3{border-top-color:#f59e0b}
+.quadrant.q4{border-top-color:#a1a1aa}
+.q-badges{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}
+.q-badge{font-size:8px;font-weight:800;padding:2px 6px;border-radius:20px;white-space:nowrap}
+.q-title{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.q-input-wrap{display:flex;gap:5px;margin-bottom:8px}
+.q-input{flex:1;min-width:0;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.q-input:focus{border-color:var(--blue)}
+.q-add-btn{padding:6px 10px;color:#fff;border:none;border-radius:7px;font-weight:800;font-size:14px;cursor:pointer;flex-shrink:0;line-height:1}
+.q-task{display:flex;align-items:flex-start;gap:6px;padding:5px 6px;background:#f8fafc;border-radius:7px;margin-bottom:4px}
+.q-task.done{opacity:.5}
+.q-check{width:16px;height:16px;border-radius:3px;border:2px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .15s;margin-top:1px}
+.q-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
+.q-text{flex:1;font-size:11px;word-break:break-word;line-height:1.35}
+.q-text.done{text-decoration:line-through;color:var(--muted)}
+.q-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;flex-shrink:0;line-height:1}
+.q-del:hover{color:var(--pink)}
+
+/* ── REMÉDIOS ── */
+.task-input{padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none}
 .task-input:focus{border-color:var(--blue)}
-.task-add-btn{padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
-.task-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;transition:all .15s}
-.task-item.done{opacity:.5}
-.task-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.task-check.checked{background:var(--green);border-color:var(--green);color:var(--navy);font-size:12px}
-.task-text{flex:1;font-size:13px}
-.task-text.done{text-decoration:line-through;color:var(--muted)}
-.task-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px}
-.task-del:hover{color:var(--pink)}
-.prio-sel{padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex-shrink:0}
-/* HUMOR */
-.humor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
-.humor-btn{padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;text-align:center;font-size:20px;transition:all .15s}
-.humor-btn.selected{border-color:var(--blue);background:#eff6ff;transform:scale(1.08)}
-.humor-label{font-size:9px;font-weight:700;color:var(--muted);margin-top:3px}
-.energia-bar{width:100%;height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin:8px 0}
-.energia-fill{height:100%;border-radius:6px;background:var(--green);transition:width .3s}
-/* ÁGUA */
-.agua-copos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.copo{width:36px;height:44px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:flex-end;overflow:hidden;transition:all .15s}
-.copo.cheio{border-color:#60a5fa}
-.copo-fill{width:100%;border-radius:4px;background:#93c5fd;transition:height .3s}
-.copo:not(.cheio) .copo-fill{height:0}
-.copo.cheio .copo-fill{height:100%}
-/* REMÉDIOS */
+.task-add-btn{padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
 .rem-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px}
 .rem-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .rem-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
 .rem-info{flex:1}
 .rem-nome{font-weight:700;font-size:12px}
 .rem-hora{font-size:10px;color:var(--muted)}
-/* SOS */
+
+/* ── ÁGUA (4 GARRAFAS) ── */
+.agua-garrafas{display:flex;gap:16px;justify-content:center;margin-bottom:10px}
+.garrafa{width:52px;height:78px;border-radius:8px 8px 10px 10px;border:2.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-end;overflow:hidden;transition:all .2s}
+.garrafa.cheia{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.18)}
+.garrafa-fill{width:100%;background:linear-gradient(180deg,#93c5fd,#3b82f6);transition:height .35s}
+.garrafa:not(.cheia) .garrafa-fill{height:0}
+.garrafa.cheia .garrafa-fill{height:100%}
+
+/* ── HUMOR ── */
+.humor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+.humor-btn{padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;text-align:center;font-size:20px;transition:all .15s}
+.humor-btn.selected{border-color:var(--blue);background:#eff6ff;transform:scale(1.08)}
+.humor-label{font-size:9px;font-weight:700;color:var(--muted);margin-top:3px}
+.energia-bar{width:100%;height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin:8px 0}
+.energia-fill{height:100%;border-radius:6px;background:var(--green);transition:width .3s}
+
+/* ── SOS ── */
 .sos-btn{width:100%;padding:16px;background:linear-gradient(135deg,#fde8e4,#fef3f2);border:2px solid var(--pink);border-radius:12px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;color:#b04a38;cursor:pointer;margin-bottom:12px}
 .sos-anim{display:none;text-align:center;padding:20px}
-.sos-circle{width:100px;height:100px;border-radius:50%;background:var(--blue);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;animation:none}
+.sos-circle{width:100px;height:100px;border-radius:50%;background:var(--blue);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px}
 .sos-text{font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px}
 .sos-sub{font-size:12px;color:var(--muted)}
 @keyframes inhale{0%{transform:scale(1);background:var(--blue)}100%{transform:scale(1.5);background:var(--green)}}
 @keyframes exhale{0%{transform:scale(1.5);background:var(--green)}100%{transform:scale(1);background:var(--blue)}}
+
+/* ── MISC ── */
 .chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
 .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(10px);background:#2a2a2b;color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
@@ -85,6 +94,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </style>
 </head>
 <body>
+
 <header>
   <div class="hlogo">🧠 <span>Meu</span> App</div>
   <a href="/inbox" class="hback">← Lia</a>
@@ -92,49 +102,86 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </header>
 
 <div class="tabs-bar">
-  <button class="tab active" onclick="irAba('foco',this)">🍅 Foco</button>
-  <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
+  <button class="tab active" onclick="irAba('tarefas',this)">✅ Tarefas</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
 </div>
 
-<!-- FOCO -->
-<div class="page active" id="page-foco">
-  <div class="card">
-    <div class="card-title">🍅 Pomodoro</div>
-    <div class="pomodoro">
-      <div class="pom-timer" id="pom-timer">25:00</div>
-      <div class="pom-label" id="pom-label">Foco total</div>
-      <div class="pom-btns">
-        <button class="pbtn start" id="pom-start" onclick="pomStart()">▶ Iniciar</button>
-        <button class="pbtn pause" onclick="pomPause()">⏸ Pausar</button>
-        <button class="pbtn reset" onclick="pomReset()">↺ Reset</button>
-      </div>
-      <div class="pom-sessions" id="pom-sessions"></div>
+<!-- TAREFAS — MATRIZ DE EISENHOWER -->
+<div class="page active" id="page-tarefas">
+  <div class="card" style="background:linear-gradient(135deg,#eff6ff,#f8faff);border:1px solid #bfdbfe">
+    <div class="card-title" style="color:#1d4ed8;margin-bottom:8px">🧭 Como classificar suas tarefas?</div>
+    <div style="font-size:11px;line-height:1.9;color:var(--text)">
+      <strong style="color:#ef4444">🔴 Urgente + Importante</strong> — Prazo real hoje ou amanhã. Consequência séria se não fizer.<br>
+      <strong style="color:#22c55e">🟢 Importante, não urgente</strong> — Estratégico, faz crescer o negócio. Sem prazo imediato.<br>
+      <strong style="color:#f59e0b">🟡 Urgente, não importante</strong> — Alguém esperando, mas outra pessoa poderia resolver.<br>
+      <strong style="color:#a1a1aa">⚪ Nem urgente, nem importante</strong> — Distração. Elimine ou adie sem culpa.
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">⚡ O que fazer agora?</div>
-    <div id="sugestao-tarefa" style="font-size:13px;color:var(--muted);margin-bottom:10px">Nenhuma tarefa urgente cadastrada.</div>
-    <button onclick="sugerirTarefa()" style="padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">🎲 Sugerir tarefa</button>
-  </div>
-</div>
 
-<!-- TAREFAS -->
-<div class="page" id="page-tarefas">
-  <div class="card">
-    <div class="card-title">✅ Tarefas do Dia</div>
-    <div class="task-input-wrap">
-      <input class="task-input" id="task-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addTask()">
-      <select id="task-prio" class="prio-sel">
-        <option value="u">🔴 Urgente</option>
-        <option value="i" selected>🟡 Importante</option>
-        <option value="n">⚪ Normal</option>
-      </select>
-      <button class="task-add-btn" onclick="addTask()">+</button>
+  <div class="matrix-grid">
+
+    <!-- Q1: URGENTE + IMPORTANTE -->
+    <div class="quadrant q1">
+      <div class="q-badges">
+        <span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span>
+        <span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span>
+      </div>
+      <div class="q-title">🔴 Fazer AGORA</div>
+      <div class="q-input-wrap">
+        <input class="q-input" id="q1-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q1')">
+        <button class="q-add-btn" onclick="addQ('q1')" style="background:#ef4444">+</button>
+      </div>
+      <div id="q1-list"></div>
     </div>
-    <div id="task-list"></div>
+
+    <!-- Q2: NÃO URGENTE + IMPORTANTE -->
+    <div class="quadrant q2">
+      <div class="q-badges">
+        <span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span>
+        <span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span>
+      </div>
+      <div class="q-title">🟢 Agendar</div>
+      <div class="q-input-wrap">
+        <input class="q-input" id="q2-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q2')">
+        <button class="q-add-btn" onclick="addQ('q2')" style="background:#22c55e">+</button>
+      </div>
+      <div id="q2-list"></div>
+    </div>
+
+    <!-- Q3: URGENTE + NÃO IMPORTANTE -->
+    <div class="quadrant q3">
+      <div class="q-badges">
+        <span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span>
+        <span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span>
+      </div>
+      <div class="q-title">🟡 Delegar</div>
+      <div class="q-input-wrap">
+        <input class="q-input" id="q3-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q3')">
+        <button class="q-add-btn" onclick="addQ('q3')" style="background:#f59e0b">+</button>
+      </div>
+      <div id="q3-list"></div>
+    </div>
+
+    <!-- Q4: NÃO URGENTE + NÃO IMPORTANTE -->
+    <div class="quadrant q4">
+      <div class="q-badges">
+        <span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span>
+        <span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span>
+      </div>
+      <div class="q-title">⚪ Eliminar</div>
+      <div class="q-input-wrap">
+        <input class="q-input" id="q4-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q4')">
+        <button class="q-add-btn" onclick="addQ('q4')" style="background:#a1a1aa">+</button>
+      </div>
+      <div id="q4-list"></div>
+    </div>
+
+  </div>
+
+  <div style="text-align:center;padding-bottom:8px">
+    <button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button>
   </div>
 </div>
 
@@ -144,16 +191,16 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <div class="card-title">💊 Remédios</div>
     <div id="rem-list"></div>
     <div style="display:flex;gap:7px;margin-top:8px">
-      <input id="rem-nome-input" class="task-input" placeholder="Nome do remédio" style="flex:1">
+      <input id="rem-nome-input" class="task-input" placeholder="Nome do remédio" style="flex:1;width:auto">
       <input id="rem-hora-input" type="time" class="task-input" style="width:100px">
       <button class="task-add-btn" onclick="addRem()">+</button>
     </div>
   </div>
   <div class="card">
     <div class="card-title">💧 Água</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 8 copos. Clique para marcar.</div>
-    <div class="agua-copos" id="agua-copos"></div>
-    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 de 8 copos</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Meta: 4 garrafas (≈ 2 litros). Clique para marcar.</div>
+    <div class="agua-garrafas" id="agua-garrafas"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--blue);text-align:center;margin-top:4px" id="agua-label">0 de 4 garrafas</div>
   </div>
   <div class="card">
     <div class="card-title">🏃 Exercício</div>
@@ -232,8 +279,13 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <div class="toast" id="toast"></div>
 
 <script>
-let dados = JSON.parse(localStorage.getItem('meuapp')||'{"tarefas":[],"remedios":[],"humor":[],"agua":0,"pomodoros":0}');
-function salvar(){ localStorage.setItem('meuapp',JSON.stringify(dados)); }
+// ── DADOS ─────────────────────────────────────────────────────────────────────
+let dados = JSON.parse(localStorage.getItem('meuapp') || '{}');
+if (!dados.matrix)   dados.matrix   = {q1:[],q2:[],q3:[],q4:[]};
+if (!dados.remedios) dados.remedios = [];
+if (!dados.humor)    dados.humor    = [];
+if (dados.agua === undefined) dados.agua = 0;
+function salvar() { localStorage.setItem('meuapp', JSON.stringify(dados)); }
 
 const lembretes = [
   "Você não precisa fazer tudo hoje. Fazer uma coisa bem feita já é suficiente.",
@@ -248,193 +300,195 @@ const lembretes = [
   "Hoje você não precisa ser heroína. Pode só existir."
 ];
 
-// ── POMODORO ──
-let pomInterval=null, pomSeg=25*60, pomRodando=false, pomSessoes=0, pomTipo='foco';
-function pomStart(){
-  if(pomRodando)return;
-  pomRodando=true;
-  document.getElementById('pom-start').textContent='▶ Rodando';
-  pomInterval=setInterval(()=>{
-    pomSeg--;
-    const m=Math.floor(pomSeg/60), s=pomSeg%60;
-    document.getElementById('pom-timer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-    if(pomSeg<=0){
-      clearInterval(pomInterval);pomRodando=false;
-      if(pomTipo==='foco'){
-        pomSessoes++;dados.pomodoros=(dados.pomodoros||0)+1;salvar();
-        pomTipo='pausa';pomSeg=5*60;
-        document.getElementById('pom-label').textContent='☕ Pausa — respire!';
-        document.getElementById('pom-timer').textContent='05:00';
-        document.getElementById('pom-start').textContent='▶ Iniciar pausa';
-        toast('🍅 Pomodoro concluído!','success');
-      } else {
-        pomTipo='foco';pomSeg=25*60;
-        document.getElementById('pom-label').textContent='Foco total';
-        document.getElementById('pom-timer').textContent='25:00';
-        document.getElementById('pom-start').textContent='▶ Iniciar';
-      }
-      renderSessoes();
-    }
-  },1000);
-}
-function pomPause(){clearInterval(pomInterval);pomRodando=false;document.getElementById('pom-start').textContent='▶ Continuar';}
-function pomReset(){clearInterval(pomInterval);pomRodando=false;pomSeg=25*60;pomTipo='foco';document.getElementById('pom-timer').textContent='25:00';document.getElementById('pom-label').textContent='Foco total';document.getElementById('pom-start').textContent='▶ Iniciar';}
-function renderSessoes(){
-  document.getElementById('pom-sessions').innerHTML=Array.from({length:4},(_,i)=>`<div class="pom-dot ${i<pomSessoes?'done':i===pomSessoes?'current':''}}"></div>`).join('');
+// ── EISENHOWER MATRIX ─────────────────────────────────────────────────────────
+function addQ(q) {
+  const input = document.getElementById(q + '-input');
+  const texto = input.value.trim();
+  if (!texto) return;
+  dados.matrix[q].push({id: Date.now(), texto, done: false});
+  salvar(); input.value = ''; renderMatrix(); mostrarTarefaSOS();
 }
 
-// ── TAREFAS ──
-function addTask(){
-  const input=document.getElementById('task-input');
-  const texto=input.value.trim();if(!texto)return;
-  const prio=document.getElementById('task-prio').value;
-  dados.tarefas.push({id:Date.now(),texto,prio,done:false});
-  salvar();input.value='';renderTarefas();mostrarTarefaSOS();
-}
-function toggleTask(id){
-  const t=dados.tarefas.find(t=>t.id===id);if(!t)return;
-  t.done=!t.done;salvar();renderTarefas();mostrarTarefaSOS();
-  if(t.done)toast('✅ Concluída!','success');
-}
-function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();mostrarTarefaSOS();}
-function renderTarefas(){
-  const prioLabel={u:'🔴',i:'🟡',n:'⚪'};
-  const sorted=[...dados.tarefas].sort((a,b)=>{const o={u:0,i:1,n:2};return o[a.prio]-o[b.prio];});
-  document.getElementById('task-list').innerHTML=sorted.length?sorted.map(t=>`
-    <div class="task-item ${t.done?'done':''}}">
-      <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
-      <span class="task-text ${t.done?'done':''}">${prioLabel[t.prio]} ${t.texto}</span>
-      <button class="task-del" onclick="delTask(${t.id})">×</button>
-    </div>`).join('')+'<div style="margin-top:10px;text-align:center"><button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button></div>'
-    :'<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Nenhuma tarefa. Adicione acima! ✨</div>';
-}
-function limparConcluidas(){dados.tarefas=dados.tarefas.filter(t=>!t.done);salvar();renderTarefas();}
-function sugerirTarefa(){
-  const urgentes=dados.tarefas.filter(t=>!t.done&&t.prio==='u');
-  const importantes=dados.tarefas.filter(t=>!t.done&&t.prio==='i');
-  const todas=dados.tarefas.filter(t=>!t.done);
-  const sug=urgentes[0]||importantes[0]||todas[0]||null;
-  document.getElementById('sugestao-tarefa').textContent=sug?'👉 '+sug.texto:'🎉 Todas as tarefas concluídas!';
+function toggleQ(q, id) {
+  const t = dados.matrix[q].find(t => t.id === id);
+  if (!t) return;
+  t.done = !t.done; salvar(); renderMatrix(); mostrarTarefaSOS();
+  if (t.done) toast('✅ Concluída!', 'success');
 }
 
-// ── REMÉDIOS ──
-function addRem(){
-  const nome=document.getElementById('rem-nome-input').value.trim();
-  const hora=document.getElementById('rem-hora-input').value;
-  if(!nome)return;
-  dados.remedios.push({id:Date.now(),nome,hora,tomado:false});
-  salvar();document.getElementById('rem-nome-input').value='';renderRem();
-}
-function toggleRem(id){
-  const r=dados.remedios.find(r=>r.id===id);if(!r)return;
-  r.tomado=!r.tomado;salvar();renderRem();
-  if(r.tomado)toast('💊 Remédio registrado!','success');
-}
-function renderRem(){
-  document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`
-    <div class="rem-item">
-      <div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div>
-      <div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div>
-      <button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button>
-    </div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';
+function delQ(q, id) {
+  dados.matrix[q] = dados.matrix[q].filter(t => t.id !== id);
+  salvar(); renderMatrix(); mostrarTarefaSOS();
 }
 
-// ── ÁGUA ──
-function renderAgua(){
-  const copos=document.getElementById('agua-copos');
-  copos.innerHTML=Array.from({length:8},(_,i)=>`
-    <div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})">
-      <div class="copo-fill"></div>
+function renderMatrix() {
+  ['q1','q2','q3','q4'].forEach(q => {
+    const el = document.getElementById(q + '-list');
+    const tasks = dados.matrix[q] || [];
+    el.innerHTML = tasks.length
+      ? tasks.map(t => `
+          <div class="q-task ${t.done ? 'done' : ''}">
+            <div class="q-check ${t.done ? 'checked' : ''}" onclick="toggleQ('${q}',${t.id})">${t.done ? '✓' : ''}</div>
+            <span class="q-text ${t.done ? 'done' : ''}">${t.texto}</span>
+            <button class="q-del" onclick="delQ('${q}',${t.id})">×</button>
+          </div>`).join('')
+      : '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">Vazio</div>';
+  });
+}
+
+function limparConcluidas() {
+  ['q1','q2','q3','q4'].forEach(q => {
+    dados.matrix[q] = dados.matrix[q].filter(t => !t.done);
+  });
+  salvar(); renderMatrix();
+}
+
+// ── REMÉDIOS ──────────────────────────────────────────────────────────────────
+function addRem() {
+  const nome = document.getElementById('rem-nome-input').value.trim();
+  const hora = document.getElementById('rem-hora-input').value;
+  if (!nome) return;
+  dados.remedios.push({id: Date.now(), nome, hora, tomado: false});
+  salvar(); document.getElementById('rem-nome-input').value = ''; renderRem();
+}
+
+function toggleRem(id) {
+  const r = dados.remedios.find(r => r.id === id);
+  if (!r) return;
+  r.tomado = !r.tomado; salvar(); renderRem();
+  if (r.tomado) toast('💊 Remédio registrado!', 'success');
+}
+
+function renderRem() {
+  document.getElementById('rem-list').innerHTML = dados.remedios.length
+    ? dados.remedios.map(r => `
+        <div class="rem-item">
+          <div class="rem-check ${r.tomado ? 'checked' : ''}" onclick="toggleRem(${r.id})">${r.tomado ? '✓' : '💊'}</div>
+          <div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora || 'Sem horário'}</div></div>
+          <button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button>
+        </div>`).join('')
+    : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';
+}
+
+// ── ÁGUA (4 GARRAFAS) ────────────────────────────────────────────────────────
+function renderAgua() {
+  const el = document.getElementById('agua-garrafas');
+  el.innerHTML = Array.from({length: 4}, (_, i) => `
+    <div class="garrafa ${i < dados.agua ? 'cheia' : ''}" onclick="toggleGarrafa(${i})" title="Garrafa ${i+1} — ${(i+1)*500}ml">
+      <div class="garrafa-fill"></div>
     </div>`).join('');
-  document.getElementById('agua-label').textContent=`${dados.agua} de 8 copos`;
-}
-function toggleCopo(i){
-  dados.agua=i<dados.agua?i:i+1;
-  if(dados.agua===8)toast('💧 Meta de água atingida!','success');
-  salvar();renderAgua();
+  document.getElementById('agua-label').textContent =
+    `${dados.agua} de 4 garrafas (${dados.agua * 500}ml)`;
 }
 
-// ── HUMOR ──
-let humorSel=null;
-function setHumor(i,el){humorSel=i;document.querySelectorAll('.humor-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
-function updateEnergia(v){document.getElementById('energia-fill').style.width=(v*10)+'%';document.getElementById('energia-label').textContent=`Energia: ${v}/10`;}
-function salvarHumor(){
-  const emocoes=['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];
-  if(humorSel===null){toast('Selecione uma emoção','error');return}
-  const energia=document.getElementById('energia-range').value;
-  const obs=document.getElementById('humor-obs').value;
-  const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  if(!dados.humor)dados.humor=[];
-  dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});
-  salvar();document.getElementById('humor-obs').value='';
-  renderHumorHist();toast('😊 Humor registrado!','success');
+function toggleGarrafa(i) {
+  dados.agua = i < dados.agua ? i : i + 1;
+  if (dados.agua === 4) toast('💧 Meta de água atingida!', 'success');
+  salvar(); renderAgua();
 }
-function renderHumorHist(){
-  if(!dados.humor||!dados.humor.length){document.getElementById('humor-historico').textContent='Nenhum registro ainda.';return}
-  const hoje=dados.humor.slice(-5).reverse();
-  document.getElementById('humor-historico').innerHTML=hoje.map(h=>`
+
+// ── HUMOR ─────────────────────────────────────────────────────────────────────
+let humorSel = null;
+function setHumor(i, el) {
+  humorSel = i;
+  document.querySelectorAll('.humor-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function updateEnergia(v) {
+  document.getElementById('energia-fill').style.width = (v * 10) + '%';
+  document.getElementById('energia-label').textContent = `Energia: ${v}/10`;
+}
+function salvarHumor() {
+  const emocoes = ['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];
+  if (humorSel === null) { toast('Selecione uma emoção'); return; }
+  const energia = document.getElementById('energia-range').value;
+  const obs = document.getElementById('humor-obs').value;
+  const agora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  dados.humor.push({hora: agora, emocao: emocoes[humorSel], energia, obs});
+  salvar(); document.getElementById('humor-obs').value = '';
+  renderHumorHist(); toast('😊 Humor registrado!', 'success');
+}
+function renderHumorHist() {
+  if (!dados.humor || !dados.humor.length) {
+    document.getElementById('humor-historico').textContent = 'Nenhum registro ainda.'; return;
+  }
+  const hoje = dados.humor.slice(-5).reverse();
+  document.getElementById('humor-historico').innerHTML = hoje.map(h => `
     <div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6">
       <span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span>
       <span style="font-size:12px;font-weight:600">${h.emocao}</span>
       <span style="font-size:10px;color:var(--muted)">⚡${h.energia}/10</span>
-      ${h.obs?`<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>`:''}
+      ${h.obs ? `<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>` : ''}
     </div>`).join('');
 }
 
-// ── SOS ──
-let sosInterval=null;
-function mostrarTarefaSOS(){
-  const urgentes=dados.tarefas.filter(t=>!t.done&&t.prio==='u');
-  const importantes=dados.tarefas.filter(t=>!t.done&&t.prio==='i');
-  const tarefa=urgentes[0]||importantes[0]||null;
-  const card=document.getElementById('sos-tarefa-card');
-  if(tarefa){card.style.display='block';document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto;}
-  else{card.style.display='none';}
+// ── SOS ───────────────────────────────────────────────────────────────────────
+let sosInterval = null;
+function mostrarTarefaSOS() {
+  const m = dados.matrix || {};
+  const q1 = (m.q1 || []).filter(t => !t.done);
+  const q2 = (m.q2 || []).filter(t => !t.done);
+  const tarefa = q1[0] || q2[0] || null;
+  const card = document.getElementById('sos-tarefa-card');
+  if (tarefa) {
+    card.style.display = 'block';
+    document.getElementById('sos-tarefa-txt').textContent = '👉 ' + tarefa.texto;
+  } else {
+    card.style.display = 'none';
+  }
 }
-function iniciarSOS(){
-  document.getElementById('sos-anim').style.display='block';
-  const fases=[
+function iniciarSOS() {
+  document.getElementById('sos-anim').style.display = 'block';
+  const fases = [
     {texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},
     {texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},
     {texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'},
   ];
-  let fase=0;
-  const circle=document.getElementById('sos-circle');
-  function proxFase(){
-    const f=fases[fase%3];
-    document.getElementById('sos-text').textContent=f.texto;
-    document.getElementById('sos-sub').textContent=f.sub;
-    circle.style.animation=f.anim;
-    fase++;sosInterval=setTimeout(proxFase,f.dur);
+  let fase = 0;
+  const circle = document.getElementById('sos-circle');
+  function proxFase() {
+    const f = fases[fase % 3];
+    document.getElementById('sos-text').textContent = f.texto;
+    document.getElementById('sos-sub').textContent = f.sub;
+    circle.style.animation = f.anim;
+    fase++; sosInterval = setTimeout(proxFase, f.dur);
   }
   proxFase();
 }
-function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim').style.display='none';document.getElementById('sos-circle').style.animation='none';}
-
-// ── EXERCÍCIO ──
-function toggleChip(el){el.classList.toggle('on');}
-function salvarEx(){
-  const selecionados=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);
-  if(!selecionados.length){toast('Selecione pelo menos um','error');return}
-  toast('🏃 Exercício salvo!','success');
-  document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));
-  document.getElementById('ex-obs').value='';
+function pararSOS() {
+  clearTimeout(sosInterval);
+  document.getElementById('sos-anim').style.display = 'none';
+  document.getElementById('sos-circle').style.animation = 'none';
 }
 
-// ── UTILS ──
-function irAba(aba,el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('page-'+aba).classList.add('active');
+// ── EXERCÍCIO ─────────────────────────────────────────────────────────────────
+function toggleChip(el) { el.classList.toggle('on'); }
+function salvarEx() {
+  const selecionados = Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c => c.textContent);
+  if (!selecionados.length) { toast('Selecione pelo menos um'); return; }
+  toast('🏃 Exercício salvo!', 'success');
+  document.querySelectorAll('#ex-chips .chip').forEach(c => c.classList.remove('on'));
+  document.getElementById('ex-obs').value = '';
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function irAba(aba, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + aba).classList.add('active');
   el.classList.add('active');
-  if(aba==='sos')mostrarTarefaSOS();
+  if (aba === 'sos') mostrarTarefaSOS();
 }
-function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
+function toast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${tipo || ''}`;
+  setTimeout(() => t.className = 'toast', 2500);
+}
 
-// ── INIT ──
-document.getElementById('hdate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-document.getElementById('lembrete-gentil').textContent='"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas();renderRem();renderAgua();renderSessoes();renderHumorHist();sugerirTarefa();
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'short'});
+document.getElementById('lembrete-gentil').textContent = '"' + lembretes[Math.floor(Math.random() * lembretes.length)] + '"';
+renderMatrix(); renderRem(); renderAgua(); renderHumorHist(); mostrarTarefaSOS();
 </script>
 </body>
 </html>
