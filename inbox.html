@@ -43,7 +43,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .hstatus{font-size:11px;color:rgba(255,255,255,.7)}
 .upd{font-size:10px;color:rgba(255,255,255,.4)}
-.rbtn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:5px 11px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s}
+.rbtn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:5px 8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s}
 .rbtn:hover{background:rgba(255,255,255,.22)}
 
 /* ── LAYOUT ── */
@@ -515,16 +515,16 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 <!-- HEADER -->
 <header>
-  <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
+  <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
     <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda de Entrevistas</button>
+    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🖥️ Meu App</button>
     <div style="width:1px;height:18px;background:rgba(255,255,255,0.25);flex-shrink:0"></div>
     <button class="rbtn" onclick="mostrarView('saude')" id="nav-saude">🩺 Saúde</button>
     <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard">📊 Dashboard</button>
     <button class="rbtn" onclick="mostrarView('ats')" id="nav-ats">📑 Sheet Viewer</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🖥️ Meu App</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <div class="dot-live"></div>
@@ -544,6 +544,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
         <button class="hmais-btn" style="color:#6366f1" onclick="mostrarView('ats');fecharHmais()">📑 ATS Viewer</button>
         <button class="hmais-btn" style="color:#b45309" onclick="mostrarView('financeiro');fecharHmais()">💰 Financeiro</button>
+        <button class="hmais-btn" style="color:#0f766e" onclick="mostrarView('meu-app');fecharHmais()">🖥️ Meu App</button>
       </div>
     </div>
   </div>
@@ -1031,10 +1032,10 @@ font-family:'Montserrat',sans-serif
   <iframe src="/sheets" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
 </div>
 <div id="view-financeiro" style="display:none;flex:1;flex-direction:column">
+  <iframe src="/financeiro" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
+</div>
 <div id="view-meu-app" style="display:none;flex:1;flex-direction:column;overflow:hidden">
   <iframe src="/meu-app" style="width:100%;height:100%;border:none;flex:1" id="iframe-meu-app"></iframe>
-</div>
-  <iframe src="/financeiro" style="flex:1;border:none;width:100%;height:100%" allowfullscreen></iframe>
 </div>
 
 <!-- VIEW: AGENDA (CALENDÁRIO) -->
@@ -2602,17 +2603,11 @@ async function agendarSemEnviar(){
   const horaFormatada = horario.replace('h',':').replace(/^(\d):/,'0$1:').padEnd(5,'0');
   if(!entrevistas[sessaoAtual]) entrevistas[sessaoAtual] = [];
   entrevistas[sessaoAtual].push({
-    id: 'ent_' + Date.now(),
-    data: dataAgenda,
-    hora: horaFormatada,
-    tipo: tipo,
-    responsavel: 'Camila',
-    obs: '',
-    status: 'Pendente',
+    id: 'ent_' + Date.now(), data: dataAgenda, hora: horaFormatada,
+    tipo: tipo, responsavel: 'Camila', obs: '', status: 'Pendente',
     cand: s.nome || s.ultimaAnalise?.nome || '',
     vagaTitulo: s.ultimaAnalise?.vagaInteresse || '',
-    tipoEntrevista: tipo,
-    local: local
+    tipoEntrevista: tipo, local: local
   });
   salvarLocal();
   toast('📅 Agendado sem enviar mensagem ao candidato','success');
@@ -4564,7 +4559,7 @@ function renderPainelSaude(){
     if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
     if(v==='saude')renderPainelSaude();
     // iframe views
-    ['dashboard','ats','financeiro'].forEach(id=>{
+    ['dashboard','ats','financeiro','meu-app'].forEach(id=>{
       const el=document.getElementById('view-'+id);
       if(el) el.style.display=v===id?'flex':'none';
     });
