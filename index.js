@@ -872,6 +872,50 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   }
 }
 
+async function restaurarDoUltimoBackup() {
+  const drive = getDriveClient();
+  if (!drive) return false;
+  try {
+    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='Backups-Lia' and trashed=false`;
+    const busca = await drive.files.list({ q, fields: "files(id)" });
+    if (!busca.data.files?.length) return false;
+    const backupFolderId = busca.data.files[0].id;
+    const arquivos = await drive.files.list({
+      q: `'${backupFolderId}' in parents and name contains 'backup-' and trashed=false`,
+      fields: "files(id, name, createdTime)",
+      orderBy: "createdTime desc",
+      pageSize: 1
+    });
+    if (!arquivos.data.files?.length) return false;
+    const arquivo = arquivos.data.files[0];
+    const resp = await drive.files.get({ fileId: arquivo.id, alt: "media" });
+    const backup = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+    if (!backup.sessoes) return false;
+    let restauradas = 0;
+    Object.entries(backup.sessoes).forEach(([tel, s]) => {
+      if (!sessoes[tel] && s.historico?.length) {
+        sessoes[tel] = {
+          historico: (s.historico || []).map(normalizarEventoHistorico),
+          nome: s.nome || null,
+          modo: "automatico",
+          pausado: false,
+          motivoPausa: "",
+          unreadCount: 0,
+          curriculos: [],
+          curriculo: null,
+          ultimaAnalise: s.ultimaAnalise || null,
+          discResult: s.discResult || null
+        };
+        restauradas++;
+      }
+    });
+    console.log(`✅ Restauradas ${restauradas} sessões do backup: ${arquivo.name}`);
+    return restauradas > 0;
+  } catch (e) {
+    console.error("Erro restaurarDoUltimoBackup:", e.message);
+    return false;
+  }
+}
 async function carregarSessoesDoSheets() {
   try {
     if (!CONFIG.VAGAS_URL) return;
@@ -931,7 +975,15 @@ async function carregarSessoesDoSheets() {
   }
 }
 
-carregarSessoesDoSheets();
+carregarSessoesDoSheets().then(async () => {
+  const total = Object.keys(sessoes).length;
+  console.log(`Sessões carregadas: ${total}`);
+  if (total < 10) {
+    console.log("Poucas sessões — tentando restaurar do backup Drive...");
+    await restaurarDoUltimoBackup();
+  }
+  setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);fazerBackup("startup"), 10 * 1000);
+}).catch(e => console.error("Erro na inicialização:", e.message));
 
 // Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
 // (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
@@ -1039,8 +1091,8 @@ setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
 // Backup semanal — executa a cada 7 dias
 setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
 
-// Primeiro backup diário roda 5min após o servidor subir
-setTimeout(() => fazerBackup("diario"), 5 * 60 * 1000);
+// Backup a cada 2 horas
+// removido — substituído pelo intervalo de 2h acima
 
 // Endpoint para backup manual via Inbox
 app.post("/inbox/backup", async (req, res) => {
