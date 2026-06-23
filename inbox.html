@@ -2652,7 +2652,8 @@ async function agendarSemEnviar(){
   _statusPendente = null;
 }
 async function confirmarMsgEntrevista(){
-  if(!_statusPendente) return;
+  toast('🔍 DEBUG: função chamada | status=' + (_statusPendente||'NULL'), 'info');
+  if(!_statusPendente){ toast('❌ _statusPendente está NULL — não vai funcionar','error'); return; }
   const s = todasSessoes[sessaoAtual] || {};
   const nome = (s.nome || s.ultimaAnalise?.nome || 'candidato').split(' ')[0];
   const cargo = document.getElementById('ent-msg-cargo').value || '[cargo]';
