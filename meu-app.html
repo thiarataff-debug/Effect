@@ -19,7 +19,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .hback{padding:7px 14px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;flex-shrink:0}
 .tabs-bar{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;position:sticky;top:51px;z-index:40}
 .tabs-bar::-webkit-scrollbar{height:0}
-.tab{padding:11px 16px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:all .15s}
+.tab{padding:11px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:all .15s}
 .tab.active{color:var(--navy);border-bottom-color:var(--blue)}
 .page{display:none;padding:16px}
 .page.active{display:block}
@@ -84,6 +84,31 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .sos-sub{font-size:12px;color:var(--muted)}
 @keyframes inhale{0%{transform:scale(1);background:var(--blue)}100%{transform:scale(1.5);background:var(--green)}}
 @keyframes exhale{0%{transform:scale(1.5);background:var(--green)}100%{transform:scale(1);background:var(--blue)}}
+@keyframes pulse-foco{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5);border-color:#f59e0b}50%{box-shadow:0 0 0 12px rgba(245,158,11,0);border-color:#ef4444}}
+@keyframes blink-text{0%,100%{opacity:1}50%{opacity:.4}}
+.sos-foco-card{animation:pulse-foco 2s ease-in-out infinite;border:3px solid #f59e0b!important}
+.sos-foco-txt{font-size:18px;font-weight:800;color:var(--navy);padding:10px 0 6px;line-height:1.3}
+.sos-foco-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:#b45309;animation:blink-text 2s ease-in-out infinite;text-transform:uppercase}
+.sos-tool-btn{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:#f8fafc;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-align:left;margin-bottom:8px;transition:background .15s}
+.sos-tool-btn:hover{background:#eff6ff;border-color:var(--blue)}
+.sos-tool-body{display:none;padding:12px;background:#f8fafc;border-radius:0 0 10px 10px;margin-top:-8px;margin-bottom:8px;font-size:12px;line-height:1.9;color:var(--text)}
+.sos-tool-open{background:#eff6ff!important;border-color:var(--blue)!important;border-radius:10px 10px 0 0!important}
+
+/* ── AGENDA ── */
+.ag-day-header{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.ag-event{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:9px;margin-bottom:6px;border-left:4px solid var(--border)}
+.ag-event.entrevista{background:#eff6ff;border-left-color:#1fa5ff}
+.ag-event.pessoal{background:#f0fdf4;border-left-color:#22c55e}
+.ag-event.pessoal-urgente{background:#fef2f2;border-left-color:#ef4444}
+.ag-hora{font-size:11px;font-weight:800;color:var(--navy);white-space:nowrap;min-width:38px}
+.ag-info{flex:1}
+.ag-titulo{font-size:12px;font-weight:700;color:var(--navy)}
+.ag-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.ag-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.ag-add-form{background:#f8fafc;border-radius:10px;padding:12px;margin-top:8px;display:none}
+.ag-add-form.open{display:block}
+.ag-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;margin-bottom:7px}
+.ag-input:focus{border-color:var(--blue)}
 
 /* ── MISC ── */
 .chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
@@ -103,6 +128,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 <div class="tabs-bar">
   <button class="tab active" onclick="irAba('tarefas',this)">✅ Tarefas</button>
+  <button class="tab" onclick="irAba('agenda',this)">📅 Agenda</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
@@ -119,69 +145,65 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
       <strong style="color:#a1a1aa">⚪ Nem urgente, nem importante</strong> — Distração. Elimine ou adie sem culpa.
     </div>
   </div>
-
   <div class="matrix-grid">
-
-    <!-- Q1: URGENTE + IMPORTANTE -->
     <div class="quadrant q1">
-      <div class="q-badges">
-        <span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span>
-        <span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span>
-      </div>
+      <div class="q-badges"><span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span><span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span></div>
       <div class="q-title">🔴 Fazer AGORA</div>
-      <div class="q-input-wrap">
-        <input class="q-input" id="q1-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q1')">
-        <button class="q-add-btn" onclick="addQ('q1')" style="background:#ef4444">+</button>
-      </div>
+      <div class="q-input-wrap"><input class="q-input" id="q1-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q1')"><button class="q-add-btn" onclick="addQ('q1')" style="background:#ef4444">+</button></div>
       <div id="q1-list"></div>
     </div>
-
-    <!-- Q2: NÃO URGENTE + IMPORTANTE -->
     <div class="quadrant q2">
-      <div class="q-badges">
-        <span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span>
-        <span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span>
-      </div>
+      <div class="q-badges"><span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span><span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span></div>
       <div class="q-title">🟢 Agendar</div>
-      <div class="q-input-wrap">
-        <input class="q-input" id="q2-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q2')">
-        <button class="q-add-btn" onclick="addQ('q2')" style="background:#22c55e">+</button>
-      </div>
+      <div class="q-input-wrap"><input class="q-input" id="q2-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q2')"><button class="q-add-btn" onclick="addQ('q2')" style="background:#22c55e">+</button></div>
       <div id="q2-list"></div>
     </div>
-
-    <!-- Q3: URGENTE + NÃO IMPORTANTE -->
     <div class="quadrant q3">
-      <div class="q-badges">
-        <span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span>
-        <span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span>
-      </div>
+      <div class="q-badges"><span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span><span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span></div>
       <div class="q-title">🟡 Delegar</div>
-      <div class="q-input-wrap">
-        <input class="q-input" id="q3-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q3')">
-        <button class="q-add-btn" onclick="addQ('q3')" style="background:#f59e0b">+</button>
-      </div>
+      <div class="q-input-wrap"><input class="q-input" id="q3-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q3')"><button class="q-add-btn" onclick="addQ('q3')" style="background:#f59e0b">+</button></div>
       <div id="q3-list"></div>
     </div>
-
-    <!-- Q4: NÃO URGENTE + NÃO IMPORTANTE -->
     <div class="quadrant q4">
-      <div class="q-badges">
-        <span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span>
-        <span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span>
-      </div>
+      <div class="q-badges"><span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span><span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span></div>
       <div class="q-title">⚪ Eliminar</div>
-      <div class="q-input-wrap">
-        <input class="q-input" id="q4-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q4')">
-        <button class="q-add-btn" onclick="addQ('q4')" style="background:#a1a1aa">+</button>
-      </div>
+      <div class="q-input-wrap"><input class="q-input" id="q4-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q4')"><button class="q-add-btn" onclick="addQ('q4')" style="background:#a1a1aa">+</button></div>
       <div id="q4-list"></div>
     </div>
-
   </div>
-
   <div style="text-align:center;padding-bottom:8px">
     <button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button>
+  </div>
+</div>
+
+<!-- AGENDA PESSOAL -->
+<div class="page" id="page-agenda">
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📅 Agenda</span>
+      <button onclick="toggleAddEvento()" style="padding:5px 12px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer">+ Evento</button>
+    </div>
+    <div class="ag-add-form" id="ag-add-form">
+      <input class="ag-input" id="ag-titulo" placeholder="Título do evento">
+      <div style="display:flex;gap:7px">
+        <input class="ag-input" id="ag-data" type="date" style="flex:1">
+        <input class="ag-input" id="ag-hora" type="time" style="width:110px">
+      </div>
+      <select class="ag-input" id="ag-tipo">
+        <option value="pessoal">📌 Pessoal</option>
+        <option value="pessoal-urgente">🔴 Urgente</option>
+        <option value="compromisso">🤝 Compromisso</option>
+        <option value="saude">🩺 Saúde</option>
+        <option value="filho">👧 Filho(a)</option>
+      </select>
+      <input class="ag-input" id="ag-obs" placeholder="Observações (opcional)">
+      <button onclick="salvarEvento()" style="width:100%;padding:9px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:12px;cursor:pointer">💾 Salvar</button>
+    </div>
+    <div id="ag-lista"></div>
+  </div>
+  <div class="card" style="background:#eff6ff;border:1px solid #bfdbfe">
+    <div class="card-title" style="color:#1d4ed8">💼 Entrevistas agendadas (Lia)</div>
+    <div id="ag-entrevistas" style="font-size:12px;color:var(--muted)">Carregando...</div>
   </div>
 </div>
 
@@ -244,36 +266,118 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 <!-- SOS -->
 <div class="page" id="page-sos">
-  <div class="card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fff);border:2px solid #f59e0b">
-    <div class="card-title" style="color:#92400e">⚡ Foque em uma coisa só agora</div>
-    <div id="sos-tarefa-txt" style="font-size:15px;font-weight:700;color:var(--navy);padding:6px 0 4px"></div>
-    <div style="font-size:11px;color:var(--muted)">Só isso. O resto pode esperar.</div>
+
+  <!-- CARD PULSANTE: UMA SÓ COISA AGORA -->
+  <div class="card sos-foco-card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fffbf0)">
+    <div class="sos-foco-label">⚡ FOQUE NISSO AGORA — TUDO O RESTO PODE ESPERAR</div>
+    <div class="sos-foco-txt" id="sos-tarefa-txt"></div>
+    <div style="font-size:11px;color:#92400e;margin-top:4px">Tarefa mais urgente e importante da sua lista Q1.</div>
   </div>
+
+  <!-- RESPIRAÇÃO 4-7-8 -->
   <div class="card">
-    <button class="sos-btn" onclick="iniciarSOS()">😰 SOS ANSIEDADE — Respiração 4-7-8</button>
-    <div class="sos-anim" id="sos-anim">
-      <div class="sos-circle" id="sos-circle">💨</div>
-      <div class="sos-text" id="sos-text">Inspire...</div>
-      <div class="sos-sub" id="sos-sub">4 segundos</div>
-      <button onclick="pararSOS()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
+    <button class="sos-btn" onclick="toggleTool('sos-resp')">😰 Respiração 4-7-8 — Ansiedade aguda</button>
+    <div class="sos-tool-body" id="sos-resp">
+      <button onclick="iniciarSOS()" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px">▶ Iniciar respiração</button>
+      <div class="sos-anim" id="sos-anim">
+        <div class="sos-circle" id="sos-circle">💨</div>
+        <div class="sos-text" id="sos-text">Inspire...</div>
+        <div class="sos-sub" id="sos-sub">4 segundos</div>
+        <button onclick="pararSOS()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.7">
+        <strong>4s</strong> inspira pelo nariz &nbsp;→&nbsp; <strong>7s</strong> segura &nbsp;→&nbsp; <strong>8s</strong> expira pela boca.<br>Repita 3 a 4 ciclos. Ativa o sistema parassimpático imediatamente.
+      </div>
     </div>
   </div>
+
+  <!-- BOX BREATHING 4-4-4-4 -->
   <div class="card">
-    <div class="card-title">🧘 Grounding 5-4-3-2-1</div>
-    <div style="font-size:12px;line-height:1.9;color:var(--text)">
-      Olhe ao redor e nomeie:<br>
-      <strong>👁️ 5 coisas</strong> que você vê<br>
-      <strong>🤚 4 coisas</strong> que você pode tocar<br>
-      <strong>👂 3 coisas</strong> que você ouve<br>
-      <strong>👃 2 coisas</strong> que você cheira<br>
-      <strong>👅 1 coisa</strong> que você sente o gosto<br><br>
-      <em style="color:var(--muted)">Respire fundo após cada um.</em>
+    <button class="sos-btn" onclick="toggleTool('sos-box')">🟦 Box Breathing 4-4-4-4 — Estresse/sobrecarga</button>
+    <div class="sos-tool-body" id="sos-box">
+      <button onclick="iniciarBox()" style="width:100%;padding:10px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px">▶ Iniciar box breathing</button>
+      <div class="sos-anim" id="box-anim" style="display:none">
+        <div id="box-circle" style="width:90px;height:90px;border-radius:14px;background:#6366f1;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:26px;transition:all 4s ease-in-out">💨</div>
+        <div class="sos-text" id="box-text">Inspire...</div>
+        <div class="sos-sub" id="box-sub">4 segundos</div>
+        <button onclick="pararBox()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.7">
+        <strong>4s</strong> inspira &nbsp;→&nbsp; <strong>4s</strong> segura &nbsp;→&nbsp; <strong>4s</strong> expira &nbsp;→&nbsp; <strong>4s</strong> segura vazio.<br>Usado por Navy SEALs. Reduz cortisol e restaura clareza.
+      </div>
     </div>
   </div>
+
+  <!-- GROUNDING 5-4-3-2-1 -->
+  <div class="card">
+    <button class="sos-btn" onclick="toggleTool('sos-ground')">🧘 Grounding 5-4-3-2-1 — Dissociação/pânico</button>
+    <div class="sos-tool-body" id="sos-ground">
+      <div style="font-size:12px;line-height:2;color:var(--text)">
+        Olhe ao redor e nomeie mentalmente:<br>
+        <strong>👁️ 5 coisas</strong> que você <em>vê</em><br>
+        <strong>🤚 4 coisas</strong> que você pode <em>tocar</em><br>
+        <strong>👂 3 coisas</strong> que você <em>ouve</em><br>
+        <strong>👃 2 coisas</strong> que você <em>cheira</em><br>
+        <strong>👅 1 coisa</strong> que você <em>sente o gosto</em><br>
+        <br><em style="color:var(--muted)">Respire fundo após cada um. Você está aqui. Está segura.</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESET SENSORIAL -->
+  <div class="card">
+    <button class="sos-btn" onclick="toggleTool('sos-reset')">🧊 Reset Sensorial — Colapso iminente</button>
+    <div class="sos-tool-body" id="sos-reset">
+      <div style="font-size:12px;line-height:2;color:var(--text)">
+        Escolha uma das opções abaixo. Ativa o nervo vago imediatamente:<br><br>
+        <strong>💧 Água gelada no rosto</strong> — 30 segundos. Mais potente de todos.<br>
+        <strong>🧊 Segurar gelo nas mãos</strong> — 30 a 60 segundos enquanto respira fundo.<br>
+        <strong>🥤 Beber água gelada devagar</strong> — Foco total na sensação.<br>
+        <strong>🌬️ Expirar com lábios franzidos</strong> — Como assobiar. 5 vezes.<br>
+        <strong>🤿 Mergulhar o rosto em água fria</strong> — Ativa reflexo de mergulho, freia coração.<br>
+        <br><em style="color:var(--muted)">Esses estímulos físicos interrompem o circuito do pânico mais rápido que qualquer pensamento.</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEFUSÃO COGNITIVA -->
+  <div class="card">
+    <button class="sos-btn" onclick="toggleTool('sos-defus')">💭 Defusão Cognitiva — Overthinking/espiral</button>
+    <div class="sos-tool-body" id="sos-defus">
+      <div style="font-size:12px;line-height:2;color:var(--text)">
+        Quando um pensamento ruim aparecer, diga em voz alta ou mentalmente:<br><br>
+        <strong>"Minha mente está me dizendo que..."</strong><br>
+        <strong>"Estou tendo o pensamento de que..."</strong><br>
+        <strong>"Isso é uma história que meu cérebro está contando."</strong><br><br>
+        Em seguida, pergunte: <strong>O que é REAL e VERDADEIRO AGORA, neste segundo?</strong><br><br>
+        <em style="color:var(--muted)">O pensamento não é um fato. É uma produção da sua mente ansiosa. Você não precisa acreditar em tudo que pensa.</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- TÉCNICA 5-5-5 -->
+  <div class="card">
+    <button class="sos-btn" onclick="toggleTool('sos-555')">🔢 Técnica 5-5-5 — Perspectiva/medo do futuro</button>
+    <div class="sos-tool-body" id="sos-555">
+      <div style="font-size:12px;line-height:2;color:var(--text)">
+        Sobre o que está te preocupando agora, responda:<br><br>
+        ⏱️ <strong>Isso vai importar em 5 minutos?</strong><br>
+        📅 <strong>Isso vai importar em 5 dias?</strong><br>
+        📆 <strong>Isso vai importar em 5 meses?</strong><br><br>
+        Se a resposta for "não" para dois ou mais, a urgência é uma ilusão.<br>
+        Se for "sim", então vale a atenção — mas um passo de cada vez.<br><br>
+        <em style="color:var(--muted)">TDAH + ansiedade distorce a percepção de urgência. Nem tudo que parece urgente é urgente de verdade.</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEMBRETE GENTIL -->
   <div class="card">
     <div class="card-title">💙 Lembrete gentil</div>
     <div id="lembrete-gentil" style="font-size:13px;line-height:1.65;color:var(--text);font-style:italic"></div>
+    <button onclick="novoLembrete()" style="margin-top:10px;padding:5px 12px;background:#f3f4f6;border:none;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🔄 Outro</button>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -284,6 +388,7 @@ let dados = JSON.parse(localStorage.getItem('meuapp') || '{}');
 if (!dados.matrix)   dados.matrix   = {q1:[],q2:[],q3:[],q4:[]};
 if (!dados.remedios) dados.remedios = [];
 if (!dados.humor)    dados.humor    = [];
+if (!dados.agenda)   dados.agenda   = [];
 if (dados.agua === undefined) dados.agua = 0;
 function salvar() { localStorage.setItem('meuapp', JSON.stringify(dados)); }
 
@@ -297,7 +402,10 @@ const lembretes = [
   "Pequenos progressos todos os dias somam grandes mudanças.",
   "Você tem altas habilidades — e isso inclui a habilidade de se reinventar.",
   "Não compare seu bastidor com o palco dos outros.",
-  "Hoje você não precisa ser heroína. Pode só existir."
+  "Hoje você não precisa ser heroína. Pode só existir.",
+  "Hyperfoco não é fraqueza — é superpoder quando direcionado.",
+  "Você ajuda tantas pessoas todos os dias. Hoje, deixe alguém te ajudar também.",
+  "Uma tarefa. Um passo. Uma respiração. Isso é suficiente."
 ];
 
 // ── EISENHOWER MATRIX ─────────────────────────────────────────────────────────
@@ -308,19 +416,16 @@ function addQ(q) {
   dados.matrix[q].push({id: Date.now(), texto, done: false});
   salvar(); input.value = ''; renderMatrix(); mostrarTarefaSOS();
 }
-
 function toggleQ(q, id) {
   const t = dados.matrix[q].find(t => t.id === id);
   if (!t) return;
   t.done = !t.done; salvar(); renderMatrix(); mostrarTarefaSOS();
   if (t.done) toast('✅ Concluída!', 'success');
 }
-
 function delQ(q, id) {
   dados.matrix[q] = dados.matrix[q].filter(t => t.id !== id);
   salvar(); renderMatrix(); mostrarTarefaSOS();
 }
-
 function renderMatrix() {
   ['q1','q2','q3','q4'].forEach(q => {
     const el = document.getElementById(q + '-list');
@@ -335,12 +440,112 @@ function renderMatrix() {
       : '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">Vazio</div>';
   });
 }
-
 function limparConcluidas() {
-  ['q1','q2','q3','q4'].forEach(q => {
-    dados.matrix[q] = dados.matrix[q].filter(t => !t.done);
-  });
+  ['q1','q2','q3','q4'].forEach(q => { dados.matrix[q] = dados.matrix[q].filter(t => !t.done); });
   salvar(); renderMatrix();
+}
+
+// ── AGENDA PESSOAL ────────────────────────────────────────────────────────────
+function toggleAddEvento() {
+  const f = document.getElementById('ag-add-form');
+  f.classList.toggle('open');
+  if (f.classList.contains('open')) {
+    document.getElementById('ag-data').value = new Date().toISOString().slice(0,10);
+  }
+}
+function salvarEvento() {
+  const titulo = document.getElementById('ag-titulo').value.trim();
+  const data   = document.getElementById('ag-data').value;
+  const hora   = document.getElementById('ag-hora').value;
+  const tipo   = document.getElementById('ag-tipo').value;
+  const obs    = document.getElementById('ag-obs').value.trim();
+  if (!titulo || !data) { toast('Preencha título e data'); return; }
+  dados.agenda.push({id: Date.now(), titulo, data, hora, tipo, obs});
+  salvar();
+  document.getElementById('ag-titulo').value = '';
+  document.getElementById('ag-obs').value = '';
+  document.getElementById('ag-hora').value = '';
+  document.getElementById('ag-add-form').classList.remove('open');
+  renderAgenda();
+  toast('📅 Evento salvo!', 'success');
+}
+function delEvento(id) {
+  dados.agenda = dados.agenda.filter(e => e.id !== id);
+  salvar(); renderAgenda();
+}
+function renderAgenda() {
+  const hoje = new Date();
+  const hojeSt = hoje.toISOString().slice(0,10);
+  const tipoLabel = {pessoal:'📌 Pessoal', 'pessoal-urgente':'🔴 Urgente', compromisso:'🤝 Compromisso', saude:'🩺 Saúde', filho:'👧 Filho(a)'};
+  
+  // Agrupar por data (próximos 30 dias + passado recente)
+  const eventos = (dados.agenda || []).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora));
+  
+  if (!eventos.length) {
+    document.getElementById('ag-lista').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Nenhum evento pessoal. Clique em "+ Evento" para adicionar.</div>';
+  } else {
+    const grupos = {};
+    eventos.forEach(e => {
+      if (!grupos[e.data]) grupos[e.data] = [];
+      grupos[e.data].push(e);
+    });
+    document.getElementById('ag-lista').innerHTML = Object.entries(grupos).map(([data, evs]) => {
+      const d = new Date(data + 'T12:00:00');
+      const isHoje = data === hojeSt;
+      const label = isHoje ? '🟢 HOJE' : d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'short'});
+      return `<div class="ag-day-header">${label}</div>` +
+        evs.map(e => `
+          <div class="ag-event ${e.tipo}">
+            <div class="ag-hora">${e.hora || '--:--'}</div>
+            <div class="ag-info">
+              <div class="ag-titulo">${e.titulo}</div>
+              ${e.obs ? `<div class="ag-sub">${e.obs}</div>` : ''}
+              <span class="ag-badge" style="background:#f3f4f6;color:var(--muted);margin-top:3px;display:inline-block">${tipoLabel[e.tipo]||e.tipo}</span>
+            </div>
+            <button onclick="delEvento(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px">×</button>
+          </div>`).join('');
+    }).join('');
+  }
+
+  // Entrevistas da Lia
+  renderEntrevistasAgenda();
+}
+function renderEntrevistasAgenda() {
+  const el = document.getElementById('ag-entrevistas');
+  try {
+    const raw = localStorage.getItem('effect_entrevistas_v1');
+    if (!raw) { el.innerHTML = '<span style="color:var(--muted)">Nenhuma entrevista encontrada. Abra a Lia para sincronizar.</span>'; return; }
+    const entrevistas = JSON.parse(raw);
+    const todas = [];
+    Object.entries(entrevistas).forEach(([tel, ents]) => {
+      (ents || []).forEach(e => {
+        if (e.status !== 'Cancelada') todas.push({...e, tel});
+      });
+    });
+    todas.sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora));
+    const hojeSt = new Date().toISOString().slice(0,10);
+    const futuras = todas.filter(e => e.data >= hojeSt);
+    if (!futuras.length) { el.innerHTML = '<span style="color:var(--muted)">Nenhuma entrevista futura agendada.</span>'; return; }
+    const grupos = {};
+    futuras.forEach(e => { if (!grupos[e.data]) grupos[e.data] = []; grupos[e.data].push(e); });
+    el.innerHTML = Object.entries(grupos).slice(0, 7).map(([data, ents]) => {
+      const d = new Date(data + 'T12:00:00');
+      const isHoje = data === hojeSt;
+      const label = isHoje ? '🟢 HOJE' : d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'short'});
+      return `<div class="ag-day-header">${label}</div>` +
+        ents.map(e => `
+          <div class="ag-event entrevista">
+            <div class="ag-hora">${e.hora || '--:--'}</div>
+            <div class="ag-info">
+              <div class="ag-titulo">${e.cand || e.tel}</div>
+              <div class="ag-sub">${e.tipo || 'Entrevista'} · ${e.vagaTitulo || ''}</div>
+              <span class="ag-badge" style="background:#dbeafe;color:#1d4ed8;margin-top:3px;display:inline-block">${e.status || 'Pendente'}</span>
+            </div>
+          </div>`).join('');
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--muted)">Erro ao carregar entrevistas.</span>';
+  }
 }
 
 // ── REMÉDIOS ──────────────────────────────────────────────────────────────────
@@ -351,14 +556,12 @@ function addRem() {
   dados.remedios.push({id: Date.now(), nome, hora, tomado: false});
   salvar(); document.getElementById('rem-nome-input').value = ''; renderRem();
 }
-
 function toggleRem(id) {
   const r = dados.remedios.find(r => r.id === id);
   if (!r) return;
   r.tomado = !r.tomado; salvar(); renderRem();
   if (r.tomado) toast('💊 Remédio registrado!', 'success');
 }
-
 function renderRem() {
   document.getElementById('rem-list').innerHTML = dados.remedios.length
     ? dados.remedios.map(r => `
@@ -377,10 +580,8 @@ function renderAgua() {
     <div class="garrafa ${i < dados.agua ? 'cheia' : ''}" onclick="toggleGarrafa(${i})" title="Garrafa ${i+1} — ${(i+1)*500}ml">
       <div class="garrafa-fill"></div>
     </div>`).join('');
-  document.getElementById('agua-label').textContent =
-    `${dados.agua} de 4 garrafas (${dados.agua * 500}ml)`;
+  document.getElementById('agua-label').textContent = `${dados.agua} de 4 garrafas (${dados.agua * 500}ml)`;
 }
-
 function toggleGarrafa(i) {
   dados.agua = i < dados.agua ? i : i + 1;
   if (dados.agua === 4) toast('💧 Meta de água atingida!', 'success');
@@ -412,8 +613,7 @@ function renderHumorHist() {
   if (!dados.humor || !dados.humor.length) {
     document.getElementById('humor-historico').textContent = 'Nenhum registro ainda.'; return;
   }
-  const hoje = dados.humor.slice(-5).reverse();
-  document.getElementById('humor-historico').innerHTML = hoje.map(h => `
+  document.getElementById('humor-historico').innerHTML = dados.humor.slice(-5).reverse().map(h => `
     <div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6">
       <span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span>
       <span style="font-size:12px;font-weight:600">${h.emocao}</span>
@@ -423,7 +623,8 @@ function renderHumorHist() {
 }
 
 // ── SOS ───────────────────────────────────────────────────────────────────────
-let sosInterval = null;
+let sosInterval = null, boxInterval = null;
+
 function mostrarTarefaSOS() {
   const m = dados.matrix || {};
   const q1 = (m.q1 || []).filter(t => !t.done);
@@ -437,12 +638,26 @@ function mostrarTarefaSOS() {
     card.style.display = 'none';
   }
 }
+
+function toggleTool(id) {
+  const body = document.getElementById(id);
+  const btn = body.previousElementSibling;
+  const isOpen = body.style.display === 'block';
+  // Fechar todos
+  document.querySelectorAll('.sos-tool-body').forEach(b => b.style.display='none');
+  document.querySelectorAll('.sos-btn').forEach(b => b.classList.remove('sos-tool-open'));
+  if (!isOpen) {
+    body.style.display = 'block';
+    btn.classList.add('sos-tool-open');
+  }
+}
+
 function iniciarSOS() {
   document.getElementById('sos-anim').style.display = 'block';
   const fases = [
-    {texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},
-    {texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},
-    {texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'},
+    {texto:'Inspire...', sub:'4 segundos', dur:4000, anim:'inhale 4s forwards'},
+    {texto:'Segure...', sub:'7 segundos', dur:7000, anim:'none'},
+    {texto:'Expire...', sub:'8 segundos', dur:8000, anim:'exhale 8s forwards'},
   ];
   let fase = 0;
   const circle = document.getElementById('sos-circle');
@@ -459,6 +674,36 @@ function pararSOS() {
   clearTimeout(sosInterval);
   document.getElementById('sos-anim').style.display = 'none';
   document.getElementById('sos-circle').style.animation = 'none';
+}
+
+function iniciarBox() {
+  document.getElementById('box-anim').style.display = 'block';
+  const fases = [
+    {texto:'Inspire...', sub:'4 segundos', dur:4000, scale:'scale(1.4)'},
+    {texto:'Segure cheio...', sub:'4 segundos', dur:4000, scale:'scale(1.4)'},
+    {texto:'Expire...', sub:'4 segundos', dur:4000, scale:'scale(1)'},
+    {texto:'Segure vazio...', sub:'4 segundos', dur:4000, scale:'scale(1)'},
+  ];
+  let fase = 0;
+  const circle = document.getElementById('box-circle');
+  function proxFase() {
+    const f = fases[fase % 4];
+    document.getElementById('box-text').textContent = f.texto;
+    document.getElementById('box-sub').textContent = f.sub;
+    circle.style.transform = f.scale;
+    fase++; boxInterval = setTimeout(proxFase, f.dur);
+  }
+  proxFase();
+}
+function pararBox() {
+  clearTimeout(boxInterval);
+  document.getElementById('box-anim').style.display = 'none';
+  document.getElementById('box-circle').style.transform = 'scale(1)';
+}
+
+function novoLembrete() {
+  const el = document.getElementById('lembrete-gentil');
+  el.textContent = '"' + lembretes[Math.floor(Math.random() * lembretes.length)] + '"';
 }
 
 // ── EXERCÍCIO ─────────────────────────────────────────────────────────────────
@@ -478,6 +723,7 @@ function irAba(aba, el) {
   document.getElementById('page-' + aba).classList.add('active');
   el.classList.add('active');
   if (aba === 'sos') mostrarTarefaSOS();
+  if (aba === 'agenda') renderAgenda();
 }
 function toast(msg, tipo) {
   const t = document.getElementById('toast');
