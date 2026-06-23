@@ -873,23 +873,10 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
 }
 
 async function restaurarDoUltimoBackup() {
-  const drive = getDriveClient();
-  if (!drive) return false;
   try {
-    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='Backups-Lia' and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)" });
-    if (!busca.data.files?.length) return false;
-    const backupFolderId = busca.data.files[0].id;
-    const arquivos = await drive.files.list({
-      q: `'${backupFolderId}' in parents and name contains 'backup-' and trashed=false`,
-      fields: "files(id, name, createdTime)",
-      orderBy: "createdTime desc",
-      pageSize: 1
-    });
-    if (!arquivos.data.files?.length) return false;
-    const arquivo = arquivos.data.files[0];
-    const resp = await drive.files.get({ fileId: arquivo.id, alt: "media" });
-    const backup = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+    const resp = await fetch(`${CONFIG.VAGAS_URL}?acao=ultimoBackup`);
+    if (!resp.ok) return false;
+    const backup = await resp.json();
     if (!backup.sessoes) return false;
     let restauradas = 0;
     Object.entries(backup.sessoes).forEach(([tel, s]) => {
@@ -909,9 +896,9 @@ async function restaurarDoUltimoBackup() {
         restauradas++;
       }
     });
-    console.log(`✅ Restauradas ${restauradas} sessões do backup: ${arquivo.name}`);
+    console.log(`✅ Restauradas ${restauradas} sessões do backup`);
     return restauradas > 0;
-  } catch (e) {
+  } catch(e) {
     console.error("Erro restaurarDoUltimoBackup:", e.message);
     return false;
   }
@@ -1020,74 +1007,31 @@ setInterval(async () => {
 let ultimoBackupDiario = null;
 let ultimoBackupSemanal = null;
 
-async function fazerBackup(tipo = "diario") {
-  const drive = getDriveClient();
-  if (!drive) { console.warn("Backup: Drive não disponível."); return false; }
-
+async function fazerBackup(tipo) {
   try {
-    // Garante pasta "Backups" dentro da pasta raiz do Drive
-    const nomeBackupFolder = "Backups-Lia";
-    let backupFolderId = null;
-
-    const q = `'${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nomeBackupFolder}' and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)" });
-    if (busca.data.files?.length) {
-      backupFolderId = busca.data.files[0].id;
-    } else {
-      const nova = await drive.files.create({
-        requestBody: { name: nomeBackupFolder, mimeType: "application/vnd.google-apps.folder", parents: [CONFIG.DRIVE_ROOT_FOLDER_ID] },
-        fields: "id"
-      });
-      backupFolderId = nova.data.id;
-    }
-
-    // Monta snapshot
-    const agora = new Date();
-    const ts = agora.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const snapshot = {
-      tipo,
-      geradoEm: agora.toISOString(),
-      totalSessoes: Object.keys(sessoes).length,
-      sessoes: Object.fromEntries(
-        Object.entries(sessoes).map(([tel, s]) => [tel, {
-          nome: s.nome,
-          modo: s.modo,
-          pausado: s.pausado,
-          motivoPausa: s.motivoPausa,
-          totalMensagens: s.historico?.length || 0,
-          ultimaMensagem: s.historico?.slice(-1)[0]?.content?.slice(0, 100) || "",
-          ultimaAnalise: s.ultimaAnalise || null,
-          historico: s.historico || []
-        }])
-      )
+    const dados = {
+      timestamp: new Date().toISOString(),
+      motivo: tipo,
+      sessoes: sessoes
     };
-
-    const { Readable } = require("stream");
-    const conteudo = JSON.stringify(snapshot, null, 2);
-    const stream = Readable.from(Buffer.from(conteudo, "utf8"));
-
-    await drive.files.create({
-      requestBody: {
-        name: `backup-${tipo}-${ts}.json`,
-        parents: [backupFolderId],
-        mimeType: "application/json"
-      },
-      media: { mimeType: "application/json", body: stream },
-      fields: "id"
+    const resp = await fetch(CONFIG.VAGAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "salvarBackup", dados })
     });
-
-    console.log(`✅ Backup ${tipo} salvo no Drive — ${ts} — ${Object.keys(sessoes).length} sessões`);
-    if (tipo === "diario") ultimoBackupDiario = agora;
-    if (tipo === "semanal") ultimoBackupSemanal = agora;
-    return true;
-  } catch (e) {
+    const json = await resp.json();
+    if (json.sucesso) {
+      console.log(`✅ backup ${tipo} salvo: ${json.arquivo}`);
+    } else {
+      console.error(`Erro backup ${tipo}:`, json.erro);
+    }
+  } catch(e) {
     console.error(`Erro backup ${tipo}:`, e.message);
-    return false;
   }
 }
 
 // Backup diário — executa a cada 24h
-setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
+setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
 
 // Backup semanal — executa a cada 7 dias
 setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
