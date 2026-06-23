@@ -2665,9 +2665,11 @@ async function confirmarMsgEntrevista(){
   const fn = TEMPLATES_ENTREVISTA[_statusPendente];
   const texto = fn(nome, cargo, empresa, semana, horario, tipo, local);
   fecharModal('modal-msg-entrevista');
-  await _salvarStatus(_statusPendente, true, texto);
 
-  // Salvar na Agenda (no objeto entrevistas, que é o que o calendário lê)
+  // Salvar status no pipeline (sem delegar envio de msg ao /status)
+  await _salvarStatus(_statusPendente, false, '');
+
+  // Salvar na Agenda local
   const dataAgenda = _parseDateBR(semana);
   const horaFormatada = horario.replace('h',':').replace(/^(\d):/, '0$1:').padEnd(5,'0');
   if(!entrevistas[sessaoAtual]) entrevistas[sessaoAtual] = [];
@@ -2679,7 +2681,6 @@ async function confirmarMsgEntrevista(){
     responsavel: 'Camila',
     obs: '',
     status: 'Pendente',
-    // campos extras para uso no Google Calendar
     cand: s.nome || s.ultimaAnalise?.nome || nome,
     vagaTitulo: s.ultimaAnalise?.vagaInteresse || cargo,
     tipoEntrevista: tipo,
@@ -2688,9 +2689,30 @@ async function confirmarMsgEntrevista(){
   entrevistas[sessaoAtual].push(agendaItem);
   salvarLocal();
   notificarMeuApp();
-  toast('📅 Agendado na Agenda','success');
+  renderPainelDireito(); // atualiza contador de entrevistas na tela
+  toast('📅 Entrevista registrada na agenda','success');
 
-  // ── NOVO: Sincronizar com Google Calendar ──────────────────────────────
+  // Enviar mensagem WhatsApp via /inbox/enviar (rota que realmente envia)
+  try {
+    const telefoneAtual = sessaoAtual;
+    const r = await fetch(`${API}/inbox/enviar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({telefone: telefoneAtual, mensagem: texto, modo: 'camila'})
+    });
+    const d = await r.json();
+    if(d.ok){
+      toast('✅ Mensagem enviada para o candidato','success');
+      setTimeout(() => carregarSessoes(), 2500);
+    } else {
+      toast('⚠️ Falha ao enviar mensagem: '+(d.erro||''),'error');
+    }
+  } catch(e){
+    toast('⚠️ Erro ao enviar mensagem WhatsApp','error');
+    console.error('Erro ao enviar mensagem de entrevista:', e);
+  }
+
+  // Sincronizar com Google Calendar (opcional)
   try {
     const respCal = await fetch('/agenda/salvar', {
       method: 'POST',
@@ -2707,15 +2729,11 @@ async function confirmarMsgEntrevista(){
       })
     });
     const resultCal = await respCal.json();
-    if(resultCal.ok){
-      toast('📅 Evento criado no Google Calendar ✅','success');
-    } else {
-      console.warn('Google Calendar:', resultCal.erro);
-    }
+    if(resultCal.ok) toast('📅 Google Calendar atualizado ✅','success');
+    else console.warn('Google Calendar:', resultCal.erro);
   } catch(e){
-    console.warn('Erro ao sincronizar Google Calendar:', e.message);
+    console.warn('Google Calendar não disponível:', e.message);
   }
-  // ── FIM NOVO ───────────────────────────────────────────────────────────
 
   _statusPendente = null;
 }
