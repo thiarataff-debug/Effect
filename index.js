@@ -982,8 +982,9 @@ carregarSessoesDoSheets().then(async () => {
     console.log("Poucas sessões — tentando restaurar do backup Drive...");
     await restaurarDoUltimoBackup();
   }
-  setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);fazerBackup("startup"), 10 * 1000);
+  setTimeout(() => fazerBackup("startup"), 10 * 1000);
 }).catch(e => console.error("Erro na inicialização:", e.message));
+setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
 
 // Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
 // (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
