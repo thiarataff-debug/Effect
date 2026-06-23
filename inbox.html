@@ -1376,6 +1376,25 @@ async function carregarSessoes(){
       }
     });
     todasSessoes=novas;
+
+    // ─── INJETAR TIMESTAMP APROXIMADO em mensagens sem hora ───────────────────
+    // O backend às vezes não inclui timestamp por mensagem.
+    // Usamos lastMessageAtMs da sessão como âncora e trabalhamos para trás.
+    Object.values(todasSessoes).forEach(s=>{
+      const hist=s.historico||[];
+      if(!hist.length)return;
+      const baseMs=tsParaMs(s.lastMessageAtMs||s.timestampMs||s.timestamp||s.lastMessageAt)||0;
+      if(!baseMs)return;
+      for(let i=hist.length-1;i>=0;i--){
+        const msg=hist[i];
+        if(!obterTimestampMsg(msg)){
+          // Sem timestamp: âncora menos 90 segundos por posição
+          msg._approxMs=baseMs-(hist.length-1-i)*90000;
+        }
+      }
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     renderLista();
@@ -1437,7 +1456,14 @@ function obterTimestampMsg(msg){
     msg.timestamp,
     msg.createdAt,
     msg.dataHora,
-    msg.horario
+    msg.horario,
+    msg.ts,
+    msg.time,
+    msg.sent_at,
+    msg.received_at,
+    msg.msgTimestamp,
+    msg.messageTimestamp,
+    msg._approxMs  // injetado pelo carregarSessoes quando não há timestamp
   ];
 
   for(const c of candidatos){
@@ -1954,8 +1980,9 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
     const isCamila=msg.role==='assistant'&&(msg.content||'').includes('— Camila');
     const ts=obterTimestampMsg(msg);
-    const horaTexto=ts?extrairHora(ts):horaFallbackMsg(msg);
-    const dataMsg=ts?formatarDataMensagem(ts):'';
+    const horaTexto=ts?extrairHora(ts):(horaFallbackMsg(msg)||'--:--');
+    const isApprox=!ts&&!!msg._approxMs;
+    const dataMsg=ts?formatarDataMensagem(ts):(msg._approxMs?formatarDataMensagem(msg._approxMs):'');
 
     if(dataMsg&&dataMsg!==ultimaData){
       const sep=document.createElement('div');
@@ -1983,10 +2010,10 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
       b.className='mbubble obs';
       b.textContent='📝 '+(msg.content||'');
 
-      if(horaTexto){
+      {
         const span=document.createElement('span');
         span.className='bubble-time';
-        span.textContent=horaTexto;
+        span.textContent=isApprox?'~'+horaTexto:horaTexto;
         b.appendChild(span);
       }
 
@@ -2023,10 +2050,10 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
         b.textContent = conteudo;
       }
 
-      if(horaTexto){
+      {
         const span=document.createElement('span');
         span.className='bubble-time';
-        span.textContent=horaTexto;
+        span.textContent=isApprox?'~'+horaTexto:horaTexto;
         b.appendChild(span);
       }
 
