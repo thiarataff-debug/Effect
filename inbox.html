@@ -1803,6 +1803,8 @@ function renderLista(){
     const _b=busca.toLowerCase();
     const mb=!busca||(s.nome||'').toLowerCase().includes(_b)||tel.includes(busca)||(s.historico||[]).some(h=>(h.content||'').toLowerCase().includes(_b))||(s.vagaInteresse||s.vaga||'').toLowerCase().includes(_b)||(s.cidade||'').toLowerCase().includes(_b)||(s.areaInteresse||'').toLowerCase().includes(_b);
     if(!mb)return false;
+    // Arquivadas nunca aparecem em outras abas
+    if(tab!=='arquivadas' && arquivadas[tel]) return false;
     if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
     if(tab==='aguardando-recrutador'){return statusMap[tel]==='Aguardando recrutador';}
     if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
@@ -2637,22 +2639,29 @@ async function confirmarMsgStatus(enviar){
   const btnEnviar = document.getElementById('btn-enviar-status');
   erroDiv.style.display='none';
   if(enviar && btnEnviar){ btnEnviar.disabled=true; btnEnviar.textContent='⏳ Enviando...'; }
+  let sucesso = false;
   try{
-    const resultado = await _salvarStatus(_statusPendente, enviar, texto);
+    const resultado = await Promise.race([
+      _salvarStatus(_statusPendente, enviar, texto),
+      new Promise((_,rej) => setTimeout(() => rej(new Error('Tempo esgotado (15s). Tente novamente.')), 15000))
+    ]);
     if(resultado && resultado.erroEnvio){
       erroDiv.style.display='block';
       erroDiv.innerHTML='⚠️ <strong>Status salvo, mas mensagem NÃO enviada.</strong><br>Erro da Meta/WhatsApp: <code style="word-break:break-all">' + resultado.erroEnvio + '</code>';
-      if(btnEnviar){ btnEnviar.disabled=false; btnEnviar.textContent='📤 Enviar e atualizar'; }
       return; // mantém modal aberto para user ver o erro
     }
+    sucesso = true;
   }catch(err){
     erroDiv.style.display='block';
-    erroDiv.innerHTML='⚠️ Erro de conexão: ' + err.message;
+    erroDiv.innerHTML='⚠️ ' + (err.message || 'Erro de conexão');
+  }finally{
+    // Sempre reabilita o botão, independente do resultado
     if(btnEnviar){ btnEnviar.disabled=false; btnEnviar.textContent='📤 Enviar e atualizar'; }
-    return;
   }
-  fecharModal('modal-msg-status');
-  _statusPendente = null;
+  if(sucesso){
+    fecharModal('modal-msg-status');
+    _statusPendente = null;
+  }
 }
 
 async function agendarSemEnviar(){
@@ -2788,6 +2797,10 @@ async function _salvarStatus(status, enviar, mensagem){
   registrarIntervencao('Thiara','Status (pipeline)', status);
   atualizarPipelineAtivo(status);
   renderLista();
+  // Auto-arquivar após Reprovado (aqui, antes do fetch, para garantir execução)
+  if(status && status.toLowerCase().startsWith('reprovado')){
+    setTimeout(()=>arquivarConversa(), 900);
+  }
   // toast movido para depois do fetch para não bloquear a requisição
   try{
     const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
@@ -2801,10 +2814,6 @@ async function _salvarStatus(status, enviar, mensagem){
   }catch(e){
     console.error('Erro ao salvar status:', e);
     return {erroEnvio: e.message};
-  }
-  // Auto-arquivar após Reprovado
-  if(status && status.toLowerCase().startsWith('reprovado')){
-    setTimeout(()=>arquivarConversa(), 900);
   }
 }
 function atualizarPipelineAtivo(statusAtual){
@@ -4748,19 +4757,4 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   }
 
-  // Indicadores de engajamento na lista (refresh periódico)
-  setInterval(()=>{
-    document.querySelectorAll('[data-tel-eng]').forEach(el=>{
-      const tel=el.dataset.telEng;
-      const s=todasSessoes[tel];
-      if(!s)return;
-      const eng=calcularEngajamento(tel,s);
-      el.textContent=eng.emoji;
-      el.title=eng.label;
-    });
-  },30000);
-});
-
-</script>
-</body>
-</html>
+  // Indicadores de engajamento na lista (refresh per

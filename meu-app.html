@@ -98,6 +98,85 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-ev-chip.pessoal-urgente{background:#fee2e2;color:#991b1b}
 .ag-ev-chip.compromisso{background:#e0e7ff;color:#3730a3}
 .ag-ev-chip.saude{background:#fce7f3;color:#9d174d}
+
+/* ── MEDICAÇÃO ── */
+.med-item{background:#f8fafc;border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:4px solid var(--border)}
+.med-item.ok{border-left-color:var(--green)}
+.med-item.warn{border-left-color:#f59e0b}
+.med-item.danger{border-left-color:#ef4444}
+.med-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.med-nome{font-size:13px;font-weight:700;color:var(--navy)}
+.med-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.med-badge.ok{background:#d1fae5;color:#065f46}
+.med-badge.warn{background:#fef3c7;color:#92400e}
+.med-badge.danger{background:#fee2e2;color:#991b1b}
+.med-info{font-size:11px;color:var(--muted);margin-bottom:7px;line-height:1.5}
+.med-bar-wrap{background:#e5e7eb;border-radius:8px;height:8px;overflow:hidden}
+.med-bar-fill{height:100%;border-radius:8px;transition:width .4s}
+.med-bar-fill.ok{background:var(--green)}
+.med-bar-fill.warn{background:#f59e0b}
+.med-bar-fill.danger{background:#ef4444}
+.med-comprar{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11px;font-weight:700;color:#ef4444;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── CICLO MENSTRUAL ── */
+.ciclo-banner{border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.ciclo-phase-title{font-size:15px;font-weight:700}
+.ciclo-phase-desc{font-size:11px;margin-top:3px;opacity:.75;line-height:1.4}
+.ciclo-badge{margin-left:auto;flex-shrink:0;background:rgba(255,255,255,.45);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
+.ciclo-ring-wrap{position:relative;width:120px;height:120px;margin:4px auto 10px}
+.ciclo-ring-svg{transform:rotate(-90deg)}
+.ciclo-ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.ciclo-ring-num{font-size:24px;font-weight:700;line-height:1}
+.ciclo-ring-lbl{font-size:10px;color:var(--muted);margin-top:1px}
+.ciclo-leg{display:flex;flex-wrap:wrap;gap:5px 8px;justify-content:center;margin-top:8px}
+.ciclo-leg-i{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)}
+.ciclo-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.ciclo-date-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ciclo-date-bar{width:3px;height:32px;border-radius:3px;flex-shrink:0}
+.ciclo-date-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.ciclo-date-val{font-size:12px;font-weight:700}
+.ciclo-sx-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ciclo-sx{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:7px;padding:7px 8px;font-size:11px}
+.ciclo-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.ciclo-wd{text-align:center;font-size:9px;font-weight:700;color:var(--muted);padding:2px 0 5px;text-transform:uppercase}
+.ciclo-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;border-radius:50%;position:relative}
+.ciclo-day.today{outline:2px solid var(--navy);outline-offset:-1px;font-weight:700}
+.ciclo-day.ph-menstrual{background:#f4afa1;color:#fff}
+.ciclo-day.ph-follicular{background:#daf0e6;color:#2a7a5a}
+.ciclo-day.ph-ovulatory{background:#8ed1b2;color:#fff}
+.ciclo-day.ph-luteal{background:#fce8e4;color:#b05040}
+.ciclo-day.empty{visibility:hidden}
+.ciclo-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:300;align-items:center;justify-content:center}
+.ciclo-edit-overlay.open{display:flex}
+.ciclo-modal{background:#fff;border-radius:16px;padding:22px;width:290px;box-shadow:0 8px 28px rgba(0,0,0,.14)}
+.ciclo-modal h3{font-size:14px;font-weight:700;margin-bottom:16px}
+.ciclo-fg{margin-bottom:12px}
+.ciclo-fg label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.ciclo-fg input{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.ciclo-fg input:focus{border-color:var(--green)}
+.ciclo-modal-btns{display:flex;gap:7px;margin-top:16px}
+.ciclo-btn-c{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:8px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.ciclo-btn-s{flex:1;padding:9px;border:none;border-radius:8px;background:var(--green);font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer}
+
+/* ── PSI ── */
+.psi-sessao-card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px;border-left:4px solid var(--purple)}
+.psi-sessao-data{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.psi-sessao-tema{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.psi-sessao-body{font-size:12px;color:var(--text);line-height:1.5}
+.psi-meta-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#f5f3ff;border-radius:8px;margin-bottom:6px}
+.psi-meta-check{width:18px;height:18px;border-radius:4px;border:2px solid #8b5cf6;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .15s}
+.psi-meta-check.done{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
+.psi-insight{background:linear-gradient(135deg,#fdf4ff,#f5f3ff);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #c084fc;font-size:12px;line-height:1.5;color:var(--text)}
+.psi-insight-data{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700}
+
+/* ── SEI ── */
+.sei-col{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sei-col-header{padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#fff}
+.sei-col-body{padding:8px;min-height:80px}
+.sei-card{background:#f8fafc;border-radius:8px;padding:8px 10px;margin-bottom:6px;border-left:3px solid transparent;font-size:11px}
+.sei-card-nome{font-weight:700;color:var(--navy);margin-bottom:2px;font-size:12px}
+.sei-card-info{font-size:10px;color:var(--muted);line-height:1.4}
 .ag-ev-chip.filho{background:#fef9c3;color:#854d0e}
 .ag-ev-chip.entrevista{background:#dbeafe;color:#1d4ed8}
 .ag-ev-chip.more{background:#f3f4f6;color:var(--muted)}
@@ -173,6 +252,9 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
+  <button class="tab" onclick="irAba('ciclo',this)">🌸 Ciclo</button>
+  <button class="tab" onclick="irAba('psi',this)">🧠 Psicológico</button>
+  <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
 </div>
 
 <!-- TAREFAS -->
@@ -249,13 +331,24 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 <!-- SAÚDE -->
 <div class="page" id="page-saude">
-  <div class="card">
-    <div class="card-title">💊 Remédios</div>
-    <div id="rem-list"></div>
-    <div style="display:flex;gap:7px;margin-top:8px">
-      <input id="rem-nome-input" class="task-input" placeholder="Nome do remédio" style="flex:1;width:auto">
-      <input id="rem-hora-input" type="time" class="task-input" style="width:100px">
-      <button class="task-add-btn" onclick="addRem()">+</button>
+  <!-- CONTROLE DE MEDICAÇÃO -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">💊 Controle de Medicação</div>
+    <div id="med-tracker"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Registrar nova caixa comprada</div>
+      <select id="med-select" class="task-input" style="width:100%;margin-bottom:7px"></select>
+      <div style="display:flex;gap:7px">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Data da compra</div>
+          <input type="date" id="med-data-compra" class="task-input" style="width:100%">
+        </div>
+        <div style="width:80px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Comprimidos</div>
+          <input type="number" id="med-qtd-compra" class="task-input" style="width:100%">
+        </div>
+      </div>
+      <button onclick="registrarCompra()" style="margin-top:8px;width:100%;padding:8px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">✅ Registrar compra</button>
     </div>
   </div>
   <div class="card">
@@ -354,6 +447,190 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════
+     CICLO MENSTRUAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-ciclo">
+  <!-- Banner fase atual -->
+  <div class="ciclo-banner" id="ciclo-banner">
+    <div style="font-size:26px" id="ciclo-icon"></div>
+    <div style="flex:1;min-width:0">
+      <div class="ciclo-phase-title" id="ciclo-phase-title"></div>
+      <div class="ciclo-phase-desc" id="ciclo-phase-desc"></div>
+    </div>
+    <div class="ciclo-badge" id="ciclo-badge"></div>
+  </div>
+
+  <!-- Anel + Próximas datas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="card">
+      <div class="card-title">Ciclo atual</div>
+      <div class="ciclo-ring-wrap">
+        <svg class="ciclo-ring-svg" id="cicloRingSvg" viewBox="0 0 120 120" width="120" height="120">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="#f0f0f0" stroke-width="10"/>
+          <g id="cicloRingArcs"></g>
+          <circle id="cicloRingDot" r="5" fill="#2a2a2b"/>
+        </svg>
+        <div class="ciclo-ring-center">
+          <div class="ciclo-ring-num" id="cicloRingDay"></div>
+          <div class="ciclo-ring-lbl">dia do ciclo</div>
+        </div>
+      </div>
+      <div class="ciclo-leg">
+        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#f4afa1"></span>Menst.</div>
+        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#daf0e6"></span>Folicular</div>
+        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#8ed1b2"></span>Ovulação</div>
+        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#fce8e4"></span>Lútea</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Próximas datas</div>
+      <div id="ciclo-dates"></div>
+      <button onclick="abrirCicloEdit()" style="margin-top:12px;width:100%;padding:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">✏️ Editar datas</button>
+    </div>
+  </div>
+
+  <!-- Sintomas -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">Sintomas esperados agora</div>
+    <div class="ciclo-sx-grid" id="ciclo-sx"></div>
+  </div>
+
+  <!-- Calendário -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button onclick="cicloPrevMonth()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px">‹</button>
+      <div style="font-size:13px;font-weight:700" id="ciclo-cal-label"></div>
+      <button onclick="cicloNextMonth()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px">›</button>
+    </div>
+    <div class="ciclo-cal-grid" id="ciclo-cal-grid">
+      <div class="ciclo-wd">D</div><div class="ciclo-wd">S</div><div class="ciclo-wd">T</div>
+      <div class="ciclo-wd">Q</div><div class="ciclo-wd">Q</div><div class="ciclo-wd">S</div><div class="ciclo-wd">S</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#f4afa1"></span>Menstruação</div>
+      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#daf0e6"></span>Folicular</div>
+      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#8ed1b2"></span>Ovulação</div>
+      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#fce8e4"></span>Lútea/TPM</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar ciclo -->
+<div class="ciclo-edit-overlay" id="cicloEditOverlay">
+  <div class="ciclo-modal">
+    <h3>✏️ Dados do ciclo</h3>
+    <div class="ciclo-fg"><label>Início do último ciclo</label><input type="date" id="cicloInputData"></div>
+    <div class="ciclo-fg"><label>Duração mínima (dias)</label><input type="number" id="cicloInputMin" min="18" max="35"></div>
+    <div class="ciclo-fg"><label>Duração máxima (dias)</label><input type="number" id="cicloInputMax" min="18" max="45"></div>
+    <div class="ciclo-fg"><label>Duração da menstruação (dias)</label><input type="number" id="cicloInputPLen" min="2" max="10"></div>
+    <div class="ciclo-modal-btns">
+      <button class="ciclo-btn-c" onclick="fecharCicloEdit()">Cancelar</button>
+      <button class="ciclo-btn-s" onclick="salvarCicloEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ACOMPANHAMENTO PSI
+═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-psi">
+  <!-- Próxima sessão -->
+  <div class="card" style="background:linear-gradient(135deg,#fdf4ff,#f5f3ff);border:1px solid #e9d5ff;margin-bottom:10px">
+    <div class="card-title" style="color:#7c3aed">🗓️ Próxima sessão</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input type="date" id="psi-prox-data" class="task-input" style="flex:1;width:auto">
+      <input type="time" id="psi-prox-hora" class="task-input" style="width:90px">
+    </div>
+    <input id="psi-prox-terapeuta" class="task-input" placeholder="Terapeuta / psicóloga" style="width:100%;margin-bottom:8px">
+    <button onclick="salvarProxSessao()" style="width:100%;padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">💾 Salvar</button>
+    <div id="psi-prox-display" style="margin-top:8px;font-size:12px;color:#7c3aed;font-weight:600"></div>
+  </div>
+
+  <!-- Nova sessão -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">➕ Registrar sessão</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input type="date" id="psi-sess-data" class="task-input" style="flex:1;width:auto">
+      <input id="psi-sess-terapeuta" class="task-input" placeholder="Terapeuta" style="width:120px">
+    </div>
+    <input id="psi-sess-tema" class="task-input" placeholder="Temas abordados" style="width:100%;margin-bottom:8px">
+    <textarea id="psi-sess-obs" class="task-input" placeholder="Observações e percepções da sessão..." style="width:100%;min-height:70px;resize:none;margin-bottom:8px"></textarea>
+    <button onclick="addSessaoPsi()" style="width:100%;padding:8px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">📝 Registrar sessão</button>
+  </div>
+
+  <!-- Metas e comprometimentos -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">🎯 Metas e comprometimentos</div>
+    <div id="psi-metas-list"></div>
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <input id="psi-meta-input" class="task-input" placeholder="Nova meta ou comprometimento..." style="flex:1;width:auto" onkeydown="if(event.key==='Enter')addMetaPsi()">
+      <button onclick="addMetaPsi()" style="padding:7px 12px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer">+</button>
+    </div>
+  </div>
+
+  <!-- Diário de insights -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">💡 Diário de insights</div>
+    <textarea id="psi-insight-input" class="task-input" placeholder="Escreva uma percepção, insight ou reflexão..." style="width:100%;min-height:80px;resize:none;margin-bottom:8px"></textarea>
+    <button onclick="addInsightPsi()" style="width:100%;padding:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">💾 Salvar insight</button>
+  </div>
+
+  <!-- Histórico de sessões -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">📋 Histórico de sessões</div>
+    <div id="psi-sessoes-hist"></div>
+  </div>
+
+  <!-- Insights salvos -->
+  <div class="card">
+    <div class="card-title">🌟 Insights salvos</div>
+    <div id="psi-insights-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAINEL SEI
+═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-sei">
+  <!-- Config regiões -->
+  <div class="card" style="background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:10px">
+    <div class="card-title" style="color:#1d4ed8">📍 Regiões do Grupo SEI</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Candidatos dessas cidades/regiões aparecem automaticamente no pipeline abaixo.</div>
+    <div id="sei-regioes-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:7px">
+      <input id="sei-regiao-input" class="task-input" placeholder="Adicionar cidade ou região..." style="flex:1;width:auto" onkeydown="if(event.key==='Enter')addSeiRegiao()">
+      <button onclick="addSeiRegiao()" style="padding:7px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer">+</button>
+    </div>
+  </div>
+
+  <!-- Resumo -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="sei-resumo"></div>
+
+  <!-- Pipeline Kanban -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="sei-col">
+      <div class="sei-col-header" style="background:#f59e0b">📋 Triagem</div>
+      <div class="sei-col-body" id="sei-col-triagem"></div>
+    </div>
+    <div class="sei-col">
+      <div class="sei-col-header" style="background:#3b82f6">🎙️ Entrevista</div>
+      <div class="sei-col-body" id="sei-col-entrevista"></div>
+    </div>
+    <div class="sei-col">
+      <div class="sei-col-header" style="background:#8b5cf6">✅ Aprovado</div>
+      <div class="sei-col-body" id="sei-col-aprovado"></div>
+    </div>
+    <div class="sei-col">
+      <div class="sei-col-header" style="background:#10b981">🤝 Contratado</div>
+      <div class="sei-col-body" id="sei-col-contratado"></div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="renderSei()" style="padding:7px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🔄 Atualizar pipeline</button>
+  </div>
+</div>
+
 <!-- MODAL EVENTO -->
 <div class="ag-modal-bg" id="ag-modal-bg" onclick="if(event.target===this)fecharModal()">
   <div class="ag-modal">
@@ -390,6 +667,7 @@ if (!dados.remedios) dados.remedios = [];
 if (!dados.humor)    dados.humor    = [];
 if (!dados.agenda)   dados.agenda   = [];
 if (dados.agua === undefined) dados.agua = 0;
+if (!dados.psi) dados.psi = {sessoes:[],metas:[],insights:[],proxSessao:null};
 function salvar(){ localStorage.setItem('meuapp', JSON.stringify(dados)); }
 
 // ── AGENDA STATE ──────────────────────────────────────────────────────────────
@@ -593,319 +871,4 @@ function renderMes(d){
   // Completar semana final
   const totalCels = startDow + ultimoDia.getDate();
   const resto = totalCels%7 === 0 ? 0 : 7-(totalCels%7);
-  for(let i=1; i<=resto; i++){
-    const dt = new Date(ano, mes+1, i);
-    const dk = dateKey(dt);
-    const evs = eventosNoDia(dk);
-    h+=`<div class="ag-month-day other-month" onclick="irDia('${dk}')">
-      <div class="ag-month-day-num">${dt.getDate()}</div>
-      ${evs.slice(0,2).map(e=>evChip(e,70)).join('')}
-    </div>`;
-  }
-  h += '</div></div>';
-  return h;
-}
-
-// ANUAL
-function renderAno(ano){
-  let h = '<div class="ag-year-grid">';
-  for(let m=0; m<12; m++){
-    const primeiroDia = new Date(ano, m, 1);
-    const ultimoDia = new Date(ano, m+1, 0);
-    const startDow = primeiroDia.getDay();
-    h += `<div class="ag-year-month">
-      <div class="ag-year-month-title">${MESES_ABREV[m]}</div>
-      <div class="ag-year-mini-grid">`;
-    DIAS_SEMANA.forEach(ds=>{ h+=`<div class="ag-year-mini-header">${ds[0]}</div>`; });
-    for(let i=0;i<startDow;i++) h+='<div></div>';
-    for(let d2=1;d2<=ultimoDia.getDate();d2++){
-      const dt = new Date(ano, m, d2);
-      const dk = dateKey(dt);
-      const hasEv = eventosNoDia(dk).length>0;
-      const isT = isHoje(dt);
-      h+=`<div class="ag-year-mini-day ${isT?'today':''} ${hasEv&&!isT?'has-event':''} " onclick="irDia('${dk}')" title="${dk}">${d2}</div>`;
-    }
-    h += '</div></div>';
-  }
-  h += '</div>';
-  return h;
-}
-
-function irDia(dk){
-  agCursor = new Date(dk+'T12:00:00');
-  agCursor.setHours(0,0,0,0);
-  agView = 'dia';
-  document.querySelectorAll('.ag-vtab').forEach((b,i)=>b.classList.toggle('active', i===0));
-  renderAgenda();
-}
-
-// ── MODAL EVENTO ──────────────────────────────────────────────────────────────
-function abrirModalEvento(id, datetimeStr){
-  editandoId = id || null;
-  const modal = document.getElementById('ag-modal-bg');
-  const btnDel = document.getElementById('ag-btn-del');
-  document.getElementById('ag-modal-title').textContent = id ? 'Editar Evento' : 'Novo Evento';
-  btnDel.style.display = id ? 'block' : 'none';
-
-  if(id){
-    const ev = (dados.agenda||[]).find(e=>String(e.id)===String(id));
-    if(!ev){ fecharModal(); return; }
-    document.getElementById('ag-f-titulo').value = ev.titulo||'';
-    document.getElementById('ag-f-data').value   = ev.data||'';
-    document.getElementById('ag-f-hora').value   = ev.hora||'';
-    document.getElementById('ag-f-hora-fim').value = ev.horaFim||'';
-    document.getElementById('ag-f-tipo').value   = ev.tipo||'pessoal';
-    document.getElementById('ag-f-obs').value    = ev.obs||'';
-  } else {
-    document.getElementById('ag-f-titulo').value = '';
-    document.getElementById('ag-f-obs').value = '';
-    document.getElementById('ag-f-hora-fim').value = '';
-    document.getElementById('ag-f-tipo').value = 'pessoal';
-    if(datetimeStr){
-      const [dt, hr] = datetimeStr.split('T');
-      document.getElementById('ag-f-data').value = dt;
-      document.getElementById('ag-f-hora').value = hr||'';
-    } else {
-      document.getElementById('ag-f-data').value = dateKey(agCursor);
-      document.getElementById('ag-f-hora').value = '';
-    }
-  }
-  modal.classList.add('open');
-  setTimeout(()=>document.getElementById('ag-f-titulo').focus(),80);
-}
-function fecharModal(){
-  document.getElementById('ag-modal-bg').classList.remove('open');
-  editandoId = null;
-}
-function salvarEvento(){
-  const titulo = document.getElementById('ag-f-titulo').value.trim();
-  const data   = document.getElementById('ag-f-data').value;
-  if(!titulo || !data){ toast('Preencha título e data'); return; }
-  const ev = {
-    id: editandoId || Date.now(),
-    titulo,
-    data,
-    hora:    document.getElementById('ag-f-hora').value,
-    horaFim: document.getElementById('ag-f-hora-fim').value,
-    tipo:    document.getElementById('ag-f-tipo').value,
-    obs:     document.getElementById('ag-f-obs').value.trim(),
-  };
-  if(editandoId){
-    const idx = dados.agenda.findIndex(e=>String(e.id)===String(editandoId));
-    if(idx>=0) dados.agenda[idx]=ev; else dados.agenda.push(ev);
-  } else {
-    dados.agenda.push(ev);
-  }
-  salvar(); fecharModal(); renderAgenda();
-  toast('📅 Evento salvo!', 'success');
-}
-function deletarEvento(){
-  if(!editandoId) return;
-  dados.agenda = dados.agenda.filter(e=>String(e.id)!==String(editandoId));
-  salvar(); fecharModal(); renderAgenda();
-  toast('🗑️ Evento removido');
-}
-
-// ── ENTREVISTAS LIA ───────────────────────────────────────────────────────────
-function renderEntrevistasLia(){
-  const el = document.getElementById('ag-entrevistas');
-  try{
-    const raw = localStorage.getItem('effect_entrevistas_v1');
-    if(!raw){ el.innerHTML='<span style="color:var(--muted)">Nenhuma entrevista encontrada. Abra a Lia para sincronizar.</span>'; return; }
-    const ents = JSON.parse(raw);
-    const todas = [];
-    Object.entries(ents).forEach(([tel,arr])=>{ (arr||[]).forEach(e=>{ if(e.status!=='Cancelada') todas.push({...e,tel}); }); });
-    todas.sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
-    const hojeSt = dateKey(hoje());
-    const futuras = todas.filter(e=>e.data>=hojeSt).slice(0,10);
-    if(!futuras.length){ el.innerHTML='<span style="color:var(--muted)">Nenhuma entrevista futura agendada.</span>'; return; }
-    const grupos = {};
-    futuras.forEach(e=>{ if(!grupos[e.data])grupos[e.data]=[]; grupos[e.data].push(e); });
-    el.innerHTML = Object.entries(grupos).map(([data,evs])=>{
-      const d = new Date(data+'T12:00:00');
-      const isT = data===hojeSt;
-      const lbl = isT?'🟢 HOJE':d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-      return `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px">${lbl}</div>`+
-        evs.map(e=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:#fff;border-left:3px solid #1fa5ff;margin-bottom:5px">
-          <div style="font-size:11px;font-weight:800;color:var(--navy);white-space:nowrap;min-width:36px">${e.hora||'--'}</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:700">${e.cand||e.tel}</div>
-          <div style="font-size:10px;color:var(--muted)">${e.tipo||'Entrevista'}${e.vagaTitulo?' · '+e.vagaTitulo:''}</div></div>
-          <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;background:#dbeafe;color:#1d4ed8">${e.status||'Pendente'}</span>
-        </div>`).join('');
-    }).join('');
-  }catch(err){ el.innerHTML='<span style="color:var(--muted)">Erro ao carregar entrevistas.</span>'; }
-}
-
-// ── TAREFAS ────────────────────────────────────────────────────────────────────
-function addQ(q){
-  const input=document.getElementById(q+'-input');
-  const texto=input.value.trim();
-  if(!texto)return;
-  dados.matrix[q].push({id:Date.now(),texto,done:false});
-  salvar(); input.value=''; renderMatrix(); mostrarTarefaSOS();
-}
-function toggleQ(q,id){
-  const t=dados.matrix[q].find(t=>t.id===id);
-  if(!t)return; t.done=!t.done; salvar(); renderMatrix(); mostrarTarefaSOS();
-  if(t.done)toast('✅ Concluída!','success');
-}
-function delQ(q,id){ dados.matrix[q]=dados.matrix[q].filter(t=>t.id!==id); salvar(); renderMatrix(); mostrarTarefaSOS(); }
-function renderMatrix(){
-  ['q1','q2','q3','q4'].forEach(q=>{
-    const el=document.getElementById(q+'-list');
-    const tasks=dados.matrix[q]||[];
-    el.innerHTML=tasks.length?tasks.map(t=>`<div class="q-task ${t.done?'done':''}">
-      <div class="q-check ${t.done?'checked':''}" onclick="toggleQ('${q}',${t.id})">${t.done?'✓':''}</div>
-      <span class="q-text ${t.done?'done':''}">${t.texto}</span>
-      <button class="q-del" onclick="delQ('${q}',${t.id})">×</button>
-    </div>`).join(''):'<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">Vazio</div>';
-  });
-}
-function limparConcluidas(){ ['q1','q2','q3','q4'].forEach(q=>{ dados.matrix[q]=dados.matrix[q].filter(t=>!t.done); }); salvar(); renderMatrix(); }
-
-// ── REMÉDIOS ─────────────────────────────────────────────────────────────────
-function addRem(){
-  const nome=document.getElementById('rem-nome-input').value.trim();
-  const hora=document.getElementById('rem-hora-input').value;
-  if(!nome)return;
-  dados.remedios.push({id:Date.now(),nome,hora,tomado:false});
-  salvar(); document.getElementById('rem-nome-input').value=''; renderRem();
-}
-function toggleRem(id){ const r=dados.remedios.find(r=>r.id===id); if(!r)return; r.tomado=!r.tomado; salvar(); renderRem(); if(r.tomado)toast('💊 Registrado!','success'); }
-function renderRem(){
-  document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`<div class="rem-item">
-    <div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div>
-    <div style="flex:1"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div>
-    <button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button>
-  </div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';
-}
-
-// ── ÁGUA ─────────────────────────────────────────────────────────────────────
-function renderAgua(){
-  document.getElementById('agua-garrafas').innerHTML=Array.from({length:4},(_,i)=>`<div class="garrafa ${i<dados.agua?'cheia':''}" onclick="toggleGarrafa(${i})"><div class="garrafa-fill"></div></div>`).join('');
-  document.getElementById('agua-label').textContent=`${dados.agua} de 4 garrafas (${dados.agua*500}ml)`;
-}
-function toggleGarrafa(i){ dados.agua=i<dados.agua?i:i+1; if(dados.agua===4)toast('💧 Meta atingida!','success'); salvar(); renderAgua(); }
-
-// ── HUMOR ─────────────────────────────────────────────────────────────────────
-let humorSel=null;
-function setHumor(i,el){ humorSel=i; document.querySelectorAll('.humor-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); }
-function updateEnergia(v){ document.getElementById('energia-fill').style.width=(v*10)+'%'; document.getElementById('energia-label').textContent=`Energia: ${v}/10`; }
-function salvarHumor(){
-  const emocoes=['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];
-  if(humorSel===null){ toast('Selecione uma emoção'); return; }
-  const energia=document.getElementById('energia-range').value;
-  const obs=document.getElementById('humor-obs').value;
-  const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});
-  salvar(); document.getElementById('humor-obs').value=''; renderHumorHist(); toast('😊 Registrado!','success');
-}
-function renderHumorHist(){
-  if(!dados.humor||!dados.humor.length){ document.getElementById('humor-historico').textContent='Nenhum registro ainda.'; return; }
-  document.getElementById('humor-historico').innerHTML=dados.humor.slice(-5).reverse().map(h=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6">
-    <span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span>
-    <span style="font-size:12px;font-weight:600">${h.emocao}</span>
-    <span style="font-size:10px;color:var(--muted)">⚡${h.energia}/10</span>
-    ${h.obs?`<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>`:''}
-  </div>`).join('');
-}
-
-// ── SOS ───────────────────────────────────────────────────────────────────────
-let sosInterval=null, boxInterval=null;
-function mostrarTarefaSOS(){
-  const m=dados.matrix||{};
-  const tarefa=(m.q1||[]).filter(t=>!t.done)[0]||(m.q2||[]).filter(t=>!t.done)[0]||null;
-  const card=document.getElementById('sos-tarefa-card');
-  if(tarefa){ card.style.display='block'; document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto; }
-  else card.style.display='none';
-}
-function toggleTool(id){
-  const body=document.getElementById(id);
-  const btn=body.previousElementSibling;
-  const isOpen=body.style.display==='block';
-  document.querySelectorAll('.sos-tool-body').forEach(b=>b.style.display='none');
-  document.querySelectorAll('.sos-btn').forEach(b=>b.classList.remove('sos-tool-open'));
-  if(!isOpen){ body.style.display='block'; btn.classList.add('sos-tool-open'); }
-}
-function iniciarSOS(){
-  document.getElementById('sos-anim').style.display='block';
-  const fases=[{texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},{texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},{texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'}];
-  let fase=0;
-  const circle=document.getElementById('sos-circle');
-  function proxFase(){ const f=fases[fase%3]; document.getElementById('sos-text').textContent=f.texto; document.getElementById('sos-sub').textContent=f.sub; circle.style.animation=f.anim; fase++; sosInterval=setTimeout(proxFase,f.dur); }
-  proxFase();
-}
-function pararSOS(){ clearTimeout(sosInterval); document.getElementById('sos-anim').style.display='none'; document.getElementById('sos-circle').style.animation='none'; }
-function iniciarBox(){
-  document.getElementById('box-anim').style.display='block';
-  const fases=[{texto:'Inspire...',sub:'4 segundos',dur:4000,scale:'scale(1.4)'},{texto:'Segure cheio...',sub:'4 segundos',dur:4000,scale:'scale(1.4)'},{texto:'Expire...',sub:'4 segundos',dur:4000,scale:'scale(1)'},{texto:'Segure vazio...',sub:'4 segundos',dur:4000,scale:'scale(1)'}];
-  let fase=0; const circle=document.getElementById('box-circle');
-  function proxFase(){ const f=fases[fase%4]; document.getElementById('box-text').textContent=f.texto; document.getElementById('box-sub').textContent=f.sub; circle.style.transform=f.scale; fase++; boxInterval=setTimeout(proxFase,f.dur); }
-  proxFase();
-}
-function pararBox(){ clearTimeout(boxInterval); document.getElementById('box-anim').style.display='none'; document.getElementById('box-circle').style.transform='scale(1)'; }
-
-const lembretes=["Você não precisa fazer tudo hoje. Fazer uma coisa bem feita já é suficiente.","TDAH não é falta de atenção — é atenção que vai para onde mais importa.","Ser mãe, empreendedora e psicóloga ao mesmo tempo é extraordinário. Cuide de você primeiro.","Perfeito é inimigo do feito. Feito é melhor que perfeito.","Você chegou até aqui. Isso já é uma conquista.","Ansiedade mente. O presente é mais seguro do que parece.","Pequenos progressos todos os dias somam grandes mudanças.","Você tem altas habilidades — e isso inclui a habilidade de se reinventar.","Não compare seu bastidor com o palco dos outros.","Hoje você não precisa ser heroína. Pode só existir.","Uma tarefa. Um passo. Uma respiração. Isso é suficiente."];
-function novoLembrete(){ document.getElementById('lembrete-gentil').textContent='"'+lembretes[Math.floor(Math.random()*lembretes.length)]+'"'; }
-
-// ── EXERCÍCIO ──────────────────────────────────────────────────────────────────
-function toggleChip(el){ el.classList.toggle('on'); }
-function salvarEx(){
-  const sel=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);
-  if(!sel.length){ toast('Selecione pelo menos um'); return; }
-  toast('🏃 Exercício salvo!','success');
-  document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));
-  document.getElementById('ex-obs').value='';
-}
-
-// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
-function voltarLia(){
-  // Se está dentro de um iframe (Lia), volta para a view inbox do pai
-  try {
-    if(window.parent && window.parent !== window && typeof window.parent.mostrarView === 'function'){
-      window.parent.mostrarView('inbox');
-      return;
-    }
-  } catch(e){}
-  // Fallback: navega a janela atual
-  window.location.href = '/inbox';
-}
-
-// ── UTILS ─────────────────────────────────────────────────────────────────────
-function irAba(aba, el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('page-'+aba).classList.add('active');
-  el.classList.add('active');
-  if(aba==='sos') mostrarTarefaSOS();
-  if(aba==='agenda') renderAgenda();
-}
-function toast(msg, tipo){ const t=document.getElementById('toast'); t.textContent=msg; t.className=`toast show ${tipo||''}`; setTimeout(()=>t.className='toast',2500); }
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-document.getElementById('hdate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-document.getElementById('lembrete-gentil').textContent='"'+lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderMatrix(); renderRem(); renderAgua(); renderHumorHist(); mostrarTarefaSOS();
-renderAgenda();
-
-// Receber postMessage da Lia (pai) quando uma entrevista é salva
-window.addEventListener('message', function(e){
-  if(e.data && e.data.tipo === 'entrevista_salva'){
-    renderEntrevistasLia();
-    const abaAgenda = document.getElementById('page-agenda');
-    if(abaAgenda && abaAgenda.classList.contains('active')) renderAgenda();
-    toast('📅 Entrevista sincronizada!', 'success');
-  }
-});
-
-// Auto-refresh das entrevistas a cada 15s enquanto na aba Agenda
-// (cobre o caso onde iframe pai e filho compartilham mesmo contexto)
-setInterval(function(){
-  const abaAgenda = document.getElementById('page-agenda');
-  if(abaAgenda && abaAgenda.classList.contains('active')){
-    renderEntrevistasLia();
-  }
-}, 15000);
-</script>
-</body>
-</html>
+  for(let i=
