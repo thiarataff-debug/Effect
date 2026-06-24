@@ -2598,8 +2598,11 @@ async function enviarMensagem(toOriginal, body) {
     await axios.post(url, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
     supervisor.contarMensagemEnviada();
   } catch (e) {
+    const erroMeta = e.response?.data?.error;
+    const msgErro = erroMeta ? `[Meta ${erroMeta.code}] ${erroMeta.message}` : e.message;
     console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message));
-    supervisor.registrarErroMeta(e.response?.data?.error?.message || e.message, to);
+    supervisor.registrarErroMeta(msgErro, to);
+    throw new Error(msgErro); // relança para que a rota retorne ok:false com o erro real
   }
 }
 
