@@ -2761,8 +2761,14 @@ async function _salvarStatus(status, enviar, mensagem){
   renderLista();
   toast(`📌 ${status}`,'success');
   try{
-    await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
-  }catch(e){ console.error('Erro ao salvar status:', e); }
+    const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
+    const d = await r.json();
+    if(d.erroEnvio){
+      toast('⚠️ Status salvo, mas mensagem não enviada: ' + d.erroEnvio, 'error');
+    } else if(enviar && mensagem){
+      toast('✅ Mensagem enviada ao candidato','success');
+    }
+  }catch(e){ console.error('Erro ao salvar status:', e); toast('⚠️ Erro de conexão ao salvar status','error'); }
   // Auto-arquivar após Reprovado
   if(status && status.toLowerCase().startsWith('reprovado')){
     setTimeout(()=>arquivarConversa(), 900);
