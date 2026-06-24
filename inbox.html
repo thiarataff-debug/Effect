@@ -949,9 +949,10 @@ font-family:'Montserrat',sans-serif
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Revise o texto antes de enviar. Você pode editar antes de confirmar.</div>
     <textarea id="modal-msg-status-texto" class="modal-input" rows="6" style="width:100%;font-size:13px;line-height:1.6"></textarea>
+    <div id="modal-msg-status-erro" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#b91c1c;line-height:1.5"></div>
     <div class="modal-footer" style="margin-top:12px">
       <button class="modal-btn modal-cancel" onclick="confirmarMsgStatus(false)">Só atualizar status</button>
-      <button class="modal-btn modal-confirm" onclick="confirmarMsgStatus(true)">📤 Enviar e atualizar</button>
+      <button class="modal-btn modal-confirm" id="btn-enviar-status" onclick="confirmarMsgStatus(true)">📤 Enviar e atualizar</button>
     </div>
   </div>
 </div>
@@ -2619,10 +2620,27 @@ function atualizarPreviewEntrevista(){
 }
 
 async function confirmarMsgStatus(enviar){
-  fecharModal('modal-msg-status');
   if(!_statusPendente) return;
   const texto = document.getElementById('modal-msg-status-texto').value.trim();
-  await _salvarStatus(_statusPendente, enviar, texto);
+  const erroDiv = document.getElementById('modal-msg-status-erro');
+  const btnEnviar = document.getElementById('btn-enviar-status');
+  erroDiv.style.display='none';
+  if(enviar && btnEnviar){ btnEnviar.disabled=true; btnEnviar.textContent='⏳ Enviando...'; }
+  try{
+    const resultado = await _salvarStatus(_statusPendente, enviar, texto);
+    if(resultado && resultado.erroEnvio){
+      erroDiv.style.display='block';
+      erroDiv.innerHTML='⚠️ <strong>Status salvo, mas mensagem NÃO enviada.</strong><br>Erro da Meta/WhatsApp: <code style="word-break:break-all">' + resultado.erroEnvio + '</code>';
+      if(btnEnviar){ btnEnviar.disabled=false; btnEnviar.textContent='📤 Enviar e atualizar'; }
+      return; // mantém modal aberto para user ver o erro
+    }
+  }catch(err){
+    erroDiv.style.display='block';
+    erroDiv.innerHTML='⚠️ Erro de conexão: ' + err.message;
+    if(btnEnviar){ btnEnviar.disabled=false; btnEnviar.textContent='📤 Enviar e atualizar'; }
+    return;
+  }
+  fecharModal('modal-msg-status');
   _statusPendente = null;
 }
 
@@ -2764,11 +2782,13 @@ async function _salvarStatus(status, enviar, mensagem){
     const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
     const d = await r.json();
     if(d.erroEnvio){
-      toast('⚠️ Status salvo, mas mensagem não enviada: ' + d.erroEnvio, 'error');
+      toast('⚠️ Mensagem não enviada — veja o erro no modal','error');
+      return {erroEnvio: d.erroEnvio};
     } else if(enviar && mensagem){
       toast('✅ Mensagem enviada ao candidato','success');
     }
-  }catch(e){ console.error('Erro ao salvar status:', e); toast('⚠️ Erro de conexão ao salvar status','error'); }
+    return {ok:true};
+  }catch(e){ console.error('Erro ao salvar status:', e); toast('⚠️ Erro de conexão ao salvar status','error'); return {erroEnvio: e.message}; }
   // Auto-arquivar após Reprovado
   if(status && status.toLowerCase().startsWith('reprovado')){
     setTimeout(()=>arquivarConversa(), 900);
