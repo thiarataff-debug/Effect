@@ -1163,7 +1163,28 @@ app.post("/webhook", async (req, res) => {
 app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
 app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
-app.get("/inbox", (req, res) => res.sendFile(path.join(__dirname, "inbox.html")));
+app.get("/inbox", (req, res) => {
+  try {
+    let html = fs.readFileSync(path.join(__dirname, "inbox.html"), "utf8");
+    // Injeta função toast caso não esteja definida no HTML
+    const toastFn = `<script>
+if(typeof toast !== 'function'){
+  window.toast = function toast(msg,tipo){
+    const t=document.getElementById('toast');
+    if(!t)return;
+    t.textContent=msg;
+    t.className='toast show '+(tipo||'');
+    clearTimeout(t._hideTimer);
+    t._hideTimer=setTimeout(()=>{t.className='toast';},3500);
+  };
+}
+</script>`;
+    html = html.replace('</head>', toastFn + '</head>');
+    res.send(html);
+  } catch(e) {
+    res.sendFile(path.join(__dirname, "inbox.html"));
+  }
+});
 
 
 // ─── ENVIAR DISC (sem ativar modo manual) ───
