@@ -1097,6 +1097,17 @@ font-family:'Montserrat',sans-serif
 // CORRECAO DATA LIA — versão final aplicada em 10/06/2026
 const SENHA = "effect2026";
 const API = window.location.origin;
+
+// ─── TOAST (função ausente no original — adicionada pelo fix) ───────────────
+function toast(msg, tipo){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.className = `toast show ${tipo || ''}`;
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+// ────────────────────────────────────────────────────────────────────────────
 const NOME_MANUAL = "Laura";
 const ASSINATURA = `\n\n— ${NOME_MANUAL}, Equipe Effect 💙`;
 
@@ -2777,18 +2788,20 @@ async function _salvarStatus(status, enviar, mensagem){
   registrarIntervencao('Thiara','Status (pipeline)', status);
   atualizarPipelineAtivo(status);
   renderLista();
-  toast(`📌 ${status}`,'success');
+  // toast movido para depois do fetch para não bloquear a requisição
   try{
     const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
     const d = await r.json();
     if(d.erroEnvio){
-      toast('⚠️ Mensagem não enviada — veja o erro no modal','error');
+      // Não usa toast aqui — deixa o modal mostrar o erro
       return {erroEnvio: d.erroEnvio};
-    } else if(enviar && mensagem){
-      toast('✅ Mensagem enviada ao candidato','success');
     }
+    try{ toast(`📌 ${status}` + (enviar && mensagem ? ' · ✅ Mensagem enviada' : ''), 'success'); }catch(_){}
     return {ok:true};
-  }catch(e){ console.error('Erro ao salvar status:', e); toast('⚠️ Erro de conexão ao salvar status','error'); return {erroEnvio: e.message}; }
+  }catch(e){
+    console.error('Erro ao salvar status:', e);
+    return {erroEnvio: e.message};
+  }
   // Auto-arquivar após Reprovado
   if(status && status.toLowerCase().startsWith('reprovado')){
     setTimeout(()=>arquivarConversa(), 900);
