@@ -1769,11 +1769,17 @@ app.post("/inbox/status", async (req, res) => {
       }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
     }
 
+    let erroEnvio = null;
     if (enviar && mensagem) {
-      await enviarMensagem(telefone, mensagem);
-      registrarEntradaSessao(sessao, "assistant", mensagem);
-      marcarConversaRespondida(sessao);
-      await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || sessao.ultimaAnalise?.nome || "");
+      try {
+        await enviarMensagem(telefone, mensagem);
+        registrarEntradaSessao(sessao, "assistant", mensagem);
+        marcarConversaRespondida(sessao);
+        await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome || sessao.ultimaAnalise?.nome || "");
+      } catch (eMensagem) {
+        erroEnvio = eMensagem.message; // status salvo, mas mensagem não enviada
+        console.error("Falha ao enviar mensagem no /inbox/status:", erroEnvio);
+      }
     }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
@@ -1798,7 +1804,7 @@ app.post("/inbox/status", async (req, res) => {
       } catch (e) { console.error("Erro bancoTalentos Sheets:", e.message); }
     }
 
-    return res.json({ ok: true, telefone, status: sessao.statusProcesso, prioritario });
+    return res.json({ ok: true, telefone, status: sessao.statusProcesso, prioritario, erroEnvio: erroEnvio || null });
   } catch (erro) {
     console.error("Erro /inbox/status:", erro.message);
     return res.json({ ok: false, erro: erro.message });
