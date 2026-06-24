@@ -2968,10 +2968,10 @@ async function enviarMsg(){
 
   }catch(e){
     toast('Erro de conexão','error');
-    await carregarSessoes();
+    try{ await carregarSessoes(); }catch(_){}
+  }finally{
+    btn.disabled=false;
   }
-
-  btn.disabled=false;
 }
 
 // ─── QUICK REPLIES ───
