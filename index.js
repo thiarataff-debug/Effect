@@ -1009,16 +1009,28 @@ let ultimoBackupSemanal = null;
 
 async function fazerBackup(tipo) {
   try {
-    const dados = {
-      timestamp: new Date().toISOString(),
-      motivo: tipo,
-      sessoes: sessoes
-    };
+    const sessoesCompactas = {};
+    Object.entries(sessoes).forEach(([tel, s]) => {
+      sessoesCompactas[tel] = {
+        nome: s.nome,
+        modo: s.modo,
+        pausado: s.pausado,
+        motivoPausa: s.motivoPausa,
+        discResult: s.discResult,
+        ultimaAnalise: s.ultimaAnalise,
+        historico: (s.historico || []).slice(-20)
+      };
+    });
+    const dados = { timestamp: new Date().toISOString(), motivo: tipo, sessoes: sessoesCompactas };
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 30000);
     const resp = await fetch(CONFIG.VAGAS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "salvarBackup", dados })
+      body: JSON.stringify({ acao: "salvarBackup", dados }),
+      signal: controller.signal
     });
+    clearTimeout(tid);
     const json = await resp.json();
     if (json.sucesso) {
       console.log(`✅ backup ${tipo} salvo: ${json.arquivo}`);
