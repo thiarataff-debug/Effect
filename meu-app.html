@@ -660,6 +660,19 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <div class="toast" id="toast"></div>
 
 <script>
+// ── NAVEGAÇÃO DE ABAS ─────────────────────────────────────────────────────────
+function irAba(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+  if(btn) btn.classList.add('active');
+  else {
+    const bt = document.querySelector(`.tab[onclick*="'${id}'"]`);
+    if(bt) bt.classList.add('active');
+  }
+}
+
 // ── DADOS ─────────────────────────────────────────────────────────────────────
 let dados = JSON.parse(localStorage.getItem('meuapp') || '{}');
 if (!dados.matrix)   dados.matrix   = {q1:[],q2:[],q3:[],q4:[]};
@@ -847,30 +860,6 @@ function renderMes(d){
   let h = '<div class="card" style="padding:8px"><div class="ag-month-grid">';
   DIAS_SEMANA.forEach(ds=>{ h+=`<div class="ag-month-header">${ds}</div>`; });
   // Dias do mês anterior
-  for(let i=0; i<startDow; i++){
-    const dt = new Date(ano, mes, -startDow+i+1);
-    const dk = dateKey(dt);
-    const evs = eventosNoDia(dk);
-    h+=`<div class="ag-month-day other-month" onclick="irDia('${dk}')">
-      <div class="ag-month-day-num">${dt.getDate()}</div>
-      ${evs.slice(0,2).map(e=>evChip(e,70)).join('')}
-    </div>`;
-  }
-  // Dias do mês
-  for(let d2=1; d2<=ultimoDia.getDate(); d2++){
-    const dt = new Date(ano, mes, d2);
-    const dk = dateKey(dt);
-    const evs = eventosNoDia(dk);
-    const todayClass = isHoje(dt)?'today':'';
-    h+=`<div class="ag-month-day ${todayClass}" onclick="irDia('${dk}')">
-      <div class="ag-month-day-num">${d2}</div>
-      ${evs.slice(0,2).map(e=>evChip(e,70)).join('')}
-      ${evs.length>2?`<span class="ag-ev-chip more">+${evs.length-2} mais</span>`:''}
-    </div>`;
-  }
-  // Completar semana final
-  const totalCels = startDow + ultimoDia.getDate();
-  const resto = totalCels%7 === 0 ? 0 : 7-(totalCels%7);
   for(let i=0;i<resto;i++){
     h+='<div class="ag-month-day vazio"></div>';
   }
