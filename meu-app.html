@@ -1771,16 +1771,17 @@ function saveDay() {
   saveDB(db);
   showSaved();
 
-  const alert = document.getElementById('day-alert');
-  alert.innerHTML = `<div class="alert alert-success">✓ Registro salvo! Adesão medicamentosa: ${db[key].adesao}%</div>`;
-  alert.style.display = 'block';
-  setTimeout(() => { alert.style.display = 'none'; }, 3000);
+  const alertEl = document.getElementById('day-alert');
+  if(alertEl){
+    alertEl.innerHTML = `<div class="alert alert-success">✓ Registro salvo! Adesão medicamentosa: ${db[key].adesao}%</div>`;
+    alertEl.style.display = 'block';
+    setTimeout(() => { alertEl.style.display = 'none'; }, 3000);
+  }
 }
 
 function showSaved() {
   const el = document.getElementById('save-indicator');
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2000);
+  if(el){ el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2000); }
 }
 
 // ═══════════════════════ LOAD TODAY ═══════════════════════
