@@ -925,16 +925,26 @@ function parseDanfe(texto, status) {
   // Data de emissão: primeira data no formato DD/MM/AAAA
   var mData = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
   if (mData) resultado.emis = mData[3] + '-' + mData[2] + '-' + mData[1]; // formato yyyy-mm-dd
-  // Cliente: linha após "NOME/RAZÃO SOCIAL" ou "DESTINATÁRIO"
-  var mCli = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL\s+([^\d\n]{5,60})/i);
-  if (!mCli) mCli = texto.match(/DESTINAT[ÁA]RIO[^A-Z]{0,10}([A-Z][A-Z\s\.]{4,50})/i);
+  // Cliente: extrai razão social do destinatário
+  // O pdf.js extrai colunas em sequência, então o texto pode vir:
+  // "NOME/RAZÃO SOCIAL CNPJ/CPF [Nome da empresa] [CNPJ]"
+  // O regex abaixo pula o rótulo "CNPJ/CPF" se ele aparecer antes do nome real
+  var mCli = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL\s+(?:CNPJ\s*[\/\\]\s*CPF\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][^\n\d]{4,60})/i);
+  if (!mCli) mCli = texto.match(/DESTINAT[ÁA]RIO[^A-Z]{0,10}([A-Z][A-Z\s\.&\-]{4,50})/i);
   if (mCli) {
     var cli = mCli[1].trim();
     // Remove CNPJ e datas que aparecem colados
     cli = cli.replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, '').replace(/\d{2}\/\d{2}\/\d{4}/g, '').trim();
     // Limita a 50 caracteres e remove sobra
     cli = cli.split(/\s{3,}/)[0].trim().slice(0, 50);
-    resultado.cli = cli;
+    // Ignora se capturou um rótulo em vez do nome real
+    var labelsIgnorar = /^(CNPJ|CPF|CNPJ\/CPF|DESTINAT|REMETENTE|EMITENTE|ENDERE|BAIRRO|MUNIC)$/i;
+    if (!labelsIgnorar.test(cli)) resultado.cli = cli;
+  }
+  // Fallback: extrai o CNPJ do destinatário se não encontrou o nome
+  if (!resultado.cli) {
+    var mCNPJDest = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL[\s\S]{0,300}?(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/i);
+    if (mCNPJDest) resultado.cli = mCNPJDest[1];
   }
   // Valor total da NF: maior valor em R$ no documento (geralmente VALOR TOTAL DA NOTA)
   var mVals = texto.match(/[\d\.]+,\d{2}/g) || [];
