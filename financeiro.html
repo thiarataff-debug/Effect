@@ -900,7 +900,24 @@ function importarNFPDF(input) {
       for (var i = 1; i <= pdf.numPages; i++) {
         textPromises.push(pdf.getPage(i).then(function(page) {
           return page.getTextContent().then(function(tc) {
-            return tc.items.map(function(it) { return it.str; }).join(' ');
+            // Agrupar itens por linha (Y similar = mesma linha visual)
+            var items = tc.items.filter(function(it) { return it.str.trim(); });
+            var linhas = [];
+            items.forEach(function(it) {
+              var y = Math.round(it.transform[5]);
+              var linha = linhas.find(function(l) { return Math.abs(l.y - y) < 4; });
+              if (linha) { linha.items.push(it); }
+              else { linhas.push({y: y, items: [it]}); }
+            });
+            // Ordenar de cima para baixo (Y decrescente = topo da página)
+            linhas.sort(function(a, b) { return b.y - a.y; });
+            // Dentro de cada linha, ordenar da esquerda para a direita
+            linhas.forEach(function(l) {
+              l.items.sort(function(a, b) { return a.transform[4] - b.transform[4]; });
+            });
+            return linhas.map(function(l) {
+              return l.items.map(function(it) { return it.str; }).join(' ');
+            }).join('\n');
           });
         }));
       }
@@ -925,26 +942,34 @@ function parseDanfe(texto, status) {
   // Data de emissão: primeira data no formato DD/MM/AAAA
   var mData = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
   if (mData) resultado.emis = mData[3] + '-' + mData[2] + '-' + mData[1]; // formato yyyy-mm-dd
-  // Cliente: extrai razão social do destinatário
-  // O pdf.js extrai colunas em sequência, então o texto pode vir:
-  // "NOME/RAZÃO SOCIAL CNPJ/CPF [Nome da empresa] [CNPJ]"
-  // O regex abaixo pula o rótulo "CNPJ/CPF" se ele aparecer antes do nome real
-  var mCli = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL\s+(?:CNPJ\s*[\/\\]\s*CPF\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][^\n\d]{4,60})/i);
-  if (!mCli) mCli = texto.match(/DESTINAT[ÁA]RIO[^A-Z]{0,10}([A-Z][A-Z\s\.&\-]{4,50})/i);
+  // Cliente: a extração agora preserva linhas (uma linha = uma linha visual do DANFE)
+  // O cabeçalho "NOME/RAZÃO SOCIAL" está numa linha; o valor real está na linha seguinte
+  var mCli = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL[^\n]*\n([^\n]+)/i);
   if (mCli) {
-    var cli = mCli[1].trim();
-    // Remove CNPJ e datas que aparecem colados
-    cli = cli.replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, '').replace(/\d{2}\/\d{2}\/\d{4}/g, '').trim();
-    // Limita a 50 caracteres e remove sobra
-    cli = cli.split(/\s{3,}/)[0].trim().slice(0, 50);
-    // Ignora se capturou um rótulo em vez do nome real
-    var labelsIgnorar = /^(CNPJ|CPF|CNPJ\/CPF|DESTINAT|REMETENTE|EMITENTE|ENDERE|BAIRRO|MUNIC)$/i;
-    if (!labelsIgnorar.test(cli)) resultado.cli = cli;
+    var linhaData = mCli[1].trim();
+    // O nome da empresa é a primeira coluna; termina onde começa o CNPJ (XX.XXX...)
+    var cli = linhaData.replace(/\s+\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}.*$/, '').trim();
+    // Remove datas coladas
+    cli = cli.replace(/\d{2}\/\d{2}\/\d{4}/g, '').trim().slice(0, 60);
+    if (cli.length >= 3) resultado.cli = cli;
   }
-  // Fallback: extrai o CNPJ do destinatário se não encontrou o nome
+  // Fallback 1: par Nome + CNPJ em qualquer linha (pega o 2º par = destinatário)
   if (!resultado.cli) {
-    var mCNPJDest = texto.match(/NOME\s*\/\s*RAZ[ÃA]O\s*SOCIAL[\s\S]{0,300}?(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/i);
-    if (mCNPJDest) resultado.cli = mCNPJDest[1];
+    var regexPar = /([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][^\n\d]{4,60}?)\s+(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/g;
+    var pares = [], mp;
+    while ((mp = regexPar.exec(texto)) !== null) {
+      var nome = mp[1].trim();
+      if (!/^(NOME|RAZ[ÃA]O|CNPJ|CPF|DESTINAT|EMITENTE|ENDERE|BAIRRO|MUNIC|DATA|CEP|INSCRI)\b/i.test(nome))
+        pares.push(nome);
+    }
+    if (pares.length >= 2) resultado.cli = pares[1];
+    else if (pares.length === 1) resultado.cli = pares[0];
+  }
+  // Fallback 2: usa o CNPJ do destinatário diretamente
+  if (!resultado.cli) {
+    var allCNPJs = texto.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g) || [];
+    if (allCNPJs.length >= 2) resultado.cli = allCNPJs[1];
+    else if (allCNPJs.length === 1) resultado.cli = allCNPJs[0];
   }
   // Valor total da NF: maior valor em R$ no documento (geralmente VALOR TOTAL DA NOTA)
   var mVals = texto.match(/[\d\.]+,\d{2}/g) || [];
