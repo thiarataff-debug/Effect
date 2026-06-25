@@ -971,34 +971,49 @@ function parseDanfe(texto, status) {
     if (allCNPJs.length >= 2) resultado.cli = allCNPJs[1];
     else if (allCNPJs.length === 1) resultado.cli = allCNPJs[0];
   }
-  // Valor total da NF: maior valor em R$ no documento (geralmente VALOR TOTAL DA NOTA)
+  // Valor total da NF
   var mVals = texto.match(/[\d\.]+,\d{2}/g) || [];
   var valores = mVals.map(function(v) {
     return parseFloat(v.replace(/\./g, '').replace(',', '.'));
-  }).filter(function(v) { return v > 100 && v < 9999999; });
-  // Tenta encontrar "VALOR TOTAL" especificamente
-  var mVT = texto.match(/VALOR\s+TOTAL[^R]*R?\$?\s*([\d\.]+,\d{2})/i);
+  }).filter(function(v) { return v > 0 && v < 99999999; });
+  var vMax = valores.length ? Math.max.apply(null, valores) : 0;
+
+  // Tenta "VALOR TOTAL" na mesma linha (sem cruzar \n)
+  var mVT = texto.match(/VALOR\s+TOTAL\b[^\n]*([\d\.]+,\d{2})/i);
+  // Se não achou na mesma linha, tenta na linha imediatamente seguinte
+  if (!mVT) mVT = texto.match(/VALOR\s+TOTAL[^\n]*\n[ \t]*([\d\.]+,\d{2})/i);
+  // Tenta "VALOR TOTAL DA NOTA FISCAL" com valor na mesma linha
+  if (!mVT) mVT = texto.match(/VALOR\s+TOTAL\s+DA\s+NOTA[^\n]*([\d\.]+,\d{2})/i);
+
   if (mVT) {
-    resultado.valor = parseFloat(mVT[1].replace(/\./g, '').replace(',', '.'));
-  } else if (valores.length) {
-    // Pega o maior valor encontrado
-    resultado.valor = Math.max.apply(null, valores);
+    var vtCand = parseFloat(mVT[1].replace(/\./g, '').replace(',', '.'));
+    // Sanidade: aceita se for >= 30% do maior valor do doc ou > R$ 50
+    // Evita capturar centavos de impostos como valor total
+    resultado.valor = (vtCand >= vMax * 0.3 || vtCand > 50) ? vtCand : vMax;
+  } else {
+    // Fallback: maior valor do documento (acima de R$ 10)
+    var vGrandes = valores.filter(function(v) { return v > 10; });
+    resultado.valor = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
   }
+
   // Parcelas: padrão "001 07/07/2026 5.550,35" (número sequencial + data + valor)
-  var mParc = texto.match(/(\d{3})\s+(\d{2}\/\d{2}\/\d{4})\s+([\d\.]+,\d{2})/g) || [];
+  var mParc = texto.match(/\b\d{3}\b[\s\S]{0,5}(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/g) || [];
   if (!mParc.length) {
-    // Tenta padrão alternativo: datas repetidas com valores
-    var allDates = texto.match(/\d{2}\/\d{2}\/\d{4}\s+[\d\.]+,\d{2}/g) || [];
-    mParc = allDates.map(function(s, i) { return '00'+(i+1)+' '+s; });
+    // Padrão alternativo: data seguida de valor na mesma linha
+    mParc = (texto.match(/\d{2}\/\d{2}\/\d{4}[ \t]+([\d\.]+,\d{2})/g) || [])
+      .map(function(s, i) { return '00'+(i+1)+' '+s; });
   }
   resultado.parcelas = mParc.map(function(p, i) {
-    var parts = p.match(/(\d{2}\/\d{2}\/\d{4})\s+([\d\.]+,\d{2})/);
+    var parts = p.match(/(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/);
     if (!parts) return null;
     var dateParts = parts[1].split('/');
+    var valParc = parseFloat(parts[2].replace(/\./g, '').replace(',', '.'));
+    // Filtra parcelas com valor zerado ou absurdo
+    if (!valParc || valParc > resultado.valor * 1.1) return null;
     return {
       n: i + 1,
       venc: dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0],
-      val: parseFloat(parts[2].replace(/\./g, '').replace(',', '.'))
+      val: valParc
     };
   }).filter(Boolean);
   // Aplicar nos campos
