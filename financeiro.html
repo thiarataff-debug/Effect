@@ -978,23 +978,58 @@ function parseDanfe(texto, status) {
   }).filter(function(v) { return v > 0 && v < 99999999; });
   var vMax = valores.length ? Math.max.apply(null, valores) : 0;
 
-  // Tenta "VALOR TOTAL" na mesma linha (sem cruzar \n)
-  var mVT = texto.match(/VALOR\s+TOTAL\b[^\n]*([\d\.]+,\d{2})/i);
-  // Se não achou na mesma linha, tenta na linha imediatamente seguinte
-  if (!mVT) mVT = texto.match(/VALOR\s+TOTAL[^\n]*\n[ \t]*([\d\.]+,\d{2})/i);
-  // Tenta "VALOR TOTAL DA NOTA FISCAL" com valor na mesma linha
-  if (!mVT) mVT = texto.match(/VALOR\s+TOTAL\s+DA\s+NOTA[^\n]*([\d\.]+,\d{2})/i);
+  // Estratégia: "VALOR TOTAL DA NOTA" é o último rótulo de uma linha de cabeçalhos.
+  // O valor correto é o ÚLTIMO número da linha de dados imediatamente abaixo.
+  // Ex: linha cabeçalho → "... VALOR APROX. DOS TRIBUTOS  VALOR TOTAL DA NOTA"
+  //     linha de dados  → "0,00  0,00  0,00  0,00  0,00  0,00  25.932,63"
+  var linhasTexto = texto.split('\n');
+  var vtNota = 0;
 
-  if (mVT) {
-    var vtCand = parseFloat(mVT[1].replace(/\./g, '').replace(',', '.'));
-    // Sanidade: aceita se for >= 30% do maior valor do doc ou > R$ 50
-    // Evita capturar centavos de impostos como valor total
-    resultado.valor = (vtCand >= vMax * 0.3 || vtCand > 50) ? vtCand : vMax;
-  } else {
-    // Fallback: maior valor do documento (acima de R$ 10)
-    var vGrandes = valores.filter(function(v) { return v > 10; });
-    resultado.valor = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
+  function ultimoNum(linha) {
+    var ns = linha.match(/[\d\.]+,\d{2}/g);
+    return ns ? parseFloat(ns[ns.length - 1].replace(/\./g, '').replace(',', '.')) : 0;
   }
+  function primeiroNum(linha) {
+    var ns = linha.match(/[\d\.]+,\d{2}/g);
+    return ns ? parseFloat(ns[0].replace(/\./g, '').replace(',', '.')) : 0;
+  }
+
+  for (var li = 0; li < linhasTexto.length; li++) {
+    var lAtual = linhasTexto[li];
+    if (/VALOR\s+TOTAL\s+DA\s+NOTA\b/i.test(lAtual)) {
+      // Tenta pegar último número na mesma linha (caso label e valor sejam co-extraídos)
+      var vSame = ultimoNum(lAtual);
+      if (vSame > 0) { vtNota = vSame; break; }
+      // Senão, pega último número da próxima linha de dados
+      for (var lj = li + 1; lj < Math.min(li + 4, linhasTexto.length); lj++) {
+        var vNext = ultimoNum(linhasTexto[lj]);
+        if (vNext > 0) { vtNota = vNext; break; }
+      }
+      break;
+    }
+  }
+
+  // Fallback 1: "VALOR TOTAL DOS PRODUTOS" (mesma lógica)
+  if (!vtNota) {
+    for (var li2 = 0; li2 < linhasTexto.length; li2++) {
+      if (/VALOR\s+TOTAL\s+DOS\s+PRODUTOS/i.test(linhasTexto[li2])) {
+        var vSame2 = ultimoNum(linhasTexto[li2]);
+        if (vSame2 > 0) { vtNota = vSame2; break; }
+        for (var lj2 = li2 + 1; lj2 < Math.min(li2 + 4, linhasTexto.length); lj2++) {
+          var vNext2 = ultimoNum(linhasTexto[lj2]);
+          if (vNext2 > 0) { vtNota = vNext2; break; }
+        }
+        break;
+      }
+    }
+  }
+
+  // Fallback final: maior valor do documento acima de R$ 10
+  if (!vtNota) {
+    var vGrandes = valores.filter(function(v) { return v > 10; });
+    vtNota = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
+  }
+  resultado.valor = vtNota;
 
   // Parcelas: padrão "001 07/07/2026 5.550,35" (número sequencial + data + valor)
   var mParc = texto.match(/\b\d{3}\b[\s\S]{0,5}(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/g) || [];
