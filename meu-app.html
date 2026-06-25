@@ -182,6 +182,96 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .sei-field label{font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px}
 .sei-field input,.sei-field select,.sei-field textarea{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
 .sei-field input:focus,.sei-field select:focus{border-color:#1e40af}
+
+/* ══ SEI FAITHFUL PORT ══ */
+.sei-export-bar{display:flex;align-items:center;justify-content:space-between;background:#2a2a2b;color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:11px;flex-wrap:wrap;gap:8px}
+.sei-period-badge{background:rgba(142,209,178,.15);border:1px solid #8ed1b2;color:#8ed1b2;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer}
+.sei-edit-btn{padding:7px 14px;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;background:#8ed1b2;color:#2a2a2b;transition:all .15s}
+.sei-edit-btn.active{background:#f4afa1}
+.sei-company-bar2{display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:12px;overflow-x:auto}
+.sei-company-bar2::-webkit-scrollbar{height:0}
+.sei-company-tab{padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;color:#a1a1aa;white-space:nowrap;transition:all .2s}
+.sei-company-tab:hover{color:#2a2a2b}
+.sei-company-tab.active{color:#2a2a2b;border-bottom-color:#8ed1b2}
+.sei-company-tab[data-co="SEI"].active{border-bottom-color:#1fa5ff;color:#1fa5ff}
+.sei-company-tab[data-co="SEI BA"].active{border-bottom-color:#7b8e60;color:#7b8e60}
+.sei-company-tab[data-co="COLINA"].active{border-bottom-color:#8ed1b2;color:#5a7040}
+.sei-company-tab[data-co="INTERAGE"].active{border-bottom-color:#f4afa1;color:#c0776a}
+.sei-cards2{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.sei-card2{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:4px solid #8ed1b2}
+.sei-card2.p{border-top-color:#f4afa1}.sei-card2.t{border-top-color:#1fa5ff}.sei-card2.a{border-top-color:#7b8e60}
+.sei-card2-val{font-size:26px;font-weight:800;line-height:1;color:#2a2a2b}
+.sei-card2-label{font-size:10px;color:#a1a1aa;margin-top:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.sei-add-btn2{background:#8ed1b2;color:#2a2a2b;border:none;padding:7px 14px;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.sei-add-btn2:hover{opacity:.85}
+.sei-filter-bar2{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.sei-select2,.sei-input2{border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;color:#2a2a2b;background:#fff;outline:none}
+.sei-select2:focus,.sei-input2:focus{border-color:#8ed1b2}
+.sei-input2{flex:1;min-width:120px}
+.sei-filter-badge{background:#fef9c3;border:1px solid #fde047;color:#854d0e;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.sei-filter-clear{background:none;border:1.5px solid #e5e7eb;border-radius:8px;padding:6px 10px;cursor:pointer;color:#a1a1aa;font-size:12px}
+.sei-filter-clear:hover{border-color:#f4afa1;color:#c0776a}
+.sei-table-wrap2{overflow-x:auto;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px;max-height:400px;overflow-y:auto}
+.sei-table2{width:100%;border-collapse:collapse;background:#fff;font-size:11px}
+.sei-table2 thead{background:#2a2a2b;color:#fff;position:sticky;top:0;z-index:10}
+.sei-table2 th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.sei-tr-group th{padding:7px 10px 3px;font-size:9px;letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sei-tr-sub th{padding:3px 10px 7px;font-size:9px;font-weight:600;color:#a1a1aa;text-transform:none;letter-spacing:0}
+.sei-th-triagem{background:rgba(31,165,240,.18)}.sei-th-entrev{background:rgba(142,209,178,.14)}.sei-th-gestor{background:rgba(244,175,161,.16)}
+.sei-sub-triagem{background:rgba(31,165,240,.1)}.sei-sub-entrev{background:rgba(142,209,178,.08)}.sei-sub-gestor{background:rgba(244,175,161,.09)}
+.sei-table2 tbody tr{border-bottom:1px solid #f0f0f0;transition:background .15s}
+.sei-table2 tbody tr:hover{background:#fafbfc}
+.sei-table2 td{padding:10px;vertical-align:middle}
+.sei-tc{text-align:center;padding:0!important}
+.sei-badge2{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.sei-badge2.sei{background:#e8f4fd;color:#1a7fbf}.sei-badge2.seiba{background:#f0f4ea;color:#5a7040}.sei-badge2.colina{background:#eaf5f0;color:#7b8e60}.sei-badge2.interage{background:#fdf0ee;color:#c0776a}
+.sei-badge2.prio{background:#fdf0ee;color:#c0776a}.sei-badge2.open{background:#eaf5f0;color:#7b8e60}.sei-badge2.closed{background:#f3f4f6;color:#a1a1aa}.sei-badge2.em{background:#eff6ff;color:#1e40af}
+.sei-num-input{width:46px;border:none;background:transparent;text-align:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;padding:10px 2px;cursor:pointer;border-radius:5px;-moz-appearance:textfield;transition:background .15s}
+.sei-num-input::-webkit-inner-spin-button,.sei-num-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.sei-num-input:hover{background:#f0f9ff}.sei-num-input:focus{outline:none;background:#fff;box-shadow:0 0 0 2px #8ed1b2}
+.sei-num-input.g{color:#7b8e60}.sei-num-input.r{color:#c0776a}
+.sei-action-btn{background:none;border:1px solid #a1a1aa;padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:'Montserrat',sans-serif;color:#a1a1aa;transition:all .2s;margin-right:3px}
+.sei-action-btn:hover{border-color:#2a2a2b;color:#2a2a2b}.sei-action-btn.del:hover{border-color:#c0776a;color:#c0776a}
+.sei-loc-tag{display:inline-block;padding:1px 6px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:9px;color:#0369a1;margin:1px;white-space:nowrap}
+.sei-loc-tag.hl{background:#fef9c3;border-color:#fde047;color:#854d0e}
+.sei-loc-rm{background:none;border:none;cursor:pointer;color:#a1a1aa;font-size:10px;margin-left:1px;padding:0}
+.sei-docs-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:480px){.sei-docs-grid2{grid-template-columns:1fr}}
+.sei-doc-card2{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:14px}
+.sei-doc-title2{font-weight:700;font-size:12px;margin-bottom:10px;color:#2a2a2b}
+.sei-doc-list2{list-style:none}.sei-doc-list2 li{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:11px}.sei-doc-list2 li:last-child{border:none}
+.sei-upload-zone2{border:2px dashed #d1d5db;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s;margin-top:8px}
+.sei-upload-zone2:hover{border-color:#8ed1b2}
+.sei-overlay2{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:200}
+.sei-overlay2.open{display:flex}
+.sei-modal2{background:#fff;border-radius:14px;padding:20px;width:95%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.sei-modal-title2{font-size:15px;font-weight:800;margin-bottom:14px;color:#2a2a2b}
+.sei-form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.sei-form-grid2{grid-template-columns:1fr}}
+.sei-fg{display:flex;flex-direction:column;gap:4px}.sei-fg-full{grid-column:1/-1}
+.sei-fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#a1a1aa}
+.sei-fg input,.sei-fg select,.sei-fg textarea{border:1.5px solid #e5e7eb;border-radius:7px;padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;color:#2a2a2b;background:#fff;outline:none;transition:border-color .15s}
+.sei-fg input:focus,.sei-fg select:focus{border-color:#8ed1b2}
+.sei-btn-cancel2{background:none;border:1.5px solid #a1a1aa;padding:7px 16px;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:600;font-size:11px;cursor:pointer;color:#a1a1aa}
+.sei-btn-cancel2:hover{border-color:#2a2a2b;color:#2a2a2b}
+.sei-btn-period{background:transparent;color:#fff;border:1px solid #a1a1aa;padding:5px 10px;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;cursor:pointer}
+.sei-btn-export{background:#8ed1b2;color:#2a2a2b;border:none;padding:6px 14px;border-radius:7px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
+/* ══ PSI MED STOCK ══ */
+.psi-med-stock{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px}
+.psi-med-stock-title{font-weight:800;font-size:12px;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.psi-stock-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:8px;margin-bottom:6px}
+@media(max-width:480px){.psi-stock-row{grid-template-columns:1fr 1fr;row-gap:6px}}
+.psi-stock-name{font-size:11px;font-weight:700;color:var(--navy);grid-column:1/-1}
+.psi-stock-field{display:flex;flex-direction:column;gap:2px}
+.psi-stock-field label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.psi-stock-input{border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;width:70px;outline:none}
+.psi-stock-input:focus{border-color:var(--blue)}
+.psi-stock-days{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:800;text-align:center;white-space:nowrap}
+.psi-stock-days.ok{background:#f0fdf4;color:#166534;border:1px solid #86efac}
+.psi-stock-days.warn{background:#fefce8;color:#854d0e;border:1px solid #fde047}
+.psi-stock-days.crit{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+.psi-stock-alert{padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:11px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+
 </style>
 </head>
 <body>
@@ -450,6 +540,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <button class="psi-nav-btn" onclick="psiMostrarSec('questionarios',this)">🧠 PHQ-9/GAD-7</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('relatorios',this)">📄 Relatórios</button>
   </div>
+  <div id="psi-stock-section"></div>
   <div id="psi-restock-alerts"></div>
 </head>
 
@@ -811,47 +902,151 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 
 <div class="page" id="page-sei">
-  <div class="sei-company-bar">
-    <div class="sei-co-tab active" data-co="TODAS" onclick="seiSetCompany('TODAS')">Todas</div>
-    <div class="sei-co-tab" data-co="SEI" onclick="seiSetCompany('SEI')">SEI</div>
-    <div class="sei-co-tab" data-co="SEI BA" onclick="seiSetCompany('SEI BA')">SEI BA</div>
-    <div class="sei-co-tab" data-co="COLINA" onclick="seiSetCompany('COLINA')">Colina</div>
-    <div class="sei-co-tab" data-co="INTERAGE" onclick="seiSetCompany('INTERAGE')">Interage</div>
+
+<!-- SEI EXPORT BAR (edit mode only) -->
+<div class="sei-export-bar" id="seiExportBar" style="display:none">
+  <span style="font-size:12px">✏️ Modo edição ativo — preencha os dados</span>
+  <div style="display:flex;gap:8px">
+    <button class="sei-btn-period" onclick="seiEditPeriod()">📅 Alterar período</button>
+    <button class="sei-btn-export" onclick="seiExportHTML()">⬇️ Exportar</button>
   </div>
-  <div class="sei-cards" id="sei-cards"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-    <span style="font-weight:800;font-size:12px;color:var(--navy)">📋 Vagas</span>
-    <button class="sei-add-btn" onclick="seiAbrirModal()">+ Adicionar Vaga</button>
+</div>
+
+<!-- HEADER MINI -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+  <div>
+    <span class="sei-period-badge" id="seiPeriodBadge" onclick="if(seiEditMode)seiEditPeriod()">📅 Jun/2026</span>
   </div>
-  <div class="sei-filter-bar">
-    <select class="sei-select" id="sei-cargo-filter" onchange="seiRender()"><option value="">Todas as vagas</option></select>
-    <input class="sei-input" id="sei-local-filter" placeholder="🔍 Filtrar local..." oninput="seiRender()">
+  <div style="display:flex;gap:8px">
+    <button class="sei-edit-btn" id="seiEditToggle" onclick="seiToggleEdit()">✏️ Editar</button>
   </div>
-  <div style="overflow-x:auto">
-    <table class="sei-table">
-      <thead><tr><th>Empresa</th><th>Cargo</th><th>Local</th><th>Triagem</th><th>Entrev.</th><th>Contrat.</th><th>Repos.</th><th>Status</th></tr></thead>
-      <tbody id="sei-tbody"></tbody>
-    </table>
-  </div>
-  <div class="sei-modal-bg" id="sei-modal-bg" onclick="if(event.target===this)seiFecharModal()">
-    <div class="sei-modal">
-      <div class="sei-modal-title" id="sei-modal-title">Nova Vaga</div>
-      <div class="sei-field"><label>Empresa</label><select id="sei-m-empresa"><option>SEI</option><option>SEI BA</option><option>COLINA</option><option>INTERAGE</option></select></div>
-      <div class="sei-field"><label>Cargo</label><input id="sei-m-cargo" placeholder="Ex: Garçom"></div>
-      <div class="sei-field"><label>Localidade(s)</label><input id="sei-m-local" placeholder="Ex: São Paulo, SP"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="sei-field"><label>Triagem</label><input type="number" id="sei-m-triagem" value="0" min="0"></div>
-        <div class="sei-field"><label>Entrevistas</label><input type="number" id="sei-m-entrev" value="0" min="0"></div>
-        <div class="sei-field"><label>Contratados</label><input type="number" id="sei-m-contrat" value="0" min="0"></div>
-        <div class="sei-field"><label>Reposição</label><input type="number" id="sei-m-repos" value="0" min="0"></div>
-      </div>
-      <div class="sei-field"><label>Status</label><select id="sei-m-status"><option>Aberta</option><option>Em andamento</option><option>Encerrada</option><option>Pausada</option></select></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-        <button onclick="seiFecharModal()" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer">Cancelar</button>
-        <button onclick="seiSalvarVaga()" class="sei-add-btn">Salvar</button>
-      </div>
+</div>
+
+<!-- COMPANY TABS -->
+<div class="sei-company-bar2">
+  <div class="sei-company-tab active" data-co="TODAS" onclick="seiSetCompany('TODAS')">Todas</div>
+  <div class="sei-company-tab" data-co="SEI" onclick="seiSetCompany('SEI')">SEI</div>
+  <div class="sei-company-tab" data-co="SEI BA" onclick="seiSetCompany('SEI BA')">SEI BA</div>
+  <div class="sei-company-tab" data-co="COLINA" onclick="seiSetCompany('COLINA')">Colina</div>
+  <div class="sei-company-tab" data-co="INTERAGE" onclick="seiSetCompany('INTERAGE')">Interage</div>
+</div>
+
+<!-- CARDS -->
+<div class="sei-cards2" id="seiCards"></div>
+
+<!-- VAGAS TABLE -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+  <div style="font-weight:800;font-size:13px;color:var(--navy)">📋 Vagas</div>
+  <button class="sei-add-btn2" onclick="seiActivateAndOpen()">+ Adicionar Vaga</button>
+</div>
+<div class="sei-filter-bar2">
+  <select id="seiCargoFilter" onchange="seiSetCargoFilter(this.value)" class="sei-select2">
+    <option value="">📋 Todas as vagas</option>
+  </select>
+  <input type="text" id="seiLocalFilter" placeholder="📍 Filtrar por região..." oninput="seiSetLocalFilter(this.value)" class="sei-input2">
+  <span class="sei-filter-badge" id="seiFilterBadge" style="display:none"></span>
+  <button class="sei-filter-clear" onclick="seiClearFilters()">✕</button>
+</div>
+<div class="sei-table-wrap2">
+  <table class="sei-table2" id="seiTable">
+    <thead>
+      <tr class="sei-tr-group">
+        <th rowspan="2">Empresa</th>
+        <th rowspan="2">Cargo / Local</th>
+        <th rowspan="2">Priorid.</th>
+        <th rowspan="2">Divulg.</th>
+        <th rowspan="2">Status</th>
+        <th colspan="3" class="sei-th-triagem" style="text-align:center;border-left:2px solid rgba(255,255,255,.15)">🔍 TRIAGEM</th>
+        <th colspan="3" class="sei-th-entrev"  style="text-align:center;border-left:2px solid rgba(255,255,255,.15)">🗣️ ENTREVISTAS</th>
+        <th colspan="3" class="sei-th-gestor"  style="text-align:center;border-left:2px solid rgba(255,255,255,.15)">👔 GESTOR</th>
+        <th rowspan="2">Ações</th>
+      </tr>
+      <tr class="sei-tr-sub">
+        <th class="sei-sub-triagem sei-tc" style="border-left:2px solid rgba(255,255,255,.1)">Receb.</th>
+        <th class="sei-sub-triagem sei-tc" style="color:#8ed1b2">✓</th>
+        <th class="sei-sub-triagem sei-tc" style="color:#f4afa1">✗</th>
+        <th class="sei-sub-entrev sei-tc" style="border-left:2px solid rgba(255,255,255,.1)">Realiz.</th>
+        <th class="sei-sub-entrev sei-tc" style="color:#8ed1b2">✓</th>
+        <th class="sei-sub-entrev sei-tc" style="color:#f4afa1">✗</th>
+        <th class="sei-sub-gestor sei-tc" style="border-left:2px solid rgba(255,255,255,.1)">Encam.</th>
+        <th class="sei-sub-gestor sei-tc" style="color:#8ed1b2">✓</th>
+        <th class="sei-sub-gestor sei-tc" style="color:#f4afa1">✗</th>
+      </tr>
+    </thead>
+    <tbody id="seiTbody"></tbody>
+  </table>
+</div>
+
+<!-- DOCUMENTS -->
+<div style="font-weight:800;font-size:13px;color:var(--navy);margin:12px 0 8px">📎 Documentos</div>
+<div class="sei-docs-grid2">
+  <div class="sei-doc-card2">
+    <div class="sei-doc-title2">🧾 Notas Fiscais</div>
+    <ul class="sei-doc-list2" id="seiNotasList"></ul>
+    <div id="seiNotasZone" style="display:none;margin-top:8px">
+      <button class="sei-add-btn2" style="width:100%" onclick="seiOpenNotaModal()">+ Nota Fiscal</button>
     </div>
   </div>
+  <div class="sei-doc-card2">
+    <div class="sei-doc-title2">📄 Contrato</div>
+    <ul class="sei-doc-list2" id="seiContratoList"></ul>
+    <div class="sei-upload-zone2" id="seiContratoZone" style="display:none" onclick="document.getElementById('seiContratoInput').click()">
+      <input type="file" id="seiContratoInput" accept=".pdf,.png,.jpg" onchange="seiUploadContrato(this)" style="display:none">
+      <span style="color:#1fa5ff;font-weight:700;font-size:12px">+ Anexar Contrato</span>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VAGA -->
+<div class="sei-overlay2" id="seiModalOverlay" onclick="if(event.target===this)seiCloseModal()">
+  <div class="sei-modal2">
+    <div class="sei-modal-title2" id="seiModalTitle">Nova Vaga</div>
+    <div class="sei-form-grid2">
+      <div class="sei-fg"><label>Empresa</label><select id="seiMEmpresa"><option>SEI</option><option>SEI BA</option><option>COLINA</option><option>INTERAGE</option></select></div>
+      <div class="sei-fg"><label>Cargo</label><input id="seiMCargo" placeholder="Ex: Garçom"></div>
+      <div class="sei-fg"><label>Divulgação</label><input type="date" id="seiMData"></div>
+      <div class="sei-fg"><label>Status</label><select id="seiMStatus"><option>Aberta</option><option>Em andamento</option><option>Fechada</option></select></div>
+      <div class="sei-fg"><label>Prioridade</label><select id="seiMPrioridade"><option value="Não">Não</option><option value="Sim">Sim</option></select></div>
+      <div class="sei-fg sei-fg-full"><label>Localidades</label>
+        <div id="seiMLocalList" style="display:flex;flex-wrap:wrap;gap:4px;min-height:20px;margin-bottom:6px"></div>
+        <div style="display:flex;gap:6px">
+          <input id="seiMLocalInput" placeholder="Ex: Linhares" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();seiAddLocal();}">
+          <button class="sei-add-btn2" type="button" onclick="seiAddLocal()">+</button>
+        </div>
+      </div>
+      <div class="sei-fg"><label>Triagem · Recebidos</label><input type="number" id="seiMTrRec" min="0" value="0"></div>
+      <div class="sei-fg"><label>Triagem · Aprovados</label><input type="number" id="seiMTrAprov" min="0" value="0"></div>
+      <div class="sei-fg"><label>Triagem · Reprovados</label><input type="number" id="seiMTrReprov" min="0" value="0"></div>
+      <div class="sei-fg"><label>Entrev. · Realizadas</label><input type="number" id="seiMEnRealiz" min="0" value="0"></div>
+      <div class="sei-fg"><label>Entrev. · Aprovados</label><input type="number" id="seiMEnAprov" min="0" value="0"></div>
+      <div class="sei-fg"><label>Entrev. · Reprovados</label><input type="number" id="seiMEnReprov" min="0" value="0"></div>
+      <div class="sei-fg"><label>Gestor · Encaminhados</label><input type="number" id="seiMGeEnc" min="0" value="0"></div>
+      <div class="sei-fg"><label>Gestor · Aprovados</label><input type="number" id="seiMGeAprov" min="0" value="0"></div>
+      <div class="sei-fg"><label>Gestor · Reprovados</label><input type="number" id="seiMGeReprov" min="0" value="0"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="sei-btn-cancel2" onclick="seiCloseModal()">Cancelar</button>
+      <button class="sei-add-btn2" onclick="seiSaveVaga()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTA FISCAL -->
+<div class="sei-overlay2" id="seiNotaOverlay" onclick="if(event.target===this)seiCloseNotaModal()">
+  <div class="sei-modal2" style="max-width:440px">
+    <div class="sei-modal-title2">🧾 Nota Fiscal</div>
+    <div class="sei-form-grid2">
+      <div class="sei-fg sei-fg-full"><label>Descrição / Nº</label><input id="seiNDesc" placeholder="Ex: NF 001 – Jun/2026"></div>
+      <div class="sei-fg"><label>Emissão</label><input type="date" id="seiNEmissao"></div>
+      <div class="sei-fg"><label>Vencimento</label><input type="date" id="seiNVenc"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="sei-btn-cancel2" onclick="seiCloseNotaModal()">Cancelar</button>
+      <button class="sei-add-btn2" onclick="seiSaveNota()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -914,7 +1109,7 @@ function iniciarSOS(){document.getElementById('sos-anim').style.display='block';
 function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim').style.display='none';document.getElementById('sos-circle').style.animation='none';}
 function toggleChip(el){el.classList.toggle('on');}
 function salvarEx(){const s=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);if(!s.length){toast('Selecione pelo menos um','');return}toast('🏃 Exercício salvo!','success');document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));document.getElementById('ex-obs').value='';}
-function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')mostrarTarefaSOS();if(aba==='sei')seiRender();if(aba==='psi')psiCheckRestock();}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')mostrarTarefaSOS();if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 
@@ -1213,105 +1408,245 @@ const SEI_KEY = 'effect_sei_vagas_v1';
 let seiCurrentCompany = 'TODAS';
 let seiEditingIdx = null;
 
-function seiGetVagas(){
-  try{ return JSON.parse(localStorage.getItem(SEI_KEY)||'[]'); }catch(e){return [];}
+// ════════════════════════════════════════
+// SEI PAINEL — full faithful port
+// ════════════════════════════════════════
+const SEI_Z = {triagemRec:0,triagemAprov:0,triagemReprov:0,entrevRealiz:0,entrevAprov:0,entrevReprov:0,gestorEnc:0,gestorAprov:0,gestorReprov:0};
+const SEI_VAGAS_INICIAIS = [
+  {empresa:'SEI',cargo:'Vigilante Mensalista',prioridade:'Não',data:'2026-02-24',status:'Aberta',localidades:['Sul','Linhares','Fundão','Santa Leopoldina','Domingo Martins','Ibiraçu'],...SEI_Z},
+  {empresa:'SEI',cargo:'Vigilante SDF',prioridade:'Não',data:'2026-03-19',status:'Aberta',localidades:['Linhares'],...SEI_Z},
+  {empresa:'SEI',cargo:'Vigilante Intermitente',prioridade:'Não',data:'2026-02-13',status:'Aberta',localidades:['João Neiva','Fundão','Governador Lindemberg','Barra de São Francisco'],...SEI_Z},
+  {empresa:'SEI',cargo:'Vigilante 100H',prioridade:'Não',data:'2026-10-27',status:'Aberta',localidades:['São Roque do Canaã'],...SEI_Z},
+  {empresa:'SEI BA',cargo:'Vigilante Intermitente',prioridade:'Não',data:'2025-11-06',status:'Aberta',localidades:['Camaçari','Senhor do Bonfim','Juazeiro','Ibotirama','Guanambi','Cruz das Almas','Seabra','Vitória da Conquista','Itabuna','Jequié','Itaberaba','Euclides da Cunha','Luís Eduardo Magalhães','Santa Maria da Vitória','Santo Antônio de Jesus','Eunápolis','Campo Formoso','Araçi','Barra da Estiva','Camacã','Correntina','Ipiaú','Itamaraju','Medeiros Neto','Monte Santo','Morro do Chapéu','Feira de Santana'],...SEI_Z},
+  {empresa:'COLINA',cargo:'Supervisora de Serviços',prioridade:'Não',data:'2026-12-16',status:'Aberta',localidades:['Serra'],...SEI_Z},
+  {empresa:'COLINA',cargo:'Auxiliar de Almoxarifado',prioridade:'Não',data:'2026-03-19',status:'Aberta',localidades:['Cariacica'],...SEI_Z},
+  {empresa:'COLINA',cargo:'ASG 20%',prioridade:'Não',data:'2026-04-14',status:'Aberta',localidades:['Linhares'],...SEI_Z},
+  {empresa:'COLINA',cargo:'ASG Horista – 20%',prioridade:'Não',data:'2026-04-07',status:'Aberta',localidades:['Linhares'],...SEI_Z},
+  {empresa:'INTERAGE',cargo:'Assistente Operacional',prioridade:'Não',data:'2026-01-01',status:'Aberta',localidades:['Ibiraçu','Linhares','São Domingos do Norte','Serra','Cachoeiro de Itapemirim','Ibitirama','Ibatiba','Sooretama','São Gabriel da Palha','Guarapari','Viana','Boa Esperança','Jaguaré','São Mateus'],...SEI_Z},
+];
+
+let seiState = {period:'Jun/2026',vagas:[],notas:[],contrato:null};
+let seiEditMode = false;
+let seiCurrentCo = 'TODAS';
+let seiCurrentLocal = '';
+let seiCurrentCargo = '';
+let seiEditingIdx = null;
+let seiLocalidades = [];
+
+(function(){
+  const saved = localStorage.getItem('sei-painel-v3');
+  if(saved){try{seiState=JSON.parse(saved);}catch(e){}}
+  if(!seiState.vagas||seiState.vagas.length===0) seiState.vagas=JSON.parse(JSON.stringify(SEI_VAGAS_INICIAIS));
+})();
+
+function seiSave(){localStorage.setItem('sei-painel-v3',JSON.stringify(seiState));}
+
+function seiFiltered(){
+  let list = seiCurrentCo==='TODAS'?seiState.vagas:seiState.vagas.filter(v=>v.empresa===seiCurrentCo);
+  if(seiCurrentCargo) list=list.filter(v=>v.cargo===seiCurrentCargo);
+  if(seiCurrentLocal.trim()){const q=seiCurrentLocal.trim().toLowerCase();list=list.filter(v=>(v.localidades||[]).some(l=>l.toLowerCase().includes(q)));}
+  return list;
 }
-function seiSaveVagas(v){
-  localStorage.setItem(SEI_KEY, JSON.stringify(v));
+
+function seiPopulateCargo(){
+  const sel=document.getElementById('seiCargoFilter');if(!sel)return;
+  const cargos=[...new Set(seiState.vagas.map(v=>v.cargo))].sort();
+  const cur=sel.value;
+  sel.innerHTML='<option value="">📋 Todas as vagas</option>'+cargos.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
 }
+
+function seiSetCargoFilter(v){seiCurrentCargo=v;seiRenderTable();seiRenderCards();}
+function seiClearFilters(){seiCurrentLocal='';seiCurrentCargo='';const li=document.getElementById('seiLocalFilter');if(li)li.value='';const cs=document.getElementById('seiCargoFilter');if(cs)cs.value='';const fb=document.getElementById('seiFilterBadge');if(fb)fb.style.display='none';seiRenderTable();seiRenderCards();}
 function seiSetCompany(co){
-  seiCurrentCompany = co;
-  document.querySelectorAll('.sei-co-tab').forEach(t=>t.classList.toggle('active',t.dataset.co===co));
+  seiCurrentCo=co;
+  document.querySelectorAll('.sei-company-tab').forEach(t=>t.classList.toggle('active',t.dataset.co===co));
   seiRender();
 }
-function seiRender(){
-  const vagas = seiGetVagas();
-  const cargoF = document.getElementById('sei-cargo-filter')?.value||'';
-  const localF = (document.getElementById('sei-local-filter')?.value||'').toLowerCase();
-  // Populate cargo filter
-  const cargos = [...new Set(vagas.map(v=>v.cargo))].sort();
-  const cf = document.getElementById('sei-cargo-filter');
-  if(cf){
-    const cur = cf.value;
-    cf.innerHTML = '<option value="">Todas as vagas</option>' + cargos.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+function seiSetLocalFilter(v){
+  seiCurrentLocal=v;
+  const fb=document.getElementById('seiFilterBadge');
+  if(fb){fb.textContent='📍 '+v.trim();fb.style.display=v.trim()?'':'none';}
+  seiRenderTable();seiRenderCards();
+}
+
+function seiRenderCards(){
+  const vagas=seiFiltered();
+  const total=vagas.length;
+  const prio=vagas.filter(v=>v.prioridade==='Sim').length;
+  const trRec=vagas.reduce((s,v)=>s+(v.triagemRec||0),0);
+  const entrev=vagas.reduce((s,v)=>s+(v.entrevRealiz||0),0);
+  const enc=vagas.reduce((s,v)=>s+(v.gestorEnc||0),0);
+  const aprov=vagas.reduce((s,v)=>s+(v.gestorAprov||0),0);
+  const el=document.getElementById('seiCards');if(!el)return;
+  el.innerHTML=`
+    <div class="sei-card2"><div class="sei-card2-val">${total}</div><div class="sei-card2-label">Vagas em aberto</div></div>
+    <div class="sei-card2 p"><div class="sei-card2-val" style="color:#c0776a">${prio}</div><div class="sei-card2-label">🔴 Prioridade</div></div>
+    <div class="sei-card2 t"><div class="sei-card2-val" style="color:#1fa5ff">${trRec}</div><div class="sei-card2-label">Em triagem</div></div>
+    <div class="sei-card2 t"><div class="sei-card2-val" style="color:#1fa5ff">${entrev}</div><div class="sei-card2-label">Entrevistados</div></div>
+    <div class="sei-card2 t"><div class="sei-card2-val" style="color:#1fa5ff">${enc}</div><div class="sei-card2-label">Encam. gestor</div></div>
+    <div class="sei-card2 a"><div class="sei-card2-val" style="color:#7b8e60">${aprov}</div><div class="sei-card2-label">✅ Aprovados</div></div>`;
+}
+
+function seiRenderTable(){
+  const vagas=seiFiltered();
+  const tbody=document.getElementById('seiTbody');if(!tbody)return;
+  if(!vagas.length){
+    tbody.innerHTML=`<tr><td colspan="16" style="text-align:center;padding:30px;color:#a1a1aa;font-size:12px">Nenhuma vaga para este filtro.</td></tr>`;
+    return;
   }
-  const filtered = vagas.filter(v=>{
-    if(seiCurrentCompany!=='TODAS' && v.empresa!==seiCurrentCompany) return false;
-    if(cargoF && v.cargo!==cargoF) return false;
-    if(localF && !(v.local||'').toLowerCase().includes(localF)) return false;
-    return true;
-  });
-  // Cards summary
-  const totalVagas = filtered.length;
-  const totalTriagem = filtered.reduce((a,v)=>a+(+v.triagem||0),0);
-  const totalEntrev = filtered.reduce((a,v)=>a+(+v.entrev||0),0);
-  const totalContrat = filtered.reduce((a,v)=>a+(+v.contrat||0),0);
-  const totalRepos = filtered.reduce((a,v)=>a+(+v.repos||0),0);
-  const cardsEl = document.getElementById('sei-cards');
-  if(cardsEl) cardsEl.innerHTML = `
-    <div class="sei-card"><div class="sei-card-title">Vagas ativas</div><div class="sei-card-num">${totalVagas}</div></div>
-    <div class="sei-card"><div class="sei-card-title">Em triagem</div><div class="sei-card-num">${totalTriagem}</div></div>
-    <div class="sei-card"><div class="sei-card-title">Entrevistas</div><div class="sei-card-num">${totalEntrev}</div></div>
-    <div class="sei-card"><div class="sei-card-title">Contratados</div><div class="sei-card-num">${totalContrat}</div></div>`;
-  // Table
-  const tbody = document.getElementById('sei-tbody');
-  if(!tbody) return;
-  if(!filtered.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhuma vaga. Clique em + Adicionar Vaga.</td></tr>'; return; }
-  tbody.innerHTML = filtered.map((v,i)=>{
-    const idx = vagas.indexOf(v);
-    const statusColor = {Aberta:'#dbeafe',['Em andamento']:'#dcfce7','Encerrada':'#fee2e2','Pausada':'#f3f4f6'}[v.status]||'#f3f4f6';
+  const hlQ=seiCurrentLocal.trim().toLowerCase();
+  tbody.innerHTML=vagas.map(v=>{
+    const gi=seiState.vagas.indexOf(v);
+    const co=(v.empresa||'').toLowerCase().replace(/\s+/g,'-');
+    const bCo=`sei-badge2 ${co.replace('-ba','ba')}`;
+    const bPrio=v.prioridade==='Sim'?`<span class="sei-badge2 prio">🔴 Sim</span>`:`<span style="color:#a1a1aa;font-size:11px">—</span>`;
+    const sCls=v.status==='Aberta'?'open':v.status==='Fechada'?'closed':'em';
+    const dtFmt=v.data?new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+    const locs=(v.localidades||[]).map(l=>{const hl=hlQ&&l.toLowerCase().includes(hlQ)?' hl':'';return `<span class="sei-loc-tag${hl}">${l}</span>`;}).join('');
     return `<tr>
-      <td style="font-weight:700">${v.empresa||'—'}</td>
-      <td>${v.cargo||'—'}</td>
-      <td style="max-width:120px">${v.local||'—'}</td>
-      <td style="text-align:center;font-weight:700">${v.triagem||0}</td>
-      <td style="text-align:center;font-weight:700">${v.entrev||0}</td>
-      <td style="text-align:center;font-weight:700">${v.contrat||0}</td>
-      <td style="text-align:center;font-weight:700">${v.repos||0}</td>
-      <td><span class="sei-status" style="background:${statusColor}">${v.status||'Aberta'}</span>
-        <button onclick="seiEditarVaga(${idx})" style="margin-left:4px;padding:2px 6px;border:none;background:none;cursor:pointer;font-size:12px">✏️</button>
-        <button onclick="seiDeletarVaga(${idx})" style="padding:2px 6px;border:none;background:none;cursor:pointer;font-size:12px">🗑️</button>
+      <td><span class="${bCo}">${v.empresa||'—'}</span></td>
+      <td><strong style="font-size:11px">${v.cargo||'—'}</strong><div style="margin-top:3px">${locs||'<span style="color:#a1a1aa;font-size:10px">—</span>'}</div></td>
+      <td>${bPrio}</td>
+      <td style="white-space:nowrap;font-size:10px">${dtFmt}</td>
+      <td><span class="sei-badge2 ${sCls}">${v.status||'—'}</span></td>
+      <td class="sei-tc">${seiNI(gi,'triagemRec',v.triagemRec,'')}</td>
+      <td class="sei-tc">${seiNI(gi,'triagemAprov',v.triagemAprov,'g')}</td>
+      <td class="sei-tc">${seiNI(gi,'triagemReprov',v.triagemReprov,'r')}</td>
+      <td class="sei-tc">${seiNI(gi,'entrevRealiz',v.entrevRealiz,'')}</td>
+      <td class="sei-tc">${seiNI(gi,'entrevAprov',v.entrevAprov,'g')}</td>
+      <td class="sei-tc">${seiNI(gi,'entrevReprov',v.entrevReprov,'r')}</td>
+      <td class="sei-tc">${seiNI(gi,'gestorEnc',v.gestorEnc,'')}</td>
+      <td class="sei-tc">${seiNI(gi,'gestorAprov',v.gestorAprov,'g')}</td>
+      <td class="sei-tc">${seiNI(gi,'gestorReprov',v.gestorReprov,'r')}</td>
+      <td>
+        <button class="sei-action-btn" onclick="seiActivateAndOpen(${gi})">✏️</button>
+        <button class="sei-action-btn del" onclick="seiDeleteVaga(${gi})">🗑️</button>
       </td>
     </tr>`;
   }).join('');
 }
-function seiAbrirModal(idx){
-  seiEditingIdx = (idx===undefined)?null:idx;
-  const vagas = seiGetVagas();
-  const v = (idx!==undefined && vagas[idx]) ? vagas[idx] : {};
-  document.getElementById('sei-modal-title').textContent = (idx!==undefined)?'Editar Vaga':'Nova Vaga';
-  document.getElementById('sei-m-empresa').value = v.empresa||'SEI';
-  document.getElementById('sei-m-cargo').value = v.cargo||'';
-  document.getElementById('sei-m-local').value = v.local||'';
-  document.getElementById('sei-m-triagem').value = v.triagem||0;
-  document.getElementById('sei-m-entrev').value = v.entrev||0;
-  document.getElementById('sei-m-contrat').value = v.contrat||0;
-  document.getElementById('sei-m-repos').value = v.repos||0;
-  document.getElementById('sei-m-status').value = v.status||'Aberta';
-  document.getElementById('sei-modal-bg').classList.add('open');
+
+function seiNI(idx,field,val,cls){
+  return `<input type="number" min="0" class="sei-num-input${cls?' '+cls:''}" value="${val||0}" onchange="seiUpdateField(${idx},'${field}',+this.value)" onclick="this.select()">`;
 }
-function seiFecharModal(){ document.getElementById('sei-modal-bg').classList.remove('open'); }
-function seiSalvarVaga(){
-  const vagas = seiGetVagas();
-  const v = {
-    empresa: document.getElementById('sei-m-empresa').value,
-    cargo: document.getElementById('sei-m-cargo').value,
-    local: document.getElementById('sei-m-local').value,
-    triagem: +document.getElementById('sei-m-triagem').value||0,
-    entrev: +document.getElementById('sei-m-entrev').value||0,
-    contrat: +document.getElementById('sei-m-contrat').value||0,
-    repos: +document.getElementById('sei-m-repos').value||0,
-    status: document.getElementById('sei-m-status').value,
-  };
-  if(seiEditingIdx!==null) vagas[seiEditingIdx]=v; else vagas.push(v);
-  seiSaveVagas(vagas); seiFecharModal(); seiRender();
-}
-function seiEditarVaga(idx){ seiAbrirModal(idx); }
-function seiDeletarVaga(idx){
-  if(!confirm('Remover esta vaga?')) return;
-  const vagas = seiGetVagas(); vagas.splice(idx,1); seiSaveVagas(vagas); seiRender();
+function seiUpdateField(idx,field,val){if(!seiState.vagas[idx])return;seiState.vagas[idx][field]=val;seiSave();seiRenderCards();}
+
+function seiRenderDocs(){
+  const nl=document.getElementById('seiNotasList');if(!nl)return;
+  if(seiState.notas&&seiState.notas.length){
+    nl.innerHTML=seiState.notas.map((n,i)=>`<li>
+      <span style="font-size:11px;font-weight:700">🧾 ${n.desc||'Nota Fiscal'}${n.emissao?` · ${seiDateFmt(n.emissao)}`:''}${n.venc?` · venc:${seiDateFmt(n.venc)}`:''}
+      </span>
+      ${seiEditMode?`<button class="sei-action-btn del" onclick="seiRemoveNota(${i})">🗑️</button>`:''}
+    </li>`).join('');
+  } else {
+    nl.innerHTML='<li style="color:#a1a1aa;font-size:11px">Nenhuma nota fiscal.</li>';
+  }
+  const cl=document.getElementById('seiContratoList');
+  if(cl){
+    cl.innerHTML=seiState.contrato
+      ?`<li><span style="font-size:11px">📄 ${seiState.contrato.name}</span>${seiEditMode?`<button class="sei-action-btn del" onclick="seiRemoveContrato()">🗑️</button>`:''}</li>`
+      :'<li style="color:#a1a1aa;font-size:11px">Nenhum contrato.</li>';
+  }
+  const nz=document.getElementById('seiNotasZone');if(nz)nz.style.display=seiEditMode?'block':'none';
+  const cz=document.getElementById('seiContratoZone');if(cz)cz.style.display=seiEditMode?'block':'none';
 }
 
+function seiDateFmt(d){if(!d)return'—';return new Date(d+'T00:00:00').toLocaleDateString('pt-BR');}
+
+function seiRender(){
+  seiPopulateCargo();seiRenderCards();seiRenderTable();seiRenderDocs();
+  const pb=document.getElementById('seiPeriodBadge');if(pb)pb.textContent='📅 '+seiState.period;
+}
+
+function seiToggleEdit(){
+  seiEditMode=!seiEditMode;
+  const btn=document.getElementById('seiEditToggle');
+  if(btn){btn.textContent=seiEditMode?'✅ Sair do modo edição':'✏️ Editar';btn.classList.toggle('active',seiEditMode);}
+  const eb=document.getElementById('seiExportBar');if(eb)eb.style.display=seiEditMode?'flex':'none';
+  seiRender();
+}
+
+function seiActivateAndOpen(idx){
+  if(!seiEditMode)seiToggleEdit();
+  seiOpenModal(idx);
+}
+
+function seiRenderLocalList(){
+  const el=document.getElementById('seiMLocalList');if(!el)return;
+  el.innerHTML=seiLocalidades.map((l,i)=>`<span class="sei-loc-tag">${l}<button class="sei-loc-rm" onclick="seiRemoveLocal(${i})">×</button></span>`).join('');
+}
+function seiAddLocal(){const inp=document.getElementById('seiMLocalInput');const v=inp.value.trim();if(v&&!seiLocalidades.includes(v)){seiLocalidades.push(v);seiRenderLocalList();}inp.value='';inp.focus();}
+function seiRemoveLocal(i){seiLocalidades.splice(i,1);seiRenderLocalList();}
+
+function seiOpenModal(idx){
+  seiEditingIdx=idx!==undefined&&idx!==null?idx:null;
+  const title=document.getElementById('seiModalTitle');if(title)title.textContent=seiEditingIdx!==null?'Editar Vaga':'Nova Vaga';
+  const fields=['seiMEmpresa','seiMCargo','seiMData','seiMStatus','seiMPrioridade','seiMTrRec','seiMTrAprov','seiMTrReprov','seiMEnRealiz','seiMEnAprov','seiMEnReprov','seiMGeEnc','seiMGeAprov','seiMGeReprov'];
+  const keys=['empresa','cargo','data','status','prioridade','triagemRec','triagemAprov','triagemReprov','entrevRealiz','entrevAprov','entrevReprov','gestorEnc','gestorAprov','gestorReprov'];
+  if(seiEditingIdx!==null){
+    const v=seiState.vagas[seiEditingIdx];
+    fields.forEach((f,i)=>{const el=document.getElementById(f);if(el)el.value=v[keys[i]]!==undefined?v[keys[i]]:0;});
+    seiLocalidades=[...(v.localidades||[])];
+  } else {
+    document.getElementById('seiMEmpresa').value=seiCurrentCo!=='TODAS'?seiCurrentCo:'SEI';
+    document.getElementById('seiMCargo').value='';
+    document.getElementById('seiMData').value=new Date().toISOString().split('T')[0];
+    document.getElementById('seiMStatus').value='Aberta';
+    document.getElementById('seiMPrioridade').value='Não';
+    seiLocalidades=[];
+    ['seiMTrRec','seiMTrAprov','seiMTrReprov','seiMEnRealiz','seiMEnAprov','seiMEnReprov','seiMGeEnc','seiMGeAprov','seiMGeReprov'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  }
+  document.getElementById('seiMLocalInput').value='';
+  seiRenderLocalList();
+  const ol=document.getElementById('seiModalOverlay');if(ol)ol.classList.add('open');
+}
+function seiCloseModal(){const ol=document.getElementById('seiModalOverlay');if(ol)ol.classList.remove('open');seiEditingIdx=null;}
+
+function seiSaveVaga(){
+  const cargo=(document.getElementById('seiMCargo').value||'').trim();if(!cargo){alert('Informe o cargo.');return;}
+  const vaga={
+    empresa:document.getElementById('seiMEmpresa').value,cargo,
+    data:document.getElementById('seiMData').value,
+    status:document.getElementById('seiMStatus').value,
+    prioridade:document.getElementById('seiMPrioridade').value,
+    localidades:[...seiLocalidades],
+    triagemRec:+document.getElementById('seiMTrRec').value,
+    triagemAprov:+document.getElementById('seiMTrAprov').value,
+    triagemReprov:+document.getElementById('seiMTrReprov').value,
+    entrevRealiz:+document.getElementById('seiMEnRealiz').value,
+    entrevAprov:+document.getElementById('seiMEnAprov').value,
+    entrevReprov:+document.getElementById('seiMEnReprov').value,
+    gestorEnc:+document.getElementById('seiMGeEnc').value,
+    gestorAprov:+document.getElementById('seiMGeAprov').value,
+    gestorReprov:+document.getElementById('seiMGeReprov').value,
+  };
+  if(seiEditingIdx!==null)seiState.vagas[seiEditingIdx]=vaga;else seiState.vagas.push(vaga);
+  seiSave();seiCloseModal();seiRender();
+}
+function seiDeleteVaga(idx){if(confirm('Excluir esta vaga?')){seiState.vagas.splice(idx,1);seiSave();seiRender();}}
+
+function seiOpenNotaModal(){const ol=document.getElementById('seiNotaOverlay');if(ol)ol.classList.add('open');}
+function seiCloseNotaModal(){const ol=document.getElementById('seiNotaOverlay');if(ol)ol.classList.remove('open');}
+function seiSaveNota(){
+  const desc=(document.getElementById('seiNDesc').value||'').trim();
+  const emissao=document.getElementById('seiNEmissao').value;
+  const venc=document.getElementById('seiNVenc').value;
+  if(!desc){alert('Informe a descrição.');return;}
+  if(!seiState.notas)seiState.notas=[];
+  seiState.notas.push({desc,emissao,venc});
+  seiSave();seiCloseNotaModal();seiRenderDocs();
+}
+function seiRemoveNota(i){seiState.notas.splice(i,1);seiSave();seiRenderDocs();}
+
+async function seiUploadContrato(input){
+  const file=input.files[0];if(!file)return;
+  seiState.contrato={name:file.name};input.value='';seiSave();seiRenderDocs();
+}
+function seiRemoveContrato(){seiState.contrato=null;seiSave();seiRenderDocs();}
+
+function seiEditPeriod(){const p=prompt('Período (ex: Jun/2026):',seiState.period);if(p){seiState.period=p.trim();seiSave();seiRender();}}
+function seiExportHTML(){alert('Para exportar, abra o painel completo em effect-production.up.railway.app/meu-app e use a função de impressão do browser (Ctrl+P).');}
 
 // ═══════════════════════ DATA MODEL ═══════════════════════
 const DB_KEY = 'effect_psi_v2';
@@ -1474,6 +1809,17 @@ function loadToday() {
 }
 
 // ═══════════════════════ NAVIGATION ═══════════════════════
+function psiMostrarSec(id, btn) {
+  document.querySelectorAll('.psi-sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.psi-nav-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('sec-' + id);
+  if (el) el.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'dashboard') setTimeout(renderDashboard, 50);
+  if (id === 'historico') setTimeout(renderHistory, 50);
+  if (id === 'questionarios') setTimeout(renderQuestionarios, 50);
+}
+
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -2204,6 +2550,8 @@ document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt
 document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
 renderTarefas(); renderRem(); renderAgua(); renderSessoes(); renderHumorHist(); sugerirTarefa();
 cicloInit();
+psiRenderMedStock();
+
 seiRender();
 // PSI: activate "hoje" section by default
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -2216,6 +2564,76 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(typeof loadToday==='function') loadToday();
   if(typeof updateProgress==='function') updateProgress();
 });
+
+// ── PSI MEDICATION STOCK TRACKER ──
+const PSI_MEDS_DEFAULT = [
+  {id:'desvenla',name:'Desvenlafaxina 100mg',doseDay:1,stock:0,boxSize:30,alertDays:10},
+  {id:'lamitor',name:'Lamitor (Lamotrigina)',doseDay:3,stock:0,boxSize:60,alertDays:10},
+  {id:'quetiapina',name:'Quetiapina 12,5mg',doseDay:1,stock:0,boxSize:30,alertDays:7},
+  {id:'venvanse',name:'Venvanse',doseDay:1,stock:0,boxSize:30,alertDays:7},
+];
+
+function psiGetMedStock(){
+  const s=localStorage.getItem('effect_psi_med_stock');
+  if(s) try{return JSON.parse(s);}catch(e){}
+  return JSON.parse(JSON.stringify(PSI_MEDS_DEFAULT));
+}
+function psiSaveMedStock(meds){localStorage.setItem('effect_psi_med_stock',JSON.stringify(meds));}
+
+function psiRenderMedStock(){
+  const el=document.getElementById('psi-stock-section');if(!el)return;
+  const meds=psiGetMedStock();
+  let alertsHtml='';
+  meds.forEach(m=>{
+    const days=m.doseDay>0?Math.floor(m.stock/m.doseDay):999;
+    if(days<=m.alertDays){
+      alertsHtml+=`<div class="psi-stock-alert">⚠️ <div><strong>${m.name}</strong><br><span style="font-size:10px">Apenas <strong>${days} dia(s)</strong> de estoque — compre em breve!</span></div></div>`;
+    }
+  });
+  let html=alertsHtml;
+  html+='<div class="psi-med-stock"><div class="psi-med-stock-title">📦 Estoque de Medicamentos</div>';
+  meds.forEach((m,i)=>{
+    const days=m.doseDay>0?Math.floor(m.stock/m.doseDay):999;
+    const cls=days<=3?'crit':days<=m.alertDays?'warn':'ok';
+    const daysLabel=days>=999?'∞':days+' dias';
+    html+=`<div class="psi-stock-row">
+      <div class="psi-stock-name">${m.name}</div>
+      <div class="psi-stock-field">
+        <label>Comprimidos restantes</label>
+        <input type="number" min="0" class="psi-stock-input" value="${m.stock}" onchange="psiUpdateStock(${i},'stock',+this.value)" title="Clique para editar">
+      </div>
+      <div class="psi-stock-field">
+        <label>Dose/dia (cp)</label>
+        <input type="number" min="0.5" step="0.5" class="psi-stock-input" value="${m.doseDay}" onchange="psiUpdateStock(${i},'doseDay',+this.value)">
+      </div>
+      <div class="psi-stock-field">
+        <label>Alertar em (dias)</label>
+        <input type="number" min="1" class="psi-stock-input" value="${m.alertDays}" onchange="psiUpdateStock(${i},'alertDays',+this.value)">
+      </div>
+      <div class="psi-stock-days ${cls}" title="Dias restantes de estoque">${daysLabel}</div>
+    </div>`;
+  });
+  html+='<button onclick="psiAddMed()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;cursor:pointer">+ Adicionar medicamento</button>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function psiUpdateStock(idx,field,val){
+  const meds=psiGetMedStock();
+  if(!meds[idx])return;
+  meds[idx][field]=val;
+  psiSaveMedStock(meds);
+  psiRenderMedStock();
+}
+
+function psiAddMed(){
+  const name=prompt('Nome do medicamento:');if(!name)return;
+  const meds=psiGetMedStock();
+  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});
+  psiSaveMedStock(meds);
+  psiRenderMedStock();
+}
+
 </script>
 </body>
 </html>
