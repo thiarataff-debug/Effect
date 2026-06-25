@@ -51,14 +51,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .rem-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px}
 .rem-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .rem-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
-.rem-info{flex:1}.rem-nome{font-weight:700;font-size:12px}.rem-hora{font-size:10px;color:var(--muted)}
-.sos-btn{width:100%;padding:16px;background:linear-gradient(135deg,#fde8e4,#fef3f2);border:2px solid var(--pink);border-radius:12px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;color:#b04a38;cursor:pointer;margin-bottom:12px}
-.sos-anim{display:none;text-align:center;padding:20px}
-.sos-circle{width:100px;height:100px;border-radius:50%;background:var(--blue);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px}
-.sos-text{font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px}
-.sos-sub{font-size:12px;color:var(--muted)}
-@keyframes inhale{0%{transform:scale(1);background:var(--blue)}100%{transform:scale(1.5);background:var(--green)}}
-@keyframes exhale{0%{transform:scale(1.5);background:var(--green)}100%{transform:scale(1);background:var(--blue)}}
+.rem-info{flex:1}.rem-nome{font-weight:700;font-size:12px}.rem-hora{font-size:10px;color:var(--muted)}100%{transform:scale(1.5);background:var(--green)}}100%{transform:scale(1);background:var(--blue)}}
 .chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
 .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(10px);background:#2a2a2b;color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
@@ -278,6 +271,26 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .psi-stock-days.crit{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
 .psi-stock-alert{padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:11px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
 
+
+.matriz-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.matriz-q{border-radius:10px;padding:10px;min-height:70px}
+.matriz-q.q1{background:#fef2f2;border:1.5px solid #fca5a5}
+.matriz-q.q2{background:#fefce8;border:1.5px solid var(--green)}
+.matriz-q.q3{background:#fff7ed;border:1.5px solid #fdba74}
+.matriz-q.q4{background:#f8fafc;border:1.5px solid var(--border)}
+.matriz-q-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;opacity:.6}
+.matriz-q-title{font-size:11px;font-weight:800;margin-bottom:8px}
+.matriz-q.q1 .matriz-q-title{color:#991b1b}
+.matriz-q.q2 .matriz-q-title{color:#166534}
+.matriz-q.q3 .matriz-q-title{color:#9a3412}
+.matriz-q.q4 .matriz-q-title{color:var(--muted)}
+.matriz-item{font-size:11px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;gap:6px;cursor:pointer}
+.matriz-item:last-child{border:none}
+.matriz-item.done{opacity:.4;text-decoration:line-through}
+.matriz-empty{font-size:10px;color:var(--muted);font-style:italic}
+.matriz-axes{display:grid;grid-template-columns:20px 1fr;grid-template-rows:1fr 20px;gap:0;margin-top:4px}
+.matriz-axis-v{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:.5px}
+.matriz-axis-h{font-size:9px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:.5px;grid-column:2;display:flex;justify-content:space-between;padding:0 4px}
 </style>
 </head>
 <body>
@@ -291,7 +304,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
-  <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
   <button class="tab" onclick="irAba('ciclo',this)">🌸 Ciclo</button>
   <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
 </div>
@@ -302,6 +314,31 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <div class="card"><div class="card-title">⚡ O que fazer agora?</div>
     <div id="sugestao-tarefa" style="font-size:13px;color:var(--muted);margin-bottom:10px">Nenhuma tarefa urgente cadastrada.</div>
     <button onclick="sugerirTarefa()" style="padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">🎲 Sugerir tarefa</button>
+  </div>
+  <div class="card"><div class="card-title">📊 Matriz de Prioridades</div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:var(--muted);margin-bottom:2px;padding:0 2px"><span>🔺 URGENTE</span><span>IMPORTANTE 🔺</span></div>
+    <div class="matriz-grid">
+      <div class="matriz-q q1">
+        <div class="matriz-q-label">Fazer Agora</div>
+        <div class="matriz-q-title">🔴 Urgente</div>
+        <div id="matriz-q1"></div>
+      </div>
+      <div class="matriz-q q2">
+        <div class="matriz-q-label">Agendar</div>
+        <div class="matriz-q-title">🟡 Importante</div>
+        <div id="matriz-q2"></div>
+      </div>
+      <div class="matriz-q q3">
+        <div class="matriz-q-label">Delegar</div>
+        <div class="matriz-q-title">🟠 Urgente, não essencial</div>
+        <div id="matriz-q3"><span class="matriz-empty">Vazia — delegue estas!</span></div>
+      </div>
+      <div class="matriz-q q4">
+        <div class="matriz-q-label">Talvez depois</div>
+        <div class="matriz-q-title">⚪ Normal</div>
+        <div id="matriz-q4"></div>
+      </div>
+    </div>
   </div>
   <div class="card"><div class="card-title">✅ Tarefas do Dia</div>
     <div class="task-input-wrap">
@@ -324,9 +361,9 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
   </div>
   <div class="card"><div class="card-title">💧 Água</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 8 copos. Clique para marcar.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 4 garrafas. Clique para marcar.</div>
     <div class="agua-copos" id="agua-copos"></div>
-    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 </div>
+    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 de 4 garrafas</div>
   </div>
   <div class="card"><div class="card-title">🏃 Exercício</div>
     <div id="ex-chips">
@@ -337,35 +374,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
     <input class="task-input" id="ex-obs" placeholder="Observações..." style="width:100%;margin-top:10px">
     <button onclick="salvarEx()" style="margin-top:8px;padding:8px 16px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer;width:100%">💾 Salvar exercício</button>
-  </div>
-</div>
-
-<!-- HUMOR -->
-<!-- SOS -->
-<div class="page" id="page-sos">
-  <div class="card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fff);border:2px solid #f59e0b">
-    <div class="card-title" style="color:#92400e">⚡ Foque em uma coisa só agora</div>
-    <div id="sos-tarefa-txt" style="font-size:15px;font-weight:700;color:var(--navy);padding:6px 0 4px"></div>
-    <div style="font-size:11px;color:var(--muted)">Só isso. O resto pode esperar.</div>
-  </div>
-  <div class="card">
-    <button class="sos-btn" onclick="iniciarSOS()">😰 SOS ANSIEDADE — Respiração 4-7-8</button>
-    <div class="sos-anim" id="sos-anim">
-      <div class="sos-circle" id="sos-circle">💨</div>
-      <div class="sos-text" id="sos-text">Inspire...</div>
-      <div class="sos-sub" id="sos-sub">4 segundos</div>
-      <button onclick="pararSOS()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
-    </div>
-  </div>
-  <div class="card"><div class="card-title">🧘 Grounding 5-4-3-2-1</div>
-    <div style="font-size:12px;line-height:1.9;color:var(--text)">
-      Olhe ao redor e nomeie:<br><strong>👁️ 5 coisas</strong> que você vê<br><strong>🤚 4 coisas</strong> que você pode tocar<br>
-      <strong>👂 3 coisas</strong> que você ouve<br><strong>👃 2 coisas</strong> que você cheira<br><strong>👅 1 coisa</strong> que você sente o gosto<br>
-      <br><em style="color:var(--muted)">Respire fundo após cada um.</em>
-    </div>
-  </div>
-  <div class="card"><div class="card-title">💙 Lembrete gentil</div>
-    <div id="lembrete-gentil" style="font-size:13px;line-height:1.65;color:var(--text);font-style:italic"></div>
   </div>
 </div>
 
@@ -1089,24 +1097,35 @@ function pomStart(){
 function pomPause(){clearInterval(pomInterval);pomRodando=false;document.getElementById('pom-start').textContent='▶ Continuar';}
 function pomReset(){clearInterval(pomInterval);pomRodando=false;pomSeg=25*60;pomTipo='foco';document.getElementById('pom-timer').textContent='25:00';document.getElementById('pom-label').textContent='Foco total';document.getElementById('pom-start').textContent='▶ Iniciar';}
 function renderSessoes(){document.getElementById('pom-sessions').innerHTML=Array.from({length:4},(_,i)=>`<div class="pom-dot ${i<pomSessoes?'done':i===pomSessoes?'current':''}"></div>`).join('');}
-function addTask(){const input=document.getElementById('task-input');const texto=input.value.trim();if(!texto)return;const prio=document.getElementById('task-prio').value;dados.tarefas.push({id:Date.now(),texto,prio,done:false});salvar();input.value='';renderTarefas();mostrarTarefaSOS();}
-function toggleTask(id){const t=dados.tarefas.find(t=>t.id===id);if(!t)return;t.done=!t.done;salvar();renderTarefas();mostrarTarefaSOS();if(t.done)toast('✅ Concluída!','success');}
-function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();mostrarTarefaSOS();}
+function addTask(){const input=document.getElementById('task-input');const texto=input.value.trim();if(!texto)return;const prio=document.getElementById('task-prio').value;dados.tarefas.push({id:Date.now(),texto,prio,done:false});salvar();input.value='';renderTarefas();renderMatriz();}
+function toggleTask(id){const t=dados.tarefas.find(t=>t.id===id);if(!t)return;t.done=!t.done;salvar();renderTarefas();renderMatriz();if(t.done)toast('✅ Concluída!','success');}
+function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();renderMatriz();}
+function renderMatriz(){
+  const q1=[],q2=[],q4=[];
+  dados.tarefas.filter(t=>!t.done).forEach(t=>{
+    if(t.prio==='u')q1.push(t);
+    else if(t.prio==='i')q2.push(t);
+    else q4.push(t);
+  });
+  const mkItems=(list,el)=>{
+    const c=document.getElementById(el);
+    if(!c)return;
+    c.innerHTML=list.length?list.map(t=>`<div class="matriz-item" onclick="toggleTask(${t.id})">${t.texto}</div>`).join(''):'<span class="matriz-empty">Vazia ✨</span>';
+  };
+  mkItems(q1,'matriz-q1');mkItems(q2,'matriz-q2');mkItems(q4,'matriz-q4');
+}
 function renderTarefas(){const prioLabel={u:'🔴',i:'🟡',n:'⚪'};const sorted=[...dados.tarefas].sort((a,b)=>{const o={u:0,i:1,n:2};return o[a.prio]-o[b.prio];});document.getElementById('task-list').innerHTML=sorted.length?sorted.map(t=>`<div class="task-item ${t.done?'done':''}"><div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div><span class="task-text ${t.done?'done':''}">${prioLabel[t.prio]} ${t.texto}</span><button class="task-del" onclick="delTask(${t.id})">×</button></div>`).join('')+'<div style="margin-top:10px;text-align:center"><button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button></div>':'<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Nenhuma tarefa. Adicione acima! ✨</div>';}
-function limparConcluidas(){dados.tarefas=dados.tarefas.filter(t=>!t.done);salvar();renderTarefas();}
+function limparConcluidas(){dados.tarefas=dados.tarefas.filter(t=>!t.done);salvar();renderTarefas();renderMatriz();}
 function sugerirTarefa(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');const i=dados.tarefas.filter(t=>!t.done&&t.prio==='i');const t=dados.tarefas.filter(t=>!t.done);const sug=u[0]||i[0]||t[0]||null;document.getElementById('sugestao-tarefa').textContent=sug?'👉 '+sug.texto:'🎉 Todas concluídas!';}
 function addRem(){const nome=document.getElementById('rem-nome-input').value.trim();const hora=document.getElementById('rem-hora-input').value;if(!nome)return;dados.remedios.push({id:Date.now(),nome,hora,tomado:false});salvar();document.getElementById('rem-nome-input').value='';renderRem();}
 function toggleRem(id){const r=dados.remedios.find(r=>r.id===id);if(!r)return;r.tomado=!r.tomado;salvar();renderRem();if(r.tomado)toast('💊 Remédio registrado!','success');}
 function renderRem(){document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`<div class="rem-item"><div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div><div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div><button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button></div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';}
-function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({de 4 garrafas=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} `;}
-function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(length:4},(_,i)('💧 Meta atingida!','success');salvar();renderAgua();}
-dados.agua===4)toastlet sosInterval=null;
-function mostrarTarefaSOS(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');const i=dados.tarefas.filter(t=>!t.done&&t.prio==='i');const tarefa=u[0]||i[0]||null;const card=document.getElementById('sos-tarefa-card');if(tarefa){card.style.display='block';document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto;}else{card.style.display='none';}}
-function iniciarSOS(){document.getElementById('sos-anim').style.display='block';const fases=[{texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},{texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},{texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'}];let fase=0;const circle=document.getElementById('sos-circle');function proxFase(){const f=fases[fase%3];document.getElementById('sos-text').textContent=f.texto;document.getElementById('sos-sub').textContent=f.sub;circle.style.animation=f.anim;fase++;sosInterval=setTimeout(proxFase,f.dur);}proxFase();}
-function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim').style.display='none';document.getElementById('sos-circle').style.animation='none';}
+function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({length:4},(_,i)=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} de 4 garrafas`;}
+function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(dados.agua===4)toast('💧 Meta atingida! 4 garrafas 🎉','success');salvar();renderAgua();}
+
 function toggleChip(el){el.classList.toggle('on');}
 function salvarEx(){const s=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);if(!s.length){toast('Selecione pelo menos um','');return}toast('🏃 Exercício salvo!','success');document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));document.getElementById('ex-obs').value='';}
-function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')mostrarTarefaSOS();if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 
@@ -2517,10 +2536,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── PSI MEDICATION STOCK TRACKER ──
 const PSI_MEDS_DEFAULT = [
-  {id:'desvenla',name:'Desvenlafaxina 100mg',doseDay:1,stock:0,boxSize:30,alertDays:10},
-  {id:'lamitor',name:'Lamitor (Lamotrigina)',doseDay:3,stock:0,boxSize:60,alertDays:10},
-  {id:'quetiapina',name:'Quetiapina 12,5mg',doseDay:1,stock:0,boxSize:30,alertDays:7},
-  {id:'venvanse',name:'Venvanse',doseDay:1,stock:0,boxSize:30,alertDays:7},
+  {id:'desvenla',name:'Desvenlafaxina',doseDay:1,stock:0,boxSize:30,alertDays:10},
+  {id:'lamotrigina',name:'Lamotrigina',doseDay:1,stock:0,boxSize:60,alertDays:10},
+  {id:'quetiapina',name:'Quetiapina',doseDay:1,stock:0,boxSize:30,alertDays:7},
+  {id:'uninaltrex',name:'Uninaltrex (Naltrexona)',doseDay:1,stock:0,boxSize:30,alertDays:7},
+  {id:'citoneurin',name:'Citoneurin',doseDay:1,stock:0,boxSize:30,alertDays:10},
 ];
 
 function psiGetMedStock(){
@@ -2554,7 +2574,7 @@ function psiCheckRestock(){
 // ── INIT ──
 document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-  html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';   html+='</div>';   el.innerHTML=html; }  function psiUpdateStock(idx,field,val){   const meds=psiGetMedStock();   if(meds[idx])meds[idx][field]=val;   psiSaveMedStock(meds);   psiRenderMedStock(); }  function psiAddMed(){   const name=prompt('Nome do medicamento:');   if(!name||!name.trim())return;   const meds=psiGetMedStock();   meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});   psiSaveMedStock(meds);   psiRenderMedStock(); }
+renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedStock();
 cicloInit();
 
 seiRender();
@@ -2618,3 +2638,27 @@ function psiRenderMedStock(){
       </div>
     </div>`;
   });
+  html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function psiUpdateStock(idx,field,val){
+  const meds=psiGetMedStock();
+  if(meds[idx])meds[idx][field]=val;
+  psiSaveMedStock(meds);
+  psiRenderMedStock();
+}
+
+function psiAddMed(){
+  const name=prompt('Nome do medicamento:');
+  if(!name||!name.trim())return;
+  const meds=psiGetMedStock();
+  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});
+  psiSaveMedStock(meds);
+  psiRenderMedStock();
+}
+
+</script>
+</body>
+</html>
