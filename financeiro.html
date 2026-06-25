@@ -347,6 +347,10 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
     </div>
   </div>
   <div class="grid3" id="nf-kpis" style="margin-bottom:12px"></div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct">Comissão prevista por mês <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">NFs pendentes, agrupadas por vencimento</span></div>
+    <div id="nf-com-meses"><div class="empty">Nenhuma comissão agendada.</div></div>
+  </div>
   <div class="card">
     <div class="ct">Notas registradas
       <select id="nf-fil" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="rNF()"><option value="all">Todos os status</option><option value="pendente">Pendentes</option><option value="pago">Pagas</option><option value="vencido">Vencidas</option></select>
@@ -978,10 +982,8 @@ function parseDanfe(texto, status) {
   }).filter(function(v) { return v > 0 && v < 99999999; });
   var vMax = valores.length ? Math.max.apply(null, valores) : 0;
 
-  // Estratégia: "VALOR TOTAL DA NOTA" é o último rótulo de uma linha de cabeçalhos.
-  // O valor correto é o ÚLTIMO número da linha de dados imediatamente abaixo.
-  // Ex: linha cabeçalho → "... VALOR APROX. DOS TRIBUTOS  VALOR TOTAL DA NOTA"
-  //     linha de dados  → "0,00  0,00  0,00  0,00  0,00  0,00  25.932,63"
+  // Estratégia: valor sempre vem de "VALOR TOTAL DOS PRODUTOS"
+  // É o último rótulo de uma linha de cabeçalhos; valor = último número da linha seguinte.
   var linhasTexto = texto.split('\n');
   var vtNota = 0;
 
@@ -989,18 +991,12 @@ function parseDanfe(texto, status) {
     var ns = linha.match(/[\d\.]+,\d{2}/g);
     return ns ? parseFloat(ns[ns.length - 1].replace(/\./g, '').replace(',', '.')) : 0;
   }
-  function primeiroNum(linha) {
-    var ns = linha.match(/[\d\.]+,\d{2}/g);
-    return ns ? parseFloat(ns[0].replace(/\./g, '').replace(',', '.')) : 0;
-  }
 
+  // 1ª prioridade: VALOR TOTAL DOS PRODUTOS
   for (var li = 0; li < linhasTexto.length; li++) {
-    var lAtual = linhasTexto[li];
-    if (/VALOR\s+TOTAL\s+DA\s+NOTA\b/i.test(lAtual)) {
-      // Tenta pegar último número na mesma linha (caso label e valor sejam co-extraídos)
-      var vSame = ultimoNum(lAtual);
+    if (/VALOR\s+TOTAL\s+DOS\s+PRODUTOS/i.test(linhasTexto[li])) {
+      var vSame = ultimoNum(linhasTexto[li]);
       if (vSame > 0) { vtNota = vSame; break; }
-      // Senão, pega último número da próxima linha de dados
       for (var lj = li + 1; lj < Math.min(li + 4, linhasTexto.length); lj++) {
         var vNext = ultimoNum(linhasTexto[lj]);
         if (vNext > 0) { vtNota = vNext; break; }
@@ -1009,10 +1005,10 @@ function parseDanfe(texto, status) {
     }
   }
 
-  // Fallback 1: "VALOR TOTAL DOS PRODUTOS" (mesma lógica)
+  // 2ª: VALOR TOTAL DA NOTA (fallback caso o campo anterior não exista)
   if (!vtNota) {
     for (var li2 = 0; li2 < linhasTexto.length; li2++) {
-      if (/VALOR\s+TOTAL\s+DOS\s+PRODUTOS/i.test(linhasTexto[li2])) {
+      if (/VALOR\s+TOTAL\s+DA\s+NOTA\b/i.test(linhasTexto[li2])) {
         var vSame2 = ultimoNum(linhasTexto[li2]);
         if (vSame2 > 0) { vtNota = vSame2; break; }
         for (var lj2 = li2 + 1; lj2 < Math.min(li2 + 4, linhasTexto.length); lj2++) {
@@ -1024,33 +1020,33 @@ function parseDanfe(texto, status) {
     }
   }
 
-  // Fallback final: maior valor do documento acima de R$ 10
+  // 3ª: maior valor do documento acima de R$ 10
   if (!vtNota) {
     var vGrandes = valores.filter(function(v) { return v > 10; });
     vtNota = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
   }
   resultado.valor = vtNota;
 
-  // Parcelas: padrão "001 07/07/2026 5.550,35" (número sequencial + data + valor)
-  var mParc = texto.match(/\b\d{3}\b[\s\S]{0,5}(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/g) || [];
-  if (!mParc.length) {
-    // Padrão alternativo: data seguida de valor na mesma linha
-    mParc = (texto.match(/\d{2}\/\d{2}\/\d{4}[ \t]+([\d\.]+,\d{2})/g) || [])
-      .map(function(s, i) { return '00'+(i+1)+' '+s; });
+  // Detecta Cidade Maravilhosa — vencimentos serão preenchidos manualmente
+  var isCM = /CIDADE\s*MARAVILHOSA/i.test(resultado.cli);
+
+  // Parcelas (apenas para não-Cidade Maravilhosa)
+  if (!isCM) {
+    var mParc = texto.match(/\b\d{3}\b[\s\S]{0,5}(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/g) || [];
+    if (!mParc.length) {
+      mParc = (texto.match(/\d{2}\/\d{2}\/\d{4}[ \t]+([\d\.]+,\d{2})/g) || [])
+        .map(function(s, i) { return '00'+(i+1)+' '+s; });
+    }
+    resultado.parcelas = mParc.map(function(p, i) {
+      var parts = p.match(/(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/);
+      if (!parts) return null;
+      var dateParts = parts[1].split('/');
+      var valParc = parseFloat(parts[2].replace(/\./g, '').replace(',', '.'));
+      if (!valParc || valParc > resultado.valor * 1.1) return null;
+      return { n: i+1, venc: dateParts[2]+'-'+dateParts[1]+'-'+dateParts[0], val: valParc };
+    }).filter(Boolean);
   }
-  resultado.parcelas = mParc.map(function(p, i) {
-    var parts = p.match(/(\d{2}\/\d{2}\/\d{4})[\s\S]{0,5}([\d\.]+,\d{2})/);
-    if (!parts) return null;
-    var dateParts = parts[1].split('/');
-    var valParc = parseFloat(parts[2].replace(/\./g, '').replace(',', '.'));
-    // Filtra parcelas com valor zerado ou absurdo
-    if (!valParc || valParc > resultado.valor * 1.1) return null;
-    return {
-      n: i + 1,
-      venc: dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0],
-      val: valParc
-    };
-  }).filter(Boolean);
+
   // Aplicar nos campos
   if (resultado.num) document.getElementById('nf-num').value = resultado.num;
   if (resultado.cli) document.getElementById('nf-cli').value = resultado.cli;
@@ -1061,19 +1057,35 @@ function parseDanfe(texto, status) {
   nParc = Math.min(nParc, 4);
   document.getElementById('nf-parc').value = String(nParc);
   buildVencFields();
-  // Preencher datas das parcelas
-  resultado.parcelas.forEach(function(p, i) {
-    var el = document.getElementById('nv-' + i);
-    if (el && p.venc) el.value = p.venc;
-  });
+  // Ajustar nº parcelas e preencher datas
+  if (isCM) {
+    // Cidade Maravilhosa: mantém 1 parcela, sem datas — preenchimento manual
+    document.getElementById('nf-parc').value = '1';
+    buildVencFields();
+  } else {
+    var nParc = Math.max(resultado.parcelas.length, 1);
+    nParc = Math.min(nParc, 4);
+    document.getElementById('nf-parc').value = String(nParc);
+    buildVencFields();
+    resultado.parcelas.forEach(function(p, i) {
+      var el = document.getElementById('nv-' + i);
+      if (el && p.venc) el.value = p.venc;
+    });
+  }
   calcNFComis();
   // Feedback
   var found = [];
   if (resultado.num) found.push('NF ' + resultado.num);
   if (resultado.cli) found.push(resultado.cli.split(' ')[0]);
   if (resultado.valor) found.push('R$ ' + resultado.valor.toLocaleString('pt-BR'));
-  if (resultado.parcelas.length) found.push(resultado.parcelas.length + ' parcela(s)');
-  if (found.length) {
+  if (isCM) {
+    status.textContent = '✓ ' + found.join(' · ') + ' — Cidade Maravilhosa: preencha os vencimentos manualmente';
+    status.style.color = 'var(--amb)';
+  } else if (resultado.parcelas.length) {
+    found.push(resultado.parcelas.length + ' parcela(s)');
+    status.textContent = '✓ ' + found.join(' · ');
+    status.style.color = 'var(--grn)';
+  } else if (found.length) {
     status.textContent = '✓ ' + found.join(' · ');
     status.style.color = 'var(--grn)';
   } else {
@@ -1116,6 +1128,51 @@ function rNF(){
     '<div class="kpi"><div class="kpi-l">Total NFs</div><div class="kpi-v">'+notas.length+'</div><div class="kpi-s">'+fmtF(totV)+'</div></div>'+
     '<div class="kpi"><div class="kpi-l">Comissão total</div><div class="kpi-v" style="color:var(--grn)">'+fmtF(totC)+'</div><div class="kpi-s">3% de '+fmtF(totV)+'</div></div>'+
     '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb)">'+fmtF(totP)+'</div><div class="kpi-s">'+notas.filter(function(n){return n.status==='pendente'}).length+' NFs abertas</div></div>';
+  // ── Comissão por mês ──────────────────────────────
+  var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var hoje=new Date();
+  var mesAtualKey=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  var semVenc=0; // comissão de NFs sem vencimento ainda definido
+  var mesMapa={};
+  notas.filter(function(n){return n.status!=='pago'}).forEach(function(n){
+    var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
+    if(!n.parcelas.length){semVenc+=n.valor*0.03;return;}
+    n.parcelas.forEach(function(p){
+      if(!p.venc){semVenc+=comParc;return;}
+      var d=new Date(p.venc+'T00:00:00');
+      var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      mesMapa[key]=(mesMapa[key]||0)+comParc;
+    });
+  });
+  var mesKeys=Object.keys(mesMapa).sort();
+  var mesHtml='';
+  if(mesKeys.length){
+    mesHtml='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    mesKeys.forEach(function(k){
+      var parts=k.split('-');
+      var y=parseInt(parts[0]),m=parseInt(parts[1]);
+      var label=MESES[m-1]+(y!==hoje.getFullYear()?' '+y:'');
+      var isAtual=k===mesAtualKey;
+      var isPast=k<mesAtualKey;
+      var com=mesMapa[k];
+      var tagCor=isAtual?'var(--grn)':isPast?'var(--red)':'var(--tx)';
+      var badge=isAtual?'<span class="pill p-ok" style="margin-right:6px">Mês atual</span>':isPast?'<span class="pill p-venc" style="margin-right:6px">Passado</span>':'';
+      mesHtml+='<tr style="border-bottom:.5px solid var(--bd)">'+
+        '<td style="padding:8px 4px;font-weight:'+(isAtual?'600':'400')+';color:'+tagCor+'">'+badge+label+'</td>'+
+        '<td style="padding:8px 4px;text-align:right;font-weight:500;color:'+tagCor+'">'+fmtF(com)+'</td>'+
+        '</tr>';
+    });
+    if(semVenc>0){
+      mesHtml+='<tr><td style="padding:8px 4px;color:var(--tx2)"><i class="ti ti-clock" style="margin-right:4px"></i>Vencimento a definir</td>'+
+        '<td style="padding:8px 4px;text-align:right;color:var(--amb)">'+fmtF(semVenc)+'</td></tr>';
+    }
+    mesHtml+='</table>';
+  } else if(semVenc>0){
+    mesHtml='<div style="padding:8px 4px;font-size:12px;color:var(--amb)"><i class="ti ti-clock" style="margin-right:4px"></i>Comissão a receber: '+fmtF(semVenc)+' — vencimentos pendentes de preenchimento</div>';
+  } else {
+    mesHtml='<div class="empty">Nenhuma comissão agendada.</div>';
+  }
+  document.getElementById('nf-com-meses').innerHTML=mesHtml;
   if(!f.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
   var rows=f.map(function(n){
     return'<tr><td style="font-weight:500">'+n.num+'</td><td>'+n.cli+'</td><td style="color:var(--tx2)">'+(n.emis||'&#8212;')+'</td>'+
