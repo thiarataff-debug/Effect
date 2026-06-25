@@ -15,240 +15,185 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .hback{padding:7px 14px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;flex-shrink:0}
 .tabs-bar{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;position:sticky;top:51px;z-index:40}
 .tabs-bar::-webkit-scrollbar{height:0}
-.tab{padding:11px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:all .15s}
+.tab{padding:11px 16px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;transition:all .15s}
 .tab.active{color:var(--navy);border-bottom-color:var(--blue)}
 .page{display:none;padding:16px}
 .page.active{display:block}
 .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
 .card-title{font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:7px}
-
-/* ── TAREFAS ── */
-.matrix-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.quadrant{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:4px solid var(--border)}
-.quadrant.q1{border-top-color:#ef4444}.quadrant.q2{border-top-color:#22c55e}.quadrant.q3{border-top-color:#f59e0b}.quadrant.q4{border-top-color:#a1a1aa}
-.q-badges{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}
-.q-badge{font-size:8px;font-weight:800;padding:2px 6px;border-radius:20px;white-space:nowrap}
-.q-title{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
-.q-input-wrap{display:flex;gap:5px;margin-bottom:8px}
-.q-input{flex:1;min-width:0;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
-.q-input:focus{border-color:var(--blue)}
-.q-add-btn{padding:6px 10px;color:#fff;border:none;border-radius:7px;font-weight:800;font-size:14px;cursor:pointer;flex-shrink:0;line-height:1}
-.q-task{display:flex;align-items:flex-start;gap:6px;padding:5px 6px;background:#f8fafc;border-radius:7px;margin-bottom:4px}
-.q-check{width:16px;height:16px;border-radius:3px;border:2px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .15s;margin-top:1px}
-.q-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
-.q-text{flex:1;font-size:11px;word-break:break-word;line-height:1.35}
-.q-text.done{text-decoration:line-through;color:var(--muted)}
-.q-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;flex-shrink:0;line-height:1}
-.q-del:hover{color:var(--pink)}
-
-/* ── AGENDA ── */
-.ag-view-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.ag-vtab{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .15s}
-.ag-vtab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.ag-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.ag-nav-btn{padding:6px 12px;border:1.5px solid var(--border);background:#fff;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;cursor:pointer;font-weight:700;transition:all .15s}
-.ag-nav-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
-.ag-nav-title{flex:1;text-align:center;font-weight:800;font-size:13px;color:var(--navy)}
-.ag-today-btn{padding:5px 12px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:#1d4ed8;flex-shrink:0}
-
-/* DIÁRIA */
-.ag-day-grid{display:flex;flex-direction:column;gap:0}
-.ag-hour-row{display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid #f3f4f6;min-height:44px;padding:4px 0}
-.ag-hour-label{width:38px;font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0;padding-top:3px}
-.ag-hour-events{flex:1;display:flex;flex-direction:column;gap:3px}
-.ag-add-hour{padding:2px 8px;background:none;border:1.5px dashed var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;color:var(--muted);width:100%;text-align:left;transition:all .15s;opacity:0}
-.ag-hour-row:hover .ag-add-hour{opacity:1}
-
-/* SEMANAL */
-.ag-week-grid{display:grid;grid-template-columns:38px repeat(7,1fr);gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.ag-week-header{background:var(--navy);color:#fff;padding:6px 4px;text-align:center;font-size:10px;font-weight:700}
-.ag-week-header.today-col{background:var(--blue)}
-.ag-week-hour-label{background:#f8fafc;padding:4px 6px;font-size:9px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right}
-.ag-week-cell{border-bottom:1px solid var(--border);border-right:1px solid var(--border);min-height:36px;padding:2px;cursor:pointer;transition:background .1s;position:relative}
-.ag-week-cell:hover{background:#eff6ff}
-.ag-week-cell.today-col{background:#fafffe}
-
-/* MENSAL */
-.ag-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-radius:10px;overflow:hidden}
-.ag-month-header{background:var(--navy);color:#fff;padding:6px 4px;text-align:center;font-size:10px;font-weight:700}
-.ag-month-day{background:#fff;min-height:70px;padding:4px;cursor:pointer;transition:background .1s;position:relative}
-.ag-month-day:hover{background:#eff6ff}
-.ag-month-day.other-month{background:#f9fafb}
-.ag-month-day.today{background:#fffbeb;border:2px solid var(--blue)}
-.ag-month-day-num{font-size:11px;font-weight:800;color:var(--navy);margin-bottom:2px}
-.ag-month-day.other-month .ag-month-day-num{color:var(--muted)}
-.ag-month-day.today .ag-month-day-num{color:var(--blue)}
-
-/* ANUAL */
-.ag-year-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.ag-year-month{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.ag-year-month-title{font-size:11px;font-weight:800;color:var(--navy);margin-bottom:6px;text-align:center}
-.ag-year-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
-.ag-year-mini-header{font-size:7px;font-weight:700;color:var(--muted);text-align:center;padding:1px 0}
-.ag-year-mini-day{font-size:9px;text-align:center;padding:2px 1px;border-radius:3px;cursor:pointer;transition:background .1s}
-.ag-year-mini-day:hover{background:#eff6ff}
-.ag-year-mini-day.today{background:var(--blue);color:#fff;font-weight:800;border-radius:50%}
-.ag-year-mini-day.has-event{font-weight:800;color:var(--navy)}
-.ag-year-mini-day.has-event::after{content:'•';color:var(--blue);font-size:8px;display:block;margin-top:-4px}
-.ag-year-mini-day.other{color:var(--muted)}
-
-/* CHIPS DE EVENTO */
-.ag-ev-chip{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:1px;display:block}
-.ag-ev-chip.pessoal{background:#d1fae5;color:#065f46}
-.ag-ev-chip.pessoal-urgente{background:#fee2e2;color:#991b1b}
-.ag-ev-chip.compromisso{background:#e0e7ff;color:#3730a3}
-.ag-ev-chip.saude{background:#fce7f3;color:#9d174d}
-
-/* ── MEDICAÇÃO ── */
-.med-item{background:#f8fafc;border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:4px solid var(--border)}
-.med-item.ok{border-left-color:var(--green)}
-.med-item.warn{border-left-color:#f59e0b}
-.med-item.danger{border-left-color:#ef4444}
-.med-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.med-nome{font-size:13px;font-weight:700;color:var(--navy)}
-.med-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
-.med-badge.ok{background:#d1fae5;color:#065f46}
-.med-badge.warn{background:#fef3c7;color:#92400e}
-.med-badge.danger{background:#fee2e2;color:#991b1b}
-.med-info{font-size:11px;color:var(--muted);margin-bottom:7px;line-height:1.5}
-.med-bar-wrap{background:#e5e7eb;border-radius:8px;height:8px;overflow:hidden}
-.med-bar-fill{height:100%;border-radius:8px;transition:width .4s}
-.med-bar-fill.ok{background:var(--green)}
-.med-bar-fill.warn{background:#f59e0b}
-.med-bar-fill.danger{background:#ef4444}
-.med-comprar{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11px;font-weight:700;color:#ef4444;animation:blink 1.5s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
-
-/* ── CICLO MENSTRUAL ── */
-.ciclo-banner{border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
-.ciclo-phase-title{font-size:15px;font-weight:700}
-.ciclo-phase-desc{font-size:11px;margin-top:3px;opacity:.75;line-height:1.4}
-.ciclo-badge{margin-left:auto;flex-shrink:0;background:rgba(255,255,255,.45);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
-.ciclo-ring-wrap{position:relative;width:120px;height:120px;margin:4px auto 10px}
-.ciclo-ring-svg{transform:rotate(-90deg)}
-.ciclo-ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
-.ciclo-ring-num{font-size:24px;font-weight:700;line-height:1}
-.ciclo-ring-lbl{font-size:10px;color:var(--muted);margin-top:1px}
-.ciclo-leg{display:flex;flex-wrap:wrap;gap:5px 8px;justify-content:center;margin-top:8px}
-.ciclo-leg-i{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)}
-.ciclo-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
-.ciclo-date-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.ciclo-date-bar{width:3px;height:32px;border-radius:3px;flex-shrink:0}
-.ciclo-date-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-.ciclo-date-val{font-size:12px;font-weight:700}
-.ciclo-sx-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.ciclo-sx{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:7px;padding:7px 8px;font-size:11px}
-.ciclo-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.ciclo-wd{text-align:center;font-size:9px;font-weight:700;color:var(--muted);padding:2px 0 5px;text-transform:uppercase}
-.ciclo-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;border-radius:50%;position:relative}
-.ciclo-day.today{outline:2px solid var(--navy);outline-offset:-1px;font-weight:700}
-.ciclo-day.ph-menstrual{background:#f4afa1;color:#fff}
-.ciclo-day.ph-follicular{background:#daf0e6;color:#2a7a5a}
-.ciclo-day.ph-ovulatory{background:#8ed1b2;color:#fff}
-.ciclo-day.ph-luteal{background:#fce8e4;color:#b05040}
-.ciclo-day.empty{visibility:hidden}
-.ciclo-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:300;align-items:center;justify-content:center}
-.ciclo-edit-overlay.open{display:flex}
-.ciclo-modal{background:#fff;border-radius:16px;padding:22px;width:290px;box-shadow:0 8px 28px rgba(0,0,0,.14)}
-.ciclo-modal h3{font-size:14px;font-weight:700;margin-bottom:16px}
-.ciclo-fg{margin-bottom:12px}
-.ciclo-fg label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-.ciclo-fg input{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
-.ciclo-fg input:focus{border-color:var(--green)}
-.ciclo-modal-btns{display:flex;gap:7px;margin-top:16px}
-.ciclo-btn-c{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:8px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
-.ciclo-btn-s{flex:1;padding:9px;border:none;border-radius:8px;background:var(--green);font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer}
-
-/* ── PSI ── */
-.psi-sessao-card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px;border-left:4px solid var(--purple)}
-.psi-sessao-data{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.psi-sessao-tema{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
-.psi-sessao-body{font-size:12px;color:var(--text);line-height:1.5}
-.psi-meta-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#f5f3ff;border-radius:8px;margin-bottom:6px}
-.psi-meta-check{width:18px;height:18px;border-radius:4px;border:2px solid #8b5cf6;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .15s}
-.psi-meta-check.done{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
-.psi-insight{background:linear-gradient(135deg,#fdf4ff,#f5f3ff);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #c084fc;font-size:12px;line-height:1.5;color:var(--text)}
-.psi-insight-data{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700}
-
-/* ── SEI ── */
-.sei-col{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.sei-col-header{padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#fff}
-.sei-col-body{padding:8px;min-height:80px}
-.sei-card{background:#f8fafc;border-radius:8px;padding:8px 10px;margin-bottom:6px;border-left:3px solid transparent;font-size:11px}
-.sei-card-nome{font-weight:700;color:var(--navy);margin-bottom:2px;font-size:12px}
-.sei-card-info{font-size:10px;color:var(--muted);line-height:1.4}
-.ag-ev-chip.filho{background:#fef9c3;color:#854d0e}
-.ag-ev-chip.entrevista{background:#dbeafe;color:#1d4ed8}
-.ag-ev-chip.more{background:#f3f4f6;color:var(--muted)}
-
-/* MODAL EVENTO */
-.ag-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
-.ag-modal-bg.open{display:flex}
-.ag-modal{background:#fff;border-radius:14px;padding:20px;width:min(380px,92vw);box-shadow:0 8px 30px rgba(0,0,0,.18)}
-.ag-modal-title{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:14px}
-.ag-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;margin-bottom:8px}
-.ag-input:focus{border-color:var(--blue)}
-.ag-modal-footer{display:flex;gap:8px;margin-top:14px}
-.ag-btn{flex:1;padding:10px;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
-.ag-btn.primary{background:var(--green);color:var(--navy)}
-.ag-btn.danger{background:#fee2e2;color:#991b1b}
-.ag-btn.cancel{background:#f3f4f6;color:var(--muted)}
-
-/* ── SAÚDE ── */
-.task-input{padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none}
+.pomodoro{text-align:center;padding:20px 0}
+.pom-timer{font-size:56px;font-weight:800;color:var(--navy);line-height:1;margin-bottom:8px}
+.pom-label{font-size:12px;color:var(--muted);margin-bottom:20px}
+.pom-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.pbtn{padding:10px 20px;border-radius:9px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+.pbtn.start{background:var(--green);color:var(--navy)}
+.pbtn.pause{background:#fef9c3;color:#a16207}
+.pbtn.reset{background:#f3f4f6;color:var(--muted)}
+.pom-sessions{display:flex;gap:5px;justify-content:center;margin-top:14px}
+.pom-dot{width:10px;height:10px;border-radius:50%;background:#f3f4f6}
+.pom-dot.done{background:var(--green)}.pom-dot.current{background:var(--blue)}
+.task-input-wrap{display:flex;gap:8px;margin-bottom:12px}
+.task-input{flex:1;padding:9px 12px;border:2px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none}
 .task-input:focus{border-color:var(--blue)}
-.task-add-btn{padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
-.rem-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px}
-.rem-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.rem-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
-.rem-nome{font-weight:700;font-size:12px}.rem-hora{font-size:10px;color:var(--muted)}
-.agua-garrafas{display:flex;gap:16px;justify-content:center;margin-bottom:10px}
-.garrafa{width:52px;height:78px;border-radius:8px 8px 10px 10px;border:2.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-end;overflow:hidden;transition:all .2s}
-.garrafa.cheia{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.18)}
-.garrafa-fill{width:100%;background:linear-gradient(180deg,#93c5fd,#3b82f6);transition:height .35s}
-.garrafa:not(.cheia) .garrafa-fill{height:0}.garrafa.cheia .garrafa-fill{height:100%}
-.chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
-.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-
-/* ── HUMOR ── */
+.task-add-btn{padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.task-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;transition:all .15s}
+.task-item.done{opacity:.5}
+.task-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.task-check.checked{background:var(--green);border-color:var(--green);color:var(--navy);font-size:12px}
+.task-text{flex:1;font-size:13px}.task-text.done{text-decoration:line-through;color:var(--muted)}
+.task-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px}
+.task-del:hover{color:var(--pink)}
+.prio-sel{padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex-shrink:0}
 .humor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
 .humor-btn{padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;text-align:center;font-size:20px;transition:all .15s}
 .humor-btn.selected{border-color:var(--blue);background:#eff6ff;transform:scale(1.08)}
 .humor-label{font-size:9px;font-weight:700;color:var(--muted);margin-top:3px}
 .energia-bar{width:100%;height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin:8px 0}
 .energia-fill{height:100%;border-radius:6px;background:var(--green);transition:width .3s}
-
-/* ── SOS ── */
+.agua-copos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.copo{width:36px;height:44px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:flex-end;overflow:hidden;transition:all .15s}
+.copo.cheio{border-color:#60a5fa}
+.copo-fill{width:100%;border-radius:4px;background:#93c5fd;transition:height .3s}
+.copo:not(.cheio) .copo-fill{height:0}.copo.cheio .copo-fill{height:100%}
+.rem-item{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:6px}
+.rem-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.rem-check.checked{background:var(--green);border-color:var(--green);color:var(--navy)}
+.rem-info{flex:1}.rem-nome{font-weight:700;font-size:12px}.rem-hora{font-size:10px;color:var(--muted)}
 .sos-btn{width:100%;padding:16px;background:linear-gradient(135deg,#fde8e4,#fef3f2);border:2px solid var(--pink);border-radius:12px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;color:#b04a38;cursor:pointer;margin-bottom:12px}
 .sos-anim{display:none;text-align:center;padding:20px}
 .sos-circle{width:100px;height:100px;border-radius:50%;background:var(--blue);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.sos-text{font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px}
+.sos-sub{font-size:12px;color:var(--muted)}
 @keyframes inhale{0%{transform:scale(1);background:var(--blue)}100%{transform:scale(1.5);background:var(--green)}}
 @keyframes exhale{0%{transform:scale(1.5);background:var(--green)}100%{transform:scale(1);background:var(--blue)}}
-@keyframes pulse-foco{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5);border-color:#f59e0b}50%{box-shadow:0 0 0 12px rgba(245,158,11,0);border-color:#ef4444}}
-@keyframes blink-text{0%,100%{opacity:1}50%{opacity:.4}}
-.sos-foco-card{animation:pulse-foco 2s ease-in-out infinite;border:3px solid #f59e0b!important}
-.sos-foco-txt{font-size:18px;font-weight:800;color:var(--navy);padding:10px 0 6px;line-height:1.3}
-.sos-foco-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:#b45309;animation:blink-text 2s ease-in-out infinite;text-transform:uppercase}
-.sos-tool-body{display:none;padding:12px;background:#f8fafc;border-radius:0 0 10px 10px;margin-top:-8px;margin-bottom:8px;font-size:12px;line-height:1.9;color:var(--text)}
-.sos-tool-open{background:#eff6ff!important;border-color:var(--blue)!important;border-radius:10px 10px 0 0!important}
-
-/* ── MISC ── */
+.chip{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .15s;display:inline-block;margin:3px}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(10px);background:#2a2a2b;color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.success{background:var(--green);color:var(--navy)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.success{background:var(--green);color:var(--navy)}
+
+/* ══ CICLO ══ */
+.ciclo-phase-banner{border-radius:12px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.ciclo-phase-emoji{font-size:32px;flex-shrink:0}
+.ciclo-phase-name{font-size:15px;font-weight:800;color:var(--navy)}
+.ciclo-phase-desc{font-size:11px;color:#555;margin-top:2px;line-height:1.4}
+.ciclo-mini-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.ciclo-mini-header{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:2px}
+.ciclo-day{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;border:none;background:#f8fafc;color:var(--text);transition:all .15s;position:relative}
+.ciclo-day:hover{background:var(--border)}
+.ciclo-day.today{border:2px solid var(--blue)}
+.ciclo-day.period{background:#fecaca;color:#991b1b}
+.ciclo-day.ovulation{background:#bbf7d0;color:#166534}
+.ciclo-day.fertile{background:#bfdbfe;color:#1e40af}
+.ciclo-day.luteal{background:#fde8d8;color:#9a3412}
+.ciclo-day.selected{box-shadow:0 0 0 2px var(--navy)}
+.ciclo-day .ciclo-dot{width:4px;height:4px;border-radius:50%;position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:var(--navy)}
+.ciclo-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ciclo-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600}
+.ciclo-legend-dot{width:10px;height:10px;border-radius:3px}
+.ciclo-symp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ciclo-symp-btn{padding:7px 4px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:10px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3}
+.ciclo-symp-btn.active{background:var(--pink);border-color:#f87171;color:#7f1d1d}
+.ciclo-next-card{background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.ciclo-next-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e5e7eb;font-size:11px}
+.ciclo-next-row:last-child{border:none}
+.ciclo-next-label{color:var(--muted);font-weight:600}
+.ciclo-next-val{font-weight:800;color:var(--navy)}
+.ciclo-int-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-weight:700;padding:0}
+.ciclo-int-btn.active{background:var(--pink);border-color:#f87171;color:#7f1d1d}
+
+/* ══ PSI ══ */
+.psi-nav{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;overflow-x:auto}
+.psi-nav-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);white-space:nowrap;transition:all .15s}
+.psi-nav-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.psi-sec{display:none}.psi-sec.active{display:block}
+.psi-container{max-width:100%;padding:0}
+.slider-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.slider-grid{grid-template-columns:1fr}}
+.slider-item label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;display:block}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;accent-color:var(--blue)}
+.slider-val{font-weight:800;font-size:13px;color:var(--blue);min-width:18px;text-align:center}
+.med-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.med-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+.med-item.taken{background:#f0fdf4;border-color:#86efac}
+.med-item.taken .med-check{background:var(--green);color:var(--navy)}
+.med-check{width:22px;height:22px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .15s}
+.med-label{font-size:11px;font-weight:700;flex:1}.med-sub{font-size:10px;color:var(--muted)}
+.restock-alert{padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:11px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.phq-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:11px}
+.phq-item:last-child{border:none}
+.phq-opts{display:flex;gap:4px}
+.phq-opt{padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s}
+.phq-opt.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.phq-score{font-size:20px;font-weight:800;color:var(--navy);text-align:center;padding:12px 0}
+.txt-area{width:100%;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;padding:8px;resize:vertical;outline:none;min-height:70px}
+.txt-area:focus{border-color:var(--blue)}
+.psi-hist-row{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #f3f4f6;font-size:11px}
+.psi-hist-date{font-weight:700;color:var(--navy);min-width:80px}
+.today-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;gap:.5rem;flex-wrap:wrap}
+.today-date{font-size:.75rem;color:var(--muted)}
+.today-progress{background:#f3f4f6;border-radius:20px;padding:4px 12px;font-size:.75rem;font-weight:700}
+.period-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem}
+.period-row label{font-size:.75rem;font-weight:700;color:var(--navy)}
+.period-row select,.period-row input[type=date]{padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:.75rem;outline:none}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab-btn{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;color:var(--muted)}
+.tab-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.badge{font-size:9px;padding:2px 7px;border-radius:20px;background:#f3f4f6;color:var(--muted);font-weight:700;margin-left:4px}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--navy)}
+.export-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.export-card{padding:12px;background:#f8fafc;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);transition:all .15s;font-size:11px;font-weight:700;text-align:center}
+.export-card:hover{border-color:var(--blue);background:#eff6ff}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-card{background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-val{font-size:18px;font-weight:800;color:var(--navy)}
+.stat-label{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px}
+.hist-row{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #f3f4f6;font-size:11px;flex-wrap:wrap}
+.hist-date{font-weight:700;color:var(--navy);min-width:80px}
+.hist-chip{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700}
+
+/* ══ SEI ══ */
+.sei-company-bar{display:flex;gap:4px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}
+.sei-company-bar::-webkit-scrollbar{height:0}
+.sei-co-tab{padding:6px 14px;border-radius:20px;border:1.5px solid #bfdbfe;background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:#1e40af;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.sei-co-tab.active{background:#1e40af;color:#fff;border-color:#1e40af}
+.sei-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+@media(max-width:480px){.sei-cards{grid-template-columns:1fr}}
+.sei-card{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-top:3px solid #1e40af}
+.sei-card-title{font-size:10px;font-weight:700;color:#1e40af;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.sei-card-num{font-size:22px;font-weight:800;color:var(--navy)}
+.sei-filter-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.sei-select{padding:6px 10px;border:1.5px solid #bfdbfe;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;outline:none;background:#fff;color:var(--navy)}
+.sei-input{padding:6px 10px;border:1.5px solid #bfdbfe;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex:1;min-width:120px}
+.sei-input:focus,.sei-select:focus{border-color:#1e40af}
+.sei-table{width:100%;border-collapse:collapse;font-size:11px}
+.sei-table th{background:#1e40af;color:#fff;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;white-space:nowrap}
+.sei-table td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+.sei-table tr:hover td{background:#eff6ff}
+.sei-status{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;white-space:nowrap}
+.sei-add-btn{padding:7px 14px;background:#1e40af;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer}
+.sei-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.sei-modal-bg.open{display:flex}
+.sei-modal{background:#fff;border-radius:14px;padding:20px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto}
+.sei-modal-title{font-weight:800;font-size:14px;color:var(--navy);margin-bottom:14px}
+.sei-field{margin-bottom:10px}
+.sei-field label{font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px}
+.sei-field input,.sei-field select,.sei-field textarea{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.sei-field input:focus,.sei-field select:focus{border-color:#1e40af}
 </style>
 </head>
 <body>
-
 <header>
   <div class="hlogo">🧠 <span>Meu</span> App</div>
-  <button class="hback" onclick="voltarLia()">← Lia</button>
+  <a href="/inbox" class="hback">← Lia</a>
   <div class="hdate" id="hdate"></div>
 </header>
 
 <div class="tabs-bar">
-  <button class="tab active" onclick="irAba('tarefas',this)">✅ Tarefas</button>
-  <button class="tab" onclick="irAba('agenda',this)">📅 Agenda</button>
+  <button class="tab active" onclick="irAba('foco',this)">🍅 Foco</button>
+  <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
@@ -257,110 +202,57 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
 </div>
 
-<!-- TAREFAS -->
-<div class="page active" id="page-tarefas">
-  <div class="card" style="background:linear-gradient(135deg,#eff6ff,#f8faff);border:1px solid #bfdbfe">
-    <div class="card-title" style="color:#1d4ed8;margin-bottom:8px">🧭 Como classificar suas tarefas?</div>
-    <div style="font-size:11px;line-height:1.9;color:var(--text)">
-      <strong style="color:#ef4444">🔴 Urgente + Importante</strong> — Prazo real hoje ou amanhã. Consequência séria se não fizer.<br>
-      <strong style="color:#22c55e">🟢 Importante, não urgente</strong> — Estratégico, faz crescer o negócio. Sem prazo imediato.<br>
-      <strong style="color:#f59e0b">🟡 Urgente, não importante</strong> — Alguém esperando, mas outra pessoa poderia resolver.<br>
-      <strong style="color:#a1a1aa">⚪ Nem urgente, nem importante</strong> — Distração. Elimine ou adie sem culpa.
+<!-- FOCO -->
+<div class="page active" id="page-foco">
+  <div class="card"><div class="card-title">🍅 Pomodoro</div><div class="pomodoro">
+    <div class="pom-timer" id="pom-timer">25:00</div>
+    <div class="pom-label" id="pom-label">Foco total</div>
+    <div class="pom-btns">
+      <button class="pbtn start" id="pom-start" onclick="pomStart()">▶ Iniciar</button>
+      <button class="pbtn pause" onclick="pomPause()">⏸ Pausar</button>
+      <button class="pbtn reset" onclick="pomReset()">↺ Reset</button>
     </div>
-  </div>
-  <div class="matrix-grid">
-    <div class="quadrant q1">
-      <div class="q-badges"><span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span><span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span></div>
-      <div class="q-title">🔴 Fazer AGORA</div>
-      <div class="q-input-wrap"><input class="q-input" id="q1-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q1')"><button class="q-add-btn" onclick="addQ('q1')" style="background:#ef4444">+</button></div>
-      <div id="q1-list"></div>
-    </div>
-    <div class="quadrant q2">
-      <div class="q-badges"><span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span><span class="q-badge" style="background:#f0fdf4;color:#16a34a">IMPORTANTE</span></div>
-      <div class="q-title">🟢 Agendar</div>
-      <div class="q-input-wrap"><input class="q-input" id="q2-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q2')"><button class="q-add-btn" onclick="addQ('q2')" style="background:#22c55e">+</button></div>
-      <div id="q2-list"></div>
-    </div>
-    <div class="quadrant q3">
-      <div class="q-badges"><span class="q-badge" style="background:#fef2f2;color:#dc2626">URGENTE</span><span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span></div>
-      <div class="q-title">🟡 Delegar</div>
-      <div class="q-input-wrap"><input class="q-input" id="q3-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q3')"><button class="q-add-btn" onclick="addQ('q3')" style="background:#f59e0b">+</button></div>
-      <div id="q3-list"></div>
-    </div>
-    <div class="quadrant q4">
-      <div class="q-badges"><span class="q-badge" style="background:#fef9c3;color:#a16207">NÃO URG.</span><span class="q-badge" style="background:#f9fafb;color:#6b7280">NÃO IMPORT.</span></div>
-      <div class="q-title">⚪ Eliminar</div>
-      <div class="q-input-wrap"><input class="q-input" id="q4-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addQ('q4')"><button class="q-add-btn" onclick="addQ('q4')" style="background:#a1a1aa">+</button></div>
-      <div id="q4-list"></div>
-    </div>
-  </div>
-  <div style="text-align:center;padding-bottom:8px">
-    <button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button>
+    <div class="pom-sessions" id="pom-sessions"></div>
+  </div></div>
+  <div class="card"><div class="card-title">⚡ O que fazer agora?</div>
+    <div id="sugestao-tarefa" style="font-size:13px;color:var(--muted);margin-bottom:10px">Nenhuma tarefa urgente cadastrada.</div>
+    <button onclick="sugerirTarefa()" style="padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">🎲 Sugerir tarefa</button>
   </div>
 </div>
 
-<!-- AGENDA -->
-<div class="page" id="page-agenda" style="padding:12px">
-
-  <!-- Seletor de view -->
-  <div class="ag-view-tabs">
-    <button class="ag-vtab active" onclick="setAgView('dia',this)">📆 Dia</button>
-    <button class="ag-vtab" onclick="setAgView('semana',this)">📅 Semana</button>
-    <button class="ag-vtab" onclick="setAgView('mes',this)">🗓️ Mês</button>
-    <button class="ag-vtab" onclick="setAgView('ano',this)">📊 Ano</button>
-    <button class="ag-vtab" style="margin-left:auto;background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe" onclick="abrirModalEvento(null,null)">+ Evento</button>
-  </div>
-
-  <!-- Navegação -->
-  <div class="ag-nav" id="ag-nav">
-    <button class="ag-nav-btn" onclick="agNavAnterior()">‹</button>
-    <div class="ag-nav-title" id="ag-nav-title">—</div>
-    <button class="ag-today-btn" onclick="agNavHoje()">Hoje</button>
-    <button class="ag-nav-btn" onclick="agNavProximo()">›</button>
-  </div>
-
-  <!-- Conteúdo dinâmico -->
-  <div id="ag-content"></div>
-
-  <!-- Seção de entrevistas Lia -->
-  <div class="card" style="background:#eff6ff;border:1px solid #bfdbfe;margin-top:12px" id="ag-lia-section">
-    <div class="card-title" style="color:#1d4ed8">💼 Entrevistas agendadas (Lia)</div>
-    <div id="ag-entrevistas" style="font-size:12px;color:var(--muted)">Carregando...</div>
+<!-- TAREFAS -->
+<div class="page" id="page-tarefas">
+  <div class="card"><div class="card-title">✅ Tarefas do Dia</div>
+    <div class="task-input-wrap">
+      <input class="task-input" id="task-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addTask()">
+      <select id="task-prio" class="prio-sel"><option value="u">🔴 Urgente</option><option value="i" selected>🟡 Importante</option><option value="n">⚪ Normal</option></select>
+      <button class="task-add-btn" onclick="addTask()">+</button>
+    </div>
+    <div id="task-list"></div>
   </div>
 </div>
 
 <!-- SAÚDE -->
 <div class="page" id="page-saude">
-  <!-- CONTROLE DE MEDICAÇÃO -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">💊 Controle de Medicação</div>
-    <div id="med-tracker"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Registrar nova caixa comprada</div>
-      <select id="med-select" class="task-input" style="width:100%;margin-bottom:7px"></select>
-      <div style="display:flex;gap:7px">
-        <div style="flex:1">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Data da compra</div>
-          <input type="date" id="med-data-compra" class="task-input" style="width:100%">
-        </div>
-        <div style="width:80px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Comprimidos</div>
-          <input type="number" id="med-qtd-compra" class="task-input" style="width:100%">
-        </div>
-      </div>
-      <button onclick="registrarCompra()" style="margin-top:8px;width:100%;padding:8px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">✅ Registrar compra</button>
+  <div class="card"><div class="card-title">💊 Remédios</div>
+    <div id="rem-list"></div>
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <input id="rem-nome-input" class="task-input" placeholder="Nome do remédio" style="flex:1">
+      <input id="rem-hora-input" type="time" class="task-input" style="width:100px">
+      <button class="task-add-btn" onclick="addRem()">+</button>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">💧 Água</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Meta: 4 garrafas (≈ 2 litros). Clique para marcar.</div>
-    <div class="agua-garrafas" id="agua-garrafas"></div>
-    <div style="font-size:12px;font-weight:700;color:var(--blue);text-align:center;margin-top:4px" id="agua-label">0 de 4 garrafas</div>
+  <div class="card"><div class="card-title">💧 Água</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 8 copos. Clique para marcar.</div>
+    <div class="agua-copos" id="agua-copos"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 de 8 copos</div>
   </div>
-  <div class="card">
-    <div class="card-title">🏃 Exercício</div>
+  <div class="card"><div class="card-title">🏃 Exercício</div>
     <div id="ex-chips">
-      <div class="chip" onclick="toggleChip(this)">Caminhada</div><div class="chip" onclick="toggleChip(this)">Yoga</div><div class="chip" onclick="toggleChip(this)">Academia</div><div class="chip" onclick="toggleChip(this)">Bike</div><div class="chip" onclick="toggleChip(this)">Dança</div><div class="chip" onclick="toggleChip(this)">Respiração</div><div class="chip" onclick="toggleChip(this)">Alongamento</div>
+      <div class="chip" onclick="toggleChip(this)">Caminhada</div><div class="chip" onclick="toggleChip(this)">Yoga</div>
+      <div class="chip" onclick="toggleChip(this)">Academia</div><div class="chip" onclick="toggleChip(this)">Bike</div>
+      <div class="chip" onclick="toggleChip(this)">Dança</div><div class="chip" onclick="toggleChip(this)">Respiração</div>
+      <div class="chip" onclick="toggleChip(this)">Alongamento</div>
     </div>
     <input class="task-input" id="ex-obs" placeholder="Observações..." style="width:100%;margin-top:10px">
     <button onclick="salvarEx()" style="margin-top:8px;padding:8px 16px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer;width:100%">💾 Salvar exercício</button>
@@ -369,8 +261,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 <!-- HUMOR -->
 <div class="page" id="page-humor">
-  <div class="card">
-    <div class="card-title">😊 Como você está agora?</div>
+  <div class="card"><div class="card-title">😊 Como você está agora?</div>
     <div class="humor-grid">
       <div class="humor-btn" onclick="setHumor(0,this)">😴<div class="humor-label">Exausta</div></div>
       <div class="humor-btn" onclick="setHumor(1,this)">😰<div class="humor-label">Ansiosa</div></div>
@@ -385,274 +276,580 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <textarea class="task-input" id="humor-obs" placeholder="Como está se sentindo?" style="width:100%;margin-top:10px;min-height:60px"></textarea>
     <button onclick="salvarHumor()" style="margin-top:8px;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;width:100%">💾 Registrar humor</button>
   </div>
-  <div class="card">
-    <div class="card-title">📊 Histórico de hoje</div>
+  <div class="card"><div class="card-title">📊 Histórico de hoje</div>
     <div id="humor-historico" style="font-size:12px;color:var(--muted)">Nenhum registro ainda.</div>
   </div>
 </div>
 
 <!-- SOS -->
 <div class="page" id="page-sos">
-  <div class="card sos-foco-card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fffbf0)">
-    <div class="sos-foco-label">⚡ FOQUE NISSO AGORA — TUDO O RESTO PODE ESPERAR</div>
-    <div class="sos-foco-txt" id="sos-tarefa-txt"></div>
-    <div style="font-size:11px;color:#92400e;margin-top:4px">Tarefa mais urgente da sua lista Q1.</div>
+  <div class="card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fff);border:2px solid #f59e0b">
+    <div class="card-title" style="color:#92400e">⚡ Foque em uma coisa só agora</div>
+    <div id="sos-tarefa-txt" style="font-size:15px;font-weight:700;color:var(--navy);padding:6px 0 4px"></div>
+    <div style="font-size:11px;color:var(--muted)">Só isso. O resto pode esperar.</div>
   </div>
   <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-resp')">😰 Respiração 4-7-8 — Ansiedade aguda</button>
-    <div class="sos-tool-body" id="sos-resp">
-      <button onclick="iniciarSOS()" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px">▶ Iniciar</button>
-      <div class="sos-anim" id="sos-anim">
-        <div class="sos-circle" id="sos-circle">💨</div>
-        <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px" id="sos-text">Inspire...</div>
-        <div style="font-size:12px;color:var(--muted)" id="sos-sub">4 segundos</div>
-        <button onclick="pararSOS()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.7"><strong>4s</strong> inspira → <strong>7s</strong> segura → <strong>8s</strong> expira. Repita 3-4 ciclos.</div>
+    <button class="sos-btn" onclick="iniciarSOS()">😰 SOS ANSIEDADE — Respiração 4-7-8</button>
+    <div class="sos-anim" id="sos-anim">
+      <div class="sos-circle" id="sos-circle">💨</div>
+      <div class="sos-text" id="sos-text">Inspire...</div>
+      <div class="sos-sub" id="sos-sub">4 segundos</div>
+      <button onclick="pararSOS()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
     </div>
   </div>
-  <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-box')">🟦 Box Breathing 4-4-4-4 — Sobrecarga</button>
-    <div class="sos-tool-body" id="sos-box">
-      <button onclick="iniciarBox()" style="width:100%;padding:10px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px">▶ Iniciar</button>
-      <div class="sos-anim" id="box-anim" style="display:none">
-        <div id="box-circle" style="width:90px;height:90px;border-radius:14px;background:#6366f1;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:26px;transition:all 4s ease-in-out">💨</div>
-        <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px" id="box-text">Inspire...</div>
-        <div style="font-size:12px;color:var(--muted)" id="box-sub">4 segundos</div>
-        <button onclick="pararBox()" style="margin-top:14px;padding:8px 20px;background:#f3f4f6;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Parar</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.7"><strong>4s</strong> inspira → <strong>4s</strong> segura → <strong>4s</strong> expira → <strong>4s</strong> segura vazio.</div>
+  <div class="card"><div class="card-title">🧘 Grounding 5-4-3-2-1</div>
+    <div style="font-size:12px;line-height:1.9;color:var(--text)">
+      Olhe ao redor e nomeie:<br><strong>👁️ 5 coisas</strong> que você vê<br><strong>🤚 4 coisas</strong> que você pode tocar<br>
+      <strong>👂 3 coisas</strong> que você ouve<br><strong>👃 2 coisas</strong> que você cheira<br><strong>👅 1 coisa</strong> que você sente o gosto<br>
+      <br><em style="color:var(--muted)">Respire fundo após cada um.</em>
     </div>
   </div>
-  <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-ground')">🧘 Grounding 5-4-3-2-1 — Pânico/dissociação</button>
-    <div class="sos-tool-body" id="sos-ground"><div style="font-size:12px;line-height:2">👁️ <strong>5 coisas</strong> que você <em>vê</em><br>🤚 <strong>4 coisas</strong> que você pode <em>tocar</em><br>👂 <strong>3 coisas</strong> que você <em>ouve</em><br>👃 <strong>2 coisas</strong> que você <em>cheira</em><br>👅 <strong>1 coisa</strong> que você <em>sente o gosto</em><br><br><em style="color:var(--muted)">Respire fundo após cada um. Você está aqui. Está segura.</em></div></div>
-  </div>
-  <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-reset')">🧊 Reset Sensorial — Colapso iminente</button>
-    <div class="sos-tool-body" id="sos-reset"><div style="font-size:12px;line-height:2">💧 <strong>Água gelada no rosto</strong> — 30 segundos. O mais potente.<br>🧊 <strong>Segurar gelo</strong> — 30-60s enquanto respira.<br>🌬️ <strong>Expirar com lábios franzidos</strong> — como assobiar, 5 vezes.<br>🤿 <strong>Mergulhar rosto em água fria</strong> — ativa reflexo de mergulho.<br><br><em style="color:var(--muted)">Estímulos físicos interrompem o pânico mais rápido que qualquer pensamento.</em></div></div>
-  </div>
-  <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-defus')">💭 Defusão Cognitiva — Overthinking/espiral</button>
-    <div class="sos-tool-body" id="sos-defus"><div style="font-size:12px;line-height:2">Diga em voz alta:<br><strong>"Minha mente está me dizendo que..."</strong><br><strong>"Estou tendo o pensamento de que..."</strong><br><strong>"Isso é uma história que meu cérebro está contando."</strong><br><br>Depois pergunte: <strong>O que é REAL agora, neste segundo?</strong><br><br><em style="color:var(--muted)">O pensamento não é um fato. É uma produção da sua mente ansiosa.</em></div></div>
-  </div>
-  <div class="card">
-    <button class="sos-btn" onclick="toggleTool('sos-555')">🔢 Técnica 5-5-5 — Medo do futuro</button>
-    <div class="sos-tool-body" id="sos-555"><div style="font-size:12px;line-height:2">⏱️ <strong>Isso vai importar em 5 minutos?</strong><br>📅 <strong>Isso vai importar em 5 dias?</strong><br>📆 <strong>Isso vai importar em 5 meses?</strong><br><br>Se "não" para 2 ou mais: a urgência é ilusão.<br><br><em style="color:var(--muted)">TDAH + ansiedade distorce a percepção de urgência.</em></div></div>
-  </div>
-  <div class="card">
-    <div class="card-title">💙 Lembrete gentil</div>
+  <div class="card"><div class="card-title">💙 Lembrete gentil</div>
     <div id="lembrete-gentil" style="font-size:13px;line-height:1.65;color:var(--text);font-style:italic"></div>
-    <button onclick="novoLembrete()" style="margin-top:10px;padding:5px 12px;background:#f3f4f6;border:none;border-radius:7px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🔄 Outro</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     CICLO MENSTRUAL
-═══════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-ciclo">
+
   <!-- Banner fase atual -->
-  <div class="ciclo-banner" id="ciclo-banner">
-    <div style="font-size:26px" id="ciclo-icon"></div>
-    <div style="flex:1;min-width:0">
-      <div class="ciclo-phase-title" id="ciclo-phase-title"></div>
-      <div class="ciclo-phase-desc" id="ciclo-phase-desc"></div>
-    </div>
-    <div class="ciclo-badge" id="ciclo-badge"></div>
-  </div>
-
-  <!-- Anel + Próximas datas -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card">
-      <div class="card-title">Ciclo atual</div>
-      <div class="ciclo-ring-wrap">
-        <svg class="ciclo-ring-svg" id="cicloRingSvg" viewBox="0 0 120 120" width="120" height="120">
-          <circle cx="60" cy="60" r="48" fill="none" stroke="#f0f0f0" stroke-width="10"/>
-          <g id="cicloRingArcs"></g>
-          <circle id="cicloRingDot" r="5" fill="#2a2a2b"/>
-        </svg>
-        <div class="ciclo-ring-center">
-          <div class="ciclo-ring-num" id="cicloRingDay"></div>
-          <div class="ciclo-ring-lbl">dia do ciclo</div>
-        </div>
-      </div>
-      <div class="ciclo-leg">
-        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#f4afa1"></span>Menst.</div>
-        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#daf0e6"></span>Folicular</div>
-        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#8ed1b2"></span>Ovulação</div>
-        <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#fce8e4"></span>Lútea</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Próximas datas</div>
-      <div id="ciclo-dates"></div>
-      <button onclick="abrirCicloEdit()" style="margin-top:12px;width:100%;padding:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">✏️ Editar datas</button>
-    </div>
-  </div>
-
-  <!-- Sintomas -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">Sintomas esperados agora</div>
-    <div class="ciclo-sx-grid" id="ciclo-sx"></div>
-  </div>
+  <div id="ciclo-phase-banner" class="ciclo-phase-banner" style="background:#fff0f6;border:1px solid #fda4af"></div>
 
   <!-- Calendário -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <button onclick="cicloPrevMonth()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px">‹</button>
-      <div style="font-size:13px;font-weight:700" id="ciclo-cal-label"></div>
-      <button onclick="cicloNextMonth()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px">›</button>
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button onclick="cicloNavMes(-1)" style="padding:4px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-weight:700;cursor:pointer">‹</button>
+      <span id="ciclo-mes-label" style="font-weight:800;font-size:13px;color:var(--navy)"></span>
+      <button onclick="cicloNavMes(1)" style="padding:4px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-weight:700;cursor:pointer">›</button>
     </div>
-    <div class="ciclo-cal-grid" id="ciclo-cal-grid">
-      <div class="ciclo-wd">D</div><div class="ciclo-wd">S</div><div class="ciclo-wd">T</div>
-      <div class="ciclo-wd">Q</div><div class="ciclo-wd">Q</div><div class="ciclo-wd">S</div><div class="ciclo-wd">S</div>
+    <!-- Legend -->
+    <div class="ciclo-legend">
+      <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#fecaca"></div>Menstruação</div>
+      <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#bfdbfe"></div>Fértil</div>
+      <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#bbf7d0"></div>Ovulação</div>
+      <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#fde8d8"></div>Lútea</div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#f4afa1"></span>Menstruação</div>
-      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#daf0e6"></span>Folicular</div>
-      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#8ed1b2"></span>Ovulação</div>
-      <div class="ciclo-leg-i"><span class="ciclo-dot" style="background:#fce8e4"></span>Lútea/TPM</div>
+    <div class="ciclo-mini-cal">
+      <div class="ciclo-mini-header">D</div><div class="ciclo-mini-header">S</div><div class="ciclo-mini-header">T</div>
+      <div class="ciclo-mini-header">Q</div><div class="ciclo-mini-header">Q</div><div class="ciclo-mini-header">S</div>
+      <div class="ciclo-mini-header">S</div>
     </div>
+    <div class="ciclo-mini-cal" id="ciclo-cal-grid"></div>
   </div>
-</div>
 
-<!-- Modal editar ciclo -->
-<div class="ciclo-edit-overlay" id="cicloEditOverlay">
-  <div class="ciclo-modal">
-    <h3>✏️ Dados do ciclo</h3>
-    <div class="ciclo-fg"><label>Início do último ciclo</label><input type="date" id="cicloInputData"></div>
-    <div class="ciclo-fg"><label>Duração mínima (dias)</label><input type="number" id="cicloInputMin" min="18" max="35"></div>
-    <div class="ciclo-fg"><label>Duração máxima (dias)</label><input type="number" id="cicloInputMax" min="18" max="45"></div>
-    <div class="ciclo-fg"><label>Duração da menstruação (dias)</label><input type="number" id="cicloInputPLen" min="2" max="10"></div>
-    <div class="ciclo-modal-btns">
-      <button class="ciclo-btn-c" onclick="fecharCicloEdit()">Cancelar</button>
-      <button class="ciclo-btn-s" onclick="salvarCicloEdit()">Salvar</button>
-    </div>
+  <!-- Previsões -->
+  <div class="ciclo-next-card">
+    <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:8px">📅 Previsões</div>
+    <div class="ciclo-next-row"><span class="ciclo-next-label">Próxima menstruação</span><span class="ciclo-next-val" id="ciclo-prox-mens">—</span></div>
+    <div class="ciclo-next-row"><span class="ciclo-next-label">Ovulação prevista</span><span class="ciclo-next-val" id="ciclo-prox-ovul">—</span></div>
+    <div class="ciclo-next-row"><span class="ciclo-next-label">Janela fértil</span><span class="ciclo-next-val" id="ciclo-janela">—</span></div>
+    <div class="ciclo-next-row"><span class="ciclo-next-label">Fase atual</span><span class="ciclo-next-val" id="ciclo-fase-atual">—</span></div>
+    <div class="ciclo-next-row"><span class="ciclo-next-label">Duração média do ciclo</span><span class="ciclo-next-val" id="ciclo-dur-media">—</span></div>
   </div>
-</div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ACOMPANHAMENTO PSI
-═══════════════════════════════════════════════════════════════ -->
+  <!-- Config -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">⚙️ Configurar ciclo</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px">1º dia do último período</label>
+        <input type="date" id="ciclo-ultima-mens" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:Montserrat,sans-serif;font-size:11px;outline:none" oninput="cicloSalvarConfig()">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px">Duração do ciclo (dias)</label>
+        <input type="number" id="ciclo-dur-ciclo" min="21" max="35" value="28" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:Montserrat,sans-serif;font-size:11px;outline:none" oninput="cicloSalvarConfig()">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px">Duração da menstruação</label>
+        <input type="number" id="ciclo-dur-mens" min="2" max="8" value="5" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:Montserrat,sans-serif;font-size:11px;outline:none" oninput="cicloSalvarConfig()">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:3px">Marcar hoje como</label>
+        <select id="ciclo-marcar-tipo" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:Montserrat,sans-serif;font-size:11px;outline:none">
+          <option value="">— Nada —</option>
+          <option value="period">Menstruação</option>
+          <option value="spotting">Sangramento leve</option>
+          <option value="ovulation">Ovulação</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="cicloMarcarHoje()" style="width:100%;padding:8px;background:var(--pink);color:#7f1d1d;border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;cursor:pointer">🌸 Salvar marcação de hoje</button>
+  </div>
+
+  <!-- Registro de sintomas do dia selecionado -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">📝 Sintomas — <span id="ciclo-sel-date" style="color:var(--blue)">hoje</span></div>
+    <!-- Fluxo -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">🩸 Fluxo</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="ciclo-symp-btn" id="csf-none" onclick="cicloSetFluxo('none',this)">Sem fluxo</button>
+        <button class="ciclo-symp-btn" id="csf-light" onclick="cicloSetFluxo('light',this)">Leve</button>
+        <button class="ciclo-symp-btn" id="csf-medium" onclick="cicloSetFluxo('medium',this)">Moderado</button>
+        <button class="ciclo-symp-btn" id="csf-heavy" onclick="cicloSetFluxo('heavy',this)">Intenso</button>
+        <button class="ciclo-symp-btn" id="csf-spot" onclick="cicloSetFluxo('spot',this)">Spotting</button>
+      </div>
+    </div>
+    <!-- Dor -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">😣 Dor/Cólica</div>
+      <div class="ciclo-intensity" id="ciclo-dor-btns">
+        <span style="font-size:11px;color:var(--muted)">0</span>
+        <button class="ciclo-int-btn" id="ciclo-dor-0" onclick="cicloSetDor(0)">0</button>
+        <button class="ciclo-int-btn" id="ciclo-dor-1" onclick="cicloSetDor(1)">1</button>
+        <button class="ciclo-int-btn" id="ciclo-dor-2" onclick="cicloSetDor(2)">2</button>
+        <button class="ciclo-int-btn" id="ciclo-dor-3" onclick="cicloSetDor(3)">3</button>
+        <button class="ciclo-int-btn" id="ciclo-dor-4" onclick="cicloSetDor(4)">4</button>
+        <button class="ciclo-int-btn" id="ciclo-dor-5" onclick="cicloSetDor(5)">5</button>
+        <span style="font-size:11px;color:var(--muted)">5</span>
+      </div>
+    </div>
+    <!-- Sintomas -->
+    <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">😓 Sintomas</div>
+    <div class="ciclo-symp-grid" id="ciclo-symp-grid">
+      <button class="ciclo-symp-btn" data-symp="cansaco" onclick="cicloToggleSymp(this)">😴 Cansaço</button>
+      <button class="ciclo-symp-btn" data-symp="inchaço" onclick="cicloToggleSymp(this)">🫸 Inchaço</button>
+      <button class="ciclo-symp-btn" data-symp="dor_cabeca" onclick="cicloToggleSymp(this)">🤕 Enxaqueca</button>
+      <button class="ciclo-symp-btn" data-symp="nausea" onclick="cicloToggleSymp(this)">🤢 Náusea</button>
+      <button class="ciclo-symp-btn" data-symp="ansiedade" onclick="cicloToggleSymp(this)">😰 Ansiedade</button>
+      <button class="ciclo-symp-btn" data-symp="irritabilidade" onclick="cicloToggleSymp(this)">😤 Irritabilidade</button>
+      <button class="ciclo-symp-btn" data-symp="acne" onclick="cicloToggleSymp(this)">🔴 Acne</button>
+      <button class="ciclo-symp-btn" data-symp="sensib_seios" onclick="cicloToggleSymp(this)">💗 Sensib. seios</button>
+      <button class="ciclo-symp-btn" data-symp="desejo_doce" onclick="cicloToggleSymp(this)">🍫 Desejo doce</button>
+      <button class="ciclo-symp-btn" data-symp="insonia" onclick="cicloToggleSymp(this)">🌙 Insônia</button>
+      <button class="ciclo-symp-btn" data-symp="libido_alta" onclick="cicloToggleSymp(this)">🔥 Libido alta</button>
+      <button class="ciclo-symp-btn" data-symp="libido_baixa" onclick="cicloToggleSymp(this)">❄️ Libido baixa</button>
+    </div>
+    <!-- Humor -->
+    <div style="margin-top:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">🎭 Humor</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="ciclo-symp-btn" data-humor="feliz" onclick="cicloSetHumor('feliz',this)">😊 Feliz</button>
+        <button class="ciclo-symp-btn" data-humor="triste" onclick="cicloSetHumor('triste',this)">😢 Triste</button>
+        <button class="ciclo-symp-btn" data-humor="ansiosa" onclick="cicloSetHumor('ansiosa',this)">😰 Ansiosa</button>
+        <button class="ciclo-symp-btn" data-humor="irritada" onclick="cicloSetHumor('irritada',this)">😤 Irritada</button>
+        <button class="ciclo-symp-btn" data-humor="cansada" onclick="cicloSetHumor('cansada',this)">😩 Cansada</button>
+        <button class="ciclo-symp-btn" data-humor="tranquila" onclick="cicloSetHumor('tranquila',this)">😌 Tranquila</button>
+      </div>
+    </div>
+    <button onclick="cicloSalvarDia()" style="width:100%;margin-top:12px;padding:8px;background:var(--green);color:var(--navy);border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;cursor:pointer">💾 Salvar dia</button>
+  </div>
+
+  <!-- Dicas da fase -->
+  <div class="card" id="ciclo-dicas-card">
+    <div class="card-title">💡 Dicas para a fase atual</div>
+    <div id="ciclo-dicas-content" style="font-size:11px;line-height:1.7;color:#444"></div>
+  </div>
+
+</div><!-- /page-ciclo -->
+
 <div class="page" id="page-psi">
-  <!-- Próxima sessão -->
-  <div class="card" style="background:linear-gradient(135deg,#fdf4ff,#f5f3ff);border:1px solid #e9d5ff;margin-bottom:10px">
-    <div class="card-title" style="color:#7c3aed">🗓️ Próxima sessão</div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input type="date" id="psi-prox-data" class="task-input" style="flex:1;width:auto">
-      <input type="time" id="psi-prox-hora" class="task-input" style="width:90px">
-    </div>
-    <input id="psi-prox-terapeuta" class="task-input" placeholder="Terapeuta / psicóloga" style="width:100%;margin-bottom:8px">
-    <button onclick="salvarProxSessao()" style="width:100%;padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">💾 Salvar</button>
-    <div id="psi-prox-display" style="margin-top:8px;font-size:12px;color:#7c3aed;font-weight:600"></div>
+  <div class="psi-nav">
+    <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
+    <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
+    <button class="psi-nav-btn" onclick="psiMostrarSec('historico',this)">📅 Histórico</button>
+    <button class="psi-nav-btn" onclick="psiMostrarSec('questionarios',this)">🧠 PHQ-9/GAD-7</button>
+    <button class="psi-nav-btn" onclick="psiMostrarSec('relatorios',this)">📄 Relatórios</button>
   </div>
+  <div id="psi-restock-alerts"></div>
+</head>
 
-  <!-- Nova sessão -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">➕ Registrar sessão</div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input type="date" id="psi-sess-data" class="task-input" style="flex:1;width:auto">
-      <input id="psi-sess-terapeuta" class="task-input" placeholder="Terapeuta" style="width:120px">
+
+
+
+
+
+<!-- ═══════════════════════════════════ HOJE ═══════════════════════════════════ -->
+<div id="sec-hoje" class="psi-sec active">
+<div class="psi-container">
+
+  <div class="today-header">
+    <div>
+      <h1 style="font-size:1.1rem;font-weight:700;">Registro do Dia</h1>
+      <div class="today-date" id="today-display"></div>
     </div>
-    <input id="psi-sess-tema" class="task-input" placeholder="Temas abordados" style="width:100%;margin-bottom:8px">
-    <textarea id="psi-sess-obs" class="task-input" placeholder="Observações e percepções da sessão..." style="width:100%;min-height:70px;resize:none;margin-bottom:8px"></textarea>
-    <button onclick="addSessaoPsi()" style="width:100%;padding:8px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">📝 Registrar sessão</button>
-  </div>
-
-  <!-- Metas e comprometimentos -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">🎯 Metas e comprometimentos</div>
-    <div id="psi-metas-list"></div>
-    <div style="display:flex;gap:7px;margin-top:8px">
-      <input id="psi-meta-input" class="task-input" placeholder="Nova meta ou comprometimento..." style="flex:1;width:auto" onkeydown="if(event.key==='Enter')addMetaPsi()">
-      <button onclick="addMetaPsi()" style="padding:7px 12px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer">+</button>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+      <div class="today-progress">
+        <span id="prog-filled">0</span>/12 campos
+      </div>
+      <button class="btn btn-primary" onclick="saveDay()">💾 Salvar</button>
     </div>
   </div>
 
-  <!-- Diário de insights -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">💡 Diário de insights</div>
-    <textarea id="psi-insight-input" class="task-input" placeholder="Escreva uma percepção, insight ou reflexão..." style="width:100%;min-height:80px;resize:none;margin-bottom:8px"></textarea>
-    <button onclick="addInsightPsi()" style="width:100%;padding:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">💾 Salvar insight</button>
-  </div>
+  <div id="day-alert" style="display:none;"></div>
 
-  <!-- Histórico de sessões -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">📋 Histórico de sessões</div>
-    <div id="psi-sessoes-hist"></div>
-  </div>
-
-  <!-- Insights salvos -->
+  <!-- HUMOR, ENERGIA, ANSIEDADE -->
   <div class="card">
-    <div class="card-title">🌟 Insights salvos</div>
-    <div id="psi-insights-list"></div>
+    <div class="card-title">🎭 Bem-estar Emocional <span class="badge">escala 0-10</span></div>
+    <div class="slider-grid">
+      <div class="slider-item">
+        <label>Humor</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-humor" oninput="updateSlider(this,'val-humor')">
+          <span class="slider-val" id="val-humor">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Energia</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-energia" oninput="updateSlider(this,'val-energia')">
+          <span class="slider-val" id="val-energia">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Ansiedade</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-ansiedade" oninput="updateSlider(this,'val-ansiedade')">
+          <span class="slider-val" id="val-ansiedade">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Agitação tarde</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-agitacao" oninput="updateSlider(this,'val-agitacao')">
+          <span class="slider-val" id="val-agitacao">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Libido</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-libido" oninput="updateSlider(this,'val-libido')">
+          <span class="slider-val" id="val-libido">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Compulsão alimentar</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-compulsao" oninput="updateSlider(this,'val-compulsao')">
+          <span class="slider-val" id="val-compulsao">5</span>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- SONO -->
+  <div class="card">
+    <div class="card-title">🌙 Sono</div>
+    <div class="slider-grid">
+      <div class="slider-item">
+        <label>Horas dormidas</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="14" step="0.5" value="7" id="sl-horas-sono" oninput="updateSlider(this,'val-horas-sono')">
+          <span class="slider-val" id="val-horas-sono">7h</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Qualidade do sono</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-qualidade-sono" oninput="updateSlider(this,'val-qualidade-sono')">
+          <span class="slider-val" id="val-qualidade-sono">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Sonolência matinal</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-sonolencia" oninput="updateSlider(this,'val-sonolencia')">
+          <span class="slider-val" id="val-sonolencia">5</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEDICAMENTOS -->
+  <div class="card">
+    <div class="card-title">💊 Medicamentos</div>
+    <div class="med-grid">
+      <label class="med-item" id="med-desv-manha" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-desv-manha">
+        <div class="med-info">
+          <div class="med-name">Desvenlafaxina 100mg</div>
+          <div class="med-dose">☀️ Manhã</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-desv-almoco" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-desv-almoco">
+        <div class="med-info">
+          <div class="med-name">Desvenlafaxina 100mg</div>
+          <div class="med-dose">🍽️ Após almoço</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-lamo-manha" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-lamo-manha">
+        <div class="med-info">
+          <div class="med-name">Lamitor</div>
+          <div class="med-dose">☀️ Manhã</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-lamo-tarde" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-lamo-tarde">
+        <div class="med-info">
+          <div class="med-name">Lamitor</div>
+          <div class="med-dose">🌤️ Tarde</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-lamo-noite" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-lamo-noite">
+        <div class="med-info">
+          <div class="med-name">Lamitor</div>
+          <div class="med-dose">🌙 Noite</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-quet" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-quet">
+        <div class="med-info">
+          <div class="med-name">Quetiapina 12,5mg</div>
+          <div class="med-dose">🌙 Noite</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-uni-manha" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-uni-manha">
+        <div class="med-info">
+          <div class="med-name">Uninaltrex ½cp</div>
+          <div class="med-dose">☀️ Manhã</div>
+        </div>
+      </label>
+      <label class="med-item" id="med-uni-tarde" onclick="toggleMed(this)">
+        <input type="checkbox" id="chk-uni-tarde">
+        <div class="med-info">
+          <div class="med-name">Uninaltrex ½cp</div>
+          <div class="med-dose">🌤️ Tarde</div>
+        </div>
+      </label>
+    </div>
+    <div style="margin-top:0.75rem;">
+      <div class="form-group">
+        <label>Efeitos colaterais percebidos hoje</label>
+        <textarea id="txt-efeitos" rows="2" placeholder="Ex: leve tontura pela manhã, boca seca..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="card">
+    <div class="card-title">📝 Observações Livres</div>
+    <textarea id="txt-obs" rows="3" placeholder="Como foi seu dia? Acontecimentos marcantes, pensamentos, contexto..."></textarea>
+  </div>
+
+  <div style="text-align:center;margin-bottom:2rem;">
+    <button class="btn btn-primary" style="padding:0.8rem 2rem;font-size:0.9rem;" onclick="saveDay()">💾 Salvar Registro</button>
+  </div>
+
+</div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     PAINEL SEI
-═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════ DASHBOARD ═══════════════════════════════════ -->
+<div id="sec-dashboard" class="psi-sec">
+<div class="psi-container">
+
+  <div class="today-header">
+    <h1 style="font-size:1.1rem;font-weight:700;">Dashboard</h1>
+    <div class="period-row" style="margin:0;">
+      <label>Período:</label>
+      <select id="dash-period" onchange="renderDashboard()">
+        <option value="7">7 dias</option>
+        <option value="30" selected>30 dias</option>
+        <option value="60">60 dias</option>
+        <option value="90">90 dias</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid" id="stat-grid"></div>
+
+  <!-- CHARTS -->
+  <div class="card">
+    <div class="card-title">📈 Humor, Energia e Ansiedade</div>
+    <div class="chart-wrap"><canvas id="ch-hea"></canvas></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">🌙 Sono</div>
+      <div class="chart-wrap"><canvas id="ch-sono"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🍴 Compulsão Alimentar</div>
+      <div class="chart-wrap"><canvas id="ch-comp"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CORRELAÇÕES -->
+  <div class="card">
+    <div class="card-title">🔗 Correlações <span class="badge">período selecionado</span></div>
+    <div class="corr-grid" id="corr-grid"></div>
+  </div>
+
+  <!-- ADESÃO -->
+  <div class="card">
+    <div class="card-title">💊 Adesão Medicamentosa</div>
+    <div id="adesao-grid"></div>
+  </div>
+
+  <!-- COMPARAÇÃO MENSAL -->
+  <div class="card">
+    <div class="card-title">📅 Comparação Mensal</div>
+    <div class="chart-wrap"><canvas id="ch-mensal"></canvas></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════ HISTÓRICO ═══════════════════════════════════ -->
+<div id="sec-historico" class="psi-sec">
+<div class="psi-container">
+
+  <div class="today-header">
+    <h1 style="font-size:1.1rem;font-weight:700;">Histórico</h1>
+    <div style="display:flex;gap:0.5rem;">
+      <input type="text" id="hist-search" placeholder="🔍 Buscar observações..." style="width:200px;" oninput="renderHistory()">
+    </div>
+  </div>
+
+  <div id="hist-container"></div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════ QUESTIONÁRIOS ═══════════════════════════════════ -->
+<div id="sec-questionarios" class="psi-sec">
+<div class="psi-container">
+
+  <h1 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Questionários Clínicos</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('phq9')">PHQ-9 (Depressão)</button>
+    <button class="tab-btn" onclick="showTab('gad7')">GAD-7 (Ansiedade)</button>
+    <button class="tab-btn" onclick="showTab('hist-quest')">Histórico</button>
+  </div>
+
+  <!-- PHQ-9 -->
+  <div id="tab-phq9" class="tab-panel">
+    <div class="card">
+      <div class="card-title">🧠 PHQ-9 — Escala de Depressão</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Nas últimas 2 semanas, com que frequência você foi incomodado pelos seguintes problemas?</p>
+      <div id="phq9-questions"></div>
+      <div class="score-box" id="phq9-score-box" style="display:none;"></div>
+      <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="calcPHQ9()">Calcular</button>
+        <button class="btn btn-green" onclick="savePHQ9()">Salvar resultado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAD-7 -->
+  <div id="tab-gad7" class="tab-panel" style="display:none;">
+    <div class="card">
+      <div class="card-title">😰 GAD-7 — Escala de Ansiedade</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Nas últimas 2 semanas, com que frequência você foi incomodado pelos seguintes problemas?</p>
+      <div id="gad7-questions"></div>
+      <div class="score-box" id="gad7-score-box" style="display:none;"></div>
+      <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="calcGAD7()">Calcular</button>
+        <button class="btn btn-green" onclick="saveGAD7()">Salvar resultado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO QUESTIONÁRIOS -->
+  <div id="tab-hist-quest" class="tab-panel" style="display:none;">
+    <div class="card">
+      <div class="card-title">📊 Histórico PHQ-9 e GAD-7</div>
+      <div class="chart-wrap"><canvas id="ch-quest"></canvas></div>
+      <div id="quest-hist-table" style="margin-top:1rem;overflow-x:auto;"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════ RELATÓRIOS ═══════════════════════════════════ -->
+<div id="sec-relatorios" class="psi-sec">
+<div class="psi-container">
+
+  <h1 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Relatórios e Exportação</h1>
+
+  <div class="card">
+    <div class="card-title">📄 Exportar dados</div>
+    <div class="export-grid">
+      <div class="export-card" onclick="exportPDF()">
+        <div class="export-icon">📋</div>
+        <div class="export-title">Relatório PDF</div>
+        <div class="export-desc">Para consulta médica. Inclui gráficos, médias e PHQ-9/GAD-7.</div>
+      </div>
+      <div class="export-card" onclick="exportCSV()">
+        <div class="export-icon">📊</div>
+        <div class="export-title">CSV</div>
+        <div class="export-desc">Planilha com todos os registros diários.</div>
+      </div>
+      <div class="export-card" onclick="exportXLSX()">
+        <div class="export-icon">🟢</div>
+        <div class="export-title">Excel (.xlsx)</div>
+        <div class="export-desc">Planilha formatada com abas separadas.</div>
+      </div>
+      <div class="export-card" onclick="backupData()">
+        <div class="export-icon">💾</div>
+        <div class="export-title">Backup JSON</div>
+        <div class="export-desc">Backup completo de todos os dados para restaurar depois.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📥 Restaurar Backup</div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;">Importe um arquivo JSON de backup anterior.</p>
+    <input type="file" id="restore-file" accept=".json" onchange="restoreData(event)" style="font-size:0.8rem;">
+    <div id="restore-msg" style="margin-top:0.5rem;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠️ Zona de perigo</div>
+    <button class="btn btn-pink" onclick="if(confirm('Apagar TODOS os dados? Esta ação é irreversível.')) clearData()">🗑️ Apagar todos os dados</button>
+  </div>
+
+</div>
+</div>
+</div>
+
 <div class="page" id="page-sei">
-  <!-- Config regiões -->
-  <div class="card" style="background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:10px">
-    <div class="card-title" style="color:#1d4ed8">📍 Regiões do Grupo SEI</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Candidatos dessas cidades/regiões aparecem automaticamente no pipeline abaixo.</div>
-    <div id="sei-regioes-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
-    <div style="display:flex;gap:7px">
-      <input id="sei-regiao-input" class="task-input" placeholder="Adicionar cidade ou região..." style="flex:1;width:auto" onkeydown="if(event.key==='Enter')addSeiRegiao()">
-      <button onclick="addSeiRegiao()" style="padding:7px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;cursor:pointer">+</button>
-    </div>
+  <div class="sei-company-bar">
+    <div class="sei-co-tab active" data-co="TODAS" onclick="seiSetCompany('TODAS')">Todas</div>
+    <div class="sei-co-tab" data-co="SEI" onclick="seiSetCompany('SEI')">SEI</div>
+    <div class="sei-co-tab" data-co="SEI BA" onclick="seiSetCompany('SEI BA')">SEI BA</div>
+    <div class="sei-co-tab" data-co="COLINA" onclick="seiSetCompany('COLINA')">Colina</div>
+    <div class="sei-co-tab" data-co="INTERAGE" onclick="seiSetCompany('INTERAGE')">Interage</div>
   </div>
-
-  <!-- Resumo -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px" id="sei-resumo"></div>
-
-  <!-- Pipeline Kanban -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    <div class="sei-col">
-      <div class="sei-col-header" style="background:#f59e0b">📋 Triagem</div>
-      <div class="sei-col-body" id="sei-col-triagem"></div>
-    </div>
-    <div class="sei-col">
-      <div class="sei-col-header" style="background:#3b82f6">🎙️ Entrevista</div>
-      <div class="sei-col-body" id="sei-col-entrevista"></div>
-    </div>
-    <div class="sei-col">
-      <div class="sei-col-header" style="background:#8b5cf6">✅ Aprovado</div>
-      <div class="sei-col-body" id="sei-col-aprovado"></div>
-    </div>
-    <div class="sei-col">
-      <div class="sei-col-header" style="background:#10b981">🤝 Contratado</div>
-      <div class="sei-col-body" id="sei-col-contratado"></div>
-    </div>
+  <div class="sei-cards" id="sei-cards"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <span style="font-weight:800;font-size:12px;color:var(--navy)">📋 Vagas</span>
+    <button class="sei-add-btn" onclick="seiAbrirModal()">+ Adicionar Vaga</button>
   </div>
-  <div style="text-align:center;margin-top:10px">
-    <button onclick="renderSei()" style="padding:7px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🔄 Atualizar pipeline</button>
+  <div class="sei-filter-bar">
+    <select class="sei-select" id="sei-cargo-filter" onchange="seiRender()"><option value="">Todas as vagas</option></select>
+    <input class="sei-input" id="sei-local-filter" placeholder="🔍 Filtrar local..." oninput="seiRender()">
   </div>
-</div>
-
-<!-- MODAL EVENTO -->
-<div class="ag-modal-bg" id="ag-modal-bg" onclick="if(event.target===this)fecharModal()">
-  <div class="ag-modal">
-    <div class="ag-modal-title" id="ag-modal-title">Novo Evento</div>
-    <input class="ag-input" id="ag-f-titulo" placeholder="Título *">
-    <div style="display:flex;gap:7px">
-      <input class="ag-input" id="ag-f-data" type="date" style="flex:1">
-      <input class="ag-input" id="ag-f-hora" type="time" style="width:110px">
-    </div>
-    <input class="ag-input" id="ag-f-hora-fim" type="time" placeholder="Hora fim (opcional)">
-    <select class="ag-input" id="ag-f-tipo">
-      <option value="pessoal">📌 Pessoal</option>
-      <option value="pessoal-urgente">🔴 Urgente</option>
-      <option value="compromisso">🤝 Compromisso</option>
-      <option value="saude">🩺 Saúde</option>
-      <option value="filho">👧 Filho(a)</option>
-    </select>
-    <textarea class="ag-input" id="ag-f-obs" placeholder="Observações (opcional)" style="min-height:52px;resize:none"></textarea>
-    <div class="ag-modal-footer">
-      <button class="ag-btn cancel" onclick="fecharModal()">Cancelar</button>
-      <button class="ag-btn danger" id="ag-btn-del" onclick="deletarEvento()" style="display:none">Apagar</button>
-      <button class="ag-btn primary" onclick="salvarEvento()">💾 Salvar</button>
+  <div style="overflow-x:auto">
+    <table class="sei-table">
+      <thead><tr><th>Empresa</th><th>Cargo</th><th>Local</th><th>Triagem</th><th>Entrev.</th><th>Contrat.</th><th>Repos.</th><th>Status</th></tr></thead>
+      <tbody id="sei-tbody"></tbody>
+    </table>
+  </div>
+  <div class="sei-modal-bg" id="sei-modal-bg" onclick="if(event.target===this)seiFecharModal()">
+    <div class="sei-modal">
+      <div class="sei-modal-title" id="sei-modal-title">Nova Vaga</div>
+      <div class="sei-field"><label>Empresa</label><select id="sei-m-empresa"><option>SEI</option><option>SEI BA</option><option>COLINA</option><option>INTERAGE</option></select></div>
+      <div class="sei-field"><label>Cargo</label><input id="sei-m-cargo" placeholder="Ex: Garçom"></div>
+      <div class="sei-field"><label>Localidade(s)</label><input id="sei-m-local" placeholder="Ex: São Paulo, SP"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="sei-field"><label>Triagem</label><input type="number" id="sei-m-triagem" value="0" min="0"></div>
+        <div class="sei-field"><label>Entrevistas</label><input type="number" id="sei-m-entrev" value="0" min="0"></div>
+        <div class="sei-field"><label>Contratados</label><input type="number" id="sei-m-contrat" value="0" min="0"></div>
+        <div class="sei-field"><label>Reposição</label><input type="number" id="sei-m-repos" value="0" min="0"></div>
+      </div>
+      <div class="sei-field"><label>Status</label><select id="sei-m-status"><option>Aberta</option><option>Em andamento</option><option>Encerrada</option><option>Pausada</option></select></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button onclick="seiFecharModal()" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer">Cancelar</button>
+        <button onclick="seiSalvarVaga()" class="sei-add-btn">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -660,212 +857,1365 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <div class="toast" id="toast"></div>
 
 <script>
-// ── NAVEGAÇÃO DE ABAS ─────────────────────────────────────────────────────────
-function irAba(id, btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  const pg = document.getElementById('page-'+id);
-  if(pg) pg.classList.add('active');
-  if(btn) btn.classList.add('active');
-  else {
-    const bt = document.querySelector(`.tab[onclick*="'${id}'"]`);
-    if(bt) bt.classList.add('active');
-  }
+let dados = JSON.parse(localStorage.getItem('meuapp')||'{"tarefas":[],"remedios":[],"humor":[],"agua":0,"pomodoros":0}');
+function salvar(){ localStorage.setItem('meuapp',JSON.stringify(dados)); }
+
+const lembretes = [
+  "Você não precisa fazer tudo hoje. Fazer uma coisa bem feita já é suficiente.",
+  "TDAH não é falta de atenção — é atenção que vai para onde mais importa naquele momento.",
+  "Ser mãe, empreendedora e psicóloga ao mesmo tempo é extraordinário. Cuide de você primeiro.",
+  "Perfeito é inimigo do feito. Feito é melhor que perfeito.",
+  "Você chegou até aqui. Isso já é uma conquista.",
+  "Ansiedade mente. O presente é mais seguro do que parece.",
+  "Pequenos progressos todos os dias somam grandes mudanças.",
+  "Você tem altas habilidades — e isso inclui a habilidade de se reinventar.",
+  "Não compare seu bastidor com o palco dos outros.",
+  "Hoje você não precisa ser heroína. Pode só existir."
+];
+
+let pomInterval=null, pomSeg=25*60, pomRodando=false, pomSessoes=0, pomTipo='foco';
+function pomStart(){
+  if(pomRodando)return; pomRodando=true;
+  document.getElementById('pom-start').textContent='▶ Rodando';
+  pomInterval=setInterval(()=>{
+    pomSeg--;
+    const m=Math.floor(pomSeg/60),s=pomSeg%60;
+    document.getElementById('pom-timer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    if(pomSeg<=0){
+      clearInterval(pomInterval);pomRodando=false;
+      if(pomTipo==='foco'){pomSessoes++;dados.pomodoros=(dados.pomodoros||0)+1;salvar();pomTipo='pausa';pomSeg=5*60;document.getElementById('pom-label').textContent='☕ Pausa!';document.getElementById('pom-timer').textContent='05:00';document.getElementById('pom-start').textContent='▶ Pausar';toast('🍅 Pomodoro!','success');}
+      else{pomTipo='foco';pomSeg=25*60;document.getElementById('pom-label').textContent='Foco total';document.getElementById('pom-timer').textContent='25:00';document.getElementById('pom-start').textContent='▶ Iniciar';}
+      renderSessoes();
+    }
+  },1000);
+}
+function pomPause(){clearInterval(pomInterval);pomRodando=false;document.getElementById('pom-start').textContent='▶ Continuar';}
+function pomReset(){clearInterval(pomInterval);pomRodando=false;pomSeg=25*60;pomTipo='foco';document.getElementById('pom-timer').textContent='25:00';document.getElementById('pom-label').textContent='Foco total';document.getElementById('pom-start').textContent='▶ Iniciar';}
+function renderSessoes(){document.getElementById('pom-sessions').innerHTML=Array.from({length:4},(_,i)=>`<div class="pom-dot ${i<pomSessoes?'done':i===pomSessoes?'current':''}"></div>`).join('');}
+function addTask(){const input=document.getElementById('task-input');const texto=input.value.trim();if(!texto)return;const prio=document.getElementById('task-prio').value;dados.tarefas.push({id:Date.now(),texto,prio,done:false});salvar();input.value='';renderTarefas();mostrarTarefaSOS();}
+function toggleTask(id){const t=dados.tarefas.find(t=>t.id===id);if(!t)return;t.done=!t.done;salvar();renderTarefas();mostrarTarefaSOS();if(t.done)toast('✅ Concluída!','success');}
+function delTask(id){dados.tarefas=dados.tarefas.filter(t=>t.id!==id);salvar();renderTarefas();mostrarTarefaSOS();}
+function renderTarefas(){const prioLabel={u:'🔴',i:'🟡',n:'⚪'};const sorted=[...dados.tarefas].sort((a,b)=>{const o={u:0,i:1,n:2};return o[a.prio]-o[b.prio];});document.getElementById('task-list').innerHTML=sorted.length?sorted.map(t=>`<div class="task-item ${t.done?'done':''}"><div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div><span class="task-text ${t.done?'done':''}">${prioLabel[t.prio]} ${t.texto}</span><button class="task-del" onclick="delTask(${t.id})">×</button></div>`).join('')+'<div style="margin-top:10px;text-align:center"><button onclick="limparConcluidas()" style="padding:6px 14px;background:#f3f4f6;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">🗑️ Limpar concluídas</button></div>':'<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Nenhuma tarefa. Adicione acima! ✨</div>';}
+function limparConcluidas(){dados.tarefas=dados.tarefas.filter(t=>!t.done);salvar();renderTarefas();}
+function sugerirTarefa(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');const i=dados.tarefas.filter(t=>!t.done&&t.prio==='i');const t=dados.tarefas.filter(t=>!t.done);const sug=u[0]||i[0]||t[0]||null;document.getElementById('sugestao-tarefa').textContent=sug?'👉 '+sug.texto:'🎉 Todas concluídas!';}
+function addRem(){const nome=document.getElementById('rem-nome-input').value.trim();const hora=document.getElementById('rem-hora-input').value;if(!nome)return;dados.remedios.push({id:Date.now(),nome,hora,tomado:false});salvar();document.getElementById('rem-nome-input').value='';renderRem();}
+function toggleRem(id){const r=dados.remedios.find(r=>r.id===id);if(!r)return;r.tomado=!r.tomado;salvar();renderRem();if(r.tomado)toast('💊 Remédio registrado!','success');}
+function renderRem(){document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`<div class="rem-item"><div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div><div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div><button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button></div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';}
+function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({length:8},(_,i)=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} de 8 copos`;}
+function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(dados.agua===8)toast('💧 Meta atingida!','success');salvar();renderAgua();}
+let humorSel=null;
+function setHumor(i,el){humorSel=i;document.querySelectorAll('.humor-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
+function updateEnergia(v){document.getElementById('energia-fill').style.width=(v*10)+'%';document.getElementById('energia-label').textContent=`Energia: ${v}/10`;}
+function salvarHumor(){const emocoes=['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];if(humorSel===null){toast('Selecione uma emoção','');return}const energia=document.getElementById('energia-range').value;const obs=document.getElementById('humor-obs').value;const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});if(!dados.humor)dados.humor=[];dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});salvar();document.getElementById('humor-obs').value='';renderHumorHist();toast('😊 Humor registrado!','success');}
+function renderHumorHist(){if(!dados.humor||!dados.humor.length){document.getElementById('humor-historico').textContent='Nenhum registro ainda.';return}const h=dados.humor.slice(-5).reverse();document.getElementById('humor-historico').innerHTML=h.map(h=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6"><span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span><span style="font-size:12px;font-weight:600">${h.emocao}</span><span style="font-size:10px;color:var(--muted)">⚡${h.energia}/10</span>${h.obs?`<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>`:''}</div>`).join('');}
+let sosInterval=null;
+function mostrarTarefaSOS(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');const i=dados.tarefas.filter(t=>!t.done&&t.prio==='i');const tarefa=u[0]||i[0]||null;const card=document.getElementById('sos-tarefa-card');if(tarefa){card.style.display='block';document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto;}else{card.style.display='none';}}
+function iniciarSOS(){document.getElementById('sos-anim').style.display='block';const fases=[{texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},{texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},{texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'}];let fase=0;const circle=document.getElementById('sos-circle');function proxFase(){const f=fases[fase%3];document.getElementById('sos-text').textContent=f.texto;document.getElementById('sos-sub').textContent=f.sub;circle.style.animation=f.anim;fase++;sosInterval=setTimeout(proxFase,f.dur);}proxFase();}
+function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim').style.display='none';document.getElementById('sos-circle').style.animation='none';}
+function toggleChip(el){el.classList.toggle('on');}
+function salvarEx(){const s=Array.from(document.querySelectorAll('#ex-chips .chip.on')).map(c=>c.textContent);if(!s.length){toast('Selecione pelo menos um','');return}toast('🏃 Exercício salvo!','success');document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('on'));document.getElementById('ex-obs').value='';}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')mostrarTarefaSOS();if(aba==='sei')seiRender();if(aba==='psi')psiCheckRestock();}
+function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
+
+
+// ═══════════════════════ CICLO MENSTRUAL ═══════════════════════
+const CICLO_KEY = 'effect_ciclo_v1';
+const CICLO_CFG_KEY = 'effect_ciclo_cfg_v1';
+
+function cicloGetData(){ try{ return JSON.parse(localStorage.getItem(CICLO_KEY)||'{}'); }catch(e){ return {}; } }
+function cicloSaveData(d){ localStorage.setItem(CICLO_KEY, JSON.stringify(d)); }
+function cicloGetCfg(){ 
+  try{ return JSON.parse(localStorage.getItem(CICLO_CFG_KEY)||'{}'); }catch(e){ return {}; }
+}
+function cicloSaveCfg(c){ localStorage.setItem(CICLO_CFG_KEY, JSON.stringify(c)); }
+
+let cicloCurrentMonth = new Date();
+let cicloSelectedDate = null;
+
+function cicloDateKey(d){ return d.toISOString().slice(0,10); }
+function cicloToday(){ return cicloDateKey(new Date()); }
+
+function cicloSalvarConfig(){
+  const cfg = {
+    ultimaMens: document.getElementById('ciclo-ultima-mens')?.value || '',
+    durCiclo: +document.getElementById('ciclo-dur-ciclo')?.value || 28,
+    durMens: +document.getElementById('ciclo-dur-mens')?.value || 5,
+  };
+  cicloSaveCfg(cfg);
+  cicloRender();
 }
 
-// ── DADOS ─────────────────────────────────────────────────────────────────────
-let dados = JSON.parse(localStorage.getItem('meuapp') || '{}');
-if (!dados.matrix)   dados.matrix   = {q1:[],q2:[],q3:[],q4:[]};
-if (!dados.remedios) dados.remedios = [];
-if (!dados.humor)    dados.humor    = [];
-if (!dados.agenda)   dados.agenda   = [];
-if (dados.agua === undefined) dados.agua = 0;
-if (!dados.psi) dados.psi = {sessoes:[],metas:[],insights:[],proxSessao:null};
-function salvar(){ localStorage.setItem('meuapp', JSON.stringify(dados)); }
+function cicloCalc(){
+  const cfg = cicloGetCfg();
+  const durCiclo = cfg.durCiclo || 28;
+  const durMens = cfg.durMens || 5;
+  const lastMens = cfg.ultimaMens ? new Date(cfg.ultimaMens + 'T12:00:00') : null;
+  if(!lastMens) return null;
+  
+  const today = new Date(); today.setHours(12,0,0,0);
+  const daysSinceLast = Math.floor((today - lastMens) / 86400000);
+  const cycleDay = (daysSinceLast % durCiclo) + 1;
+  
+  // Predict next period
+  const nextPeriodDays = durCiclo - (daysSinceLast % durCiclo);
+  const nextPeriod = new Date(today); nextPeriod.setDate(today.getDate() + nextPeriodDays);
+  
+  // Ovulation ~14 days before next period
+  const ovulationDate = new Date(nextPeriod); ovulationDate.setDate(nextPeriod.getDate() - 14);
+  
+  // Fertile window: 5 days before ovulation, ovulation day, 1 day after
+  const fertileStart = new Date(ovulationDate); fertileStart.setDate(ovulationDate.getDate() - 5);
+  const fertileEnd = new Date(ovulationDate); fertileEnd.setDate(ovulationDate.getDate() + 1);
+  
+  // Current phase
+  let phase, phaseEmoji, phaseColor, phaseDesc;
+  if(cycleDay <= durMens){
+    phase='Menstrual'; phaseEmoji='🩸'; phaseColor='#fef2f2';
+    phaseDesc = 'Seu corpo está liberando o endométrio. É normal sentir cólicas, cansaço e variações de humor. Descanse e cuide-se.';
+  } else if(cycleDay <= 13){
+    phase='Folicular'; phaseEmoji='🌱'; phaseColor='#f0fdf4';
+    phaseDesc = 'Estrogênio em alta — energia crescente, ânimo melhorado, boa hora para novos projetos e exercícios mais intensos.';
+  } else if(cycleDay <= 16){
+    phase='Ovulatória'; phaseEmoji='🌸'; phaseColor='#fdf4ff';
+    phaseDesc = 'Pico de estrogênio e LH. Você está no período mais fértil e pode sentir libido mais alta e maior confiança social.';
+  } else {
+    phase='Lútea'; phaseEmoji='🌙'; phaseColor='#fffbeb';
+    phaseDesc = 'Progesterona em alta. TPM pode aparecer: ansiedade, inchaço, irritabilidade. Priorize descanso e alimentação equilibrada.';
+  }
+  
+  const fmtDate = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  
+  return { phase, phaseEmoji, phaseColor, phaseDesc, cycleDay, durCiclo,
+    nextPeriod, ovulationDate, fertileStart, fertileEnd,
+    nextPeriodDays, fmtDate };
+}
 
-// ── AGENDA STATE ──────────────────────────────────────────────────────────────
-let agView = 'dia';  // dia | semana | mes | ano
-let agCursor = new Date(); // data de referência do cursor
-agCursor.setHours(0,0,0,0);
-let editandoId = null;
+function cicloGetDayType(date, calc){
+  if(!calc) return null;
+  const key = cicloDateKey(date);
+  const data = cicloGetData();
+  if(data[key]?.tipo) return data[key].tipo;
+  
+  const d = new Date(date); d.setHours(12,0,0,0);
+  const cfg = cicloGetCfg();
+  const lastMens = cfg.ultimaMens ? new Date(cfg.ultimaMens + 'T12:00:00') : null;
+  if(!lastMens) return null;
+  
+  const daysSince = Math.floor((d - lastMens) / 86400000);
+  if(daysSince < 0) return null;
+  const cycleDay = (daysSince % calc.durCiclo) + 1;
+  const durMens = cfg.durMens || 5;
+  
+  if(cycleDay <= durMens) return 'period';
+  if(d >= calc.fertileStart && d <= calc.fertileEnd){
+    const oKey = cicloDateKey(calc.ovulationDate);
+    if(key === oKey) return 'ovulation';
+    return 'fertile';
+  }
+  if(cycleDay > 16) return 'luteal';
+  return null;
+}
 
-const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function cicloNavMes(dir){
+  cicloCurrentMonth = new Date(cicloCurrentMonth.getFullYear(), cicloCurrentMonth.getMonth() + dir, 1);
+  cicloRenderCalendar();
+}
 
-const TIPO_COLORS = {
-  pessoal:'ag-ev-chip pessoal', 'pessoal-urgente':'ag-ev-chip pessoal-urgente',
-  compromisso:'ag-ev-chip compromisso', saude:'ag-ev-chip saude',
-  filho:'ag-ev-chip filho', entrevista:'ag-ev-chip entrevista'
-};
-const TIPO_LABEL = {pessoal:'📌',  'pessoal-urgente':'🔴', compromisso:'🤝', saude:'🩺', filho:'👧', entrevista:'💼'};
+function cicloRenderCalendar(){
+  const calc = cicloCalc();
+  const year = cicloCurrentMonth.getFullYear();
+  const month = cicloCurrentMonth.getMonth();
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const label = document.getElementById('ciclo-mes-label');
+  if(label) label.textContent = months[month] + ' ' + year;
+  
+  const grid = document.getElementById('ciclo-cal-grid');
+  if(!grid) return;
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayKey = cicloToday();
+  const data = cicloGetData();
+  
+  let html = '';
+  for(let i=0; i<firstDay; i++) html += '<div></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const date = new Date(year, month, d, 12);
+    const key = cicloDateKey(date);
+    const isToday = key === todayKey;
+    const isSel = key === cicloSelectedDate;
+    const type = cicloGetDayType(date, calc);
+    const typeClass = type ? ' '+type : '';
+    const todayClass = isToday ? ' today' : '';
+    const selClass = isSel ? ' selected' : '';
+    const hasSym = data[key]?.sintomas?.length > 0 ? '<span class="ciclo-dot" style="background:var(--navy)"></span>' : '';
+    html += `<button class="ciclo-day${typeClass}${todayClass}${selClass}" onclick="cicloSelectDay('${key}')">${d}${hasSym}</button>`;
+  }
+  grid.innerHTML = html;
+}
 
-function dateKey(d){ return d.toISOString().slice(0,10); }
-function hoje(){ const h=new Date(); h.setHours(0,0,0,0); return h; }
-function isHoje(d){ return dateKey(d)===dateKey(hoje()); }
+function cicloSelectDay(key){
+  cicloSelectedDate = key;
+  const selEl = document.getElementById('ciclo-sel-date');
+  if(selEl){
+    const d = new Date(key + 'T12:00:00');
+    selEl.textContent = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+  cicloLoadDay(key);
+  cicloRenderCalendar();
+}
 
-// Todos os eventos: pessoais + entrevistas da Lia
-function todosEventos(){
-  const evs = (dados.agenda||[]).map(e=>({...e, _src:'pessoal'}));
-  try{
-    const raw = localStorage.getItem('effect_entrevistas_v1');
-    if(raw){
-      const ents = JSON.parse(raw);
-      Object.entries(ents).forEach(([tel,arr])=>{
-        (arr||[]).forEach(e=>{
-          if(e.status==='Cancelada') return;
-          evs.push({
-            id:'lia_'+e.id, titulo: e.cand||tel,
-            data: e.data, hora: e.hora||'',
-            horaFim:'', tipo:'entrevista',
-            obs: (e.tipo||'')+(e.vagaTitulo?' · '+e.vagaTitulo:''),
-            _src:'lia'
-          });
-        });
+function cicloLoadDay(key){
+  const data = cicloGetData();
+  const day = data[key] || {};
+  // Reset symptoms
+  document.querySelectorAll('#ciclo-symp-grid .ciclo-symp-btn').forEach(b=>{
+    b.classList.toggle('active', (day.sintomas||[]).includes(b.dataset.symp));
+  });
+  // Reset fluxo
+  ['none','light','medium','heavy','spot'].forEach(f=>{
+    const el = document.getElementById('csf-'+f);
+    if(el) el.classList.toggle('active', day.fluxo===f);
+  });
+  // Reset dor
+  for(let i=0;i<=5;i++){
+    const el = document.getElementById('ciclo-dor-'+i);
+    if(el) el.classList.toggle('active', day.dor===i);
+  }
+  // Reset humor
+  document.querySelectorAll('[data-humor]').forEach(b=>{
+    b.classList.toggle('active', day.humor===b.dataset.humor);
+  });
+}
+
+function cicloSetFluxo(val, btn){
+  ['none','light','medium','heavy','spot'].forEach(f=>{
+    const el = document.getElementById('csf-'+f);
+    if(el) el.classList.remove('active');
+  });
+  if(btn) btn.classList.add('active');
+}
+function cicloSetDor(val){
+  for(let i=0;i<=5;i++){
+    const el = document.getElementById('ciclo-dor-'+i);
+    if(el) el.classList.toggle('active', i===val);
+  }
+}
+function cicloSetHumor(val, btn){
+  document.querySelectorAll('[data-humor]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+function cicloToggleSymp(btn){
+  btn.classList.toggle('active');
+}
+function cicloMarcarHoje(){
+  const tipo = document.getElementById('ciclo-marcar-tipo')?.value;
+  if(!tipo) return;
+  const key = cicloToday();
+  const data = cicloGetData();
+  if(!data[key]) data[key] = {};
+  data[key].tipo = tipo;
+  cicloSaveData(data);
+  cicloRender();
+}
+function cicloSalvarDia(){
+  const key = cicloSelectedDate || cicloToday();
+  const data = cicloGetData();
+  if(!data[key]) data[key] = {};
+  // fluxo
+  const fluxoBtn = document.querySelector('[id^="csf-"].active');
+  data[key].fluxo = fluxoBtn ? fluxoBtn.id.replace('csf-','') : '';
+  // dor
+  const dorBtn = document.querySelector('[id^="ciclo-dor-"].active');
+  data[key].dor = dorBtn ? +dorBtn.id.replace('ciclo-dor-','') : 0;
+  // sintomas
+  const sintEl = document.querySelectorAll('#ciclo-symp-grid .ciclo-symp-btn.active');
+  data[key].sintomas = Array.from(sintEl).map(b=>b.dataset.symp);
+  // humor
+  const humorBtn = document.querySelector('[data-humor].active');
+  data[key].humor = humorBtn ? humorBtn.dataset.humor : '';
+  cicloSaveData(data);
+  cicloRenderCalendar();
+  // Toast
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  t.textContent='✓ Dia salvo!'; document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2000);
+}
+
+function cicloRenderPhase(){
+  const calc = cicloCalc();
+  const banner = document.getElementById('ciclo-phase-banner');
+  if(!banner) return;
+  if(!calc){ 
+    banner.innerHTML='<div style="font-size:12px;color:var(--muted)">Configure a data do último período para ver sua fase atual</div>';
+    return;
+  }
+  banner.style.background = calc.phaseColor;
+  banner.innerHTML = `
+    <span class="ciclo-phase-emoji">${calc.phaseEmoji}</span>
+    <div style="flex:1">
+      <div class="ciclo-phase-name">${calc.phase}</div>
+      <div class="ciclo-phase-desc">${calc.phaseDesc}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font-size:18px;font-weight:800;color:var(--navy)">${calc.cycleDay}°</div>
+      <div style="font-size:9px;color:var(--muted)">dia do ciclo</div>
+    </div>`;
+  
+  // Predictions
+  const set = (id,v) => { const el=document.getElementById(id); if(el)el.textContent=v; };
+  set('ciclo-prox-mens', calc.nextPeriodDays===0?'Hoje':'em '+calc.nextPeriodDays+' dias ('+calc.fmtDate(calc.nextPeriod)+')');
+  set('ciclo-prox-ovul', calc.fmtDate(calc.ovulationDate));
+  set('ciclo-janela', calc.fmtDate(calc.fertileStart)+' a '+calc.fmtDate(calc.fertileEnd));
+  set('ciclo-fase-atual', calc.phase+' (dia '+calc.cycleDay+'/'+calc.durCiclo+')');
+  set('ciclo-dur-media', calc.durCiclo+' dias');
+  
+  // Dicas
+  const dicas = {
+    Menstrual: '🛁 Banhos quentes aliviam cólicas.<br>🍫 Chocolate amargo pode ajudar.<br>💊 Ibuprofeno anti-inflamatório funciona bem para cólica.<br>🧘 Yoga suave e alongamentos são ótimos.<br>😴 Priorize sono de qualidade — seu corpo está trabalhando.',
+    Folicular: '🏃 Ótima fase para exercícios mais intensos.<br>🥗 Alimentos ricos em ferro e vitamina C ajudam a repor.<br>🧠 Criatividade e foco em alta — bom para projetos novos.<br>🌞 Sua pele tende a estar mais uniforme nessa fase.',
+    Ovulatória: '💬 Comunicação e empatia em pico — ótimo para reuniões importantes.<br>🌺 Libido pode estar mais alta — momento de conexão.<br>🥦 Consuma fibras e vegetais para apoiar o fígado.<br>🚶 Caminhadas e atividades ao ar livre são benéficas.',
+    Lútea: '🫖 Chás calmantes (camomila, melissa) ajudam na ansiedade.<br>🍌 Banana e aveia sustentam o humor (triptofano).<br>✍️ Journaling ajuda a processar emoções da TPM.<br>🧊 Reduza sal e cafeína para minimizar inchaço.<br>💜 Seja gentil consigo mesma — esses sintomas são reais.',
+  };
+  const dicasEl = document.getElementById('ciclo-dicas-content');
+  if(dicasEl) dicasEl.innerHTML = dicas[calc.phase] || '';
+}
+
+function cicloLoadConfig(){
+  const cfg = cicloGetCfg();
+  if(cfg.ultimaMens && document.getElementById('ciclo-ultima-mens'))
+    document.getElementById('ciclo-ultima-mens').value = cfg.ultimaMens;
+  if(cfg.durCiclo && document.getElementById('ciclo-dur-ciclo'))
+    document.getElementById('ciclo-dur-ciclo').value = cfg.durCiclo;
+  if(cfg.durMens && document.getElementById('ciclo-dur-mens'))
+    document.getElementById('ciclo-dur-mens').value = cfg.durMens;
+}
+
+function cicloRender(){
+  cicloRenderPhase();
+  cicloRenderCalendar();
+}
+
+function cicloInit(){
+  cicloLoadConfig();
+  cicloSelectedDate = cicloToday();
+  cicloCurrentMonth = new Date();
+  cicloRender();
+  cicloLoadDay(cicloToday());
+  const selEl = document.getElementById('ciclo-sel-date');
+  if(selEl) selEl.textContent = 'hoje';
+}
+
+
+// ═══════════════════════ SEI / RECRUTAMENTO ═══════════════════════
+const SEI_KEY = 'effect_sei_vagas_v1';
+let seiCurrentCompany = 'TODAS';
+let seiEditingIdx = null;
+
+function seiGetVagas(){
+  try{ return JSON.parse(localStorage.getItem(SEI_KEY)||'[]'); }catch(e){return [];}
+}
+function seiSaveVagas(v){
+  localStorage.setItem(SEI_KEY, JSON.stringify(v));
+}
+function seiSetCompany(co){
+  seiCurrentCompany = co;
+  document.querySelectorAll('.sei-co-tab').forEach(t=>t.classList.toggle('active',t.dataset.co===co));
+  seiRender();
+}
+function seiRender(){
+  const vagas = seiGetVagas();
+  const cargoF = document.getElementById('sei-cargo-filter')?.value||'';
+  const localF = (document.getElementById('sei-local-filter')?.value||'').toLowerCase();
+  // Populate cargo filter
+  const cargos = [...new Set(vagas.map(v=>v.cargo))].sort();
+  const cf = document.getElementById('sei-cargo-filter');
+  if(cf){
+    const cur = cf.value;
+    cf.innerHTML = '<option value="">Todas as vagas</option>' + cargos.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+  }
+  const filtered = vagas.filter(v=>{
+    if(seiCurrentCompany!=='TODAS' && v.empresa!==seiCurrentCompany) return false;
+    if(cargoF && v.cargo!==cargoF) return false;
+    if(localF && !(v.local||'').toLowerCase().includes(localF)) return false;
+    return true;
+  });
+  // Cards summary
+  const totalVagas = filtered.length;
+  const totalTriagem = filtered.reduce((a,v)=>a+(+v.triagem||0),0);
+  const totalEntrev = filtered.reduce((a,v)=>a+(+v.entrev||0),0);
+  const totalContrat = filtered.reduce((a,v)=>a+(+v.contrat||0),0);
+  const totalRepos = filtered.reduce((a,v)=>a+(+v.repos||0),0);
+  const cardsEl = document.getElementById('sei-cards');
+  if(cardsEl) cardsEl.innerHTML = `
+    <div class="sei-card"><div class="sei-card-title">Vagas ativas</div><div class="sei-card-num">${totalVagas}</div></div>
+    <div class="sei-card"><div class="sei-card-title">Em triagem</div><div class="sei-card-num">${totalTriagem}</div></div>
+    <div class="sei-card"><div class="sei-card-title">Entrevistas</div><div class="sei-card-num">${totalEntrev}</div></div>
+    <div class="sei-card"><div class="sei-card-title">Contratados</div><div class="sei-card-num">${totalContrat}</div></div>`;
+  // Table
+  const tbody = document.getElementById('sei-tbody');
+  if(!tbody) return;
+  if(!filtered.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhuma vaga. Clique em + Adicionar Vaga.</td></tr>'; return; }
+  tbody.innerHTML = filtered.map((v,i)=>{
+    const idx = vagas.indexOf(v);
+    const statusColor = {Aberta:'#dbeafe',['Em andamento']:'#dcfce7','Encerrada':'#fee2e2','Pausada':'#f3f4f6'}[v.status]||'#f3f4f6';
+    return `<tr>
+      <td style="font-weight:700">${v.empresa||'—'}</td>
+      <td>${v.cargo||'—'}</td>
+      <td style="max-width:120px">${v.local||'—'}</td>
+      <td style="text-align:center;font-weight:700">${v.triagem||0}</td>
+      <td style="text-align:center;font-weight:700">${v.entrev||0}</td>
+      <td style="text-align:center;font-weight:700">${v.contrat||0}</td>
+      <td style="text-align:center;font-weight:700">${v.repos||0}</td>
+      <td><span class="sei-status" style="background:${statusColor}">${v.status||'Aberta'}</span>
+        <button onclick="seiEditarVaga(${idx})" style="margin-left:4px;padding:2px 6px;border:none;background:none;cursor:pointer;font-size:12px">✏️</button>
+        <button onclick="seiDeletarVaga(${idx})" style="padding:2px 6px;border:none;background:none;cursor:pointer;font-size:12px">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function seiAbrirModal(idx){
+  seiEditingIdx = (idx===undefined)?null:idx;
+  const vagas = seiGetVagas();
+  const v = (idx!==undefined && vagas[idx]) ? vagas[idx] : {};
+  document.getElementById('sei-modal-title').textContent = (idx!==undefined)?'Editar Vaga':'Nova Vaga';
+  document.getElementById('sei-m-empresa').value = v.empresa||'SEI';
+  document.getElementById('sei-m-cargo').value = v.cargo||'';
+  document.getElementById('sei-m-local').value = v.local||'';
+  document.getElementById('sei-m-triagem').value = v.triagem||0;
+  document.getElementById('sei-m-entrev').value = v.entrev||0;
+  document.getElementById('sei-m-contrat').value = v.contrat||0;
+  document.getElementById('sei-m-repos').value = v.repos||0;
+  document.getElementById('sei-m-status').value = v.status||'Aberta';
+  document.getElementById('sei-modal-bg').classList.add('open');
+}
+function seiFecharModal(){ document.getElementById('sei-modal-bg').classList.remove('open'); }
+function seiSalvarVaga(){
+  const vagas = seiGetVagas();
+  const v = {
+    empresa: document.getElementById('sei-m-empresa').value,
+    cargo: document.getElementById('sei-m-cargo').value,
+    local: document.getElementById('sei-m-local').value,
+    triagem: +document.getElementById('sei-m-triagem').value||0,
+    entrev: +document.getElementById('sei-m-entrev').value||0,
+    contrat: +document.getElementById('sei-m-contrat').value||0,
+    repos: +document.getElementById('sei-m-repos').value||0,
+    status: document.getElementById('sei-m-status').value,
+  };
+  if(seiEditingIdx!==null) vagas[seiEditingIdx]=v; else vagas.push(v);
+  seiSaveVagas(vagas); seiFecharModal(); seiRender();
+}
+function seiEditarVaga(idx){ seiAbrirModal(idx); }
+function seiDeletarVaga(idx){
+  if(!confirm('Remover esta vaga?')) return;
+  const vagas = seiGetVagas(); vagas.splice(idx,1); seiSaveVagas(vagas); seiRender();
+}
+
+
+// ═══════════════════════ DATA MODEL ═══════════════════════
+const DB_KEY = 'effect_psi_v2';
+const QUEST_KEY = 'effect_quest_v2';
+
+function getDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function getQuestDB() {
+  try { return JSON.parse(localStorage.getItem(QUEST_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveQuestDB(arr) { localStorage.setItem(QUEST_KEY, JSON.stringify(arr)); }
+
+function todayKey() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function formatDate(k) {
+  const [y,m,d] = k.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function getLastNDays(n) {
+  const db = getDB();
+  const keys = Object.keys(db).sort().slice(-n);
+  return keys.map(k => ({key:k, ...db[k]}));
+}
+
+// ═══════════════════════ SLIDERS ═══════════════════════
+function updateSlider(el, valId) {
+  const max = parseFloat(el.max);
+  const val = parseFloat(el.value);
+  const pct = (val / max * 100) + '%';
+  el.style.setProperty('--pct', pct);
+  const suffix = el.id === 'sl-horas-sono' ? 'h' : '';
+  document.getElementById(valId).textContent = val + suffix;
+  updateProgress();
+}
+
+function initSliders() {
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    const valId = el.id.replace('sl-', 'val-');
+    updateSlider(el, valId);
+  });
+}
+
+function updateProgress() {
+  let filled = 0;
+  const sliders = ['sl-humor','sl-energia','sl-ansiedade','sl-agitacao','sl-libido','sl-compulsao','sl-horas-sono','sl-qualidade-sono','sl-sonolencia'];
+  // count sliders as always filled (they have default values)
+  filled += 9;
+  const checkboxes = ['chk-desv-manha','chk-desv-almoco','chk-lamo-manha','chk-lamo-tarde','chk-lamo-noite','chk-quet','chk-uni-manha','chk-uni-tarde'];
+  const anyMed = checkboxes.some(id => document.getElementById(id).checked);
+  if (anyMed) filled += 1;
+  if (document.getElementById('txt-efeitos').value.trim()) filled += 1;
+  if (document.getElementById('txt-obs').value.trim()) filled += 1;
+  document.getElementById('prog-filled').textContent = Math.min(filled, 12);
+}
+
+function toggleMed(el) {
+  // toggle is handled by checkbox change, just update class
+  setTimeout(() => {
+    const cb = el.querySelector('input[type=checkbox]');
+    el.classList.toggle('taken', cb.checked);
+    updateProgress();
+  }, 0);
+}
+
+// ═══════════════════════ SAVE DAY ═══════════════════════
+function saveDay() {
+  const db = getDB();
+  const key = todayKey();
+
+  const meds = {
+    desvManha: document.getElementById('chk-desv-manha').checked,
+    desvAlmoco: document.getElementById('chk-desv-almoco').checked,
+    lamoManha: document.getElementById('chk-lamo-manha').checked,
+    lamoTarde: document.getElementById('chk-lamo-tarde').checked,
+    lamoNoite: document.getElementById('chk-lamo-noite').checked,
+    quet: document.getElementById('chk-quet').checked,
+    uniManha: document.getElementById('chk-uni-manha').checked,
+    uniTarde: document.getElementById('chk-uni-tarde').checked,
+  };
+  const totalMeds = Object.keys(meds).length;
+  const takenMeds = Object.values(meds).filter(Boolean).length;
+
+  db[key] = {
+    humor: +document.getElementById('sl-humor').value,
+    energia: +document.getElementById('sl-energia').value,
+    ansiedade: +document.getElementById('sl-ansiedade').value,
+    agitacao: +document.getElementById('sl-agitacao').value,
+    libido: +document.getElementById('sl-libido').value,
+    compulsao: +document.getElementById('sl-compulsao').value,
+    horasSono: +document.getElementById('sl-horas-sono').value,
+    qualidadeSono: +document.getElementById('sl-qualidade-sono').value,
+    sonolencia: +document.getElementById('sl-sonolencia').value,
+    meds,
+    adesao: Math.round(takenMeds / totalMeds * 100),
+    efeitos: document.getElementById('txt-efeitos').value.trim(),
+    obs: document.getElementById('txt-obs').value.trim(),
+    ts: new Date().toISOString(),
+  };
+
+  saveDB(db);
+  showSaved();
+
+  const alert = document.getElementById('day-alert');
+  alert.innerHTML = `<div class="alert alert-success">✓ Registro salvo! Adesão medicamentosa: ${db[key].adesao}%</div>`;
+  alert.style.display = 'block';
+  setTimeout(() => { alert.style.display = 'none'; }, 3000);
+}
+
+function showSaved() {
+  const el = document.getElementById('save-indicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════ LOAD TODAY ═══════════════════════
+function loadToday() {
+  const db = getDB();
+  const key = todayKey();
+  const today = new Date();
+  document.getElementById('today-display').textContent =
+    today.toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  if (db[key]) {
+    const d = db[key];
+    const setSlider = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) { el.value = val; updateSlider(el, id.replace('sl-','val-')); }
+    };
+    setSlider('sl-humor', d.humor);
+    setSlider('sl-energia', d.energia);
+    setSlider('sl-ansiedade', d.ansiedade);
+    setSlider('sl-agitacao', d.agitacao);
+    setSlider('sl-libido', d.libido);
+    setSlider('sl-compulsao', d.compulsao);
+    setSlider('sl-horas-sono', d.horasSono);
+    setSlider('sl-qualidade-sono', d.qualidadeSono);
+    setSlider('sl-sonolencia', d.sonolencia);
+
+    if (d.meds) {
+      Object.entries(d.meds).forEach(([k,v]) => {
+        const idMap = {desvManha:'chk-desv-manha',desvAlmoco:'chk-desv-almoco',
+          lamoManha:'chk-lamo-manha',lamoTarde:'chk-lamo-tarde',lamoNoite:'chk-lamo-noite',
+          quet:'chk-quet',uniManha:'chk-uni-manha',uniTarde:'chk-uni-tarde'};
+        const el = document.getElementById(idMap[k]);
+        if (el) {
+          el.checked = v;
+          el.closest('.med-item').classList.toggle('taken', v);
+        }
       });
     }
-  }catch(err){}
-  return evs;
-}
-function eventosNoDia(dataStr){
-  return todosEventos().filter(e=>e.data===dataStr).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
-}
-
-// ── NAVIGATION ────────────────────────────────────────────────────────────────
-function setAgView(v, el){
-  agView=v;
-  document.querySelectorAll('.ag-vtab').forEach(b=>b.classList.remove('active'));
-  if(el) el.classList.add('active');
-  renderAgenda();
-}
-function agNavAnterior(){
-  if(agView==='dia')      agCursor.setDate(agCursor.getDate()-1);
-  else if(agView==='semana') agCursor.setDate(agCursor.getDate()-7);
-  else if(agView==='mes') agCursor.setMonth(agCursor.getMonth()-1);
-  else if(agView==='ano') agCursor.setFullYear(agCursor.getFullYear()-1);
-  renderAgenda();
-}
-function agNavProximo(){
-  if(agView==='dia')      agCursor.setDate(agCursor.getDate()+1);
-  else if(agView==='semana') agCursor.setDate(agCursor.getDate()+7);
-  else if(agView==='mes') agCursor.setMonth(agCursor.getMonth()+1);
-  else if(agView==='ano') agCursor.setFullYear(agCursor.getFullYear()+1);
-  renderAgenda();
-}
-function agNavHoje(){
-  agCursor = new Date(); agCursor.setHours(0,0,0,0);
-  renderAgenda();
-}
-
-// ── RENDER AGENDA ─────────────────────────────────────────────────────────────
-function renderAgenda(){
-  const title = document.getElementById('ag-nav-title');
-  const content = document.getElementById('ag-content');
-  if(agView==='dia'){
-    title.textContent = isHoje(agCursor) ? '📆 Hoje, '+agCursor.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'}) : agCursor.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-    content.innerHTML = renderDia(agCursor);
-  } else if(agView==='semana'){
-    const seg = semanaInicio(agCursor);
-    const sab = new Date(seg); sab.setDate(sab.getDate()+6);
-    title.textContent = `${seg.getDate()} ${MESES_ABREV[seg.getMonth()]} — ${sab.getDate()} ${MESES_ABREV[sab.getMonth()]} ${sab.getFullYear()}`;
-    content.innerHTML = renderSemana(seg);
-  } else if(agView==='mes'){
-    title.textContent = MESES[agCursor.getMonth()] + ' ' + agCursor.getFullYear();
-    content.innerHTML = renderMes(agCursor);
-  } else if(agView==='ano'){
-    title.textContent = String(agCursor.getFullYear());
-    content.innerHTML = renderAno(agCursor.getFullYear());
+    if (d.efeitos) document.getElementById('txt-efeitos').value = d.efeitos;
+    if (d.obs) document.getElementById('txt-obs').value = d.obs;
   }
-  renderEntrevistasLia();
 }
 
-function evChip(ev, maxWidth){
-  const icon = TIPO_LABEL[ev.tipo]||'📌';
-  const cls = (TIPO_COLORS[ev.tipo]||'ag-ev-chip pessoal');
-  const hora = ev.hora ? ev.hora+' ' : '';
-  const titulo = ev.titulo || '';
-  return `<span class="${cls}" style="${maxWidth?'max-width:'+maxWidth+'px':''}" onclick="abrirModalEvento('${ev.id}',null)" title="${titulo}">${icon} ${hora}${titulo}</span>`;
+// ═══════════════════════ NAVIGATION ═══════════════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.target.classList.add('active');
+
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'historico') renderHistory();
+  if (id === 'questionarios') renderQuestionarios();
 }
 
-// DIÁRIA
-function renderDia(d){
-  const dk = dateKey(d);
-  const evs = eventosNoDia(dk);
-  const semHora = evs.filter(e=>!e.hora);
-  const comHora = evs.filter(e=>!!e.hora);
-  let h = '<div class="card" style="padding:12px">';
-  if(semHora.length){
-    h += '<div style="margin-bottom:10px;padding:8px;background:#f8fafc;border-radius:8px">';
-    h += '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:4px">DIA TODO</div>';
-    h += semHora.map(e=>evChip(e)).join('');
-    h += '</div>';
+// ═══════════════════════ DASHBOARD ═══════════════════════
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function avg(arr) {
+  if (!arr.length) return 0;
+  return +(arr.reduce((a,b) => a+b, 0) / arr.length).toFixed(1);
+}
+
+function pearsonCorr(x, y) {
+  const n = x.length;
+  if (n < 2) return 0;
+  const mx = avg(x), my = avg(y);
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) {
+    num += (x[i]-mx)*(y[i]-my);
+    dx += (x[i]-mx)**2;
+    dy += (y[i]-my)**2;
   }
-  h += '<div class="ag-day-grid">';
-  for(let hr=6; hr<=22; hr++){
-    const hStr = String(hr).padStart(2,'0')+':00';
-    const hStr2 = String(hr).padStart(2,'0')+':30';
-    const evsHora = comHora.filter(e=>e.hora && (e.hora.startsWith(String(hr).padStart(2,'0'))||e.hora.startsWith(String(hr)+':')));
-    h += `<div class="ag-hour-row">
-      <div class="ag-hour-label">${String(hr).padStart(2,'0')}h</div>
-      <div class="ag-hour-events">
-        ${evsHora.map(e=>evChip(e)).join('')}
-        <button class="ag-add-hour" onclick="abrirModalEvento(null,'${dk}T${hStr}')">+ ${hStr}</button>
-      </div>
-    </div>`;
-  }
-  h += '</div></div>';
-  if(!evs.length) h = '<div class="card" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Nenhum evento neste dia.<br><br><button onclick="abrirModalEvento(null,\''+dk+'T09:00\')" style="padding:9px 20px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;cursor:pointer">+ Adicionar evento</button></div>';
-  return h;
+  const denom = Math.sqrt(dx*dy);
+  return denom === 0 ? 0 : +(num/denom).toFixed(2);
 }
 
-// SEMANAL
-function semanaInicio(d){
-  const s = new Date(d);
-  const dow = s.getDay(); // 0=dom
-  s.setDate(s.getDate() - dow); // começa no domingo
-  s.setHours(0,0,0,0);
-  return s;
+function corrLabel(r) {
+  const a = Math.abs(r);
+  if (a < 0.2) return {text:'Sem correlação', color:'var(--muted)'};
+  if (a < 0.4) return {text:'Correlação fraca', color:'var(--olive)'};
+  if (a < 0.6) return {text:'Correlação moderada', color:'var(--teal)'};
+  return {text:'Correlação forte', color:r>0?'var(--green)':'var(--pink)'};
 }
-function renderSemana(seg){
-  const dias = Array.from({length:7},(_,i)=>{ const dd=new Date(seg); dd.setDate(dd.getDate()+i); return dd; });
-  let h = '<div class="card" style="padding:8px;overflow-x:auto"><div class="ag-week-grid" style="min-width:520px">';
-  // Header
-  h += '<div class="ag-week-header" style="background:#f8fafc;color:var(--muted)">Hr</div>';
-  dias.forEach(d=>{
-    const todayClass = isHoje(d)?'today-col':'';
-    h += `<div class="ag-week-header ${todayClass}">${DIAS_SEMANA[d.getDay()]}<br><span style="font-size:13px;font-weight:800">${d.getDate()}</span></div>`;
+
+function renderDashboard() {
+  const n = parseInt(document.getElementById('dash-period').value);
+  const data = getLastNDays(n);
+
+  // STATS
+  const statGrid = document.getElementById('stat-grid');
+  if (!data.length) {
+    statGrid.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;">Sem dados ainda. Faça seu primeiro registro!</p>';
+  } else {
+    const avgHumor = avg(data.map(d=>d.humor));
+    const avgAns = avg(data.map(d=>d.ansiedade));
+    const avgSono = avg(data.map(d=>d.horasSono));
+    const avgAdes = avg(data.map(d=>d.adesao));
+    const avgComp = avg(data.map(d=>d.compulsao));
+    const avgEner = avg(data.map(d=>d.energia));
+    statGrid.innerHTML = `
+      ${statCard('😊', avgHumor, 'Humor médio', '/10')}
+      ${statCard('⚡', avgEner, 'Energia média', '/10')}
+      ${statCard('😰', avgAns, 'Ansiedade média', '/10')}
+      ${statCard('🌙', avgSono, 'Sono médio', 'h')}
+      ${statCard('💊', avgAdes, 'Adesão', '%')}
+      ${statCard('🍴', avgComp, 'Compulsão', '/10')}
+    `;
+  }
+
+  // LABELS & DATASETS
+  const labels = data.map(d => formatDate(d.key));
+
+  // Humor / Energia / Ansiedade
+  destroyChart('hea');
+  chartInstances['hea'] = new Chart(document.getElementById('ch-hea'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        lineDS('Humor', data.map(d=>d.humor), '#8ed1b2'),
+        lineDS('Energia', data.map(d=>d.energia), '#1fa5f0'),
+        lineDS('Ansiedade', data.map(d=>d.ansiedade), '#f4afa1'),
+      ]
+    },
+    options: chartOpts(0, 10)
   });
-  // Horas
-  for(let hr=6; hr<=21; hr++){
-    h += `<div class="ag-week-hour-label">${String(hr).padStart(2,'0')}h</div>`;
-    dias.forEach(d=>{
-      const dk = dateKey(d);
-      const evsH = eventosNoDia(dk).filter(e=>e.hora&&e.hora.startsWith(String(hr).padStart(2,'0')));
-      const todayClass = isHoje(d)?'today-col':'';
-      h += `<div class="ag-week-cell ${todayClass}" onclick="abrirModalEvento(null,'${dk}T${String(hr).padStart(2,'0')}:00')">`;
-      h += evsH.map(e=>evChip(e, 90)).join('');
-      h += '</div>';
+
+  // Sono
+  destroyChart('sono');
+  chartInstances['sono'] = new Chart(document.getElementById('ch-sono'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Horas dormidas', data: data.map(d=>d.horasSono), backgroundColor:'#1fa5f030', borderColor:'#1fa5f0', borderWidth:1.5, borderRadius:4 },
+        lineDS('Qualidade', data.map(d=>d.qualidadeSono), '#8ed1b2'),
+      ]
+    },
+    options: chartOpts(0, 14)
+  });
+
+  // Compulsão
+  destroyChart('comp');
+  chartInstances['comp'] = new Chart(document.getElementById('ch-comp'), {
+    type: 'line',
+    data: { labels, datasets: [lineDS('Compulsão', data.map(d=>d.compulsao), '#f4afa1')] },
+    options: chartOpts(0, 10)
+  });
+
+  // CORRELAÇÕES
+  const corrGrid = document.getElementById('corr-grid');
+  if (data.length < 3) {
+    corrGrid.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;grid-column:1/-1;">Precisamos de pelo menos 3 dias de dados.</p>';
+  } else {
+    const sonoArr = data.map(d=>d.horasSono);
+    const humorArr = data.map(d=>d.humor);
+    const ansArr = data.map(d=>d.ansiedade);
+    const compArr = data.map(d=>d.compulsao);
+    const enerArr = data.map(d=>d.energia);
+
+    const corrs = [
+      {title:'Sono × Humor', r: pearsonCorr(sonoArr, humorArr), desc:'Mais sono → melhor humor?'},
+      {title:'Sono × Ansiedade', r: pearsonCorr(sonoArr, ansArr), desc:'Mais sono → menos ansiedade?'},
+      {title:'Ansiedade × Compulsão', r: pearsonCorr(ansArr, compArr), desc:'Ansiedade gera compulsão?'},
+      {title:'Humor × Energia', r: pearsonCorr(humorArr, enerArr), desc:'Humor e energia caminham juntos?'},
+    ];
+
+    corrGrid.innerHTML = corrs.map(c => {
+      const lbl = corrLabel(c.r);
+      return `<div class="corr-item">
+        <div class="corr-title">${c.title}</div>
+        <div class="corr-val" style="color:${lbl.color}">r = ${c.r}</div>
+        <div class="corr-desc">${lbl.text}</div>
+        <div class="corr-desc" style="margin-top:0.15rem;">${c.desc}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ADESÃO
+  const adesaoGrid = document.getElementById('adesao-grid');
+  if (!data.length) { adesaoGrid.innerHTML = ''; return; }
+  const medNames = {
+    desvManha:'Desv. manhã',desvAlmoco:'Desv. almoço',
+    lamoManha:'Lamitor manhã',lamoTarde:'Lamitor tarde',lamoNoite:'Lamitor noite',
+    quet:'Quetiapina',uniManha:'Uninaltrex manhã',uniTarde:'Uninaltrex tarde'
+  };
+  const daysWithMeds = data.filter(d => d.meds);
+  adesaoGrid.innerHTML = Object.entries(medNames).map(([k, name]) => {
+    const taken = daysWithMeds.filter(d => d.meds[k]).length;
+    const pct = daysWithMeds.length ? Math.round(taken/daysWithMeds.length*100) : 0;
+    return `<div style="margin-bottom:0.6rem;">
+      <div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:600;margin-bottom:0.2rem;">
+        <span>${name}</span><span style="color:var(--teal)">${pct}%</span>
+      </div>
+      <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // COMPARAÇÃO MENSAL
+  destroyChart('mensal');
+  const months = {};
+  Object.entries(getDB()).forEach(([k,v]) => {
+    const m = k.substring(0,7);
+    if (!months[m]) months[m] = {humor:[],ansiedade:[],compulsao:[]};
+    months[m].humor.push(v.humor);
+    months[m].ansiedade.push(v.ansiedade);
+    months[m].compulsao.push(v.compulsao);
+  });
+  const mKeys = Object.keys(months).sort();
+  const mLabels = mKeys.map(m => { const [y,mo] = m.split('-'); return `${mo}/${y}`; });
+  chartInstances['mensal'] = new Chart(document.getElementById('ch-mensal'), {
+    type: 'bar',
+    data: {
+      labels: mLabels,
+      datasets: [
+        { label:'Humor', data: mKeys.map(m=>avg(months[m].humor)), backgroundColor:'#8ed1b250', borderColor:'#8ed1b2', borderWidth:1.5, borderRadius:4 },
+        { label:'Ansiedade', data: mKeys.map(m=>avg(months[m].ansiedade)), backgroundColor:'#f4afa150', borderColor:'#f4afa1', borderWidth:1.5, borderRadius:4 },
+        { label:'Compulsão', data: mKeys.map(m=>avg(months[m].compulsao)), backgroundColor:'#1fa5f030', borderColor:'#1fa5f0', borderWidth:1.5, borderRadius:4 },
+      ]
+    },
+    options: chartOpts(0,10)
+  });
+}
+
+function statCard(icon, val, label, suffix) {
+  return `<div class="stat-card">
+    <div style="font-size:1.3rem">${icon}</div>
+    <div class="stat-num">${val}${suffix}</div>
+    <div class="stat-label">${label}</div>
+  </div>`;
+}
+
+function lineDS(label, data, color) {
+  return {
+    label, data,
+    borderColor: color,
+    backgroundColor: color + '20',
+    borderWidth: 2,
+    pointRadius: data.length > 14 ? 0 : 3,
+    pointHoverRadius: 5,
+    tension: 0.3,
+    fill: false,
+  };
+}
+
+function chartOpts(yMin, yMax) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { font: { family:'Montserrat', size:11 }, color:'#2a2a2b' } },
+      tooltip: { titleFont: {family:'Montserrat'}, bodyFont:{family:'Montserrat'} }
+    },
+    scales: {
+      x: { grid:{color:'#f0f0f0'}, ticks:{font:{family:'Montserrat',size:10}, color:'#a1a1aa', maxTicksLimit:8} },
+      y: { min:yMin, max:yMax, grid:{color:'#f0f0f0'}, ticks:{font:{family:'Montserrat',size:10}, color:'#a1a1aa'} }
+    }
+  };
+}
+
+// ═══════════════════════ HISTORY ═══════════════════════
+function humorChip(v) {
+  if (v >= 7) return `<span class="chip chip-green">${v}</span>`;
+  if (v >= 4) return `<span class="chip chip-yellow">${v}</span>`;
+  return `<span class="chip chip-red">${v}</span>`;
+}
+
+function renderHistory() {
+  const db = getDB();
+  const search = document.getElementById('hist-search').value.toLowerCase();
+  const keys = Object.keys(db).sort().reverse();
+  const container = document.getElementById('hist-container');
+
+  if (!keys.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Nenhum registro ainda.<br>Faça seu primeiro preenchimento!</p></div>`;
+    return;
+  }
+
+  const filtered = keys.filter(k => {
+    const d = db[k];
+    if (!search) return true;
+    return (d.obs||'').toLowerCase().includes(search) || (d.efeitos||'').toLowerCase().includes(search) || k.includes(search);
+  });
+
+  const rows = filtered.map(k => {
+    const d = db[k];
+    const adesao = d.adesao !== undefined ? d.adesao + '%' : '-';
+    return `<tr>
+      <td><strong>${formatDate(k)}</strong></td>
+      <td>${humorChip(d.humor)}</td>
+      <td>${d.energia}</td>
+      <td>${humorChip(10-d.ansiedade)}</td>
+      <td>${d.horasSono}h</td>
+      <td>${d.compulsao}</td>
+      <td>${adesao}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.obs||''}">${d.obs||'-'}</td>
+      <td><button class="btn btn-sm btn-secondary" onclick="editDay('${k}')">✏️</button></td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<div class="card" style="overflow-x:auto;padding:0;">
+    <table class="hist-table">
+      <thead><tr>
+        <th>Data</th><th>Humor</th><th>Energia</th><th>Ansiedade</th>
+        <th>Sono</th><th>Compulsão</th><th>Adesão</th><th>Obs.</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function editDay(key) {
+  const db = getDB();
+  const d = db[key];
+  if (!d) return;
+
+  // set form values
+  const setSlider = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) { el.value = val; updateSlider(el, id.replace('sl-','val-')); }
+  };
+  setSlider('sl-humor', d.humor);
+  setSlider('sl-energia', d.energia);
+  setSlider('sl-ansiedade', d.ansiedade);
+  setSlider('sl-agitacao', d.agitacao || 5);
+  setSlider('sl-libido', d.libido || 5);
+  setSlider('sl-compulsao', d.compulsao);
+  setSlider('sl-horas-sono', d.horasSono);
+  setSlider('sl-qualidade-sono', d.qualidadeSono);
+  setSlider('sl-sonolencia', d.sonolencia || 5);
+  document.getElementById('txt-efeitos').value = d.efeitos || '';
+  document.getElementById('txt-obs').value = d.obs || '';
+
+  if (d.meds) {
+    const idMap = {desvManha:'chk-desv-manha',desvAlmoco:'chk-desv-almoco',
+      lamoManha:'chk-lamo-manha',lamoTarde:'chk-lamo-tarde',lamoNoite:'chk-lamo-noite',
+      quet:'chk-quet',uniManha:'chk-uni-manha',uniTarde:'chk-uni-tarde'};
+    Object.entries(d.meds).forEach(([k,v]) => {
+      const el = document.getElementById(idMap[k]);
+      if (el) { el.checked = v; el.closest('.med-item').classList.toggle('taken', v); }
     });
   }
-  h += '</div></div>';
-  return h;
+
+  // override save to write to that key
+  window._editKey = key;
+  showSection('hoje');
+  document.querySelector('.nav-btn').classList.add('active');
+  alert(`Editando registro de ${formatDate(key)}. Ajuste os campos e clique Salvar.`);
 }
 
-// MENSAL
-function renderMes(d){
-  const ano = d.getFullYear(), mes = d.getMonth();
-  const primeiroDia = new Date(ano, mes, 1);
-  const ultimoDia = new Date(ano, mes+1, 0);
-  const startDow = primeiroDia.getDay();
-  let h = '<div class="card" style="padding:8px"><div class="ag-month-grid">';
-  DIAS_SEMANA.forEach(ds=>{ h+=`<div class="ag-month-header">${ds}</div>`; });
-  // Dias do mês anterior
-  for(let i=0;i<resto;i++){
-    h+='<div class="ag-month-day vazio"></div>';
-  }
-  h+='</div></div>';
-  return h;
+// ═══════════════════════ PHQ-9 ═══════════════════════
+const PHQ9_Q = [
+  'Pouco interesse ou prazer em fazer as coisas',
+  'Se sentir "para baixo", deprimido(a) ou sem perspectiva',
+  'Dificuldade para adormecer ou permanecer dormindo, ou dormir mais do que de costume',
+  'Se sentir cansado(a) ou com pouca energia',
+  'Comer muito pouco ou em excesso',
+  'Se sentir mal consigo mesmo(a) — ou achar que é um fracasso ou que decepcionou sua família ou você mesmo(a)',
+  'Dificuldade para se concentrar nas coisas, como ler o jornal ou ver televisão',
+  'Você tem se movimentado ou falado tão lentamente que as pessoas ao redor percebem? Ou ao contrário — tem ficado tão agitado(a) ou inquieto(a) que você anda de um lado para o outro mais do que de costume?',
+  'Pensar em se machucar de alguma forma ou achar que seria melhor estar morto(a)'
+];
+
+const GAD7_Q = [
+  'Se sentir nervoso(a), ansioso(a) ou no limite',
+  'Não conseguir parar ou controlar as preocupações',
+  'Se preocupar demais com diversas coisas',
+  'Dificuldade em relaxar',
+  'Ficar tão agitado(a) que é difícil ficar parado(a)',
+  'Ficar facilmente irritado(a) ou irritável',
+  'Sentir medo como se algo terrível pudesse acontecer'
+];
+
+const QUEST_OPTS = [
+  {val:0, label:'Nunca'},
+  {val:1, label:'Vários dias'},
+  {val:2, label:'Mais da metade'},
+  {val:3, label:'Quase todo dia'},
+];
+
+function renderQuestForm(qs, prefix, containerId) {
+  document.getElementById(containerId).innerHTML = qs.map((q,i) => `
+    <div class="q-item">
+      <div class="q-text">${i+1}. ${q}</div>
+      <div class="q-options">
+        ${QUEST_OPTS.map(o => `
+          <label>
+            <input type="radio" name="${prefix}_${i}" value="${o.val}">
+            <span>${o.label}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
 }
+
+function getScore(prefix, n) {
+  let total = 0, missing = 0;
+  for (let i = 0; i < n; i++) {
+    const sel = document.querySelector(`input[name="${prefix}_${i}"]:checked`);
+    if (!sel) missing++;
+    else total += +sel.value;
+  }
+  return {total, missing};
+}
+
+function phq9Interp(s) {
+  if (s <= 4) return {text:'Mínima ou sem depressão', color:'#1a8a5a'};
+  if (s <= 9) return {text:'Depressão leve', color:'var(--olive)'};
+  if (s <= 14) return {text:'Depressão moderada', color:'#e67e22'};
+  if (s <= 19) return {text:'Depressão moderadamente grave', color:'#c0392b'};
+  return {text:'Depressão grave', color:'#7b0000'};
+}
+
+function gad7Interp(s) {
+  if (s <= 4) return {text:'Ansiedade mínima', color:'#1a8a5a'};
+  if (s <= 9) return {text:'Ansiedade leve', color:'var(--olive)'};
+  if (s <= 14) return {text:'Ansiedade moderada', color:'#e67e22'};
+  return {text:'Ansiedade grave', color:'#c0392b'};
+}
+
+function calcPHQ9() {
+  const {total, missing} = getScore('phq9', 9);
+  if (missing > 0) { alert('Por favor, responda todas as questões.'); return; }
+  const interp = phq9Interp(total);
+  const box = document.getElementById('phq9-score-box');
+  box.style.display = 'block';
+  box.innerHTML = `<div class="score-num">${total}</div><div class="score-label">Pontuação PHQ-9 (máx 27)</div><div class="score-interp" style="color:${interp.color}">${interp.text}</div>`;
+  window._phq9Score = total;
+}
+
+function calcGAD7() {
+  const {total, missing} = getScore('gad7', 7);
+  if (missing > 0) { alert('Por favor, responda todas as questões.'); return; }
+  const interp = gad7Interp(total);
+  const box = document.getElementById('gad7-score-box');
+  box.style.display = 'block';
+  box.innerHTML = `<div class="score-num">${total}</div><div class="score-label">Pontuação GAD-7 (máx 21)</div><div class="score-interp" style="color:${interp.color}">${interp.text}</div>`;
+  window._gad7Score = total;
+}
+
+function savePHQ9() {
+  if (window._phq9Score === undefined) { alert('Calcule primeiro.'); return; }
+  const arr = getQuestDB();
+  arr.push({type:'PHQ9', score: window._phq9Score, date: todayKey(), ts: new Date().toISOString()});
+  saveQuestDB(arr);
+  showSaved();
+  renderQuestHistChart();
+  alert('PHQ-9 salvo!');
+}
+
+function saveGAD7() {
+  if (window._gad7Score === undefined) { alert('Calcule primeiro.'); return; }
+  const arr = getQuestDB();
+  arr.push({type:'GAD7', score: window._gad7Score, date: todayKey(), ts: new Date().toISOString()});
+  saveQuestDB(arr);
+  showSaved();
+  renderQuestHistChart();
+  alert('GAD-7 salvo!');
+}
+
+function renderQuestionarios() {
+  renderQuestForm(PHQ9_Q, 'phq9', 'phq9-questions');
+  renderQuestForm(GAD7_Q, 'gad7', 'gad7-questions');
+  renderQuestHistChart();
+}
+
+function renderQuestHistChart() {
+  const arr = getQuestDB().sort((a,b) => a.date.localeCompare(b.date));
+  const phqArr = arr.filter(a=>a.type==='PHQ9');
+  const gadArr = arr.filter(a=>a.type==='GAD7');
+
+  const allDates = [...new Set(arr.map(a=>a.date))].sort();
+
+  destroyChart('quest');
+  const ctx = document.getElementById('ch-quest');
+  if (!allDates.length) return;
+
+  chartInstances['quest'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: allDates.map(formatDate),
+      datasets: [
+        { label:'PHQ-9', data: allDates.map(d => { const f=phqArr.find(a=>a.date===d); return f?f.score:null; }),
+          borderColor:'#f4afa1', backgroundColor:'#f4afa120', borderWidth:2, spanGaps:true, tension:0.3 },
+        { label:'GAD-7', data: allDates.map(d => { const f=gadArr.find(a=>a.date===d); return f?f.score:null; }),
+          borderColor:'#8ed1b2', backgroundColor:'#8ed1b220', borderWidth:2, spanGaps:true, tension:0.3 },
+      ]
+    },
+    options: chartOpts(0, 27)
+  });
+
+  const table = arr.reverse().map(a => {
+    const interp = a.type === 'PHQ9' ? phq9Interp(a.score) : gad7Interp(a.score);
+    return `<tr><td>${formatDate(a.date)}</td><td>${a.type}</td><td>${a.score}</td><td style="color:${interp.color};font-weight:600">${interp.text}</td></tr>`;
+  }).join('');
+
+  document.getElementById('quest-hist-table').innerHTML = `
+    <table class="hist-table">
+      <thead><tr><th>Data</th><th>Escala</th><th>Pontuação</th><th>Interpretação</th></tr></thead>
+      <tbody>${table||'<tr><td colspan="4" style="color:var(--muted)">Nenhum resultado salvo ainda</td></tr>'}</tbody>
+    </table>`;
+}
+
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).style.display = 'block';
+  event.target.classList.add('active');
+  if (id === 'hist-quest') renderQuestHistChart();
+}
+
+// ═══════════════════════ EXPORTS ═══════════════════════
+function exportCSV() {
+  const db = getDB();
+  const keys = Object.keys(db).sort();
+  if (!keys.length) { alert('Sem dados para exportar.'); return; }
+
+  const header = ['Data','Humor','Energia','Ansiedade','Agitação tarde','Libido','Compulsão','Horas sono',
+    'Qualidade sono','Sonolência matinal','Adesão %','Desv manhã','Desv almoço','Lamitor manhã',
+    'Lamitor tarde','Lamitor noite','Quetiapina','Uninaltrex manhã','Uninaltrex tarde','Efeitos','Obs'];
+
+  const rows = keys.map(k => {
+    const d = db[k];
+    const m = d.meds || {};
+    return [k, d.humor, d.energia, d.ansiedade, d.agitacao||'', d.libido||'', d.compulsao,
+      d.horasSono, d.qualidadeSono, d.sonolencia||'', d.adesao||'',
+      m.desvManha?1:0, m.desvAlmoco?1:0, m.lamoManha?1:0, m.lamoTarde?1:0, m.lamoNoite?1:0,
+      m.quet?1:0, m.uniManha?1:0, m.uniTarde?1:0,
+      (d.efeitos||'').replace(/,/g,';'), (d.obs||'').replace(/,/g,';')
+    ].join(',');
+  });
+
+  const csv = [header.join(','), ...rows].join('\n');
+  downloadFile('acompanhamento_psiquiatrico.csv', 'text/csv;charset=utf-8;', '﻿' + csv);
+}
+
+function exportXLSX() {
+  const db = getDB();
+  const keys = Object.keys(db).sort();
+  if (!keys.length) { alert('Sem dados para exportar.'); return; }
+
+  const header = ['Data','Humor','Energia','Ansiedade','Agitação tarde','Libido','Compulsão','Horas sono',
+    'Qualidade sono','Sonolência matinal','Adesão %','Desv manhã','Desv almoço','Lamitor manhã',
+    'Lamitor tarde','Lamitor noite','Quetiapina','Uninaltrex manhã','Uninaltrex tarde','Efeitos','Obs'];
+
+  const rows = keys.map(k => {
+    const d = db[k];
+    const m = d.meds || {};
+    return [k, d.humor, d.energia, d.ansiedade, d.agitacao||0, d.libido||0, d.compulsao,
+      d.horasSono, d.qualidadeSono, d.sonolencia||0, d.adesao||0,
+      m.desvManha?'Sim':'Não', m.desvAlmoco?'Sim':'Não', m.lamoManha?'Sim':'Não',
+      m.lamoTarde?'Sim':'Não', m.lamoNoite?'Sim':'Não', m.quet?'Sim':'Não',
+      m.uniManha?'Sim':'Não', m.uniTarde?'Sim':'Não', d.efeitos||'', d.obs||''];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = header.map((_,i) => ({wch: i===0?12:i>=19?30:10}));
+
+  const questArr = getQuestDB();
+  const wsQ = XLSX.utils.aoa_to_sheet([
+    ['Data','Escala','Pontuação'],
+    ...questArr.map(q=>[q.date, q.type, q.score])
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Registros diários');
+  XLSX.utils.book_append_sheet(wb, wsQ, 'PHQ-9 e GAD-7');
+  XLSX.writeFile(wb, 'acompanhamento_psiquiatrico.xlsx');
+}
+
+function exportPDF() {
+  const db = getDB();
+  const keys = Object.keys(db).sort();
+  if (!keys.length) { alert('Sem dados para exportar.'); return; }
+
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 15;
+
+  // Header
+  doc.setFillColor(31, 165, 240);
+  doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('Effect · Acompanhamento Psicológico', 14, 12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(`Relatório gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
+  doc.text(`Período: ${formatDate(keys[0])} a ${formatDate(keys[keys.length-1])} (${keys.length} dias)`, 14, 25);
+  y = 36;
+
+  // Patient note
+  doc.setTextColor(42,42,43);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('Medicamentos em uso:', 14, y); y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  const meds = [
+    'Desvenlafaxina 100mg — manhã e após almoço',
+    'Lamotrigina (Lamitor) — 3x ao dia',
+    'Quetiapina 12,5mg — noite',
+    'Uninaltrex 0,5cp — manhã e tarde',
+  ];
+  meds.forEach(m => { doc.text('• ' + m, 18, y); y += 5; });
+  y += 4;
+
+  // Summary stats
+  const last30 = keys.slice(-30).map(k=>db[k]);
+  const stats = [
+    ['Humor médio', avg(last30.map(d=>d.humor)) + '/10'],
+    ['Energia média', avg(last30.map(d=>d.energia)) + '/10'],
+    ['Ansiedade média', avg(last30.map(d=>d.ansiedade)) + '/10'],
+    ['Sono médio', avg(last30.map(d=>d.horasSono)) + 'h'],
+    ['Compulsão média', avg(last30.map(d=>d.compulsao)) + '/10'],
+    ['Adesão média', avg(last30.map(d=>d.adesao||0)) + '%'],
+  ];
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('Médias — últimos 30 dias:', 14, y); y += 6;
+  doc.autoTable({
+    startY: y,
+    head: [['Indicador','Valor']],
+    body: stats,
+    theme: 'grid',
+    headStyles: {fillColor:[31,165,240], textColor:255, fontStyle:'bold', fontSize:9},
+    bodyStyles: {fontSize:9},
+    columnStyles: {0:{cellWidth:80}, 1:{cellWidth:40}},
+    margin: {left:14, right:14},
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // PHQ-9 / GAD-7 history
+  const questArr = getQuestDB();
+  if (questArr.length) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('Histórico PHQ-9 e GAD-7:', 14, y); y += 4;
+    doc.autoTable({
+      startY: y,
+      head: [['Data','Escala','Pontuação','Interpretação']],
+      body: questArr.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(q => [
+        formatDate(q.date), q.type, q.score,
+        q.type==='PHQ9' ? phq9Interp(q.score).text : gad7Interp(q.score).text
+      ]),
+      theme: 'grid',
+      headStyles: {fillColor:[142,209,178], textColor:[42,42,43], fontStyle:'bold', fontSize:9},
+      bodyStyles: {fontSize:9},
+      margin: {left:14, right:14},
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // Daily records
+  if (y > 230) { doc.addPage(); y = 15; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('Registros diários (últimos 30 dias):', 14, y); y += 4;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Data','Humor','Energia','Ans.','Sono','Comp.','Adesão','Efeitos / Obs.']],
+    body: keys.slice(-30).reverse().map(k => {
+      const d = db[k];
+      return [
+        formatDate(k), d.humor, d.energia, d.ansiedade, d.horasSono+'h',
+        d.compulsao, (d.adesao||0)+'%',
+        [(d.efeitos||''),(d.obs||'')].filter(Boolean).join(' | ').substring(0,50)
+      ];
+    }),
+    theme: 'striped',
+    headStyles: {fillColor:[31,165,240], textColor:255, fontStyle:'bold', fontSize:8},
+    bodyStyles: {fontSize:7.5},
+    margin: {left:14, right:14},
+    columnStyles: {7:{cellWidth:55}},
+  });
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(161,161,170);
+    doc.text(`Página ${i} de ${pageCount} · Effect Pessoas · Uso exclusivo médico`, 14, doc.internal.pageSize.getHeight()-8);
+  }
+
+  doc.save('relatorio_psiquiatrico_effect.pdf');
+}
+
+function backupData() {
+  const backup = {
+    version: 2,
+    date: new Date().toISOString(),
+    records: getDB(),
+    questionnaires: getQuestDB(),
+  };
+  downloadFile('backup_effect_psiq.json', 'application/json', JSON.stringify(backup, null, 2));
+}
+
+function restoreData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (backup.records) saveDB(backup.records);
+      if (backup.questionnaires) saveQuestDB(backup.questionnaires);
+      document.getElementById('restore-msg').innerHTML = '<div class="alert alert-success">✓ Backup restaurado com sucesso!</div>';
+    } catch(err) {
+      document.getElementById('restore-msg').innerHTML = '<div class="alert" style="background:#fdecea;color:#c0392b;">Erro ao restaurar. Arquivo inválido.</div>';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearData() {
+  localStorage.removeItem(DB_KEY);
+  localStorage.removeItem(QUEST_KEY);
+  location.reload();
+}
+
+function downloadFile(filename, mimeType, content) {
+  const blob = new Blob([content], {type: mimeType});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════ INIT ═══════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initSliders();
+  loadToday();
+  updateProgress();
+
+  // auto-save on visibility change
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.getElementById('sec-hoje').classList.contains('active')) {
+      // silently save
+    }
+  });
+});
+
+
+function psiCheckRestock(){
+  const db = getDB ? getDB() : {};
+  const alertDiv = document.getElementById('psi-restock-alerts');
+  if(!alertDiv) return;
+  const meds = [
+    {id:'desv-manha',name:'Desvenlafaxina manhã'},{id:'lamo-manha',name:'Lamotrigina manhã'},
+    {id:'lamo-noite',name:'Lamotrigina noite'},{id:'quet',name:'Quetiapina'},
+    {id:'uni-manha',name:'Venvanse manhã'},
+  ];
+  const days = Object.keys(db).sort().slice(-30);
+  let html = '';
+  meds.forEach(m=>{
+    const taken = days.filter(d=>db[d] && db[d]['med-'+m.id]).length;
+    const pct = Math.round((taken/Math.max(days.length,1))*100);
+    if(pct < 70 && days.length >= 7){
+      html += `<div class="restock-alert">💊 <div><strong>${m.name}</strong><br><span style="font-size:10px">Adesão: ${pct}% — verifique estoque</span></div></div>`;
+    }
+  });
+  alertDiv.innerHTML = html;
+}
+
+
+// ── INIT ──
+document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
+renderTarefas(); renderRem(); renderAgua(); renderSessoes(); renderHumorHist(); sugerirTarefa();
+cicloInit();
+seiRender();
+// PSI: activate "hoje" section by default
+document.addEventListener('DOMContentLoaded', ()=>{
+  const psiHoje = document.getElementById('sec-hoje');
+  if(psiHoje && !psiHoje.classList.contains('active')) {
+    document.querySelectorAll('.psi-sec').forEach(s=>s.classList.remove('active'));
+    psiHoje.classList.add('active');
+  }
+  if(typeof initSliders==='function') initSliders();
+  if(typeof loadToday==='function') loadToday();
+  if(typeof updateProgress==='function') updateProgress();
+});
 </script>
 </body>
 </html>
