@@ -21,10 +21,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .page.active{display:block}
 .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
 .card-title{font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:7px}
-.pomodoro{text-align:center;padding:20px 0}
-.pom-timer{font-size:56px;font-weight:800;color:var(--navy);line-height:1;margin-bottom:8px}
-.pom-label{font-size:12px;color:var(--muted);margin-bottom:20px}
-.pom-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
 .pbtn{padding:10px 20px;border-radius:9px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
 .pbtn.start{background:var(--green);color:var(--navy)}
 .pbtn.pause{background:#fef9c3;color:#a16207}
@@ -44,10 +41,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .task-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px}
 .task-del:hover{color:var(--pink)}
 .prio-sel{padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;flex-shrink:0}
-.humor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
-.humor-btn{padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;text-align:center;font-size:20px;transition:all .15s}
-.humor-btn.selected{border-color:var(--blue);background:#eff6ff;transform:scale(1.08)}
-.humor-label{font-size:9px;font-weight:700;color:var(--muted);margin-top:3px}
 .energia-bar{width:100%;height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin:8px 0}
 .energia-fill{height:100%;border-radius:6px;background:var(--green);transition:width .3s}
 .agua-copos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -295,36 +288,21 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </header>
 
 <div class="tabs-bar">
-  <button class="tab active" onclick="irAba('foco',this)">🍅 Foco</button>
+  <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
-  <button class="tab" onclick="irAba('humor',this)">😊 Humor</button>
   <button class="tab" onclick="irAba('sos',this)">😰 SOS</button>
   <button class="tab" onclick="irAba('ciclo',this)">🌸 Ciclo</button>
-  <button class="tab" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
 </div>
 
 <!-- FOCO -->
-<div class="page active" id="page-foco">
-  <div class="card"><div class="card-title">🍅 Pomodoro</div><div class="pomodoro">
-    <div class="pom-timer" id="pom-timer">25:00</div>
-    <div class="pom-label" id="pom-label">Foco total</div>
-    <div class="pom-btns">
-      <button class="pbtn start" id="pom-start" onclick="pomStart()">▶ Iniciar</button>
-      <button class="pbtn pause" onclick="pomPause()">⏸ Pausar</button>
-      <button class="pbtn reset" onclick="pomReset()">↺ Reset</button>
-    </div>
-    <div class="pom-sessions" id="pom-sessions"></div>
-  </div></div>
+<!-- TAREFAS -->
+<div class="page" id="page-tarefas">
   <div class="card"><div class="card-title">⚡ O que fazer agora?</div>
     <div id="sugestao-tarefa" style="font-size:13px;color:var(--muted);margin-bottom:10px">Nenhuma tarefa urgente cadastrada.</div>
     <button onclick="sugerirTarefa()" style="padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">🎲 Sugerir tarefa</button>
   </div>
-</div>
-
-<!-- TAREFAS -->
-<div class="page" id="page-tarefas">
   <div class="card"><div class="card-title">✅ Tarefas do Dia</div>
     <div class="task-input-wrap">
       <input class="task-input" id="task-input" placeholder="Nova tarefa..." onkeydown="if(event.key==='Enter')addTask()">
@@ -363,27 +341,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 
 <!-- HUMOR -->
-<div class="page" id="page-humor">
-  <div class="card"><div class="card-title">😊 Como você está agora?</div>
-    <div class="humor-grid">
-      <div class="humor-btn" onclick="setHumor(0,this)">😴<div class="humor-label">Exausta</div></div>
-      <div class="humor-btn" onclick="setHumor(1,this)">😰<div class="humor-label">Ansiosa</div></div>
-      <div class="humor-btn" onclick="setHumor(2,this)">😐<div class="humor-label">Neutro</div></div>
-      <div class="humor-btn" onclick="setHumor(3,this)">🙂<div class="humor-label">Bem</div></div>
-      <div class="humor-btn" onclick="setHumor(4,this)">🔥<div class="humor-label">Focada</div></div>
-    </div>
-    <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px">Energia (1-10):</div>
-    <input type="range" min="1" max="10" value="5" id="energia-range" oninput="updateEnergia(this.value)" style="width:100%">
-    <div class="energia-bar"><div class="energia-fill" id="energia-fill" style="width:50%"></div></div>
-    <div style="font-size:11px;color:var(--muted)" id="energia-label">Energia: 5/10</div>
-    <textarea class="task-input" id="humor-obs" placeholder="Como está se sentindo?" style="width:100%;margin-top:10px;min-height:60px"></textarea>
-    <button onclick="salvarHumor()" style="margin-top:8px;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;width:100%">💾 Registrar humor</button>
-  </div>
-  <div class="card"><div class="card-title">📊 Histórico de hoje</div>
-    <div id="humor-historico" style="font-size:12px;color:var(--muted)">Nenhum registro ainda.</div>
-  </div>
-</div>
-
 <!-- SOS -->
 <div class="page" id="page-sos">
   <div class="card" id="sos-tarefa-card" style="display:none;background:linear-gradient(135deg,#fff8e7,#fff);border:2px solid #f59e0b">
@@ -577,7 +534,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 </div><!-- /page-ciclo -->
 
-<div class="page" id="page-psi">
+<div class="page active" id="page-psi">
   <div class="psi-nav">
     <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
@@ -1144,8 +1101,7 @@ function renderRem(){document.getElementById('rem-list').innerHTML=dados.remedio
 function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({length:8},(_,i)=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} de 8 copos`;}
 function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(dados.agua===8)toast('💧 Meta atingida!','success');salvar();renderAgua();}
 let humorSel=null;
-function setHumor(i,el){humorSel=i;document.querySelectorAll('.humor-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
-function updateEnergia(v){document.getElementById('energia-fill').style.width=(v*10)+'%';document.getElementById('energia-label').textContent=`Energia: ${v}/10`;}
+function setHumor(i,el){humorSel=i;document.querySelectorAll('function updateEnergia(v){document.getElementById('energia-fill').style.width=(v*10)+'%';document.getElementById('energia-label').textContent=`Energia: ${v}/10`;}
 function salvarHumor(){const emocoes=['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];if(humorSel===null){toast('Selecione uma emoção','');return}const energia=document.getElementById('energia-range').value;const obs=document.getElementById('humor-obs').value;const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});if(!dados.humor)dados.humor=[];dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});salvar();document.getElementById('humor-obs').value='';renderHumorHist();toast('😊 Humor registrado!','success');}
 function renderHumorHist(){if(!dados.humor||!dados.humor.length){document.getElementById('humor-historico').textContent='Nenhum registro ainda.';return}const h=dados.humor.slice(-5).reverse();document.getElementById('humor-historico').innerHTML=h.map(h=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6"><span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span><span style="font-size:12px;font-weight:600">${h.emocao}</span><span style="font-size:10px;color:var(--muted)">⚡${h.energia}/10</span>${h.obs?`<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>`:''}</div>`).join('');}
 let sosInterval=null;
@@ -2602,7 +2558,7 @@ function psiCheckRestock(){
 // ── INIT ──
 document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas(); renderRem(); renderAgua(); renderSessoes(); renderHumorHist(); sugerirTarefa();
+renderTarefas(); renderRem(); renderAgua(); sugerirTarefa();
 cicloInit();
 
 seiRender();
@@ -2666,27 +2622,4 @@ function psiRenderMedStock(){
       </div>
     </div>`;
   });
-  html+='<button onclick="psiAddMed()" style="margin-top:8px;padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;cursor:pointer">+ Adicionar medicamento</button>';
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-function psiUpdateStock(idx,field,val){
-  const meds=psiGetMedStock();
-  if(!meds[idx])return;
-  meds[idx][field]=val;
-  psiSaveMedStock(meds);
-  psiRenderMedStock();
-}
-
-function psiAddMed(){
-  const name=prompt('Nome do medicamento:');if(!name)return;
-  const meds=psiGetMedStock();
-  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});
-  psiSaveMedStock(meds);
-  psiRenderMedStock();
-}
-
-</script>
-</body>
-</html>
+  html+='<button on
