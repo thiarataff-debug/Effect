@@ -1738,12 +1738,17 @@ function formatarHora(ts){
   const ms=tsParaMs(ts);
   if(!ms)return{texto:'--:--',hoje:true,ms:0};
 
-  const agora=new Date();
-  const dataMsg=new Date(ms);
+  // Converte epoch para data no fuso de São Paulo
+  function spDateObj(epochMs){
+    // toLocaleDateString('sv-SE') retorna "YYYY-MM-DD" no timezone especificado
+    const key=new Date(epochMs).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
+    const [y,m,d]=key.split('-');
+    return new Date(+y,+m-1,+d);
+  }
 
-  const hoje=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
-  const diaMsg=new Date(dataMsg.getFullYear(),dataMsg.getMonth(),dataMsg.getDate());
-  const diffDias=Math.floor((hoje-diaMsg)/86400000);
+  const hoje=spDateObj(Date.now());
+  const diaMsg=spDateObj(ms);
+  const diffDias=Math.round((hoje-diaMsg)/86400000);
 
   if(diffDias===0){
     return{texto:extrairHora(ms),hoje:true,ms};
@@ -1755,10 +1760,14 @@ function formatarHora(ts){
 
   if(diffDias>1&&diffDias<7){
     const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    return{texto:dias[dataMsg.getDay()],hoje:false,ms};
+    return{texto:dias[diaMsg.getDay()],hoje:false,ms};
   }
 
-  return{texto:dataMsg.toLocaleDateString('pt-BR'),hoje:false,ms};
+  // Formato DD/MM/AA (2 dígitos no ano, igual ao WhatsApp convencional)
+  const dd=String(diaMsg.getDate()).padStart(2,'0');
+  const mm=String(diaMsg.getMonth()+1).padStart(2,'0');
+  const aa=String(diaMsg.getFullYear()).slice(-2);
+  return{texto:`${dd}/${mm}/${aa}`,hoje:false,ms};
 }
 
 function atividadeMsSessao(s, idxFallback=0){
@@ -4745,19 +4754,4 @@ document.addEventListener('DOMContentLoaded',()=>{
   // View painel de saúde
   const viewInbox=document.getElementById('view-inbox');
   if(viewInbox&&viewInbox.parentNode){
-    const saudeDiv=document.createElement('div');
-    saudeDiv.id='view-saude';
-    saudeDiv.style.cssText='display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa';
-    viewInbox.parentNode.insertBefore(saudeDiv,viewInbox.nextSibling);
-  }
-
-  // Botão nav painel de saúde
-  const navAgenda=document.getElementById('nav-agenda');
-  if(navAgenda&&navAgenda.parentNode){
-
-  }
-
-});
-</script>
-</body>
-</html>
+    const saudeDiv=document.createE
