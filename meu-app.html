@@ -291,6 +291,11 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .matriz-axes{display:grid;grid-template-columns:20px 1fr;grid-template-rows:1fr 20px;gap:0;margin-top:4px}
 .matriz-axis-v{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:.5px}
 .matriz-axis-h{font-size:9px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:.5px;grid-column:2;display:flex;justify-content:space-between;padding:0 4px}
+
+/* Toast de confirmação fixo */
+#save-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#16a34a;color:#fff;padding:12px 28px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+#save-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#save-toast.error{background:#dc2626;}
 </style>
 </head>
 <body>
@@ -1768,21 +1773,29 @@ function saveDay() {
     ts: new Date().toISOString(),
   };
 
-  saveDB(db);
-  showSaved();
-
-  const alertEl = document.getElementById('day-alert');
-  if(alertEl){
-    alertEl.innerHTML = `<div class="alert alert-success">✓ Registro salvo! Adesão medicamentosa: ${db[key].adesao}%</div>`;
-    alertEl.style.display = 'block';
-    setTimeout(() => { alertEl.style.display = 'none'; }, 3000);
+  try {
+    saveDB(db);
+    showSaved();
+    const alertEl = document.getElementById('day-alert');
+    if(alertEl){
+      alertEl.innerHTML = `<div class="alert alert-success">✓ Registro salvo! Adesão: ${db[key].adesao}%</div>`;
+      alertEl.style.display = 'block';
+      setTimeout(() => { alertEl.style.display = 'none'; }, 3000);
+    }
+  } catch(e) {
+    showToast('Erro ao salvar: ' + e.message, true);
   }
 }
 
-function showSaved() {
-  const el = document.getElementById('save-indicator');
-  if(el){ el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2000); }
+function showToast(msg, isError){
+  const t = document.getElementById('save-toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 2800);
 }
+function showSaved() { showToast('✓ Registro salvo com sucesso!'); }
 
 // ═══════════════════════ LOAD TODAY ═══════════════════════
 function psiSelectDay(val){
@@ -2692,5 +2705,6 @@ function psiAddMed(){
 }
 
 </script>
+<div id="save-toast"></div>
 </body>
 </html>
