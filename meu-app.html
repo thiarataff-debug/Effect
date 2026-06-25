@@ -326,7 +326,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <div class="card"><div class="card-title">💧 Água</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 8 copos. Clique para marcar.</div>
     <div class="agua-copos" id="agua-copos"></div>
-    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 de 8 copos</div>
+    <div style="font-size:12px;font-weight:700;color:var(--blue)" id="agua-label">0 </div>
   </div>
   <div class="card"><div class="card-title">🏃 Exercício</div>
     <div id="ex-chips">
@@ -1098,13 +1098,9 @@ function sugerirTarefa(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');
 function addRem(){const nome=document.getElementById('rem-nome-input').value.trim();const hora=document.getElementById('rem-hora-input').value;if(!nome)return;dados.remedios.push({id:Date.now(),nome,hora,tomado:false});salvar();document.getElementById('rem-nome-input').value='';renderRem();}
 function toggleRem(id){const r=dados.remedios.find(r=>r.id===id);if(!r)return;r.tomado=!r.tomado;salvar();renderRem();if(r.tomado)toast('💊 Remédio registrado!','success');}
 function renderRem(){document.getElementById('rem-list').innerHTML=dados.remedios.length?dados.remedios.map(r=>`<div class="rem-item"><div class="rem-check ${r.tomado?'checked':''}" onclick="toggleRem(${r.id})">${r.tomado?'✓':'💊'}</div><div class="rem-info"><div class="rem-nome">${r.nome}</div><div class="rem-hora">${r.hora||'Sem horário'}</div></div><button onclick="dados.remedios=dados.remedios.filter(x=>x.id!==${r.id});salvar();renderRem()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">×</button></div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Nenhum remédio cadastrado.</div>';}
-function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({length:8},(_,i)=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} de 8 copos`;}
-function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(dados.agua===8)toast('💧 Meta atingida!','success');salvar();renderAgua();}
-let humorSel=null;
-function setHumor(i,el){humorSel=i;document.querySelectorAll('function updateEnergia(v){document.getElementById('energia-fill').style.width=(v*10)+'%';document.getElementById('energia-label').textContent=`Energia: ${v}/10`;}
-function salvarHumor(){const emocoes=['😴 Exausta','😰 Ansiosa','😐 Neutro','🙂 Bem','🔥 Focada'];if(humorSel===null){toast('Selecione uma emoção','');return}const energia=document.getElementById('energia-range').value;const obs=document.getElementById('humor-obs').value;const agora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});if(!dados.humor)dados.humor=[];dados.humor.push({hora:agora,emocao:emocoes[humorSel],energia,obs});salvar();document.getElementById('humor-obs').value='';renderHumorHist();toast('😊 Humor registrado!','success');}
-function renderHumorHist(){if(!dados.humor||!dados.humor.length){document.getElementById('humor-historico').textContent='Nenhum registro ainda.';return}const h=dados.humor.slice(-5).reverse();document.getElementById('humor-historico').innerHTML=h.map(h=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6"><span style="font-size:10px;color:var(--muted);white-space:nowrap">${h.hora}</span><span style="font-size:12px;font-weight:600">${h.emocao}</span><span style="font-size:10px;color:var(--muted)">⚡${h.energia}/10</span>${h.obs?`<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.obs.slice(0,30)}</span>`:''}</div>`).join('');}
-let sosInterval=null;
+function renderAgua(){document.getElementById('agua-copos').innerHTML=Array.from({de 4 garrafas=>`<div class="copo ${i<dados.agua?'cheio':''}" onclick="toggleCopo(${i})"><div class="copo-fill"></div></div>`).join('');document.getElementById('agua-label').textContent=`${dados.agua} `;}
+function toggleCopo(i){dados.agua=i<dados.agua?i:i+1;if(length:4},(_,i)('💧 Meta atingida!','success');salvar();renderAgua();}
+dados.agua===4)toastlet sosInterval=null;
 function mostrarTarefaSOS(){const u=dados.tarefas.filter(t=>!t.done&&t.prio==='u');const i=dados.tarefas.filter(t=>!t.done&&t.prio==='i');const tarefa=u[0]||i[0]||null;const card=document.getElementById('sos-tarefa-card');if(tarefa){card.style.display='block';document.getElementById('sos-tarefa-txt').textContent='👉 '+tarefa.texto;}else{card.style.display='none';}}
 function iniciarSOS(){document.getElementById('sos-anim').style.display='block';const fases=[{texto:'Inspire...',sub:'4 segundos',dur:4000,anim:'inhale 4s forwards'},{texto:'Segure...',sub:'7 segundos',dur:7000,anim:'none'},{texto:'Expire...',sub:'8 segundos',dur:8000,anim:'exhale 8s forwards'}];let fase=0;const circle=document.getElementById('sos-circle');function proxFase(){const f=fases[fase%3];document.getElementById('sos-text').textContent=f.texto;document.getElementById('sos-sub').textContent=f.sub;circle.style.animation=f.anim;fase++;sosInterval=setTimeout(proxFase,f.dur);}proxFase();}
 function pararSOS(){clearTimeout(sosInterval);document.getElementById('sos-anim').style.display='none';document.getElementById('sos-circle').style.animation='none';}
@@ -2558,7 +2554,7 @@ function psiCheckRestock(){
 // ── INIT ──
 document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas(); renderRem(); renderAgua(); sugerirTarefa();
+  html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';   html+='</div>';   el.innerHTML=html; }  function psiUpdateStock(idx,field,val){   const meds=psiGetMedStock();   if(meds[idx])meds[idx][field]=val;   psiSaveMedStock(meds);   psiRenderMedStock(); }  function psiAddMed(){   const name=prompt('Nome do medicamento:');   if(!name||!name.trim())return;   const meds=psiGetMedStock();   meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});   psiSaveMedStock(meds);   psiRenderMedStock(); }
 cicloInit();
 
 seiRender();
@@ -2622,4 +2618,3 @@ function psiRenderMedStock(){
       </div>
     </div>`;
   });
-  html+='<button on
