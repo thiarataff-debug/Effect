@@ -566,7 +566,12 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <div class="today-header">
     <div>
       <h1 style="font-size:1.1rem;font-weight:700;">Registro do Dia</h1>
-      <div class="today-date" id="today-display"></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="today-date" id="today-display"></div>
+        <input type="date" id="psi-day-picker"
+          style="font-family:Montserrat,sans-serif;font-size:11px;border:1.5px solid var(--border);border-radius:8px;padding:3px 7px;cursor:pointer;outline:none;color:var(--text);background:var(--bg);"
+          onchange="psiSelectDay(this.value)">
+      </div>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
       <div class="today-progress">
@@ -1673,9 +1678,10 @@ function getQuestDB() {
 function saveQuestDB(arr) { localStorage.setItem(QUEST_KEY, JSON.stringify(arr)); }
 
 function todayKey() {
-  const d = new Date();
-  return d.toISOString().split('T')[0];
+  // Usa fuso de SP para evitar virada de dia errada (ex: 23h no BR = amanhã em UTC)
+  return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
 }
+let _psiDayKey = todayKey(); // data selecionada no Registro do Dia
 
 function formatDate(k) {
   const [y,m,d] = k.split('-');
@@ -1731,7 +1737,7 @@ function toggleMed(el) {
 // ═══════════════════════ SAVE DAY ═══════════════════════
 function saveDay() {
   const db = getDB();
-  const key = todayKey();
+  const key = _psiDayKey;
 
   const meds = {
     desvManha: document.getElementById('chk-desv-manha').checked,
@@ -1779,12 +1785,28 @@ function showSaved() {
 }
 
 // ═══════════════════════ LOAD TODAY ═══════════════════════
+function psiSelectDay(val){
+  _psiDayKey = val || todayKey();
+  // Reseta todos os checkboxes e textos antes de carregar
+  document.querySelectorAll('#sec-hoje input[type=checkbox]').forEach(cb=>{
+    cb.checked=false;
+    const item=cb.closest('.med-item');
+    if(item) item.classList.remove('taken');
+  });
+  document.getElementById('txt-efeitos').value='';
+  document.getElementById('txt-obs').value='';
+  loadToday();
+}
+
 function loadToday() {
   const db = getDB();
-  const key = todayKey();
-  const today = new Date();
+  const key = _psiDayKey;
+  const [y,m,d] = key.split('-');
+  const today = new Date(+y, +m-1, +d);
   document.getElementById('today-display').textContent =
     today.toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const picker = document.getElementById('psi-day-picker');
+  if(picker){ picker.value = key; picker.max = todayKey(); }
 
   if (db[key]) {
     const d = db[key];
@@ -2545,8 +2567,20 @@ const PSI_MEDS_DEFAULT = [
 
 function psiGetMedStock(){
   const s=localStorage.getItem('effect_psi_med_stock');
-  if(s) try{return JSON.parse(s);}catch(e){}
-  return JSON.parse(JSON.stringify(PSI_MEDS_DEFAULT));
+  let saved;
+  if(s) try{saved=JSON.parse(s);}catch(e){}
+  if(!saved) return JSON.parse(JSON.stringify(PSI_MEDS_DEFAULT));
+  // Adiciona medicamentos do padrão que ainda não existem no localStorage
+  const savedIds=new Set(saved.map(m=>m.id));
+  let changed=false;
+  PSI_MEDS_DEFAULT.forEach(def=>{
+    if(!savedIds.has(def.id)){
+      saved.push(JSON.parse(JSON.stringify(def)));
+      changed=true;
+    }
+  });
+  if(changed) psiSaveMedStock(saved);
+  return saved;
 }
 function psiSaveMedStock(meds){localStorage.setItem('effect_psi_med_stock',JSON.stringify(meds));}
 function psiCheckRestock(){
@@ -2623,42 +2657,3 @@ function psiRenderMedStock(){
       </div>
       ${buyDate}${nextBox}
       <div class="psi-stock-meta" style="margin-top:8px">
-        <div class="psi-stock-field">
-          <label>Comprimidos restantes</label>
-          <input type="number" min="0" class="psi-stock-input" value="${m.stock}" onchange="psiUpdateStock(${i},'stock',+this.value)" title="Quantidade atual na caixa">
-        </div>
-        <div class="psi-stock-field">
-          <label>Dose/dia (cp)</label>
-          <input type="number" min="0.5" step="0.5" class="psi-stock-input" value="${m.doseDay}" onchange="psiUpdateStock(${i},'doseDay',+this.value)">
-        </div>
-        <div class="psi-stock-field">
-          <label>Alertar em (dias)</label>
-          <input type="number" min="1" class="psi-stock-input" value="${m.alertDays}" onchange="psiUpdateStock(${i},'alertDays',+this.value)">
-        </div>
-      </div>
-    </div>`;
-  });
-  html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-function psiUpdateStock(idx,field,val){
-  const meds=psiGetMedStock();
-  if(meds[idx])meds[idx][field]=val;
-  psiSaveMedStock(meds);
-  psiRenderMedStock();
-}
-
-function psiAddMed(){
-  const name=prompt('Nome do medicamento:');
-  if(!name||!name.trim())return;
-  const meds=psiGetMedStock();
-  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});
-  psiSaveMedStock(meds);
-  psiRenderMedStock();
-}
-
-</script>
-</body>
-</html>
