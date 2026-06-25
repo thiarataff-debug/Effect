@@ -871,4 +871,12 @@ function renderMes(d){
   // Completar semana final
   const totalCels = startDow + ultimoDia.getDate();
   const resto = totalCels%7 === 0 ? 0 : 7-(totalCels%7);
-  for(let i=
+  for(let i=0;i<resto;i++){
+    h+='<div class="ag-month-day vazio"></div>';
+  }
+  h+='</div></div>';
+  return h;
+}
+</script>
+</body>
+</html>
