@@ -1410,34 +1410,8 @@ async function carregarSessoes(){
     });
     todasSessoes=novas;
 
-    // ─── INJETAR TIMESTAMP APROXIMADO em mensagens sem hora ───────────────────
-    // O backend às vezes não inclui timestamp por mensagem.
-    // Usamos lastMessageAtMs da sessão como âncora e trabalhamos para trás.
-    Object.values(todasSessoes).forEach(s=>{
-      const hist=s.historico||[];
-      if(!hist.length)return;
-
-      // Tenta obter âncora: primeiro campos da sessão, depois última msg com timestamp real
-      let baseMs=tsParaMs(s.lastMessageAtMs||s.timestampMs||s.timestamp||s.lastMessageAt)||0;
-      if(!baseMs){
-        // Percorre de trás pra frente buscando qualquer msg com timestamp
-        for(let i=hist.length-1;i>=0;i--){
-          const ms=tsParaMs(obterTimestampMsg(hist[i]));
-          if(ms){baseMs=ms;break;}
-        }
-      }
-      // Última saída: usa agora como referência para msgs sem nenhuma âncora
-      if(!baseMs) baseMs=Date.now();
-
-      for(let i=hist.length-1;i>=0;i--){
-        const msg=hist[i];
-        if(!obterTimestampMsg(msg)){
-          // Sem timestamp: âncora menos 90 segundos por posição
-          msg._approxMs=baseMs-(hist.length-1-i)*90000;
-        }
-      }
-    });
-    // ─────────────────────────────────────────────────────────────────────────
+    // Timestamps estáveis já injetados pelo backend no carregarSessoesDoSheets.
+    // Não fazemos mais injeção dinâmica aqui para evitar drift de horário.
 
     if(typeof data.novaConversaIniciaManual==='boolean'){novaConversaIniciaManual=data.novaConversaIniciaManual;atualizarBotaoNovasManual();}
     document.getElementById('upd').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -3287,11 +3261,12 @@ function montarTemplateVaga(v){
 function usarVaga(idx){
   const v=vagasCache[idx];
   if(!v)return;
+  fecharModal('modal-vagas');
   const texto=montarTemplateVaga(v);
   const input=document.getElementById('msg-input');
+  if(!input)return;
   input.value=texto;
   autoResize(input);
-  fecharModal('modal-vagas');
   input.focus();
   toast('📋 Detalhes da vaga inseridos — revise antes de enviar','success');
 }
@@ -3922,10 +3897,11 @@ function renderizarModelos(lista){
 function usarModeloComunicacao(idx){
   const m=MODELOS_COMUNICACAO[idx];
   if(!m)return;
-  const input=document.getElementById('msg-input');
-  input.value=m.texto.replace(/\\n/g,'\n');
-  autoResize(input);
   fecharModal('modal-modelos');
+  const input=document.getElementById('msg-input');
+  if(!input)return;
+  input.value=m.texto;
+  autoResize(input);
   input.focus();
   toast('📋 Modelo inserido — revise e envie','success');
 }
