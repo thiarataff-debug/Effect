@@ -1822,13 +1822,9 @@ function renderLista(){
     return !arquivadas[tel]; // Arquivadas ficam ocultas da lista principal
   });
 
-  // Ordenação: 1) precisa humano → topo  2) alerta 24h  3) atividade recente
-  entries.sort((a,b)=>{
-    const pha=precisaHumano(a[0],a[1]),phb=precisaHumano(b[0],b[1]);
-    if(pha!==phb)return pha?-1:1;
-    const a24=isAlerta24h(a[0],a[1]),b24=isAlerta24h(b[0],b[1]);
-    if(a24!==b24)return a24?-1:1;
-    return atividadeMsSessao(b[1],b[2])-atividadeMsSessao(a[1],a[2]);
+// Ordenação estilo WhatsApp: puramente por atividade mais recente
+  entries.sort((a,b) => {
+    return atividadeMsSessao(b[1],b[2]) - atividadeMsSessao(a[1],a[2]);
   });
 
   const all=Object.entries(todasSessoes);
