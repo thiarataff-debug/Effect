@@ -722,6 +722,7 @@ font-family:'Montserrat',sans-serif
               <div class="ha-dropdown-item" onclick="arquivarConversa();fecharDropdownMais()"><span class="di-icon">📁</span> Arquivar</div>
               <div class="ha-dropdown-item" onclick="abrirDiscCandidato();fecharDropdownMais()"><span class="di-icon">📊</span> DISC</div>
               <div class="ha-dropdown-item" id="item-template" onclick="abrirModalTemplate();fecharDropdownMais()" style="display:none"><span class="di-icon">📤</span> Template</div>
+              <div class="ha-dropdown-item" onclick="abrirModalModelos();fecharDropdownMais()"><span class="di-icon">📋</span> Modelos</div>
               <div class="ha-dropdown-item" onclick="resumirConversa();fecharDropdownMais()"><span class="di-icon">🔍</span> Resumir IA</div>
               <div class="ha-separator"></div>
               <div class="ha-dropdown-item" onclick="toggleRetornar();fecharDropdownMais()" id="item-retornar"><span class="di-icon">📌</span> Marcar p/ Retornar</div>
@@ -1061,6 +1062,20 @@ font-family:'Montserrat',sans-serif
     <div id="template-lista" style="display:flex;flex-direction:column;gap:6px"></div>
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-template')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MODELOS DE COMUNICAÇÃO -->
+<div class="modal-overlay" id="modal-modelos">
+  <div class="modal" style="width:520px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="modal-title">📋 Modelos de Comunicação</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Clique no modelo para inserir no campo de mensagem. Revise antes de enviar.</div>
+    <input type="text" id="modelos-busca" placeholder="Buscar modelo..." oninput="filtrarModelos()"
+      style="border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;margin-bottom:10px;font-family:inherit">
+    <div id="modelos-lista" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1;padding-right:4px"></div>
+    <div class="modal-footer" style="margin-top:10px">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-modelos')">Fechar</button>
     </div>
   </div>
 </div>
@@ -3836,6 +3851,83 @@ const TEMPLATES_RETOMADA=[
   {titulo:'Urgência de vaga',texto:`Olá! Temos uma vaga disponível que pode ser do seu interesse. Você ainda está buscando emprego? 💙`},
   {titulo:'Retomada de triagem',texto:`Oi! Lembro que conversamos sobre uma oportunidade. Para dar continuidade à sua triagem, preciso de mais algumas informações. Podemos continuar?`},
 ];
+// ─── MODELOS DE COMUNICAÇÃO ───
+const MODELOS_COMUNICACAO = [
+  {
+    titulo: '📄 Confirmação de recebimento de currículo',
+    texto: `Prezado(a),\n\nAgradecemos o envio do seu currículo e o interesse em fazer parte da nossa empresa.\n\nInformamos que seu perfil foi recebido com sucesso e será analisado com atenção pela nossa equipe de recrutamento.\n\nCaso sua experiência esteja alinhada com os requisitos da vaga, entraremos em contato para dar continuidade ao processo seletivo.\n\nAgradecemos novamente seu interesse e desejamos sucesso em sua trajetória profissional.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '📎 Solicitação de envio de currículo',
+    texto: `Prezado(a),\n\nEsperamos que esteja bem.\n\nCaso tenha interesse em participar dos nossos processos seletivos, solicitamos, por gentileza, o envio do seu currículo atualizado para este WhatsApp.\n\nFicaremos felizes em conhecer mais sobre sua trajetória profissional.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '📋 Solicitação de currículo atualizado',
+    texto: `Prezado(a),\n\nEsperamos que esteja bem.\n\nPara iniciarmos a análise do seu perfil em nosso processo seletivo, solicitamos uma versão atualizada do seu currículo aqui mesmo por este número.\n\nEssa atualização nos ajudará a avaliar suas experiências e considerar seu perfil de forma mais assertiva.\n\nFicamos no aguardo do seu retorno.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '📅 Convite para entrevista',
+    texto: `Prezado(a),\n\nAgradecemos seu interesse na oportunidade de [Nome da Vaga] na [Nome da Empresa].\n\nApós análise do seu perfil, gostaríamos de convidá-lo(a) para participar da próxima etapa do nosso processo seletivo.\n\nDetalhes da entrevista:\n• Data: [Data]\n• Horário: [Horário]\n• Formato: [Online/Presencial]\n• Local/Link: [Endereço ou link]\n\nPedimos, por gentileza, que confirme sua disponibilidade respondendo a esta mensagem.\n\nPermanecemos à disposição para quaisquer esclarecimentos.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '❌ Retorno negativo (reprovação)',
+    texto: `Prezado(a),\n\nAgradecemos sua participação no processo seletivo.\n\nApós uma análise criteriosa, informamos que, neste momento, não seguiremos com seu processo para esta vaga.\n\nRessaltamos que seu currículo permanecerá em nosso banco de talentos para futuras oportunidades compatíveis com seu perfil.\n\nAgradecemos seu interesse e desejamos sucesso em sua trajetória profissional.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '✅ Aprovação no processo seletivo',
+    texto: `Prezado(a),\n\nTemos o prazer de informar que você foi aprovado(a) no processo seletivo para a vaga de [Nome da Vaga] na [Nome da Empresa].\n\nFicamos muito satisfeitos com seu desempenho ao longo das etapas e acreditamos que você será um excelente complemento para a equipe.\n\nEm breve, entraremos em contato com mais detalhes sobre a proposta e próximos passos.\n\nParabéns e seja bem-vindo(a)!\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '📂 Solicitação de informações complementares',
+    texto: `Prezado(a),\n\nDando continuidade ao processo seletivo para a vaga de [Nome da Vaga], solicitamos, por gentileza, o envio das seguintes informações/documentos:\n\n• [Item 1]\n• [Item 2]\n• [Item 3]\n\nEssas informações são importantes para avançarmos nas próximas etapas do processo.\n\nFicamos no aguardo do seu retorno.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '🙏 Agradecimento pela participação',
+    texto: `Prezado(a),\n\nGostaríamos de agradecer sua disponibilidade e participação no processo seletivo da [Nome da Empresa].\n\nFoi um prazer conhecer mais sobre sua trajetória e experiências profissionais.\n\nSeguiremos com a análise interna e, em breve, retornaremos com um posicionamento.\n\nAgradecemos novamente pelo seu tempo e interesse.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '🔍 Identificação de perfil compatível',
+    texto: `Prezado(a),\n\nEsperamos que esteja bem.\n\nApós análise do seu perfil, identificamos que sua experiência está alinhada a uma de nossas oportunidades.\n\nGostaríamos de compartilhar mais detalhes sobre a posição.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  }
+];
+
+function abrirModalModelos(){
+  document.getElementById('modelos-busca').value='';
+  renderizarModelos(MODELOS_COMUNICACAO);
+  document.getElementById('modal-modelos').classList.add('show');
+}
+
+function filtrarModelos(){
+  const termo=document.getElementById('modelos-busca').value.toLowerCase();
+  const filtrados=MODELOS_COMUNICACAO.filter(m=>
+    m.titulo.toLowerCase().includes(termo)||m.texto.toLowerCase().includes(termo)
+  );
+  renderizarModelos(filtrados);
+}
+
+function renderizarModelos(lista){
+  const div=document.getElementById('modelos-lista');
+  if(!lista.length){div.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Nenhum modelo encontrado.</div>';return;}
+  div.innerHTML=lista.map((m,i)=>{
+    const idx=MODELOS_COMUNICACAO.indexOf(m);
+    return`<div class="sugestao-item" onclick="usarModeloComunicacao(${idx})">
+      <div style="font-weight:700;font-size:11px;margin-bottom:4px">${m.titulo}</div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.4">${m.texto.replace(/\\n/g,' ').slice(0,90)}…</div>
+    </div>`;
+  }).join('');
+}
+
+function usarModeloComunicacao(idx){
+  const m=MODELOS_COMUNICACAO[idx];
+  if(!m)return;
+  const input=document.getElementById('msg-input');
+  input.value=m.texto.replace(/\\n/g,'\n');
+  autoResize(input);
+  fecharModal('modal-modelos');
+  input.focus();
+  toast('📋 Modelo inserido — revise e envie','success');
+}
+
 // ─── DISC ───
 const DISC_PERFIS = {
   D:{nome:'Dominante',emoji:'🔴',cor:'#dc2626'},
