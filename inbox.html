@@ -191,7 +191,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .mbubble.manual .bubble-time{color:#667781}
 .mbubble.candidato .bubble-time{color:#667781}
 
-.quick-bar{padding:6px 14px 0;background:#f0f2f5;display:flex;gap:5px;overflow-x:auto;flex-shrink:0}
+.quick-bar{display:none}
 .qcat-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;align-self:center;padding:0 2px}
 .qcat-sep{display:inline-block;width:1px;background:var(--border);height:22px;margin:0 6px;align-self:center;flex-shrink:0}
 .qbtn{padding:5px 11px;border-radius:12px;border:1px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:10px;cursor:pointer;white-space:nowrap;color:var(--navy);font-weight:600;flex-shrink:0}
@@ -1126,11 +1126,7 @@ function toast(msg, tipo){
 const NOME_MANUAL = "Laura";
 const ASSINATURA = `\n\n— ${NOME_MANUAL}, Equipe Effect 💙`;
 
-const QUICK_REPLIES = [
-  "Olá! Pode me reencaminhar seu currículo?",
-  "Olá! Pode me encaminhar um currículo?",
-  "Vamos analisar seu currículo e em breve retornaremos! 💙"
-];
+const QUICK_REPLIES = [];
 
 // ── HELPERS FASE 1 ──────────────────────────────────────────────
 function normalizarTextoJS(t){
@@ -1582,26 +1578,20 @@ function tsParaMs(ts){
 }
 
 function ordenarHistorico(hist){
-  // Regra segura:
-  // - Se TODAS as mensagens têm timestamp válido, ordena por horário.
-  // - Se ALGUMA mensagem antiga veio sem timestamp ou com timestamp quebrado,
-  //   preserva a ordem original recebida do backend.
-  // Isso evita o bug de resposta nova aparecer acima de mensagem antiga.
+  // Usa timestamp real quando disponível, _approxMs como fallback.
+  // Sempre ordena desde que haja pelo menos um timestamp válido.
   const arr=(hist||[]).map((msg,idx)=>({
     msg,
     idx,
-    ms:tsParaMs(obterTimestampMsg(msg))
+    ms: tsParaMs(obterTimestampMsg(msg)) || msg._approxMs || 0
   }));
 
   if(!arr.length)return [];
 
-  const validos=arr.filter(x=>x.ms&&x.ms>0).length;
+  const temAlgum=arr.some(x=>x.ms>0);
 
-  // Se houver mistura de mensagens válidas e inválidas, não reordena.
-  // O histórico antigo do Sheets já vem em ordem de conversa.
-  if(validos!==arr.length){
-    return arr.map(x=>x.msg);
-  }
+  // Se nenhuma mensagem tem qualquer referência de tempo, mantém ordem original.
+  if(!temAlgum) return arr.map(x=>x.msg);
 
   arr.sort((a,b)=>{
     if(a.ms!==b.ms)return a.ms-b.ms;
@@ -2021,10 +2011,11 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
     const isObs=msg.role==='observacao';
     const isLaura=msg.role==='assistant'&&(msg.content||'').includes(`— ${NOME_MANUAL}`);
     const isCamila=msg.role==='assistant'&&(msg.content||'').includes('— Camila');
-    const ts=obterTimestampMsg(msg);
+    const tsReal=obterTimestampMsg(msg);
+    const ts=tsReal||msg._approxMs||0;
     const horaTexto=ts?extrairHora(ts):(horaFallbackMsg(msg)||'--:--');
-    const isApprox=!ts&&!!msg._approxMs;
-    const dataMsg=ts?formatarDataMensagem(ts):(msg._approxMs?formatarDataMensagem(msg._approxMs):'');
+    const isApprox=!tsReal&&!!msg._approxMs;
+    const dataMsg=ts?formatarDataMensagem(ts):'';
 
     if(dataMsg&&dataMsg!==ultimaData){
       const sep=document.createElement('div');
