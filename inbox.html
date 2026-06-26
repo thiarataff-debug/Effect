@@ -1416,8 +1416,19 @@ async function carregarSessoes(){
     Object.values(todasSessoes).forEach(s=>{
       const hist=s.historico||[];
       if(!hist.length)return;
-      const baseMs=tsParaMs(s.lastMessageAtMs||s.timestampMs||s.timestamp||s.lastMessageAt)||0;
-      if(!baseMs)return;
+
+      // Tenta obter âncora: primeiro campos da sessão, depois última msg com timestamp real
+      let baseMs=tsParaMs(s.lastMessageAtMs||s.timestampMs||s.timestamp||s.lastMessageAt)||0;
+      if(!baseMs){
+        // Percorre de trás pra frente buscando qualquer msg com timestamp
+        for(let i=hist.length-1;i>=0;i--){
+          const ms=tsParaMs(obterTimestampMsg(hist[i]));
+          if(ms){baseMs=ms;break;}
+        }
+      }
+      // Última saída: usa agora como referência para msgs sem nenhuma âncora
+      if(!baseMs) baseMs=Date.now();
+
       for(let i=hist.length-1;i>=0;i--){
         const msg=hist[i];
         if(!obterTimestampMsg(msg)){
