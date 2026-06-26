@@ -260,6 +260,21 @@ function calcularUnreadSessao(sessao) {
 
 function normalizarSessaoParaInbox(telefone, sessao) {
   const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
+
+  // Interpola timestampMs em msgs sem hora usando vizinhos com timestamp real.
+  // Isso evita que msgs com ts=0 sejam ordenadas antes de msgs antigas com ts válido.
+  historicoNormalizado.forEach((msg, i) => {
+    if (Number(msg.timestampMs) > 0) return;
+    let prevMs = 0, nextMs = 0;
+    for (let j = i - 1; j >= 0; j--) { if (Number(historicoNormalizado[j].timestampMs) > 0) { prevMs = Number(historicoNormalizado[j].timestampMs); break; } }
+    for (let j = i + 1; j < historicoNormalizado.length; j++) { if (Number(historicoNormalizado[j].timestampMs) > 0) { nextMs = Number(historicoNormalizado[j].timestampMs); break; } }
+    if (prevMs && nextMs) msg.timestampMs = Math.round((prevMs + nextMs) / 2);
+    else if (prevMs)      msg.timestampMs = prevMs + 1;
+    else if (nextMs)      msg.timestampMs = nextMs - 1;
+    // sem nenhum vizinho com ts: mantém 0, vai pro início (melhor que posição errada)
+    if (msg.timestampMs > 0) msg._approxMs = msg.timestampMs;
+  });
+
   historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
 
   const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
