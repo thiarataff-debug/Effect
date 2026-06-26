@@ -1563,26 +1563,30 @@ function tsParaMs(ts){
 }
 
 function ordenarHistorico(hist){
-  // Usa timestamp real quando disponível, _approxMs como fallback.
-  // Sempre ordena desde que haja pelo menos um timestamp válido.
+  if(!hist||!hist.length)return [];
+
   const arr=(hist||[]).map((msg,idx)=>({
-    msg,
-    idx,
+    msg, idx,
     ms: tsParaMs(obterTimestampMsg(msg)) || msg._approxMs || 0
   }));
 
-  if(!arr.length)return [];
-
   const temAlgum=arr.some(x=>x.ms>0);
+  if(!temAlgum)return hist.slice(); // sem nenhum timestamp, mantém ordem original
 
-  // Se nenhuma mensagem tem qualquer referência de tempo, mantém ordem original.
-  if(!temAlgum) return arr.map(x=>x.msg);
-
-  arr.sort((a,b)=>{
-    if(a.ms!==b.ms)return a.ms-b.ms;
-    return a.idx-b.idx;
+  // Msgs sem timestamp: interpola ms entre os vizinhos com timestamp no array original.
+  // Evita que ms=0 vá pro topo da ordenação.
+  arr.forEach((item,i)=>{
+    if(item.ms>0)return;
+    let prevMs=0, nextMs=0;
+    for(let j=i-1;j>=0;j--){if(arr[j].ms>0){prevMs=arr[j].ms;break;}}
+    for(let j=i+1;j<arr.length;j++){if(arr[j].ms>0){nextMs=arr[j].ms;break;}}
+    if(prevMs&&nextMs) item.ms=(prevMs+nextMs)/2;
+    else if(prevMs)    item.ms=prevMs+1;
+    else if(nextMs)    item.ms=nextMs-1;
+    // se nenhum vizinho tem timestamp, fica ms=0 e vai pro final da resolução abaixo
   });
 
+  arr.sort((a,b)=>a.ms!==b.ms?a.ms-b.ms:a.idx-b.idx);
   return arr.map(x=>x.msg);
 }
 
