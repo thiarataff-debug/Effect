@@ -936,10 +936,34 @@ async function carregarSessoesDoSheets() {
       const curriculosSheets = Array.isArray(sessao.curriculos) ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []);
       const curriculosMesclados = curriculosExistentes.length ? curriculosExistentes : curriculosSheets;
 
+      // Normaliza histórico e injeta timestamps estáveis nas msgs sem hora
+      const historicoNorm = Array.isArray(sessao.historico)
+        ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
+        : [];
+
+      // Âncora estável: usa o timestampMs salvo na sessão do Sheets (nunca Date.now())
+      // Assim o horário aproximado não muda a cada refresh
+      const ancoraSessaoMs = Number(sessao.timestampMs || sessao.lastMessageAtMs || 0);
+      let ancoraMs = ancoraSessaoMs;
+      if (!ancoraMs) {
+        // Procura a última msg com timestamp real como âncora
+        for (let i = historicoNorm.length - 1; i >= 0; i--) {
+          const ms = Number(historicoNorm[i].timestampMs || 0);
+          if (ms > 0) { ancoraMs = ms; break; }
+        }
+      }
+      if (ancoraMs > 0) {
+        // Injeta _approxMs estável nas msgs sem timestamp, trabalhando de trás pra frente
+        for (let i = historicoNorm.length - 1; i >= 0; i--) {
+          if (!Number(historicoNorm[i].timestampMs)) {
+            historicoNorm[i].timestampMs = ancoraMs - (historicoNorm.length - 1 - i) * 90000;
+            historicoNorm[i]._approxMs = historicoNorm[i].timestampMs;
+          }
+        }
+      }
+
       sessoes[tel] = {
-        historico: Array.isArray(sessao.historico)
-          ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
-          : [],
+        historico: historicoNorm,
         nome: sessao.nome || null,
         modo,
         pausado,
