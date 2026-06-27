@@ -2083,18 +2083,46 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     console.warn(`RAIO-X VAGAS — ${telefone}: ${vagas.length} vagas disponíveis mas NENHUMA filtrada. Área: ${areaDetectada||"não detectada"}`);
   }
 
-  const prompt = montarPromptConversa(sessao, mensagem, vagas);
-  const resposta = await chamarClaudeTexto(prompt);
+  // Captura vaga de interesse declarada pelo candidato.
+  // Só registra se: o candidato já informou o nome, ainda não tem vaga registrada,
+  // e a mensagem parece ser uma declaração de interesse (não uma saudação curta).
+  if (sessao.nome && !sessao.vagaInteresseDeclarado && mensagem.length > 3) {
+    const textoInteresse = normalizarTexto(mensagem);
+    const ehSoNome = sessao.historico.filter(h => h.role === "assistant").length <= 1;
+    const pareceInteresse = areaDetectada ||
+      textoInteresse.includes("vaga") || textoInteresse.includes("cargo") ||
+      textoInteresse.includes("trabalh") || textoInteresse.includes("emprego") ||
+      textoInteresse.includes("oportunidade") || textoInteresse.includes("interesse");
+    if (!ehSoNome && pareceInteresse) {
+      sessao.vagaInteresseDeclarado = mensagem.trim();
+      console.log(`INTERESSE CAPTURADO — ${telefone}: "${sessao.vagaInteresseDeclarado}"`);
+    }
+  }
 
-  // Se a chamada à Claude falhou (mensagem genérica de instabilidade/rate-limit),
-  // NÃO manda isso pro candidato e NÃO grava no histórico — evita o spam de
-  // "Tive uma instabilidade aqui..." em loop. Só alerta a Thiara uma vez.
+  const prompt = montarPromptConversa(sessao, mensagem, vagas);
+  let resposta = await chamarClaudeTexto(prompt);
+
+  // Se a IA falhou, tenta uma vez mais após 3 segundos antes de desistir
+  if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
+    console.warn(`IA falhou (1ª tentativa) — ${telefone}. Aguardando 3s e tentando novamente...`);
+    await sleep(3000);
+    resposta = await chamarClaudeTexto(prompt);
+  }
+
+  // Se ainda falhou após retry, envia acuse de recibo neutro ao candidato e alerta Thiara
   if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
     if (!sessao._alertaInstabilidadeEnviado || (Date.now() - sessao._alertaInstabilidadeEnviado) > 10 * 60 * 1000) {
       sessao._alertaInstabilidadeEnviado = Date.now();
       await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA NÃO RESPONDEU", mensagem);
     }
-    return null;
+    // Envia acuse de recibo neutro para o candidato não ficar sem resposta
+    const respostaFallback = `Recebi sua mensagem! 😊 Em instantes te retorno. 💙`;
+    registrarEntradaSessao(sessao, "assistant", respostaFallback);
+    marcarConversaRespondida(sessao);
+    sessao.historico = sessao.historico.slice(-500);
+    await salvarMensagemSheets(telefone, "assistant", respostaFallback, sessao.nome);
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    return respostaFallback;
   }
 
   const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
@@ -2404,8 +2432,10 @@ function filtrarVagasRelevantes(vagas, texto, historico) {
     const porArea = vagas.filter(v => isVagaDaArea(v, areaCandidato));
     if (porArea.length > 0) return porArea.slice(0, 8);
   }
-  // FIX: se nenhuma vaga filtrada, retorna TODAS as vagas ativas (não esconde vagas do prompt)
-  return filtradas.length > 0 ? filtradas : vagas;
+  // CORREÇÃO: não retornar TODAS as vagas como fallback — isso causava sugestão de vagas
+  // sem qualquer aderência (ex: vigilante para candidato de limpeza).
+  // Se nenhuma vaga tem score > 0, retorna lista vazia para o prompt não forçar match.
+  return filtradas;
 }
 
 function resumirVagas(vagas) {
@@ -2436,19 +2466,33 @@ function montarPromptConversa(sessao, mensagemAtual, vagas) {
   const textoConversa = normalizarTexto(mensagemAtual + " " + historicoCurto);
   const ehLinhares = textoConversa.includes("linhares") || textoConversa.includes("shell") || textoConversa.includes("diaria") || textoConversa.includes("diária") || textoConversa.includes("limpeza") || textoConversa.includes("servicos gerais") || textoConversa.includes("serviços gerais");
   const areaDetectada = detectarAreaCandidato(textoConversa);
+
+  // Detecta se vaga de interesse já foi declarada pelo candidato no histórico
+  const vagaInteresseDeclarada = sessao.vagaInteresseDeclarado || null;
+  const jaTemNome = !!(sessao.nome);
+  const jaTemVagaInteresse = !!(vagaInteresseDeclarada || areaDetectada);
+  const curriculoRecebido = !!(sessao.curriculo);
+
   const instrucaoCurriculo = ehLinhares
     ? `REGRA ESPECIAL — LINHARES / DIÁRIA DE LIMPEZA:\n- Colete APENAS: nome, se mora em Linhares, se possui experiência com limpeza ou serviços gerais\n- O currículo é opcional.\n- NÃO peça escolaridade, documentos, disponibilidade de horário ou escala.\n- Informe quando fizer sentido: diária de R$ 250,00, passagem inclusa, alimentação inclusa, local: Bairro Shell, Linhares\n- Após coletar essas informações, diga que a equipe da Effect fará contato para os próximos passos.`
     : areaDetectada
     ? `COLETA DIRECIONADA — ÁREA: ${areaDetectada.toUpperCase()}:\n- O candidato demonstrou interesse ou experiência em ${areaDetectada}.\n- Priorize vagas da área de ${areaDetectada} disponíveis na lista.\n- Colete: nome, cidade/bairro, experiência na área, escolaridade, disponibilidade e currículo.\n- Se houver vaga compatível, apresente com cargo, local, regime, remuneração, benefícios, jornada e requisitos.\n- Se o currículo já foi recebido, confirme o interesse e informe os próximos passos.`
     : `COLETA PADRÃO:\nColete aos poucos: nome, cidade/bairro, área ou vaga, experiência, escolaridade, disponibilidade e currículo.\nSe o currículo já foi recebido, siga com interesse na vaga, disponibilidade, deslocamento ou próximos passos.`
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.
-- Quando apresentar uma vaga ao candidato, use este formato mais completo e nesta ordem: VAGA, Local, Regime, Remuneração e Benefícios, Jornada, Início imediato quando houver, e Requisitos por último.
-- Não resuma salário e benefícios quando esses dados estiverem disponíveis nas vagas.\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes.\n- Se não houver vaga exatamente igual ao pedido, apresente as vagas similares disponíveis e diga: \"No momento não temos exatamente essa vaga, mas temos essas oportunidades que podem te interessar.\"\n- NUNCA diga \"não temos vagas\" ou \"não há vagas disponíveis\". Se a lista estiver vazia ou sem compatibilidade, diga: \"Vou verificar com a equipe Effect as vagas disponíveis para o seu perfil e te retorno em breve. 💙\"\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
+
+  const instrucaoFluxo = !jaTemNome
+    ? `ETAPA ATUAL: Perguntar o nome.\nPergunta obrigatória antes de qualquer outra ação: "Antes de começarmos, qual é o seu nome?"`
+    : !jaTemVagaInteresse && !curriculoRecebido
+    ? `ETAPA ATUAL: Perguntar qual vaga o candidato busca.\nO candidato já informou o nome. AGORA pergunte: "Que tipo de vaga ou área você está buscando?"\nNÃO sugira vagas ainda. Primeiro capture o interesse declarado.`
+    : vagaInteresseDeclarada
+    ? `VAGA DE INTERESSE DECLARADA PELO CANDIDATO: ${vagaInteresseDeclarada}\nUse essa informação como referência principal ao sugerir vagas. Ao sugerir uma vaga diferente, explique brevemente por que ela pode ser uma boa oportunidade.`
+    : ``;
+
+  return `Você é a Lia, da Effect Pessoas e Performance.\n\nREGRAS GERAIS:\n- Nunca diga que é robô, IA, chatbot ou assistente virtual.\n- Nunca use menu numérico.\n- Faça somente uma pergunta por vez.\n- Não repita "Eu sou a Lia" se a conversa já começou.\n- Seja humana, acolhedora, organizada, profissional e leve.\n- Seja simpática, mas sem exageros.\n- NÃO diga "que nome lindo", "amei seu nome", "nome bonito" ou qualquer elogio ao nome da pessoa.\n- Use o nome do candidato de forma natural e profissional.\n- Responda curto, como WhatsApp.\n- Se o histórico indicar que o currículo já foi recebido ou analisado, NÃO peça o currículo novamente.\n- Se tiver dúvida, NÃO invente. Responda que vai confirmar com a equipe da Effect.\n\nFORMATO DE MENSAGENS — REGRA ABSOLUTA:\n- NUNCA use ###, **, *, ##, markdown de nenhum tipo.\n- WhatsApp não renderiza markdown. Tudo aparecerá como texto com símbolos feios.\n- Use apenas texto simples, emojis como 📍 📌 💼 🕐 💰 e quebras de linha.\n- Para apresentar uma vaga, use este formato EXATO (sem asteriscos, sem hashtags):\n\nVaga: [nome da vaga]\nLocal: [cidade/bairro]\nRegime: [CLT / PJ / etc]\nSalário: [valor]\nBenefícios: [lista simples]\nJornada: [horário/escala]\nRequisitos: [o que é necessário]\n\nABERTURA:\nSe for o primeiro contato e a pessoa ainda não informou o nome, responda:\n"Olá, que bom falar com você. Eu sou a Lia, da Effect. Antes de começarmos, qual é o seu nome?"\n\n${instrucaoFluxo}\n\nREGRA CRÍTICA — VAGAS:\n- Se o candidato perguntar sobre um cargo ou área e existir vaga correspondente em VAGAS DISPONÍVEIS, apresente a vaga IMEDIATAMENTE com todos os detalhes.\n- Se não houver vaga exatamente igual ao pedido, apresente as vagas similares disponíveis e diga: "No momento não temos exatamente essa vaga, mas temos essas oportunidades que podem te interessar."\n- NUNCA diga "não temos vagas" ou "não há vagas disponíveis". Se a lista estiver vazia ou sem compatibilidade, diga: "Vou verificar com a equipe Effect as vagas disponíveis para o seu perfil e te retorno em breve. 💙"\n- NUNCA invente vagas. Use apenas as que estão em VAGAS DISPONÍVEIS.\n- Se houver mais de uma vaga compatível, apresente todas de forma organizada.\n- Após apresentar a vaga, pergunte se a pessoa tem interesse.\n\n${instrucaoCurriculo}\n\nVAGAS DISPONÍVEIS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nHISTÓRICO RECENTE:\n${historicoCurto}\n\nMENSAGEM ATUAL:\n${mensagemAtual}\n\nResponda somente a próxima mensagem da Lia.`;
 }
 
 function montarPromptAnaliseEstruturada(textoCurriculo, vagas) {
   const vagasResumidas = resumirVagas(vagas);
-  return `Você é a Lia, da Effect Pessoas e Performance.\n\nAnalise o currículo abaixo e compare com as vagas disponíveis.\n\nResponda SOMENTE em JSON válido, sem markdown, sem explicação fora do JSON.\n\nUse exatamente esta estrutura:\n\n{\n  "nome": "",\n  "cidade": "",\n  "areaInteresse": "",\n  "vagaInteresse": "",\n  "idVaga": "",\n  "scoreGeral": 0,\n  "scoreVaga": 0,\n  "classificacao": "",\n  "motivoMatch": "",\n  "status": "",\n  "requisitoObrigatorio": "",\n  "escolaridadeCompativel": "",\n  "experienciaCompativel": "",\n  "anosExperiencia": "",\n  "pontosFortes": "",\n  "pontosAtencao": "",\n  "analiseIA": "",\n  "transporteProprio": "",\n  "cltImediato": "",\n  "observacoes": "",\n  "mensagemCandidato": ""\n}\n\nREGRAS DE CLASSIFICAÇÃO:\n- 90 a 100: Excelente\n- 70 a 89: Bom\n- 50 a 69: Regular\n- abaixo de 50: Reprovado\n- Nunca use Excelente se faltar requisito obrigatório.\n- Não prometa contratação.\n\nFORMATO DA mensagemCandidato:\n😊 Olá, {NOME}!\n\nAnalisei seu currículo e identifiquei uma oportunidade que possui compatibilidade com sua experiência profissional.\n\n📍 {CARGO}\n📍 {CIDADE}\n\nOs principais pontos observados foram:\n\n• {PONTO FORTE 1}\n• {PONTO FORTE 2}\n• {PONTO FORTE 3}\n\nVocê teria interesse em participar deste processo seletivo?\n\nFico à disposição. 💙\n\nREGRAS:\n- Não mostrar score.\n- Não mostrar classificação.\n- Não falar em IA ou análise automática.\n- Não elogiar o nome.\n- Não usar textos longos.\n- Não prometer contratação.\n\nVAGAS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nCURRÍCULO:\n${textoCurriculo}`;
+  return `Você é a Lia, da Effect Pessoas e Performance.\n\nAnalise o currículo abaixo e compare com as vagas disponíveis.\n\nResponda SOMENTE em JSON válido, sem markdown, sem explicação fora do JSON.\n\nUse exatamente esta estrutura:\n\n{\n  "nome": "",\n  "cidade": "",\n  "areaInteresse": "",\n  "vagaInteresse": "",\n  "idVaga": "",\n  "scoreGeral": 0,\n  "scoreVaga": 0,\n  "classificacao": "",\n  "motivoMatch": "",\n  "status": "",\n  "requisitoObrigatorio": "",\n  "escolaridadeCompativel": "",\n  "experienciaCompativel": "",\n  "anosExperiencia": "",\n  "pontosFortes": "",\n  "pontosAtencao": "",\n  "analiseIA": "",\n  "transporteProprio": "",\n  "cltImediato": "",\n  "observacoes": "",\n  "mensagemCandidato": ""\n}\n\nREGRAS DE CLASSIFICAÇÃO:\n- 90 a 100: Excelente\n- 70 a 89: Bom\n- 50 a 69: Regular\n- abaixo de 50: Reprovado\n- Nunca use Excelente se faltar requisito obrigatório.\n- Não prometa contratação.\n\nREGRA CRÍTICA — REQUISITOS OBRIGATÓRIOS (HARD FILTER):\n- Cada vaga pode ter um campo "requisitoObrigatorio". Se esse campo estiver preenchido, é um requisito ELIMINATÓRIO.\n- NUNCA sugira uma vaga cujo requisitoObrigatorio não esteja comprovado no currículo.\n- Exemplos de requisitos obrigatórios e como verificar:\n  * "Curso de Vigilante" / "Curso de formação de vigilante" / "Vigilante": candidato precisa ter curso ou registro de vigilante no currículo. Se não tiver, scoreVaga = 0, classificacao = "Reprovado", vagaInteresse = "" para essa vaga.\n  * "CNH B" / "CNH": candidato precisa ter CNH mencionada no currículo.\n  * "Ensino Superior completo": candidato precisa ter graduação concluída.\n- Se nenhuma vaga adequada existir após aplicar os filtros obrigatórios, retorne vagaInteresse = "", idVaga = "", scoreVaga = 0, e mensagemCandidato = "😊 Olá, {NOME}!\\n\\nRecebi seu currículo e ele já está salvo em nosso Banco de Talentos!\\n\\nAssim que surgir uma oportunidade compatível com o seu perfil, entraremos em contato. 💙"\n- JAMAIS force um match com vaga que exige requisito obrigatório que o candidato não possui.\n\nFORMATO DA mensagemCandidato:\n😊 Olá, {NOME}!\n\nAnalisei seu currículo e identifiquei uma oportunidade que possui compatibilidade com sua experiência profissional.\n\n📍 {CARGO}\n📍 {CIDADE}\n\nOs principais pontos observados foram:\n\n• {PONTO FORTE 1}\n• {PONTO FORTE 2}\n• {PONTO FORTE 3}\n\nVocê teria interesse em participar deste processo seletivo?\n\nFico à disposição. 💙\n\nREGRAS:\n- Não mostrar score.\n- Não mostrar classificação.\n- Não falar em IA ou análise automática.\n- Não elogiar o nome.\n- Não usar textos longos.\n- Não prometer contratação.\n- NUNCA use ###, **, *, markdown de nenhum tipo na mensagemCandidato. Apenas texto simples com emojis.\n\nVAGAS:\n${JSON.stringify(vagasResumidas, null, 2)}\n\nCURRÍCULO:\n${textoCurriculo}`;
 }
 
 async function chamarClaudeTexto(prompt) { return await chamarClaude(prompt); }
