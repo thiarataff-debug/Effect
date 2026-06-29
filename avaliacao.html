@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliação de Candidatos · Effect Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1e3a5f;--green:#8ed1b2;--green-dark:#5bb896;--red:#dc2626;--amber:#d97706;
+  --bg:#f0f4f8;--card:#fff;--border:#e2e8f0;--muted:#94a3b8;--text:#1e293b;--text2:#475569;
+}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+.screen{display:none}.screen.active{display:block}
+
+/* ── TOPO ── */
+.topbar{background:var(--navy);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.topbar-logo{font-size:15px;font-weight:800;color:#fff}.topbar-logo span{color:var(--green)}
+.topbar-score{font-size:22px;font-weight:800;color:#fff;line-height:1}
+.topbar-score small{font-size:10px;font-weight:600;color:var(--green);display:block;text-align:center}
+
+/* ── CARDS ── */
+.container{max-width:700px;margin:0 auto;padding:16px}
+.card{background:var(--card);border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px}
+
+/* ── INPUTS ── */
+.field{margin-bottom:14px}
+.field label{font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:border .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--navy)}
+.field textarea{resize:vertical;min-height:70px;line-height:1.5}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── RATING STARS ── */
+.comp-item{border:1.5px solid var(--border);border-radius:11px;padding:14px;margin-bottom:10px;transition:border .2s}
+.comp-item:has(.rating-btn.sel){border-color:var(--green)}
+.comp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px}
+.comp-name{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.comp-peso{font-size:10px;font-weight:700;background:var(--bg);color:var(--muted);padding:2px 7px;border-radius:20px;white-space:nowrap}
+.rating-row{display:flex;gap:6px;margin-bottom:8px}
+.rating-btn{flex:1;padding:8px 2px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--muted);text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.rating-btn:hover{border-color:var(--green);color:var(--green-dark)}
+.rating-btn.sel{border-color:var(--green);background:var(--green);color:#fff}
+.rating-btn.sel-1{border-color:var(--red)!important;background:var(--red)!important;color:#fff!important}
+.rating-btn.sel-2{border-color:var(--amber)!important;background:var(--amber)!important;color:#fff!important}
+.rating-btn.sel-3{border-color:#6366f1!important;background:#6366f1!important;color:#fff!important}
+.rating-btn.sel-4{border-color:var(--green-dark)!important;background:var(--green-dark)!important;color:#fff!important}
+.rating-btn.sel-5{border-color:#16a34a!important;background:#16a34a!important;color:#fff!important}
+.rating-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-weight:600;padding:0 2px}
+.comp-obs input{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--text);margin-top:6px;outline:none}
+.comp-obs input:focus{border-color:var(--navy)}
+.comp-score-live{font-size:11px;font-weight:700;color:var(--green-dark);text-align:right;margin-top:4px;min-height:16px}
+
+/* ── CHECKBOXES ── */
+.checks-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.check-item{display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.check-item:has(input:checked){border-color:var(--green);background:#f0fdf4}
+.check-item input{display:none}
+.check-box{width:16px;height:16px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.check-item:has(input:checked) .check-box{background:var(--green);border-color:var(--green)}
+.check-item:has(input:checked) .check-box::after{content:"✓";font-size:10px;color:#fff;font-weight:800}
+.check-item .check-label{font-size:11px;font-weight:600;color:var(--text2);line-height:1.3}
+.check-neg .check-item:has(input:checked){border-color:var(--red);background:#fef2f2}
+.check-neg .check-item:has(input:checked) .check-box{background:var(--red);border-color:var(--red)}
+
+/* ── GAUGE ── */
+.score-gauge{text-align:center;padding:8px 0}
+.gauge-circle{width:120px;height:120px;margin:0 auto 12px;position:relative}
+.gauge-svg{width:100%;height:100%}
+.gauge-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:800;color:var(--navy)}
+.gauge-label{font-size:11px;font-weight:700;color:var(--muted);margin-top:-2px}
+.score-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.score-bar-label{font-size:11px;font-weight:700;color:var(--text2);width:160px;flex-shrink:0}
+.score-bar-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.score-bar-val{font-size:11px;font-weight:800;color:var(--navy);width:32px;text-align:right}
+
+/* ── RECOMENDAÇÃO ── */
+.rec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rec-btn{padding:14px 8px;border:2px solid var(--border);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:#fff;-webkit-tap-highlight-color:transparent}
+.rec-btn:hover{border-color:var(--green)}
+.rec-btn.active-c{border-color:#16a34a;background:#f0fdf4}
+.rec-btn.active-b{border-color:var(--amber);background:#fffbeb}
+.rec-btn.active-n{border-color:var(--red);background:#fef2f2}
+.rec-icon{font-size:22px;margin-bottom:6px}
+.rec-label{font-size:10px;font-weight:800;color:var(--text);line-height:1.3}
+
+/* ── DISC BADGE ── */
+.disc-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800}
+.disc-D{background:#fee2e2;color:#dc2626}
+.disc-I{background:#fef3c7;color:#d97706}
+.disc-S{background:#dcfce7;color:#16a34a}
+.disc-C{background:#e0e7ff;color:#4f46e5}
+.disc-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+
+/* ── TEMPLATE CHIPS ── */
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.tpl-btn{padding:10px 6px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--text2);background:#fff;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.tpl-btn:hover,.tpl-btn.active{border-color:var(--navy);background:var(--navy);color:#fff}
+.tpl-icon{font-size:18px;display:block;margin-bottom:4px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 20px;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{background:#162d4a}
+.btn-green{background:var(--green-dark);color:#fff}.btn-green:hover{background:#4aa07a}
+.btn-outline{background:#fff;color:var(--navy);border:2px solid var(--navy)}
+.btn-red{background:var(--red);color:#fff}
+.btn-full{width:100%}
+.btn-sm{padding:8px 14px;font-size:11px}
+
+/* ── PARECER ── */
+.parecer-box{background:#f8fafc;border:1.5px solid var(--border);border-radius:11px;padding:16px;font-size:12.5px;line-height:1.8;color:var(--text);white-space:pre-wrap;min-height:120px}
+.parecer-edit{width:100%;background:#f8fafc;border:1.5px solid var(--border);border-radius:11px;padding:16px;font-size:12.5px;line-height:1.8;color:var(--text);font-family:'Montserrat',sans-serif;resize:vertical;min-height:180px;outline:none}
+.parecer-edit:focus{border-color:var(--navy)}
+
+/* ── HISTÓRICO ── */
+.hist-item{border:1.5px solid var(--border);border-radius:11px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border .15s}
+.hist-item:hover{border-color:var(--navy)}
+.hist-nome{font-size:14px;font-weight:800;color:var(--text)}
+.hist-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.hist-score{font-size:20px;font-weight:800}
+
+/* ── NAVEGAÇÃO INFERIOR ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;z-index:99}
+.nav-btn{flex:1;padding:12px 4px 10px;text-align:center;cursor:pointer;border:none;background:none;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;color:var(--muted);transition:color .15s;-webkit-tap-highlight-color:transparent}
+.nav-btn.active{color:var(--navy)}
+.nav-btn .nav-icon{font-size:18px;display:block;margin-bottom:3px}
+
+/* ── TAGS ── */
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.tag-green{background:#dcfce7;color:#16a34a}
+.tag-amber{background:#fef3c7;color:#b45309}
+.tag-red{background:#fee2e2;color:#dc2626}
+.tag-blue{background:#e0e7ff;color:#4338ca}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff;padding:0}
+  .screen{display:block!important}
+  #screen-form,.bottom-nav,.topbar,.no-print{display:none!important}
+  #screen-relatorio{display:block!important;padding:0}
+  .card{box-shadow:none;border:1px solid #e2e8f0;break-inside:avoid;margin-bottom:10px}
+  .print-only{display:block!important}
+}
+.print-only{display:none}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* ── ALERT ── */
+.alert{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:600;margin-bottom:12px}
+.alert-info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+
+/* ── DISC COMPAT ── */
+.disc-compat-bar{height:10px;border-radius:5px;background:var(--border);overflow:hidden;margin:6px 0 12px}
+.disc-compat-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--green-dark),#16a34a)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">Effect <span>Pessoas</span></div>
+  <div id="live-score-top" class="topbar-score" style="display:none">
+    <span id="live-score-num">0</span>
+    <small>SCORE</small>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TELA: FORMULÁRIO -->
+<div id="screen-form" class="screen active">
+<div class="container">
+
+  <!-- CABEÇALHO DO CANDIDATO -->
+  <div class="card">
+    <div class="card-title">Dados da Avaliação</div>
+    <div class="field-row">
+      <div class="field"><label>Nome do Candidato</label><input id="f-nome" type="text" placeholder="Nome completo"></div>
+      <div class="field"><label>WhatsApp</label><input id="f-tel" type="text" placeholder="(27) 9xxxx-xxxx"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Vaga</label><input id="f-vaga" type="text" placeholder="Cargo pretendido"></div>
+      <div class="field"><label>Empresa / Cliente</label><input id="f-empresa" type="text" placeholder="Nome do cliente"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Data da Entrevista</label><input id="f-data" type="date"></div>
+      <div class="field"><label>Entrevistador(a)</label><input id="f-entrevistador" type="text" placeholder="Seu nome"></div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE DE CARGO -->
+  <div class="card">
+    <div class="card-title">Template de Avaliação</div>
+    <div class="tpl-grid">
+      <button class="tpl-btn" onclick="aplicarTemplate('operacional')"><span class="tpl-icon">🏭</span>Operacional</button>
+      <button class="tpl-btn" onclick="aplicarTemplate('atendimento')"><span class="tpl-icon">🛍️</span>Atendimento / Vendas</button>
+      <button class="tpl-btn" onclick="aplicarTemplate('administrativo')"><span class="tpl-icon">📋</span>Administrativo</button>
+      <button class="tpl-btn" onclick="aplicarTemplate('lideranca')"><span class="tpl-icon">👔</span>Liderança</button>
+      <button class="tpl-btn" onclick="aplicarTemplate('motorista')"><span class="tpl-icon">🚚</span>Motorista / Log.</button>
+      <button class="tpl-btn" onclick="aplicarTemplate('personalizado')"><span class="tpl-icon">⚙️</span>Personalizado</button>
+    </div>
+    <div id="tpl-descricao" class="alert alert-info" style="display:none"></div>
+  </div>
+
+  <!-- COMPETÊNCIAS TÉCNICAS -->
+  <div id="bloco-tecnicas" class="card" style="display:none">
+    <div class="section-title">🔧 Competências Técnicas</div>
+    <div id="comps-tecnicas"></div>
+  </div>
+
+  <!-- COMPETÊNCIAS COMPORTAMENTAIS -->
+  <div id="bloco-comportamentais" class="card" style="display:none">
+    <div class="section-title">🧠 Competências Comportamentais</div>
+    <div id="comps-comportamentais"></div>
+  </div>
+
+  <!-- FIT CULTURAL / CONTEXTUAL -->
+  <div id="bloco-fit" class="card" style="display:none">
+    <div class="section-title">🎯 Fit Cultural e Contextual</div>
+    <div id="comps-fit"></div>
+  </div>
+
+  <!-- OBSERVAÇÕES RÁPIDAS -->
+  <div id="bloco-obs" class="card" style="display:none">
+    <div class="card-title">Observações da Entrevista</div>
+
+    <div class="section-title" style="color:#16a34a">✅ Pontos positivos observados</div>
+    <div class="checks-grid" id="checks-pos" style="margin-bottom:16px"></div>
+
+    <div class="section-title" style="color:var(--red);margin-top:4px">⚠️ Pontos de atenção observados</div>
+    <div class="checks-grid check-neg" id="checks-neg"></div>
+
+    <div class="divider"></div>
+    <div class="field">
+      <label>Observações livres do entrevistador</label>
+      <textarea id="obs-livre" placeholder="Anote impressões, percepções, comportamentos observados durante a entrevista..." rows="4"></textarea>
+    </div>
+  </div>
+
+  <!-- DISC (se disponível) -->
+  <div id="bloco-disc" class="card">
+    <div class="card-title">Perfil DISC</div>
+    <div id="disc-content">
+      <div class="field">
+        <label>Perfil DISC do candidato (se já realizado)</label>
+        <select id="disc-select" onchange="atualizarDISC()">
+          <option value="">-- Não realizado ainda --</option>
+          <option value="D">D — Dominante (direto, decidido, orientado a resultado)</option>
+          <option value="I">I — Influente (comunicativo, entusiasta, sociável)</option>
+          <option value="S">S — Estável (paciente, confiável, colaborativo)</option>
+          <option value="C">C — Conformidade (analítico, preciso, sistemático)</option>
+          <option value="DI">DI — Dominante / Influente</option>
+          <option value="DC">DC — Dominante / Conformidade</option>
+          <option value="ID">ID — Influente / Dominante</option>
+          <option value="IS">IS — Influente / Estável</option>
+          <option value="SI">SI — Estável / Influente</option>
+          <option value="SC">SC — Estável / Conformidade</option>
+          <option value="CS">CS — Conformidade / Estável</option>
+          <option value="CD">CD — Conformidade / Dominante</option>
+        </select>
+      </div>
+      <div id="disc-info" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- SCORE AO VIVO -->
+  <div id="bloco-score" class="card" style="display:none">
+    <div class="card-title">Score Composto</div>
+    <div class="score-gauge">
+      <div class="gauge-circle">
+        <svg class="gauge-svg" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+          <circle id="gauge-arc" cx="60" cy="60" r="50" fill="none" stroke="#8ed1b2" stroke-width="12"
+            stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .5s,stroke .3s"/>
+        </svg>
+        <div class="gauge-num" id="gauge-num">0</div>
+      </div>
+      <div id="gauge-rec-tag"></div>
+    </div>
+    <div style="margin-top:14px" id="score-breakdown"></div>
+  </div>
+
+  <!-- RECOMENDAÇÃO -->
+  <div id="bloco-rec" class="card" style="display:none">
+    <div class="card-title">Recomendação Final</div>
+    <div class="rec-grid">
+      <div class="rec-btn" id="rec-c" onclick="setRec('contratar')">
+        <div class="rec-icon">✅</div>
+        <div class="rec-label">Recomendar<br>Contratação</div>
+      </div>
+      <div class="rec-btn" id="rec-b" onclick="setRec('banco')">
+        <div class="rec-icon">📂</div>
+        <div class="rec-label">Banco de<br>Talentos</div>
+      </div>
+      <div class="rec-btn" id="rec-n" onclick="setRec('nao')">
+        <div class="rec-icon">❌</div>
+        <div class="rec-label">Não<br>Recomendar</div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label>Justificativa da recomendação</label>
+      <textarea id="f-justificativa" placeholder="Descreva brevemente o motivo da recomendação..." rows="3"></textarea>
+    </div>
+  </div>
+
+  <!-- AÇÕES -->
+  <div id="bloco-acoes" class="card" style="display:none">
+    <button class="btn btn-primary btn-full" onclick="gerarRelatorio()" style="margin-bottom:10px">
+      📄 Gerar Parecer e Relatório
+    </button>
+    <button class="btn btn-outline btn-full btn-sm" onclick="salvarRascunho()">
+      💾 Salvar Rascunho
+    </button>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TELA: RELATÓRIO -->
+<div id="screen-relatorio" class="screen">
+<div class="container">
+
+  <div class="card no-print" style="margin-bottom:14px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="voltarForm()">← Editar</button>
+      <button class="btn btn-green btn-sm" onclick="copiarParecer()">📋 Copiar Parecer</button>
+    </div>
+  </div>
+
+  <!-- CABEÇALHO DO RELATÓRIO -->
+  <div class="card" id="rel-header"></div>
+
+  <!-- SCORE -->
+  <div class="card" id="rel-score"></div>
+
+  <!-- COMPETÊNCIAS -->
+  <div class="card" id="rel-competencias"></div>
+
+  <!-- DISC -->
+  <div class="card" id="rel-disc" style="display:none"></div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="card" id="rel-obs"></div>
+
+  <!-- PARECER -->
+  <div class="card" id="rel-parecer">
+    <div class="card-title">Parecer da Entrevista</div>
+    <textarea class="parecer-edit" id="parecer-texto" rows="12"></textarea>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm no-print" onclick="regenerarParecer()">🔄 Regenerar</button>
+      <button class="btn btn-green btn-sm no-print" onclick="copiarParecer()">📋 Copiar</button>
+    </div>
+  </div>
+
+  <!-- ASSINATURA -->
+  <div class="card print-only" id="rel-assinatura">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px">
+      <div><div style="border-top:1.5px solid #374151;padding-top:8px;font-size:11px;color:var(--muted);text-align:center">Entrevistador(a)</div></div>
+      <div><div style="border-top:1.5px solid #374151;padding-top:8px;font-size:11px;color:var(--muted);text-align:center">Data</div></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TELA: HISTÓRICO -->
+<div id="screen-historico" class="screen">
+<div class="container">
+  <div class="card">
+    <div class="card-title">Avaliações Salvas</div>
+    <div id="hist-lista">
+      <p style="color:var(--muted);font-size:13px">Nenhuma avaliação salva ainda.</p>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn btn-outline btn-sm btn-full" onclick="exportarHistorico()">📤 Exportar Histórico (JSON)</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ NAVEGAÇÃO -->
+<div class="bottom-nav no-print">
+  <button class="nav-btn active" id="nav-form" onclick="mostrarTela('form')">
+    <span class="nav-icon">📝</span>Avaliação
+  </button>
+  <button class="nav-btn" id="nav-relatorio" onclick="mostrarTela('relatorio')">
+    <span class="nav-icon">📄</span>Relatório
+  </button>
+  <button class="nav-btn" id="nav-historico" onclick="mostrarTela('historico');carregarHistorico()">
+    <span class="nav-icon">🗂️</span>Histórico
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─── TEMPLATES POR CARGO ─────────────────────────────────────────────────────
+const TEMPLATES = {
+  operacional: {
+    nome: "Operacional",
+    descricao: "Auxiliar, limpeza, produção, serviços gerais, estoque.",
+    tecnicas: [
+      { id:"t1", nome:"Experiência anterior na função", peso:25 },
+      { id:"t2", nome:"Conhecimento técnico específico da área", peso:15 },
+      { id:"t3", nome:"Documentação apta / sem restrições", peso:10 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Apresentação pessoal e higiene", peso:10 },
+      { id:"c2", nome:"Comunicação básica e compreensão", peso:10 },
+      { id:"c3", nome:"Disposição, energia e pró-atividade", peso:15 },
+      { id:"c4", nome:"Postura e comprometimento", peso:10 }
+    ],
+    fit: [
+      { id:"f1", nome:"Disponibilidade de horário / escala", peso:10 },
+      { id:"f2", nome:"Motivação e interesse genuíno pela vaga", peso:5 }
+    ]
+  },
+  atendimento: {
+    nome: "Atendimento / Vendas",
+    descricao: "Vendedor, atendente, recepcionista, consultor comercial.",
+    tecnicas: [
+      { id:"t1", nome:"Experiência em vendas ou atendimento", peso:20 },
+      { id:"t2", nome:"Conhecimento do setor / produto", peso:10 },
+      { id:"t3", nome:"Domínio de sistemas / ferramentas", peso:10 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Comunicação, dicção e argumentação", peso:15 },
+      { id:"c2", nome:"Empatia e escuta ativa", peso:10 },
+      { id:"c3", nome:"Proatividade e iniciativa", peso:10 },
+      { id:"c4", nome:"Gestão de situações difíceis / objeções", peso:10 }
+    ],
+    fit: [
+      { id:"f1", nome:"Fit com a cultura do cliente", peso:8 },
+      { id:"f2", nome:"Motivação e alinhamento de expectativas", peso:7 }
+    ]
+  },
+  administrativo: {
+    nome: "Administrativo",
+    descricao: "Assistente, analista, auxiliar administrativo, financeiro, RH.",
+    tecnicas: [
+      { id:"t1", nome:"Conhecimento técnico da função", peso:20 },
+      { id:"t2", nome:"Domínio de Excel / sistemas / ferramentas", peso:15 },
+      { id:"t3", nome:"Trajetória profissional coerente", peso:10 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Organização e método de trabalho", peso:15 },
+      { id:"c2", nome:"Atenção a detalhes e qualidade", peso:10 },
+      { id:"c3", nome:"Comunicação escrita e oral", peso:10 },
+      { id:"c4", nome:"Resolução de problemas e iniciativa", peso:5 }
+    ],
+    fit: [
+      { id:"f1", nome:"Alinhamento com a cultura da empresa", peso:8 },
+      { id:"f2", nome:"Expectativas salariais e de crescimento", peso:7 }
+    ]
+  },
+  lideranca: {
+    nome: "Liderança / Supervisão",
+    descricao: "Coordenador, supervisor, gerente, líder de equipe.",
+    tecnicas: [
+      { id:"t1", nome:"Experiência comprovada em gestão de pessoas", peso:15 },
+      { id:"t2", nome:"Conhecimento técnico do setor gerenciado", peso:12 },
+      { id:"t3", nome:"Histórico de resultados e metas atingidas", peso:8 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Liderança, influência e inspiração", peso:15 },
+      { id:"c2", nome:"Tomada de decisão sob pressão", peso:12 },
+      { id:"c3", nome:"Inteligência emocional e maturidade", peso:10 },
+      { id:"c4", nome:"Comunicação, feedback e escuta ativa", peso:8 },
+      { id:"c5", nome:"Visão estratégica e planejamento", peso:5 }
+    ],
+    fit: [
+      { id:"f1", nome:"Alinhamento de valores e estilo de gestão", peso:8 },
+      { id:"f2", nome:"Compatibilidade com a equipe existente", peso:7 }
+    ]
+  },
+  motorista: {
+    nome: "Motorista / Logística",
+    descricao: "Motorista entregador, motorista de frota, operador logístico.",
+    tecnicas: [
+      { id:"t1", nome:"Habilitação válida e categoria adequada", peso:20 },
+      { id:"t2", nome:"Experiência de direção / anos de habilitação", peso:15 },
+      { id:"t3", nome:"Conhecimento de rotas e região", peso:10 },
+      { id:"t4", nome:"Noção de manutenção básica de veículo", peso:5 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Responsabilidade e comprometimento", peso:15 },
+      { id:"c2", nome:"Atenção, cautela e cuidado com o veículo", peso:10 },
+      { id:"c3", nome:"Comunicação e relacionamento com clientes", peso:8 }
+    ],
+    fit: [
+      { id:"f1", nome:"Disponibilidade de horários e escalas", peso:10 },
+      { id:"f2", nome:"Estabilidade e planos de permanência", peso:7 }
+    ]
+  },
+  personalizado: {
+    nome: "Personalizado",
+    descricao: "Monte suas próprias competências e pesos.",
+    tecnicas: [
+      { id:"t1", nome:"Competência técnica 1", peso:20 },
+      { id:"t2", nome:"Competência técnica 2", peso:20 },
+      { id:"t3", nome:"Competência técnica 3", peso:10 }
+    ],
+    comportamentais: [
+      { id:"c1", nome:"Competência comportamental 1", peso:15 },
+      { id:"c2", nome:"Competência comportamental 2", peso:15 },
+      { id:"c3", nome:"Competência comportamental 3", peso:10 }
+    ],
+    fit: [
+      { id:"f1", nome:"Fit / contexto 1", peso:5 },
+      { id:"f2", nome:"Fit / contexto 2", peso:5 }
+    ]
+  }
+};
+
+// ─── OBSERVAÇÕES RÁPIDAS ─────────────────────────────────────────────────────
+const OBS_POSITIVAS = [
+  "Chegou no horário","Boa apresentação pessoal","Comunicação clara e objetiva",
+  "Demonstrou conhecimento técnico","Fez perguntas relevantes","Postura profissional",
+  "Interesse genuíno pela vaga","Trajetória profissional consistente",
+  "Referências positivas disponíveis","Energia e disposição evidentes",
+  "Facilidade de comunicação","Boa memória de detalhes e fatos"
+];
+const OBS_NEGATIVAS = [
+  "Chegou atrasado(a)","Apresentação abaixo do esperado","Nervosismo excessivo",
+  "Comunicação difícil ou truncada","Histórico com muitas trocas de emprego",
+  "Pretensão salarial acima da faixa","Inconsistências no relato",
+  "Restrições de horário não informadas","Demonstrou desinteresse pela vaga",
+  "Referências não disponíveis","Usou celular durante a entrevista",
+  "Respostas evasivas ou genéricas"
+];
+
+// ─── DISC INFO ────────────────────────────────────────────────────────────────
+const DISC_INFO = {
+  D:{ cor:"#dc2626", nome:"Dominante", resumo:"Direto, decidido, orientado a resultado e desafios.", pontos:["Toma decisões rápidas","Assume liderança naturalmente","Foco em resultados"], atencao:["Pode ser impaciente com processos","Pode gerar conflito com perfis mais passivos"] },
+  I:{ cor:"#d97706", nome:"Influente",  resumo:"Comunicativo, entusiasta, sociável e persuasivo.",  pontos:["Cria conexões com facilidade","Engaja e motiva equipes","Ótimo em atendimento e vendas"], atencao:["Pode faltar foco em detalhes e prazos","Pode ser impulsivo em decisões"] },
+  S:{ cor:"#16a34a", nome:"Estável",    resumo:"Paciente, confiável, colaborativo e constante.",    pontos:["Alta confiabilidade e constância","Ótimo suporte à equipe","Lida bem com rotina e processos"], atencao:["Pode ter dificuldade com mudanças rápidas","Pode evitar conflitos necessários"] },
+  C:{ cor:"#4f46e5", nome:"Conformidade",resumo:"Analítico, preciso, sistemático e criterioso.",   pontos:["Alta qualidade e atenção a detalhes","Trabalha bem com dados e processos","Confiável em entregas técnicas"], atencao:["Pode ser lento em decisões sem dados completos","Pode parecer distante em ambientes relacionais"] }
+};
+
+// ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
+let templateAtual = null;
+let notas = {};
+let recAtual = "";
+let discAtual = "";
+
+// ─── INICIALIZAÇÃO ────────────────────────────────────────────────────────────
+window.onload = function() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get("nome"))    document.getElementById("f-nome").value    = p.get("nome");
+  if (p.get("telefone"))document.getElementById("f-tel").value     = p.get("telefone");
+  if (p.get("vaga"))    document.getElementById("f-vaga").value    = p.get("vaga");
+  if (p.get("empresa")) document.getElementById("f-empresa").value = p.get("empresa");
+  if (p.get("disc"))  { document.getElementById("disc-select").value = p.get("disc"); atualizarDISC(); }
+  document.getElementById("f-data").value = new Date().toISOString().slice(0,10);
+  document.getElementById("f-entrevistador").value = "Thiara Freire";
+
+  // Carregar rascunho se existir
+  const draft = localStorage.getItem("avaliacao_draft");
+  if (draft) try { carregarRascunho(JSON.parse(draft)); } catch(e){}
+
+  renderChecks();
+};
+
+// ─── TELAS ────────────────────────────────────────────────────────────────────
+function mostrarTela(tela) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("screen-" + tela).classList.add("active");
+  document.getElementById("nav-" + tela).classList.add("active");
+}
+function voltarForm() { mostrarTela("form"); }
+
+// ─── TEMPLATE ─────────────────────────────────────────────────────────────────
+function aplicarTemplate(id) {
+  templateAtual = id;
+  notas = {};
+  const tpl = TEMPLATES[id];
+
+  // Highlight botão ativo
+  document.querySelectorAll(".tpl-btn").forEach(b => b.classList.remove("active"));
+  event.currentTarget.classList.add("active");
+
+  // Descrição
+  const desc = document.getElementById("tpl-descricao");
+  desc.textContent = tpl.descricao;
+  desc.style.display = "block";
+
+  renderComps("comps-tecnicas", tpl.tecnicas, "tec");
+  renderComps("comps-comportamentais", tpl.comportamentais, "comp");
+  renderComps("comps-fit", tpl.fit, "fit");
+
+  ["bloco-tecnicas","bloco-comportamentais","bloco-fit","bloco-obs","bloco-score","bloco-rec","bloco-acoes"].forEach(id => {
+    document.getElementById(id).style.display = "block";
+  });
+  document.getElementById("live-score-top").style.display = "block";
+  recalcularScore();
+}
+
+function renderComps(containerId, comps, prefix) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = "";
+  comps.forEach(comp => {
+    const key = prefix + "_" + comp.id;
+    c.insertAdjacentHTML("beforeend", `
+      <div class="comp-item" id="item-${key}">
+        <div class="comp-header">
+          <div class="comp-name" id="nome-${key}" contenteditable="${templateAtual==='personalizado'}"
+            onblur="renomearComp('${key}','${prefix}','${comp.id}',this.textContent)"
+            style="${templateAtual==='personalizado'?'cursor:text;border-bottom:1px dashed var(--muted)':''}"
+          >${comp.nome}</div>
+          <div class="comp-peso">
+            <span id="peso-display-${key}">${comp.peso}%</span>
+            ${templateAtual==='personalizado' ? `<input type="number" value="${comp.peso}" min="1" max="100"
+              style="width:44px;border:none;border-bottom:1px solid var(--border);font-size:11px;font-family:'Montserrat',sans-serif;background:transparent;text-align:right"
+              onchange="alterarPeso('${key}','${prefix}','${comp.id}',this.value)">%` : ''}
+          </div>
+        </div>
+        <div class="rating-row">
+          ${[1,2,3,4,5].map(n => `<button class="rating-btn" onclick="setNota('${key}',${n},this)" title="${labelNota(n)}">${n}</button>`).join("")}
+        </div>
+        <div class="rating-labels"><span>Muito abaixo</span><span>Esperado</span><span>Excelente</span></div>
+        <div class="comp-obs"><input type="text" placeholder="Observação rápida (opcional)"
+          onchange="setObs('${key}',this.value)" id="obs-${key}"></div>
+        <div class="comp-score-live" id="live-${key}"></div>
+      </div>
+    `);
+  });
+}
+
+function labelNota(n) {
+  return ["","Muito abaixo do esperado","Abaixo do esperado","Dentro do esperado","Acima do esperado","Muito acima do esperado"][n];
+}
+
+function setNota(key, valor, btn) {
+  notas[key] = notas[key] || {};
+  notas[key].nota = valor;
+  // Visual
+  btn.closest(".rating-row").querySelectorAll(".rating-btn").forEach(b => {
+    b.className = "rating-btn";
+  });
+  btn.classList.add("sel", "sel-" + valor);
+  document.getElementById("live-" + key).textContent = labelNota(valor);
+  recalcularScore();
+  salvarRascunhoAuto();
+}
+
+function setObs(key, val) {
+  notas[key] = notas[key] || {};
+  notas[key].obs = val;
+}
+
+function renomearComp(key, prefix, id, nome) {
+  if (!TEMPLATES.personalizado) return;
+  const grupo = prefix === "tec" ? "tecnicas" : prefix === "comp" ? "comportamentais" : "fit";
+  const item = TEMPLATES.personalizado[grupo].find(c => c.id === id);
+  if (item) item.nome = nome.trim();
+}
+
+function alterarPeso(key, prefix, id, val) {
+  const grupo = prefix === "tec" ? "tecnicas" : prefix === "comp" ? "comportamentais" : "fit";
+  const item = TEMPLATES.personalizado[grupo].find(c => c.id === id);
+  if (item) { item.peso = parseInt(val) || 0; recalcularScore(); }
+}
+
+// ─── SCORE ────────────────────────────────────────────────────────────────────
+function recalcularScore() {
+  if (!templateAtual) return;
+  const tpl = TEMPLATES[templateAtual];
+  const allComps = [
+    ...tpl.tecnicas.map(c => ({ ...c, prefix: "tec" })),
+    ...tpl.comportamentais.map(c => ({ ...c, prefix: "comp" })),
+    ...tpl.fit.map(c => ({ ...c, prefix: "fit" }))
+  ];
+
+  let totalPeso = 0, totalPonderado = 0;
+  const grupos = { tec: { nome: "Técnicas", total: 0, peso: 0 }, comp: { nome: "Comportamentais", total: 0, peso: 0 }, fit: { nome: "Fit", total: 0, peso: 0 } };
+
+  allComps.forEach(comp => {
+    const key = comp.prefix + "_" + comp.id;
+    const nota = notas[key]?.nota || 0;
+    const contribuicao = nota > 0 ? (nota / 5) * comp.peso : 0;
+    totalPonderado += contribuicao;
+    totalPeso += comp.peso;
+    grupos[comp.prefix].total += contribuicao;
+    grupos[comp.prefix].peso += comp.peso;
+  });
+
+  const score = totalPeso > 0 ? Math.round((totalPonderado / totalPeso) * 100) : 0;
+
+  // Gauge
+  document.getElementById("gauge-num").textContent = score;
+  document.getElementById("live-score-num").textContent = score;
+  const arc = document.getElementById("gauge-arc");
+  const circum = 314;
+  arc.setAttribute("stroke-dashoffset", circum - (score / 100) * circum);
+  arc.setAttribute("stroke", score >= 80 ? "#16a34a" : score >= 60 ? "#d97706" : "#dc2626");
+
+  // Tag de recomendação automática
+  const tag = document.getElementById("gauge-rec-tag");
+  if (score >= 80) {
+    tag.innerHTML = '<span class="tag tag-green">✅ Recomendar Contratação</span>';
+    if (!recAtual) setRec("contratar");
+  } else if (score >= 60) {
+    tag.innerHTML = '<span class="tag tag-amber">📂 Banco de Talentos</span>';
+    if (!recAtual) setRec("banco");
+  } else if (score > 0) {
+    tag.innerHTML = '<span class="tag tag-red">❌ Não Recomendar</span>';
+    if (!recAtual) setRec("nao");
+  } else {
+    tag.innerHTML = "";
+  }
+
+  // Breakdown por grupo
+  const breakdown = document.getElementById("score-breakdown");
+  breakdown.innerHTML = Object.entries(grupos).map(([k, g]) => {
+    const pct = g.peso > 0 ? Math.round((g.total / g.peso) * 100) : 0;
+    const cor = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+    return `<div class="score-bar-row">
+      <div class="score-bar-label">${g.nome}</div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${cor}"></div></div>
+      <div class="score-bar-val">${pct}</div>
+    </div>`;
+  }).join("");
+
+  return score;
+}
+
+// ─── RECOMENDAÇÃO ─────────────────────────────────────────────────────────────
+function setRec(tipo) {
+  recAtual = tipo;
+  document.getElementById("rec-c").className = "rec-btn" + (tipo === "contratar" ? " active-c" : "");
+  document.getElementById("rec-b").className = "rec-btn" + (tipo === "banco"     ? " active-b" : "");
+  document.getElementById("rec-n").className = "rec-btn" + (tipo === "nao"       ? " active-n" : "");
+}
+
+// ─── CHECKBOXES DE OBSERVAÇÃO ─────────────────────────────────────────────────
+function renderChecks() {
+  const cp = document.getElementById("checks-pos");
+  const cn = document.getElementById("checks-neg");
+  cp.innerHTML = OBS_POSITIVAS.map((obs, i) => `
+    <label class="check-item"><input type="checkbox" id="op${i}"><div class="check-box"></div><span class="check-label">${obs}</span></label>
+  `).join("");
+  cn.innerHTML = OBS_NEGATIVAS.map((obs, i) => `
+    <label class="check-item"><input type="checkbox" id="on${i}"><div class="check-box"></div><span class="check-label">${obs}</span></label>
+  `).join("");
+}
+
+function coletarChecks() {
+  const pos = [], neg = [];
+  OBS_POSITIVAS.forEach((obs, i) => { if (document.getElementById("op" + i)?.checked) pos.push(obs); });
+  OBS_NEGATIVAS.forEach((obs, i) => { if (document.getElementById("on" + i)?.checked) neg.push(obs); });
+  return { pos, neg };
+}
+
+// ─── DISC ─────────────────────────────────────────────────────────────────────
+function atualizarDISC() {
+  discAtual = document.getElementById("disc-select").value;
+  const info = document.getElementById("disc-info");
+  if (!discAtual) { info.style.display = "none"; return; }
+
+  const prim = discAtual[0];
+  const d = DISC_INFO[prim];
+  if (!d) { info.style.display = "none"; return; }
+
+  info.style.display = "block";
+  info.innerHTML = `
+    <div class="disc-row"><span class="disc-badge disc-${prim}">${discAtual} — ${d.nome}</span></div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6">${d.resumo}</p>
+    <div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:6px">Pontos fortes do perfil</div>
+    ${d.pontos.map(p => `<div style="font-size:11px;color:var(--text2);padding:3px 0">✅ ${p}</div>`).join("")}
+    <div style="font-size:11px;font-weight:800;color:var(--red);margin:10px 0 6px">Pontos de atenção</div>
+    ${d.atencao.map(p => `<div style="font-size:11px;color:var(--text2);padding:3px 0">⚠️ ${p}</div>`).join("")}
+  `;
+}
+
+// ─── COLETA DOS DADOS ─────────────────────────────────────────────────────────
+function coletarDados() {
+  const tpl = templateAtual ? TEMPLATES[templateAtual] : null;
+  const allComps = tpl ? [
+    ...tpl.tecnicas.map(c => ({ ...c, grupo: "Técnicas", prefix: "tec" })),
+    ...tpl.comportamentais.map(c => ({ ...c, grupo: "Comportamentais", prefix: "comp" })),
+    ...tpl.fit.map(c => ({ ...c, grupo: "Fit", prefix: "fit" }))
+  ] : [];
+
+  const competencias = allComps.map(comp => {
+    const key = comp.prefix + "_" + comp.id;
+    return { ...comp, nota: notas[key]?.nota || 0, obs: notas[key]?.obs || "" };
+  });
+
+  const checks = coletarChecks();
+  const score = recalcularScore() || 0;
+
+  return {
+    candidato: {
+      nome: document.getElementById("f-nome").value,
+      telefone: document.getElementById("f-tel").value,
+      vaga: document.getElementById("f-vaga").value,
+      empresa: document.getElementById("f-empresa").value,
+      data: document.getElementById("f-data").value,
+      entrevistador: document.getElementById("f-entrevistador").value
+    },
+    template: tpl ? tpl.nome : "",
+    competencias,
+    score,
+    recomendacao: recAtual,
+    justificativa: document.getElementById("f-justificativa")?.value || "",
+    disc: discAtual,
+    obsPositivas: checks.pos,
+    obsNegativas: checks.neg,
+    obsLivre: document.getElementById("obs-livre")?.value || "",
+    dataSalvo: new Date().toISOString()
+  };
+}
+
+// ─── GERAÇÃO DE PARECER ───────────────────────────────────────────────────────
+function gerarTexoParecer(dados) {
+  const nome = dados.candidato.nome || "o(a) candidato(a)";
+  const vaga = dados.candidato.vaga || "a vaga em questão";
+  const empresa = dados.candidato.empresa ? ` para ${dados.candidato.empresa}` : "";
+  const data = dados.candidato.data ? new Date(dados.candidato.data + "T12:00:00").toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR");
+  const entrev = dados.candidato.entrevistador || "a entrevistadora";
+  const score = dados.score;
+
+  const compAltas = dados.competencias.filter(c => c.nota >= 4).map(c => c.nome);
+  const compBaixas = dados.competencias.filter(c => c.nota <= 2 && c.nota > 0).map(c => c.nome);
+  const compObsRich = dados.competencias.filter(c => c.obs).map(c => `${c.nome}: ${c.obs}`);
+
+  const recTextos = {
+    contratar: "recomendado(a) para contratação imediata",
+    banco: "indicado(a) para compor o banco de talentos, a ser considerado(a) em futuras oportunidades compatíveis com seu perfil",
+    nao: "não recomendado(a) para esta oportunidade neste momento"
+  };
+  const recTexto = recTextos[dados.recomendacao] || "em análise";
+
+  let parecer = `PARECER DE ENTREVISTA\n`;
+  parecer += `Effect Pessoas e Performance · ${data}\n`;
+  parecer += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  parecer += `Candidato(a): ${nome}\n`;
+  parecer += `Vaga: ${vaga}${empresa}\n`;
+  parecer += `Entrevistador(a): ${entrev}\n`;
+  if (dados.disc) parecer += `Perfil DISC: ${dados.disc}\n`;
+  parecer += `Score de Avaliação: ${score}/100\n\n`;
+
+  parecer += `SÍNTESE DA ENTREVISTA\n\n`;
+
+  if (compAltas.length > 0) {
+    parecer += `${nome} demonstrou ${compAltas.length === 1 ? "destaque em" : "pontos fortes em"}: ${compAltas.join(", ")}. `;
+  }
+
+  if (dados.obsPositivas.length > 0) {
+    parecer += `Durante a entrevista foram observados aspectos positivos como: ${dados.obsPositivas.join("; ")}. `;
+  }
+
+  if (compObsRich.length > 0) {
+    parecer += `\n\nObservações específicas por competência:\n`;
+    compObsRich.forEach(o => { parecer += `• ${o}\n`; });
+  }
+
+  if (compBaixas.length > 0) {
+    parecer += `\nPontos que merecem atenção ou desenvolvimento: ${compBaixas.join(", ")}. `;
+  }
+
+  if (dados.obsNegativas.length > 0) {
+    parecer += `Também foram observados: ${dados.obsNegativas.join("; ")}. `;
+  }
+
+  if (dados.obsLivre) {
+    parecer += `\n\nOBSERVAÇÕES ADICIONAIS\n${dados.obsLivre}\n`;
+  }
+
+  if (dados.disc && DISC_INFO[dados.disc[0]]) {
+    const d = DISC_INFO[dados.disc[0]];
+    parecer += `\nPERFIL COMPORTAMENTAL (DISC: ${dados.disc})\n`;
+    parecer += `${nome} apresenta perfil ${d.nome}: ${d.resumo} `;
+    parecer += `Pontos fortes do perfil incluem ${d.pontos[0].toLowerCase()} e ${d.pontos[1].toLowerCase()}. `;
+    if (d.atencao.length > 0) parecer += `Ponto de atenção: ${d.atencao[0].toLowerCase()}.\n`;
+  }
+
+  parecer += `\nCONCLUSÃO E RECOMENDAÇÃO\n`;
+  if (dados.justificativa) {
+    parecer += `${dados.justificativa}\n\n`;
+  }
+  parecer += `Com base na avaliação realizada (score ${score}/100), ${nome} é ${recTexto}.\n`;
+
+  if (dados.recomendacao === "contratar") {
+    parecer += `\nSugere-se o prosseguimento para as próximas etapas do processo seletivo.`;
+  } else if (dados.recomendacao === "banco") {
+    parecer += `\nO perfil será mantido no banco de talentos da Effect para futuras oportunidades.`;
+  } else {
+    parecer += `\nAgradeço a participação do(a) candidato(a) e desejo sucesso na busca pela colocação ideal.`;
+  }
+
+  parecer += `\n\n${entrev}\nEffect Pessoas e Performance`;
+  return parecer;
+}
+
+// ─── GERAR RELATÓRIO ──────────────────────────────────────────────────────────
+function gerarRelatorio() {
+  const dados = coletarDados();
+  const score = dados.score;
+  const scoreColor = score >= 80 ? "#16a34a" : score >= 60 ? "#d97706" : "#dc2626";
+  const recLabel = { contratar: "✅ Recomendar Contratação", banco: "📂 Banco de Talentos", nao: "❌ Não Recomendar" };
+  const recClass = { contratar: "tag-green", banco: "tag-amber", nao: "tag-red" };
+
+  // CABEÇALHO
+  document.getElementById("rel-header").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.1em;margin-bottom:4px">PARECER DE ENTREVISTA · EFFECT PESSOAS</div>
+        <div style="font-size:20px;font-weight:800;color:var(--navy)">${dados.candidato.nome || "—"}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${dados.candidato.vaga || "Vaga não informada"} ${dados.candidato.empresa ? "· " + dados.candidato.empresa : ""}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          ${dados.candidato.data ? new Date(dados.candidato.data+"T12:00:00").toLocaleDateString("pt-BR") : ""} · ${dados.candidato.entrevistador || ""}
+          ${dados.candidato.telefone ? " · +55" + dados.candidato.telefone.replace(/\D/g,"") : ""}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:36px;font-weight:800;color:${scoreColor}">${score}</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700">SCORE / 100</div>
+        ${dados.recomendacao ? `<span class="tag ${recClass[dados.recomendacao]}" style="margin-top:6px;display:inline-block">${recLabel[dados.recomendacao] || ""}</span>` : ""}
+      </div>
+    </div>
+    ${dados.disc ? `<div style="margin-top:12px"><span class="disc-badge disc-${dados.disc[0]}">${dados.disc} — ${DISC_INFO[dados.disc[0]]?.nome || dados.disc}</span></div>` : ""}
+  `;
+
+  // SCORE BREAKDOWN
+  const grupos = {};
+  dados.competencias.forEach(c => {
+    const g = c.grupo;
+    if (!grupos[g]) grupos[g] = { total: 0, peso: 0 };
+    if (c.nota > 0) { grupos[g].total += (c.nota / 5) * c.peso; grupos[g].peso += c.peso; }
+  });
+  document.getElementById("rel-score").innerHTML = `
+    <div class="card-title">Score por Dimensão</div>
+    ${Object.entries(grupos).map(([g, v]) => {
+      const pct = v.peso > 0 ? Math.round((v.total / v.peso) * 100) : 0;
+      const cor = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+      return `<div class="score-bar-row" style="margin-bottom:10px">
+        <div class="score-bar-label">${g}</div>
+        <div class="score-bar-track" style="height:10px"><div class="score-bar-fill" style="width:${pct}%;background:${cor}"></div></div>
+        <div class="score-bar-val">${pct}</div>
+      </div>`;
+    }).join("")}
+  `;
+
+  // COMPETÊNCIAS DETALHADAS
+  const gruposComp = {};
+  dados.competencias.forEach(c => {
+    if (!gruposComp[c.grupo]) gruposComp[c.grupo] = [];
+    gruposComp[c.grupo].push(c);
+  });
+  const cores5 = ["","#dc2626","#d97706","#6366f1","#5bb896","#16a34a"];
+  document.getElementById("rel-competencias").innerHTML = `
+    <div class="card-title">Avaliação por Competência — Template: ${dados.template}</div>
+    ${Object.entries(gruposComp).map(([grupo, comps]) => `
+      <div style="font-size:11px;font-weight:800;color:var(--navy);margin:12px 0 8px;text-transform:uppercase;letter-spacing:.06em">${grupo}</div>
+      ${comps.map(c => {
+        const bar = c.nota > 0 ? `<div style="flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+          <div style="width:${c.nota*20}%;height:100%;background:${cores5[c.nota] || '#ccc'};border-radius:3px"></div></div>` : `<div style="flex:1;height:6px;background:var(--border);border-radius:3px"></div>`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;font-size:12px;color:var(--text)">${c.nome}</div>
+          ${bar}
+          <div style="font-size:11px;font-weight:800;color:${cores5[c.nota]||'var(--muted)'};width:16px;text-align:center">${c.nota || "—"}</div>
+          <div style="font-size:9px;color:var(--muted);width:24px;text-align:right">${c.peso}%</div>
+        </div>
+        ${c.obs ? `<div style="font-size:11px;color:var(--text2);padding:3px 0 6px;font-style:italic">💬 ${c.obs}</div>` : ""}`;
+      }).join("")}
+    `).join("")}
+  `;
+
+  // DISC
+  if (dados.disc && DISC_INFO[dados.disc[0]]) {
+    const d = DISC_INFO[dados.disc[0]];
+    const relDisc = document.getElementById("rel-disc");
+    relDisc.style.display = "block";
+    relDisc.innerHTML = `
+      <div class="card-title">Perfil Comportamental DISC</div>
+      <div class="disc-row"><span class="disc-badge disc-${dados.disc[0]}">${dados.disc} · ${d.nome}</span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6">${d.resumo}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:6px">PONTOS FORTES</div>
+          ${d.pontos.map(p => `<div style="font-size:11px;color:var(--text2);padding:3px 0">✅ ${p}</div>`).join("")}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--red);margin-bottom:6px">PONTOS DE ATENÇÃO</div>
+          ${d.atencao.map(p => `<div style="font-size:11px;color:var(--text2);padding:3px 0">⚠️ ${p}</div>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // OBSERVAÇÕES
+  const checks = coletarChecks();
+  const obsLivre = document.getElementById("obs-livre")?.value || "";
+  let obsHtml = '<div class="card-title">Observações da Entrevista</div>';
+  if (checks.pos.length > 0) {
+    obsHtml += `<div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:6px">POSITIVOS</div>`;
+    obsHtml += checks.pos.map(o => `<span class="tag tag-green" style="margin:3px 4px 3px 0;display:inline-block">${o}</span>`).join("");
+  }
+  if (checks.neg.length > 0) {
+    obsHtml += `<div style="font-size:10px;font-weight:800;color:var(--red);margin:10px 0 6px">ATENÇÃO</div>`;
+    obsHtml += checks.neg.map(o => `<span class="tag tag-red" style="margin:3px 4px 3px 0;display:inline-block">${o}</span>`).join("");
+  }
+  if (obsLivre) obsHtml += `<div class="divider"></div><p style="font-size:12px;color:var(--text2);line-height:1.7;font-style:italic">${obsLivre}</p>`;
+  document.getElementById("rel-obs").innerHTML = obsHtml;
+
+  // PARECER
+  document.getElementById("parecer-texto").value = gerarTexoParecer(dados);
+
+  // SALVAR NO HISTÓRICO
+  salvarNoHistorico(dados);
+
+  mostrarTela("relatorio");
+}
+
+function regenerarParecer() {
+  const dados = coletarDados();
+  document.getElementById("parecer-texto").value = gerarTexoParecer(dados);
+}
+
+function copiarParecer() {
+  const texto = document.getElementById("parecer-texto").value;
+  navigator.clipboard.writeText(texto).then(() => alert("Parecer copiado!")).catch(() => {
+    document.getElementById("parecer-texto").select();
+    document.execCommand("copy");
+  });
+}
+
+// ─── RASCUNHO AUTOMÁTICO ─────────────────────────────────────────────────────
+function salvarRascunhoAuto() {
+  try {
+    const dados = coletarDados();
+    localStorage.setItem("avaliacao_draft", JSON.stringify(dados));
+  } catch(e) {}
+}
+
+function salvarRascunho() {
+  salvarRascunhoAuto();
+  alert("Rascunho salvo!");
+}
+
+function carregarRascunho(dados) {
+  if (dados.candidato) {
+    if (dados.candidato.nome)       document.getElementById("f-nome").value        = dados.candidato.nome;
+    if (dados.candidato.telefone)   document.getElementById("f-tel").value          = dados.candidato.telefone;
+    if (dados.candidato.vaga)       document.getElementById("f-vaga").value         = dados.candidato.vaga;
+    if (dados.candidato.empresa)    document.getElementById("f-empresa").value      = dados.candidato.empresa;
+    if (dados.candidato.data)       document.getElementById("f-data").value         = dados.candidato.data;
+    if (dados.candidato.entrevistador) document.getElementById("f-entrevistador").value = dados.candidato.entrevistador;
+  }
+}
+
+// ─── HISTÓRICO ────────────────────────────────────────────────────────────────
+function salvarNoHistorico(dados) {
+  try {
+    const hist = JSON.parse(localStorage.getItem("avaliacao_historico") || "[]");
+    hist.unshift(dados);
+    localStorage.setItem("avaliacao_historico", JSON.stringify(hist.slice(0, 100)));
+  } catch(e) {}
+}
+
+function carregarHistorico() {
+  try {
+    const hist = JSON.parse(localStorage.getItem("avaliacao_historico") || "[]");
+    const lista = document.getElementById("hist-lista");
+    if (hist.length === 0) { lista.innerHTML = '<p style="color:var(--muted);font-size:13px">Nenhuma avaliação salva ainda.</p>'; return; }
+    const recLabel = { contratar: "✅ Contratar", banco: "📂 Banco", nao: "❌ Não rec." };
+    const recClass = { contratar: "tag-green", banco: "tag-amber", nao: "tag-red" };
+    lista.innerHTML = hist.map((d, i) => `
+      <div class="hist-item" onclick="verAvaliacao(${i})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="hist-nome">${d.candidato?.nome || "Sem nome"}</div>
+            <div class="hist-meta">${d.candidato?.vaga || "—"} · ${d.candidato?.empresa || "—"} · ${d.candidato?.data ? new Date(d.candidato.data+"T12:00:00").toLocaleDateString("pt-BR") : "—"}</div>
+            ${d.recomendacao ? `<span class="tag ${recClass[d.recomendacao] || ""}" style="margin-top:6px;display:inline-block">${recLabel[d.recomendacao] || ""}</span>` : ""}
+          </div>
+          <div class="hist-score" style="color:${d.score >= 80 ? '#16a34a' : d.score >= 60 ? '#d97706' : '#dc2626'}">${d.score}</div>
+        </div>
+      </div>
+    `).join("");
+  } catch(e) { document.getElementById("hist-lista").innerHTML = "<p style='color:red;font-size:12px'>Erro ao carregar histórico.</p>"; }
+}
+
+function verAvaliacao(i) {
+  try {
+    const hist = JSON.parse(localStorage.getItem("avaliacao_historico") || "[]");
+    const dados = hist[i];
+    // Reconstruir estado
+    document.getElementById("f-nome").value = dados.candidato?.nome || "";
+    document.getElementById("f-tel").value = dados.candidato?.telefone || "";
+    document.getElementById("f-vaga").value = dados.candidato?.vaga || "";
+    document.getElementById("f-empresa").value = dados.candidato?.empresa || "";
+    document.getElementById("f-data").value = dados.candidato?.data || "";
+    document.getElementById("f-entrevistador").value = dados.candidato?.entrevistador || "";
+    if (dados.disc) { document.getElementById("disc-select").value = dados.disc; atualizarDISC(); }
+    // Gerar relatório diretamente com os dados salvos
+    document.getElementById("parecer-texto") && gerarRelatorioFromDados(dados);
+    mostrarTela("relatorio");
+  } catch(e) { alert("Erro ao carregar avaliação."); }
+}
+
+function gerarRelatorioFromDados(dados) {
+  document.getElementById("parecer-texto").value = gerarTexoParecer(dados);
+}
+
+function exportarHistorico() {
+  try {
+    const hist = localStorage.getItem("avaliacao_historico") || "[]";
+    const blob = new Blob([hist], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "historico-avaliacoes-effect.json";
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e) { alert("Erro ao exportar."); }
+}
+
+// Auto-save a cada mudança de campo
+document.addEventListener("change", salvarRascunhoAuto);
+document.addEventListener("input", () => { clearTimeout(window._saveTimer); window._saveTimer = setTimeout(salvarRascunhoAuto, 1000); });
+</script>
+</body>
+</html>
