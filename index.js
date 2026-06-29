@@ -3103,81 +3103,53 @@ supervisor.iniciarSupervisor();
 // SYNC DE DADOS DO INBOX NO GOOGLE DRIVE
 // Persiste entrevistas, status, pipeline, notas — sobrevive a deploys e trocas de dispositivo
 // ══════════════════════════════════════════════════════════════════════════════
-const INBOX_DATA_FILENAME = "effect-inbox-data.json";
+// ── INBOX PERSISTENCE (Railway Volume) ──────────────────────────────────────
+// Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
+// O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
+// e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
+const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
 let inboxDataCache = null;
 
-async function lerArquivoDrive(filename) {
+function lerDadosInbox() {
   try {
-    const drive = getDriveClient();
-    if (!drive) return null;
-    const q = `name='${filename}' and '${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)", spaces: "drive" });
-    if (!busca.data.files?.length) return null;
-    const fileId = busca.data.files[0].id;
-    const res = await drive.files.get({ fileId, alt: "media" }, { responseType: "stream" });
-    return new Promise((resolve, reject) => {
-      let raw = "";
-      res.data.on("data", chunk => { raw += chunk; });
-      res.data.on("end", () => { try { resolve(JSON.parse(raw)); } catch(e) { resolve(null); } });
-      res.data.on("error", reject);
-    });
-  } catch(e) { console.error("lerArquivoDrive:", e.message); return null; }
+    if (!fs.existsSync(INBOX_DATA_PATH)) return null;
+    const raw = fs.readFileSync(INBOX_DATA_PATH, "utf8");
+    return JSON.parse(raw);
+  } catch(e) { console.error("lerDadosInbox:", e.message); return null; }
 }
 
-async function gravarArquivoDrive(filename, dados) {
+function gravarDadosInbox(dados) {
   try {
-    const drive = getDriveClient();
-    if (!drive) return false;
-    const { Readable } = require("stream");
-    const content = JSON.stringify(dados);
-    const q = `name='${filename}' and '${CONFIG.DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`;
-    const busca = await drive.files.list({ q, fields: "files(id)", spaces: "drive" });
-    if (busca.data.files?.length) {
-      await drive.files.update({
-        fileId: busca.data.files[0].id,
-        media: { mimeType: "application/json", body: Readable.from(Buffer.from(content, "utf8")) }
-      });
-    } else {
-      await drive.files.create({
-        requestBody: { name: filename, parents: [CONFIG.DRIVE_ROOT_FOLDER_ID], mimeType: "application/json" },
-        media: { mimeType: "application/json", body: Readable.from(Buffer.from(content, "utf8")) },
-        fields: "id"
-      });
-    }
+    // Garantir que o diretório existe
+    const dir = require("path").dirname(INBOX_DATA_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(INBOX_DATA_PATH, JSON.stringify(dados), "utf8");
     return true;
-  } catch(e) { console.error("gravarArquivoDrive:", e.message); return false; }
+  } catch(e) { console.error("gravarDadosInbox:", e.message); return false; }
 }
 
 // Carregar no startup do servidor
-(async () => {
-  try {
-    inboxDataCache = await lerArquivoDrive(INBOX_DATA_FILENAME);
-    if (inboxDataCache) console.log("✅ Dados do Inbox restaurados do Drive");
-    else console.log("ℹ️  Nenhum dado de Inbox encontrado no Drive — começando do zero");
-  } catch(e) { console.error("Erro ao restaurar dados do Inbox:", e.message); }
-})();
+inboxDataCache = lerDadosInbox();
+if (inboxDataCache) console.log("✅ Dados do Inbox restaurados de", INBOX_DATA_PATH);
+else console.log("ℹ️  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "— começando do zero");
 
 // GET /inbox/agenda-sync → devolve dados para o browser
-app.get("/inbox/agenda-sync", async (req, res) => {
+app.get("/inbox/agenda-sync", (req, res) => {
   try {
-    if (!inboxDataCache) {
-      inboxDataCache = await lerArquivoDrive(INBOX_DATA_FILENAME) || {};
-    }
+    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
     res.json({ ok: true, dados: inboxDataCache || {} });
   } catch(e) { res.json({ ok: false, erro: e.message, dados: {} }); }
 });
 
-// POST /inbox/agenda-sync → recebe dados do browser e persiste no Drive
-app.post("/inbox/agenda-sync", async (req, res) => {
+// POST /inbox/agenda-sync → recebe dados do browser e persiste no Volume
+app.post("/inbox/agenda-sync", (req, res) => {
   try {
     const dados = req.body || {};
     if (!dados || typeof dados !== "object") return res.json({ ok: false, erro: "payload inválido" });
     inboxDataCache = dados;
-    // Salvar no Drive em background (não bloqueia a resposta)
-    gravarArquivoDrive(INBOX_DATA_FILENAME, dados).then(ok => {
-      if (!ok) console.warn("agenda-sync: Drive indisponível, dados só em memória");
-    });
-    res.json({ ok: true });
+    const ok = gravarDadosInbox(dados);
+    if (!ok) console.warn("agenda-sync: falha ao gravar em", INBOX_DATA_PATH, "— dados só em memória até próximo deploy");
+    res.json({ ok: true, persistido: ok, path: INBOX_DATA_PATH });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
