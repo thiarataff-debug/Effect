@@ -38,8 +38,13 @@ const CONFIG = {
   THIARA_WHATSAPP: "5527997925288",
   DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD",
   DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
-  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+  RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,          // opcional: para monitorar créditos
+  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID // opcional: ID do projeto Railway
 };
+
+// ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
+let geminiAtivo = true;
 
 const sessoes = {};
 const mensagensProcessadas = new Set();
@@ -2800,6 +2805,12 @@ async function chamarClaudeOriginal(prompt, tentativa = 1) {
 // Por padrão usa Gemini. Se AI_PROVIDER=claude, usa Claude.
 // Se Gemini falhar e houver CLAUDE_API_KEY configurada, tenta Claude como plano B.
 async function chamarClaude(prompt, tentativa = 1) {
+  // MODO EMERGÊNCIA: Gemini desativado manualmente
+  if (!geminiAtivo) {
+    console.warn("⚠️  Gemini desativado (modo emergência) — IA não chamada.");
+    return null; // processarMensagem trata null como "não responder"
+  }
+
   const provider = String(CONFIG.AI_PROVIDER || "gemini").toLowerCase().trim();
 
   if (provider === "claude") {
@@ -2818,6 +2829,71 @@ async function chamarClaude(prompt, tentativa = 1) {
 
   return respostaGemini;
 }
+
+// ── ENDPOINTS DE CONTROLE (Gemini + Railway) ──────────────────────────────────
+
+// GET /admin/status → retorna estado atual da IA e créditos Railway
+app.get("/admin/status", async (req, res) => {
+  const status = { geminiAtivo, railway: null };
+  if (CONFIG.RAILWAY_TOKEN) {
+    try {
+      const query = `{ me { teams { edges { node { name creditBalance } } } } }`;
+      const r = await fetch("https://backboard.railway.app/graphql/v2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
+        body: JSON.stringify({ query })
+      });
+      const data = await r.json();
+      const teams = data?.data?.me?.teams?.edges || [];
+      status.railway = teams.map(e => ({ team: e.node.name, creditBalance: e.node.creditBalance }));
+    } catch(e) { status.railwayErro = e.message; }
+  }
+  res.json(status);
+});
+
+// POST /admin/gemini-toggle → liga/desliga Gemini sem redeploy
+app.post("/admin/gemini-toggle", (req, res) => {
+  const { ativo } = req.body || {};
+  if (typeof ativo === "boolean") {
+    geminiAtivo = ativo;
+  } else {
+    geminiAtivo = !geminiAtivo; // toggle se não passar valor
+  }
+  const msg = geminiAtivo
+    ? "✅ Gemini ATIVADO — LIA respondendo normalmente."
+    : "⚠️ Gemini DESATIVADO — LIA em silêncio. Ative novamente quando recarregar créditos.";
+  console.log(msg);
+  res.json({ ok: true, geminiAtivo, mensagem: msg });
+});
+
+// Monitoramento automático de créditos Railway a cada 6h
+async function verificarCreditosRailway() {
+  if (!CONFIG.RAILWAY_TOKEN) return;
+  try {
+    const query = `{ me { teams { edges { node { name creditBalance } } } } }`;
+    const r = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
+      body: JSON.stringify({ query })
+    });
+    const data = await r.json();
+    const teams = data?.data?.me?.teams?.edges || [];
+    for (const { node } of teams) {
+      const creditos = parseFloat(node.creditBalance || 0);
+      // Alerta se créditos < $2.00
+      if (creditos < 2.00) {
+        const msg = `⚠️ *ALERTA RAILWAY*\n\nCréditos Railway baixos: *$${creditos.toFixed(2)}*\n\nA LIA pode parar de funcionar em breve. Acesse railway.app para recarregar.`;
+        await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg).catch(() => {});
+        console.warn("⚠️ Créditos Railway baixos:", creditos);
+      }
+    }
+  } catch(e) { console.error("Erro ao verificar créditos Railway:", e.message); }
+}
+
+// Checar a cada 6 horas
+setInterval(verificarCreditosRailway, 6 * 60 * 60 * 1000);
+// Checar também 30s após startup
+setTimeout(verificarCreditosRailway, 30000);
 
 async function salvarAnaliseNaPlanilha(telefone, analise) {
   try {
@@ -3072,6 +3148,7 @@ app.get("/agenda/disponibilidade", async (req, res) => {
 
 // ── FINANCEIRO ────────────────────────────────────────────────────────────
 app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
+app.get("/avaliacao", (req, res) => res.sendFile(path.join(__dirname, "avaliacao.html")));
 
 app.post("/financeiro/lancamento", async (req, res) => {
   try {
@@ -3130,10 +3207,10 @@ function gravarDadosInbox(dados) {
 
 // Carregar no startup do servidor
 inboxDataCache = lerDadosInbox();
-if (inboxDataCache) console.log("✅ Dados do Inbox restaurados de", INBOX_DATA_PATH);
-else console.log("ℹ️  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "— começando do zero");
+if (inboxDataCache) console.log("\u2705 Dados do Inbox restaurados de", INBOX_DATA_PATH);
+else console.log("\u2139\uFE0F  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "\u2014 come\u00E7ando do zero");
 
-// GET /inbox/agenda-sync → devolve dados para o browser
+// GET /inbox/agenda-sync \u2192 devolve dados para o browser
 app.get("/inbox/agenda-sync", (req, res) => {
   try {
     if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
@@ -3141,65 +3218,16 @@ app.get("/inbox/agenda-sync", (req, res) => {
   } catch(e) { res.json({ ok: false, erro: e.message, dados: {} }); }
 });
 
-// POST /inbox/agenda-sync → recebe dados do browser e persiste no Volume
+// POST /inbox/agenda-sync \u2192 recebe dados do browser e persiste no Volume
 app.post("/inbox/agenda-sync", (req, res) => {
   try {
     const dados = req.body || {};
-    if (!dados || typeof dados !== "object") return res.json({ ok: false, erro: "payload inválido" });
+    if (!dados || typeof dados !== "object") return res.json({ ok: false, erro: "payload inv\u00E1lido" });
     inboxDataCache = dados;
     const ok = gravarDadosInbox(dados);
-    if (!ok) console.warn("agenda-sync: falha ao gravar em", INBOX_DATA_PATH, "— dados só em memória até próximo deploy");
+    if (!ok) console.warn("agenda-sync: falha ao gravar em", INBOX_DATA_PATH, "\u2014 dados s\u00F3 em mem\u00F3ria at\u00E9 pr\u00F3ximo deploy");
     res.json({ ok: true, persistido: ok, path: INBOX_DATA_PATH });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
-// ── BANCO DE TALENTOS ─────────────────────────────────────────────────────
-// GET  /sheets/banco-talentos          → lista todos os talentos
-// POST /sheets/banco-talentos          → salva (cria ou edita) um talento
-// DELETE /sheets/banco-talentos/:id    → remove um talento pelo id
-
-app.get("/sheets/banco-talentos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ talentos: [] });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=bancoTalentos`, { timeout: 15000 });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos GET]", e.message);
-    res.json({ talentos: [], erro: e.message });
-  }
-});
-
-app.post("/sheets/banco-talentos", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = { acao: "salvarTalento", talento: req.body };
-    const r = await axios.post(urlBase, payload, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 15000
-    });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos POST]", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
-
-app.delete("/sheets/banco-talentos/:id", async (req, res) => {
-  try {
-    if (!CONFIG.VAGAS_URL) return res.json({ ok: false, erro: "VAGAS_URL não configurada" });
-    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const payload = { acao: "deletarTalento", id: req.params.id };
-    const r = await axios.post(urlBase, payload, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 15000
-    });
-    res.json(r.data);
-  } catch (e) {
-    console.error("[banco-talentos DELETE]", e.message);
-    res.json({ ok: false, erro: e.message });
-  }
-});
-// ──────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
