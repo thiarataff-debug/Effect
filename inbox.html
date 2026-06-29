@@ -507,6 +507,11 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 </div>
 
 <!-- ALERTA ENTREVISTA -->
+<!-- BANNER GEMINI OFF — aparece quando IA está desativada -->
+<div id="banner-gemini-off" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;text-align:center;padding:8px 16px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;letter-spacing:.3px;cursor:pointer" onclick="toggleGemini()" title="Clique para reativar a IA">
+  🔴 IA GEMINI DESATIVADA — LIA não está respondendo. Clique aqui para reativar.
+</div>
+
 <div class="alerta-entrevista" id="alerta-entrevista">
   <span>🔔</span>
   <span id="alerta-texto">Entrevista em breve</span>
@@ -525,10 +530,13 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard">📊 Dashboard</button>
     <button class="rbtn" onclick="mostrarView('ats')" id="nav-ats">📑 ATS</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="abrirAvaliacao()" id="nav-avaliacao" title="Formulário de avaliação do candidato atual">📋 Avaliação</button>
-    <button class="rbtn" id="btn-gemini-toggle" onclick="toggleGemini()" title="Liga/desliga a IA Gemini sem precisar de deploy" style="background:#22c55e;color:#fff;border-color:#22c55e;font-weight:800">🤖 IA: ON</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
+    <!-- STATUS GEMINI — clicável para toggle -->
+    <button id="btn-gemini-toggle" onclick="toggleGemini()" title="Clique para ligar/desligar a IA Gemini" style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;cursor:pointer;background:#22c55e;color:#fff;transition:all .2s;flex-shrink:0">
+      <span id="gemini-dot" style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
+      <span id="gemini-label">🤖 IA ON</span>
+    </button>
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
@@ -540,6 +548,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <button class="rbtn" onclick="toggleHmais(event)">⋯ Mais</button>
       <div class="hmais-menu" id="hmais-menu">
         <button class="hmais-btn" style="color:#4f46e5" onclick="abrirPainelVagas();fecharHmais()">📋 Vagas</button>
+        <button class="hmais-btn" style="color:#0ea5e9" onclick="abrirAvaliacao();fecharHmais()">📋 Avaliar Candidato</button>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:4px 0">
+        <button class="hmais-btn" style="color:#059669" onclick="exportarDados();fecharHmais()">💾 Backup dos dados</button>
+        <label class="hmais-btn" style="color:#7c3aed;cursor:pointer">📥 Restaurar backup<input type="file" accept=".json" onchange="importarDados(event);fecharHmais()" style="display:none"></label>
         <button class="hmais-btn" onclick="fazerBackupManual();fecharHmais()">💾 Backup</button>
         <button class="hmais-btn" style="color:#1fa5f0" onclick="abrirReengajamento();fecharHmais()">📢 Reengajamento</button>
         <hr style="border:none;border-top:1px solid #f1f5f9;margin:4px 0">
@@ -716,6 +728,7 @@ font-family:'Montserrat',sans-serif
           <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Direcionar candidato para vaga" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Direcionar para vaga</button>
           <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
           <button class="ha-btn" onclick="enviarDiscDireto()" title="Enviar questionário DISC" style="background:#7c3aed;color:#fff;font-weight:700">📊 Enviar DISC</button>
+          <button class="ha-btn" onclick="abrirAvaliacao()" title="Abrir formulário de avaliação deste candidato" style="background:#0ea5e9;color:#fff;font-weight:800;font-size:11px;padding:6px 13px">📋 Avaliar</button>
           <button class="ha-btn" onclick="abrirModalModelos()" title="Modelos de comunicação" style="background:#0f766e;color:#fff;font-weight:700">📋 Modelos</button>
           <span class="ha-divider"></span>
           <!-- Dropdown Mais — tudo o que é secundário -->
@@ -1367,11 +1380,15 @@ async function restaurarDoServidor() {
     if (!r.ok) return;
     const { dados } = await r.json();
     if (!dados || typeof dados !== 'object' || Object.keys(dados).length === 0) {
-      // Servidor vazio (primeiro deploy ou cache perdido) → bootstrap: envia dados locais agora
+      // Servidor vazio → bootstrap IMEDIATO (sem debounce) para garantir gravação no Volume
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
-        console.log('🔄 Bootstrap sync: servidor vazio, enviando dados locais...');
-        salvarLocal();
+        console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas};
+        fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
+          .then(r=>r.json())
+          .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
+          .catch(e=>console.warn('Bootstrap sync falhou:', e.message));
       }
       return;
     }
@@ -4025,19 +4042,16 @@ async function carregarStatusIA() {
 
 function atualizarBotaoIA() {
   const btn = document.getElementById('btn-gemini-toggle');
-  if (!btn) return;
+  const label = document.getElementById('gemini-label');
+  const banner = document.getElementById('banner-gemini-off');
   if (_geminiAtivo) {
-    btn.textContent = '🤖 IA: ON';
-    btn.style.background = '#22c55e';
-    btn.style.borderColor = '#22c55e';
-    btn.style.color = '#fff';
-    btn.title = 'IA ativa — clique para DESATIVAR (emergência de créditos)';
+    if(btn)   { btn.style.background='#22c55e'; btn.title='IA ativa — clique para DESATIVAR em emergência de créditos'; }
+    if(label) label.textContent = '🤖 IA ON';
+    if(banner) banner.style.display = 'none';
   } else {
-    btn.textContent = '🔴 IA: OFF';
-    btn.style.background = '#ef4444';
-    btn.style.borderColor = '#ef4444';
-    btn.style.color = '#fff';
-    btn.title = 'IA DESATIVADA — LIA em silêncio. Clique para reativar.';
+    if(btn)   { btn.style.background='#dc2626'; btn.title='IA DESATIVADA — clique para reativar'; }
+    if(label) label.textContent = '🔴 IA OFF';
+    if(banner) banner.style.display = 'block';
   }
 }
 
@@ -4063,6 +4077,47 @@ async function toggleGemini() {
 
 // Carregar status da IA ao abrir o inbox
 document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusIA, 2000); });
+
+// ── BACKUP / RESTAURAÇÃO MANUAL ───────────────────────────────────────────────
+function exportarDados() {
+  const dados = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas};
+  const json = JSON.stringify(dados, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const data = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `inbox-backup-${data}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 Backup baixado com sucesso!', 'success');
+}
+
+function importarDados(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const dados = JSON.parse(e.target.result);
+      if (!confirm(`Restaurar backup de ${file.name}?\n\nIsso vai substituir TODOS os dados atuais do inbox.`)) return;
+      if (dados.entrevistas)    entrevistas    = dados.entrevistas;
+      if (dados.statusMap)      statusMap      = dados.statusMap;
+      if (dados.pipelineMap)    pipelineMap    = dados.pipelineMap;
+      if (dados.notas)          notas          = dados.notas;
+      if (dados.metaDados)      metaDados      = dados.metaDados;
+      if (dados.discPerfilVagas) discPerfilVagas = dados.discPerfilVagas;
+      if (dados.vagaMap)        vagaMap        = dados.vagaMap;
+      if (dados.intervencoes)   intervencoes   = dados.intervencoes;
+      if (dados.marcadosRetorno) marcadosRetorno = dados.marcadosRetorno;
+      if (dados.arquivadas)     arquivadas     = dados.arquivadas;
+      salvarLocal(); // salva no localStorage + sobe para o Volume
+      if(typeof renderLista==='function') renderLista();
+      if(typeof renderCalendario==='function') renderCalendario();
+      toast('✅ Dados restaurados com sucesso!', 'success');
+    } catch(err) { toast('Erro ao ler arquivo: ' + err.message, 'error'); }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // permite reselecionar o mesmo arquivo
+}
 
 function abrirAvaliacao(){
   // Abre o formulário de avaliação pré-preenchido com os dados do candidato atual
