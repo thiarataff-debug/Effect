@@ -1364,7 +1364,15 @@ async function restaurarDoServidor() {
     const r = await fetch('/inbox/agenda-sync');
     if (!r.ok) return;
     const { dados } = await r.json();
-    if (!dados || typeof dados !== 'object' || Object.keys(dados).length === 0) return;
+    if (!dados || typeof dados !== 'object' || Object.keys(dados).length === 0) {
+      // Servidor vazio (primeiro deploy ou cache perdido) → bootstrap: envia dados locais agora
+      const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
+      if (temDadosLocais) {
+        console.log('🔄 Bootstrap sync: servidor vazio, enviando dados locais...');
+        salvarLocal();
+      }
+      return;
+    }
 
     // Merge: servidor ganha prioridade em entrevistas e status
     // localStorage ganha prioridade em metaDados (leitura local)
