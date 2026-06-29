@@ -1868,7 +1868,9 @@ all.filter(([t,s])=>
     const statusBadgeClass=({'Novo':'st-novo','Em atendimento':'st-em_atendimento','Aguardando candidato':'st-aguard_candidato','Aguardando recrutador':'st-aguard_recrutador','Finalizado':'st-finalizado'})[statusAtual]||'st-novo';
     const atvMs=atividadeMsSessao(s);
     const horaFallback = textoHoraFallbackSessao(s, ultima);
-const hInfo = atvMs ? formatarHora(atvMs) : (horaFallback ? { texto: horaFallback, hoje:false, ms:0 } : { texto:'--:--', hoje:false, ms:0 });
+
+    // Prioriza o dado vindo direto do servidor (index.js)
+const hInfo = s.dataWhatsapp ? { texto: s.dataWhatsapp, hoje: true, ms: atvMs } : (atvMs ? formatarHora(atvMs) : { texto: '--:--', hoje: false, ms: 0 });
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
@@ -1998,7 +2000,10 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
     const isCamila=msg.role==='assistant'&&(msg.content||'').includes('— Camila');
     const tsReal=obterTimestampMsg(msg);
     const ts=tsReal||msg._approxMs||0;
-    const horaTexto=ts?extrairHora(ts):(horaFallbackMsg(msg)||'--:--');
+    
+    // Pega a hora formatada da própria mensagem salva
+const horaTexto = msg.horarioFormatado || (ts ? extrairHora(ts) : '--:--');
+    
     const isApprox=!tsReal&&!!msg._approxMs;
     const dataMsg=ts?formatarDataMensagem(ts):'';
 
