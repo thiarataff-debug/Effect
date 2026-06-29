@@ -261,8 +261,7 @@ function calcularUnreadSessao(sessao) {
 function normalizarSessaoParaInbox(telefone, sessao) {
   const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
 
-  // Interpola timestampMs em msgs sem hora usando vizinhos com timestamp real.
-  // Isso evita que msgs com ts=0 sejam ordenadas antes de msgs antigas com ts válido.
+  // Interpola timestampMs em msgs sem hora
   historicoNormalizado.forEach((msg, i) => {
     if (Number(msg.timestampMs) > 0) return;
     let prevMs = 0, nextMs = 0;
@@ -271,7 +270,6 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     if (prevMs && nextMs) msg.timestampMs = Math.round((prevMs + nextMs) / 2);
     else if (prevMs)      msg.timestampMs = prevMs + 1;
     else if (nextMs)      msg.timestampMs = nextMs - 1;
-    // sem nenhum vizinho com ts: mantém 0, vai pro início (melhor que posição errada)
     if (msg.timestampMs > 0) msg._approxMs = msg.timestampMs;
   });
 
@@ -280,6 +278,11 @@ function normalizarSessaoParaInbox(telefone, sessao) {
   const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
   const lastMessageAtMs = ultima?.timestampMs || 0;
   const unreadCount = calcularUnreadSessao(sessao);
+
+  // GERA A HORA NO FUSO CORRETO DE SÃO PAULO IGUAL WHATSAPP
+  const horaFormatadaWhatsApp = lastMessageAtMs 
+    ? new Date(lastMessageAtMs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    : '';
 
   return {
     historico: historicoNormalizado,
@@ -290,16 +293,16 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
     ultimaAnalise: sessao?.ultimaAnalise || null,
     discResult: sessao?.discResult || null,
-    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', arquivoDisponivel: curriculoTemArquivo(sessao.curriculo), local: !!sessao.curriculo.localPath } : null,
+    curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', local: !!sessao.curriculo.localPath } : null,
     curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
     lastMessageRole: ultima?.role || "",
     lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
     lastMessageAtMs,
-    dataWhatsapp: formatarDataWhatsApp(lastMessageAtMs),
-    formattedLastMessageAt: formatarDataWhatsApp(lastMessageAtMs),
+    dataWhatsapp: horaFormatadaWhatsApp || formatarDataWhatsApp(lastMessageAtMs), // <--- CORREÇÃO AQUI
+    formattedLastMessageAt: horaFormatadaWhatsApp || formatarDataWhatsApp(lastMessageAtMs), // <--- CORREÇÃO AQUI
     unreadCount,
-    semResposta: ultima?.role === "user", // candidato aguardando resposta
+    semResposta: ultima?.role === "user",
     raiox: Array.isArray(sessao?.raiox) ? sessao.raiox.slice(-5) : []
   };
 }
