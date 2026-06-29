@@ -1296,6 +1296,11 @@ function carregarLocalData(){
     marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
     arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
   }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};}
+  // Restaurar dados do servidor em background (merge com localStorage)
+  restaurarDoServidor().then(() => {
+    if(typeof renderLista === 'function') renderLista();
+    if(typeof renderCalendario === 'function') renderCalendario();
+  }).catch(()=>{});
 }
 function notificarMeuApp(){
   // Envia postMessage para o iframe do Meu App quando entrevistas mudam
@@ -1308,6 +1313,8 @@ function notificarMeuApp(){
 }
 
 function salvarLocal(){
+  // Sincronizar com servidor sempre que salvar localmente
+  sincronizarComServidor();
   try{
     localStorage.setItem('effect_meta_v3',JSON.stringify(metaDados));
     localStorage.setItem('effect_entrevistas_v1',JSON.stringify(entrevistas));
@@ -1320,6 +1327,72 @@ function salvarLocal(){
     localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
     localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
   }catch(e){}
+}
+
+// ── SYNC COM SERVIDOR (persiste entre deploys e dispositivos) ─────────────────
+let _syncTimer = null;
+let _syncPendente = false;
+
+function sincronizarComServidor() {
+  // Debounce: espera 2s de inatividade antes de enviar
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async () => {
+    try {
+      const payload = {
+        entrevistas,
+        statusMap,
+        pipelineMap,
+        notas,
+        metaDados,
+        discPerfilVagas,
+        vagaMap,
+        intervencoes,
+        marcadosRetorno,
+        arquivadas
+      };
+      await fetch('/inbox/agenda-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch(e) { console.warn('Sync servidor falhou (dados no localStorage ainda seguros):', e.message); }
+  }, 2000);
+}
+
+async function restaurarDoServidor() {
+  try {
+    const r = await fetch('/inbox/agenda-sync');
+    if (!r.ok) return;
+    const { dados } = await r.json();
+    if (!dados || typeof dados !== 'object' || Object.keys(dados).length === 0) return;
+
+    // Merge: servidor ganha prioridade em entrevistas e status
+    // localStorage ganha prioridade em metaDados (leitura local)
+    if (dados.entrevistas && Object.keys(dados.entrevistas).length > 0) {
+      // Merge por telefone: manter entrevistas mais recentes
+      Object.entries(dados.entrevistas).forEach(([tel, ents]) => {
+        if (!entrevistas[tel] || !entrevistas[tel].length) {
+          entrevistas[tel] = ents;
+        } else {
+          // Adicionar entrevistas do servidor que não existem localmente
+          const idsLocais = new Set((entrevistas[tel]||[]).map(e => e.id));
+          (ents||[]).forEach(e => { if (!idsLocais.has(e.id)) entrevistas[tel].push(e); });
+        }
+      });
+    }
+    if (dados.statusMap)       Object.assign(statusMap, dados.statusMap);
+    if (dados.pipelineMap)     Object.assign(pipelineMap, dados.pipelineMap);
+    if (dados.notas)           Object.assign(notas, dados.notas);
+    if (dados.discPerfilVagas) Object.assign(discPerfilVagas, dados.discPerfilVagas);
+    if (dados.vagaMap)         Object.assign(vagaMap, dados.vagaMap);
+    if (dados.intervencoes)    Object.assign(intervencoes, dados.intervencoes);
+    if (dados.marcadosRetorno) Object.assign(marcadosRetorno, dados.marcadosRetorno);
+    if (dados.arquivadas)      Object.assign(arquivadas, dados.arquivadas);
+
+    // Salvar merge no localStorage
+    salvarLocal();
+    console.log('✅ Dados restaurados do servidor');
+  } catch(e) { console.warn('Restauração do servidor falhou (usando localStorage):', e.message); }
 }
 function getMeta(tel){if(!metaDados[tel])metaDados[tel]={ultimaMsgVista:0};return metaDados[tel];}
 function setMeta(tel,dados){metaDados[tel]={...getMeta(tel),...dados};salvarLocal();}
