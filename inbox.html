@@ -525,6 +525,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard">📊 Dashboard</button>
     <button class="rbtn" onclick="mostrarView('ats')" id="nav-ats">📑 ATS</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
+    <button class="rbtn" onclick="abrirAvaliacao()" id="nav-avaliacao" title="Formulário de avaliação do candidato atual">📋 Avaliação</button>
+    <button class="rbtn" id="btn-gemini-toggle" onclick="toggleGemini()" title="Liga/desliga a IA Gemini sem precisar de deploy" style="background:#22c55e;color:#fff;border-color:#22c55e;font-weight:800">🤖 IA: ON</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <div class="dot-live"></div>
@@ -3999,6 +4001,84 @@ const DISC_PERFIS = {
   S:{nome:'Estável',emoji:'🟢',cor:'#16a34a'},
   C:{nome:'Analítico',emoji:'🔵',cor:'#1fa5ff'}
 };
+
+// ── CONTROLE DE IA (toggle Gemini sem deploy) ─────────────────────────────────
+let _geminiAtivo = true;
+
+async function carregarStatusIA() {
+  try {
+    const r = await fetch('/admin/status');
+    const data = await r.json();
+    _geminiAtivo = data.geminiAtivo;
+    atualizarBotaoIA();
+
+    // Alerta visual se créditos Railway baixos
+    if (data.railway) {
+      for (const t of data.railway) {
+        if (parseFloat(t.creditBalance || 0) < 2.00) {
+          toast(`⚠️ Créditos Railway baixos: $${parseFloat(t.creditBalance).toFixed(2)} — Recarregue em railway.app`, 'error', 8000);
+        }
+      }
+    }
+  } catch(e) { /* sem Railway token ou server offline */ }
+}
+
+function atualizarBotaoIA() {
+  const btn = document.getElementById('btn-gemini-toggle');
+  if (!btn) return;
+  if (_geminiAtivo) {
+    btn.textContent = '🤖 IA: ON';
+    btn.style.background = '#22c55e';
+    btn.style.borderColor = '#22c55e';
+    btn.style.color = '#fff';
+    btn.title = 'IA ativa — clique para DESATIVAR (emergência de créditos)';
+  } else {
+    btn.textContent = '🔴 IA: OFF';
+    btn.style.background = '#ef4444';
+    btn.style.borderColor = '#ef4444';
+    btn.style.color = '#fff';
+    btn.title = 'IA DESATIVADA — LIA em silêncio. Clique para reativar.';
+  }
+}
+
+async function toggleGemini() {
+  try {
+    const novoEstado = !_geminiAtivo;
+    const confirma = novoEstado
+      ? confirm('Reativar a IA Gemini? A LIA voltará a responder automaticamente.')
+      : confirm('⚠️ Desativar a IA Gemini?\n\nA LIA ficará em silêncio — nenhuma mensagem automática será enviada.\n\nUse isso quando os créditos estiverem acabando.');
+    if (!confirma) return;
+
+    const r = await fetch('/admin/gemini-toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo: novoEstado })
+    });
+    const data = await r.json();
+    _geminiAtivo = data.geminiAtivo;
+    atualizarBotaoIA();
+    toast(data.mensagem, _geminiAtivo ? 'success' : 'error', 5000);
+  } catch(e) { toast('Erro ao alterar estado da IA: ' + e.message, 'error'); }
+}
+
+// Carregar status da IA ao abrir o inbox
+document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusIA, 2000); });
+
+function abrirAvaliacao(){
+  // Abre o formulário de avaliação pré-preenchido com os dados do candidato atual
+  const s = sessaoAtual ? todasSessoes[sessaoAtual] : null;
+  const params = new URLSearchParams();
+  if(s?.nome)     params.set('nome', s.nome);
+  if(sessaoAtual) params.set('telefone', sessaoAtual);
+  // Vaga vinculada ao candidato
+  const vaga = vagaMap[sessaoAtual] || '';
+  if(vaga) params.set('vaga', vaga);
+  // Perfil DISC se disponível
+  const disc = s?.discResult?.perfil || s?.discResult?.tipoNatural || '';
+  if(disc) params.set('disc', disc);
+  const url = '/avaliacao' + (params.toString() ? '?' + params.toString() : '');
+  window.open(url, '_blank');
+}
 
 function abrirDiscCandidato(){
   if(!sessaoAtual)return;
