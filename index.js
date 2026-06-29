@@ -291,6 +291,10 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     pausado: sessao?.pausado === true || atendimentosManuais.has(telefone),
     motivoPausa: sessao?.motivoPausa || "",
     aguardandoConfirmacaoInteresse: sessao?.aguardandoConfirmacaoInteresse || false,
+    aguardandoDisponibilidade: sessao?.aguardandoDisponibilidade || false,
+    preTriagem: sessao?.preTriagem || null,
+    miniQuestionario: sessao?.miniQuestionario || null,
+    disponibilidadeColetada: sessao?.disponibilidadeColetada || "",
     ultimaAnalise: sessao?.ultimaAnalise || null,
     discResult: sessao?.discResult || null,
     curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', local: !!sessao.curriculo.localPath } : null,
@@ -1092,6 +1096,24 @@ setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
 
 // Backup a cada 2 horas
 // removido — substituído pelo intervalo de 2h acima
+
+// ── Rota: iniciar mini-questionário manualmente pelo Inbox ─────────────────
+app.post("/inbox/iniciar-questionario", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone);
+    if (!telefone) return res.status(400).json({ ok: false, erro: "telefone obrigatório" });
+    const sessao = garantirSessao(telefone);
+    sessao.miniQuestionario = { ativo: true, indice: 0, respostas: {}, concluido: false };
+    sessao.pausado = false; sessao.modo = "automatico";
+    atendimentosManuais.delete(telefone);
+    const nmInicio = primeiroNome(sessao.nome || "");
+    const msgQ = `Sem problema${nmInicio ? ", " + nmInicio : ""}! 😊 Vou fazer algumas perguntas rápidas para registrar seu perfil.\n\n${MINI_QUESTIONARIO_PERGUNTAS[0].pergunta}`;
+    await enviarMensagem(telefone, msgQ);
+    registrarEntradaSessao(sessao, "assistant", msgQ);
+    await salvarMensagemSheets(telefone, "assistant", msgQ, sessao.nome);
+    res.json({ ok: true, mensagem: "Mini-questionário iniciado" });
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
 
 // Endpoint para backup manual via Inbox
 app.post("/inbox/backup", async (req, res) => {
@@ -2053,18 +2075,157 @@ async function processarMensagem(telefoneOriginal, mensagem) {
       return resposta;
     }
   }
-  if (sessao.aguardandoConfirmacaoInteresse && ehConfirmacaoInteresse(mensagem)) {
+  // ── AGUARDANDO DISPONIBILIDADE (última etapa da pré-triagem) ──────────────
+  if (sessao.aguardandoDisponibilidade) {
+    sessao.aguardandoDisponibilidade = false;
+    const disponibilidade = mensagem.trim();
+    sessao.disponibilidadeColetada = disponibilidade;
+    await salvarDisponibilidadeNaPlanilha(telefone, disponibilidade);
     await confirmarInteresseNaPlanilha(telefone, sessao.ultimaAnalise);
-    await enviarAlertaInteresseThiara(sessao.ultimaAnalise, telefone);
-    sessao.aguardandoConfirmacaoInteresse = false;
-    const resposta = `Perfeito, ${sessao.ultimaAnalise?.nome || ""}! 😊\n\nJá registrei seu interesse na oportunidade e sua candidatura seguirá para análise da nossa equipe.\n\nCaso seu perfil avance para a próxima etapa, entraremos em contato pelos canais informados.\n\nObrigada pelo interesse e boa sorte! 💙`;
-    registrarEntradaSessao(sessao, "assistant", resposta);
-      marcarConversaRespondida(sessao);
+    await enviarAlertaFinalThiara(sessao.ultimaAnalise, telefone, disponibilidade, true, sessao.perfilSintetico || null);
+    const nomeDisp = primeiroNome(sessao.ultimaAnalise && sessao.ultimaAnalise.nome ? sessao.ultimaAnalise.nome : (sessao.nome || ""));
+    const respDisp = `Perfeito${nomeDisp ? ", " + nomeDisp : ""}! 😊\n\nRegistrei sua disponibilidade e sua candidatura está sendo encaminhada para a nossa equipe.\n\nEm breve entraremos em contato para os próximos passos. Obrigada pelo interesse! 💙`;
+    registrarEntradaSessao(sessao, "assistant", respDisp);
+    marcarConversaRespondida(sessao);
     sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
+    await salvarMensagemSheets(telefone, "assistant", respDisp, sessao.nome);
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return resposta;
+    return respDisp;
   }
+
+  // ── PRÉ-TRIAGEM: perguntas eliminatórias em andamento ─────────────────────
+  if (sessao.preTriagem && sessao.preTriagem.ativa) {
+    const pt = sessao.preTriagem;
+    const pergAtual = pt.perguntas[pt.indice];
+    if (pergAtual) {
+      pt.respostas[pergAtual.campo] = mensagem.trim();
+      // Knock-out: resposta negativa a requisito eliminatório
+      if (pergAtual.knockout && ehRespostaNegativaKO(mensagem)) {
+        pt.ativa = false;
+        pt.reprovado = true;
+        console.log(`PRÉ-TRIAGEM REPROVADA — ${telefone} — ${pergAtual.campo}`);
+        await salvarAnaliseNaPlanilha(telefone, Object.assign({}, sessao.ultimaAnalise || {}, { status: "Reprovado na pré-triagem — " + pergAtual.campo, scoreVaga: 0 }));
+        const nomeKO = primeiroNome(sessao.ultimaAnalise && sessao.ultimaAnalise.nome ? sessao.ultimaAnalise.nome : (sessao.nome || ""));
+        const respKO = `Entendi${nomeKO ? ", " + nomeKO : ""}! 😊\n\nInfelizmente esse requisito é necessário para essa vaga.\n\nMas vou manter seu contato no nosso banco de talentos. Se surgir uma oportunidade mais compatível com seu perfil, entraremos em contato. 💙`;
+        registrarEntradaSessao(sessao, "assistant", respKO);
+        marcarConversaRespondida(sessao);
+        sessao.historico = sessao.historico.slice(-500);
+        await salvarMensagemSheets(telefone, "assistant", respKO, sessao.nome);
+        await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+        return respKO;
+      }
+      pt.indice++;
+    }
+    const proxPerg = pt.perguntas[pt.indice];
+    if (proxPerg) {
+      registrarEntradaSessao(sessao, "assistant", proxPerg.pergunta);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", proxPerg.pergunta, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return proxPerg.pergunta;
+    }
+    // Pré-triagem concluída → pedir disponibilidade
+    pt.ativa = false;
+    sessao.aguardandoDisponibilidade = true;
+    const respDisponib = `Ótimo! 😊 Quase lá.\n\nQue horários você teria disponibilidade para uma entrevista essa semana? (ex: manhã, tarde, dias específicos)`;
+    registrarEntradaSessao(sessao, "assistant", respDisponib);
+    marcarConversaRespondida(sessao);
+    sessao.historico = sessao.historico.slice(-500);
+    await salvarMensagemSheets(telefone, "assistant", respDisponib, sessao.nome);
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    return respDisponib;
+  }
+
+  // ── MINI-QUESTIONÁRIO: candidatos sem currículo ────────────────────────────
+  if (sessao.miniQuestionario && sessao.miniQuestionario.ativo) {
+    const mq = sessao.miniQuestionario;
+    const mqPergAtual = MINI_QUESTIONARIO_PERGUNTAS[mq.indice];
+    if (mqPergAtual) {
+      mq.respostas[mqPergAtual.campo] = mensagem.trim();
+      mq.indice++;
+    }
+    const mqProxima = MINI_QUESTIONARIO_PERGUNTAS[mq.indice];
+    if (mqProxima) {
+      registrarEntradaSessao(sessao, "assistant", mqProxima.pergunta);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", mqProxima.pergunta, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return mqProxima.pergunta;
+    }
+    // Mini-questionário concluído
+    mq.ativo = false; mq.concluido = true;
+    sessao.perfilSintetico = gerarPerfilSintetico(mq.respostas, sessao);
+    const analiseSint = { nome: sessao.nome || "", cidade: mq.respostas.localidade || "", areaInteresse: mq.respostas.areaExperiencia || "", anosExperiencia: mq.respostas.anosExperiencia || "", escolaridade: mq.respostas.escolaridade || "", status: "Perfil coletado sem CV", scoreGeral: 50, scoreVaga: 50, classificacao: "A verificar", vagaInteresse: sessao.ultimaAnalise && sessao.ultimaAnalise.vagaInteresse ? sessao.ultimaAnalise.vagaInteresse : "", idVaga: sessao.ultimaAnalise && sessao.ultimaAnalise.idVaga ? sessao.ultimaAnalise.idVaga : "" };
+    sessao.ultimaAnalise = Object.assign({}, sessao.ultimaAnalise || {}, analiseSint);
+    await salvarAnaliseNaPlanilha(telefone, analiseSint);
+    const vagasMQ = await buscarVagas();
+    const koMQ = montarPerguntasKnockout(sessao.ultimaAnalise, vagasMQ);
+    if (koMQ.length > 0) {
+      sessao.preTriagem = { ativa: true, perguntas: koMQ, indice: 0, respostas: {}, reprovado: false };
+      const respKO = `Obrigada! 😊 Só mais algumas perguntinhas rápidas sobre a vaga.\n\n${koMQ[0].pergunta}`;
+      registrarEntradaSessao(sessao, "assistant", respKO);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", respKO, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return respKO;
+    }
+    sessao.aguardandoDisponibilidade = true;
+    const respMQFim = `Obrigada por compartilhar! 😊\n\nQue horários você teria disponibilidade para uma entrevista essa semana?`;
+    registrarEntradaSessao(sessao, "assistant", respMQFim);
+    marcarConversaRespondida(sessao);
+    sessao.historico = sessao.historico.slice(-500);
+    await salvarMensagemSheets(telefone, "assistant", respMQFim, sessao.nome);
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    return respMQFim;
+  }
+
+  // ── CANDIDATO CONFIRMA INTERESSE (fluxo com CV analisado) ─────────────────
+  if (sessao.aguardandoConfirmacaoInteresse && ehConfirmacaoInteresse(mensagem)) {
+    sessao.aguardandoConfirmacaoInteresse = false;
+    const vagasKO = await buscarVagas();
+    const perguntasKO = montarPerguntasKnockout(sessao.ultimaAnalise, vagasKO);
+    if (perguntasKO.length > 0) {
+      sessao.preTriagem = { ativa: true, perguntas: perguntasKO, indice: 0, respostas: {}, reprovado: false };
+      const nomeKO2 = primeiroNome(sessao.ultimaAnalise && sessao.ultimaAnalise.nome ? sessao.ultimaAnalise.nome : (sessao.nome || ""));
+      const respInicio = `Que ótimo${nomeKO2 ? ", " + nomeKO2 : ""}! 😊 Antes de encaminhar sua candidatura, preciso confirmar algumas informações sobre a vaga.\n\n${perguntasKO[0].pergunta}`;
+      registrarEntradaSessao(sessao, "assistant", respInicio);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", respInicio, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return respInicio;
+    }
+    // Sem knockout → pedir disponibilidade direto
+    sessao.aguardandoDisponibilidade = true;
+    const nomeInt = primeiroNome(sessao.ultimaAnalise && sessao.ultimaAnalise.nome ? sessao.ultimaAnalise.nome : (sessao.nome || ""));
+    const respInt = `Que ótimo${nomeInt ? ", " + nomeInt : ""}! 😊 Já registrei seu interesse.\n\nQue horários você teria disponibilidade para uma entrevista essa semana?`;
+    registrarEntradaSessao(sessao, "assistant", respInt);
+    marcarConversaRespondida(sessao);
+    sessao.historico = sessao.historico.slice(-500);
+    await salvarMensagemSheets(telefone, "assistant", respInt, sessao.nome);
+    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+    return respInt;
+  }
+  // ── DETECÇÃO: candidato sem CV que declarou não ter currículo ──────────────
+  if (!sessao.curriculo && !(sessao.miniQuestionario && sessao.miniQuestionario.ativo) && !(sessao.miniQuestionario && sessao.miniQuestionario.concluido) && !sessao.preTriagem && !sessao.aguardandoDisponibilidade) {
+    const histTexto = normalizarTexto((sessao.historico || []).slice(-6).map(function(h){ return h.content || ""; }).join(" "));
+    const naoTemCV = ["nao tenho curriculo","não tenho currículo","nao tenho cv","não tenho cv","nao sei fazer curriculo","não sei fazer","nao vou mandar","não vou mandar","nao tenho como enviar"].some(function(p){ return histTexto.includes(p); });
+    if (naoTemCV) {
+      sessao.miniQuestionario = { ativo: true, indice: 0, respostas: {}, concluido: false };
+      const nmSemCV = primeiroNome(sessao.nome || "");
+      const respSemCV = `Sem problema${nmSemCV ? ", " + nmSemCV : ""}! 😊 Posso fazer algumas perguntas rápidas para registrar seu perfil.\n\n${MINI_QUESTIONARIO_PERGUNTAS[0].pergunta}`;
+      registrarEntradaSessao(sessao, "assistant", respSemCV);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", respSemCV, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return respSemCV;
+    }
+  }
+
   const vagas = await buscarVagas();
 
   // RAIO-X: registra diagnóstico da busca de vagas para cada mensagem
@@ -2679,6 +2840,109 @@ function ehConfirmacaoInteresse(mensagem) {
   return ["sim","tenho interesse","quero","quero participar","aceito","tenho sim","pode ser","tenho disponibilidade","tenho","ok"].some(p => texto === p || texto.includes(p));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRÉ-TRIAGEM + MINI-QUESTIONÁRIO + ALERTAS INTELIGENTES (Melhorias 1, 2 e 3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MINI_QUESTIONARIO_PERGUNTAS = [
+  { campo: "areaExperiencia", pergunta: "Qual é a sua principal área de atuação? (ex: vendas, logística, administrativo, limpeza...)" },
+  { campo: "anosExperiencia", pergunta: "Há quanto tempo você trabalha nessa área?" },
+  { campo: "escolaridade",    pergunta: "Qual é a sua escolaridade? (ex: ensino médio completo, superior cursando, técnico...)" },
+  { campo: "disponibCLT",    pergunta: "Você tem disponibilidade para trabalho em regime CLT com carteira assinada?" },
+  { campo: "localidade",     pergunta: "Em qual cidade ou bairro você mora?" }
+];
+
+function montarPerguntasKnockout(analise, vagas) {
+  const perguntas = [];
+  const reqObrig = normalizarTexto(analise && analise.requisitoObrigatorio ? analise.requisitoObrigatorio : "");
+  const cidade   = String((analise && analise.cidade) ? analise.cidade : "");
+  const vaga     = (vagas || []).find(function(v) { return campo(v, ["idVaga","ID Vaga","ID"]) === (analise && analise.idVaga); });
+  const escala   = vaga ? normalizarTexto(campo(vaga, ["escala","Escala","Escala/Horário"]) || "") : "";
+  const reqVaga  = vaga ? normalizarTexto(campo(vaga, ["requisitos","Requisitos"]) || "") : "";
+
+  if (reqObrig.includes("cnh") || reqObrig.includes("carteira") || reqVaga.includes("cnh"))
+    perguntas.push({ campo: "temCNH", knockout: true, pergunta: "Você possui CNH válida?" });
+  if (reqObrig.includes("vigilante"))
+    perguntas.push({ campo: "temVigilante", knockout: true, pergunta: "Você possui o Curso de Formação de Vigilante?" });
+  if (reqObrig.includes("superior") || reqObrig.includes("graduacao"))
+    perguntas.push({ campo: "temSuperior", knockout: true, pergunta: "Você possui ensino superior completo?" });
+  if (reqObrig.includes("ingles") || reqVaga.includes("ingles"))
+    perguntas.push({ campo: "nivelIngles", knockout: false, pergunta: "Qual é o seu nível de inglês? (básico, intermediário ou avançado)" });
+  if (escala.includes("6x1") || escala.includes("turno") || escala.includes("escala")) {
+    var escalaLabel = vaga ? (campo(vaga, ["escala","Escala"]) || "rotativa") : "rotativa";
+    perguntas.push({ campo: "aceitaEscala", knockout: true, pergunta: "A vaga trabalha em escala (" + escalaLabel + "). Você tem disponibilidade para esse regime?" });
+  }
+  if (cidade && !["es","espirito santo","espirito santo"].includes(normalizarTexto(cidade)))
+    perguntas.push({ campo: "localidade", knockout: true, pergunta: "A vaga é em " + cidade + ". Você mora na região ou tem como se deslocar?" });
+  if (reqObrig.includes("transporte") || reqVaga.includes("transporte proprio"))
+    perguntas.push({ campo: "temTransporte", knockout: true, pergunta: "Você possui transporte próprio?" });
+
+  return perguntas;
+}
+
+function ehRespostaNegativaKO(texto) {
+  var t = normalizarTexto(texto.trim());
+  return ["nao","não","nao tenho","não tenho","nao possuo","não possuo","nunca","negativo",
+          "infelizmente nao","infelizmente não","nao moro","nao consigo","nao tenho como"].some(function(p) {
+    return t === p || t.startsWith(p + " ") || t.includes(" " + p + " ") || t.endsWith(" " + p);
+  });
+}
+
+function gerarPerfilSintetico(respostas, sessao) {
+  return {
+    nome: sessao.nome || "",
+    areaExperiencia: respostas.areaExperiencia || "",
+    anosExperiencia: respostas.anosExperiencia || "",
+    escolaridade:    respostas.escolaridade || "",
+    localidade:      respostas.localidade || "",
+    disponibCLT:     respostas.disponibCLT || ""
+  };
+}
+
+async function salvarDisponibilidadeNaPlanilha(telefone, disponibilidade) {
+  try {
+    if (!CONFIG.VAGAS_URL) return;
+    var urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    await axios.post(urlBase, { acao: "confirmarInteresse", telefone: telefone, disponibilidade: disponibilidade },
+      { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+  } catch (e) { console.error("Erro ao salvar disponibilidade:", e.message); }
+}
+
+async function enviarAlertaFinalThiara(analise, telefone, disponibilidade, preTriagemOk, perfilSintetico) {
+  try {
+    var score = Number((analise && (analise.scoreVaga || analise.scoreGeral)) ? (analise.scoreVaga || analise.scoreGeral) : 0);
+    var nome  = (analise && analise.nome) ? analise.nome : ((perfilSintetico && perfilSintetico.nome) ? perfilSintetico.nome : "Não identificado");
+    var vaga  = (analise && analise.vagaInteresse) ? analise.vagaInteresse : "Não identificada";
+    var cid   = (analise && analise.cidade) ? analise.cidade : ((perfilSintetico && perfilSintetico.localidade) ? perfilSintetico.localidade : "Não informada");
+    var classif = String((analise && analise.classificacao) ? analise.classificacao : "").toLowerCase();
+
+    // Score < 50 sem classificação boa → não alerta
+    if (score < 50 && !classif.includes("bom") && !classif.includes("excelente")) {
+      console.log("Alerta suprimido (score baixo):", telefone, score);
+      return;
+    }
+
+    var prontoParaEntrevista = preTriagemOk && score >= 70;
+    var cabecalho = prontoParaEntrevista
+      ? (score >= 90 ? "⭐ CANDIDATO EXCELENTE — PRONTO PARA ENTREVISTA" : "✅ CANDIDATO QUALIFICADO — PRONTO PARA ENTREVISTA")
+      : "⚠️ CANDIDATO PARA REVISAR ANTES DE CONTATAR";
+
+    var blocoScore   = score > 0 ? "\n⭐ Score: " + score + "\n🏅 Classificação: " + (analise && analise.classificacao ? analise.classificacao : "—") : "";
+    var blocoDisp    = disponibilidade ? "\n\n📅 Disponibilidade:\n" + disponibilidade : "";
+    var blocoFortes  = (analise && analise.pontosFortes) ? "\n\n💼 Pontos fortes:\n" + formatarLista(analise.pontosFortes) : "";
+    var blocoAtencao = (!prontoParaEntrevista && analise && analise.pontosAtencao) ? "\n\n⚠️ Pontos de atenção:\n" + formatarLista(analise.pontosAtencao) : "";
+    var blocoSint    = perfilSintetico
+      ? "\n\n📋 Perfil coletado sem CV:\n• Área: " + (perfilSintetico.areaExperiencia||"-") + "\n• Exp: " + (perfilSintetico.anosExperiencia||"-") + "\n• Escolaridade: " + (perfilSintetico.escolaridade||"-") + "\n• Local: " + (perfilSintetico.localidade||"-")
+      : "";
+    var acao = prontoParaEntrevista
+      ? "\n\n👉 PRÓXIMO PASSO: Agendar entrevista"
+      : "\n\n👉 PRÓXIMO PASSO: Revisar perfil antes de contatar";
+
+    var texto = cabecalho + "\n\n👤 " + nome + "\n📌 Vaga: " + vaga + "\n📍 Cidade: " + cid + blocoScore + blocoDisp + blocoFortes + blocoAtencao + blocoSint + acao + "\n\n📱 WhatsApp: +" + telefone;
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
+  } catch (e) { console.error("Erro alerta final Thiara:", e.message); }
+}
+
 async function enviarAlertaThiara(analise, telefone) {
   try {
     const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
@@ -2690,11 +2954,10 @@ async function enviarAlertaThiara(analise, telefone) {
   } catch (e) { console.error("Erro alerta Thiara:", e.message); }
 }
 
+// Mantida para compatibilidade com Inbox manual e /inbox/encaminhar
 async function enviarAlertaInteresseThiara(analise, telefone) {
-  try {
-    const texto = `✅ CANDIDATO CONFIRMOU INTERESSE\n\n👤 ${analise?.nome || "Não identificado"}\n\n📌 Vaga:\n${analise?.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise?.cidade || "Não informada"}\n\n⭐ Score: ${analise?.scoreVaga || analise?.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise?.classificacao || "Não informada"}\n\n📱 WhatsApp:\n+${telefone}\n\n✅ O candidato confirmou interesse na oportunidade.`;
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
-  } catch (e) { console.error("Erro alerta interesse:", e.message); }
+  // Redireciona para o alerta final inteligente (Melhoria 3)
+  await enviarAlertaFinalThiara(analise, telefone, "", true, null);
 }
 
 function formatarLista(texto) {
