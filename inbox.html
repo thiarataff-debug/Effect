@@ -533,6 +533,12 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <span id="gemini-dot" style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
       <span id="gemini-label">🤖 IA ON</span>
     </button>
+    <!-- ALERTA DE QUOTA GEMINI — aparece quando detecta erros recorrentes de rate limit -->
+    <a id="gemini-quota-alerta" href="https://aistudio.google.com/app/usage" target="_blank"
+       style="display:none;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:#f59e0b;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;color:#fff;text-decoration:none;flex-shrink:0;animation:pulse 1.5s infinite"
+       title="Créditos Gemini baixos — clique para verificar">
+      ⚡ Gemini
+    </a>
     <!-- CRÉDITOS RAILWAY — atualizado a cada 10min -->
     <a href="https://railway.app/account/billing" target="_blank" title="Ver billing e créditos Railway" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,0.12);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;text-decoration:none">
       🚂 Billing
@@ -1095,6 +1101,7 @@ font-family:'Montserrat',sans-serif
           <option value="C">🔵 C — Conformidade</option>
         </select>
         <button onclick="exportarBancoCSV()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📥 Exportar</button>
+        <button onclick="abrirReativarBanco()" style="padding:8px 14px;border-radius:8px;border:none;background:#f59e0b;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Reativar</button>
         <button onclick="fecharModal('modal-banco-talentos')" style="padding:8px 12px;border-radius:8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:16px;cursor:pointer">✕</button>
       </div>
     </div>
@@ -1112,6 +1119,37 @@ font-family:'Montserrat',sans-serif
         <div style="font-size:12px">Tente outros filtros ou aguarde novos candidatos qualificados</div>
       </div>
       <div id="bt-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REATIVAR BANCO DE TALENTOS -->
+<div class="modal-overlay" id="modal-reativar-banco">
+  <div class="modal" style="width:560px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">🔄 Reativar Banco de Talentos</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">A LIA vai enviar uma mensagem para candidatos com cargo compatível e retomar o fluxo completo quando responderem.</div>
+
+    <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:6px">Cargo / Vaga da oportunidade</label>
+    <input id="reativar-cargo" type="text" placeholder="Ex: Auxiliar de Logística, Vendedor, Analista de RH..." oninput="filtrarReativar()"
+      style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:14px">
+
+    <div style="background:#f8fafc;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px">Candidatos que receberão a mensagem:</div>
+      <div id="reativar-lista" style="font-size:11px;color:var(--muted);max-height:140px;overflow-y:auto">—</div>
+      <div style="font-size:11px;font-weight:800;color:#4f46e5;margin-top:8px">Total: <span id="reativar-total">0</span> candidato(s)</div>
+    </div>
+
+    <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:6px">Mensagem (editável)</label>
+    <textarea id="reativar-msg" rows="5"
+      style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;resize:vertical;line-height:1.5"></textarea>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px;margin-bottom:16px">Dica: use [nome] para personalizar automaticamente com o nome do candidato.</div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="fecharModal('modal-reativar-banco')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button onclick="confirmarReativacao()" id="btn-confirmar-reativar"
+        style="padding:9px 20px;border-radius:8px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+        🔄 Enviar para todos
+      </button>
     </div>
   </div>
 </div>
@@ -1221,6 +1259,112 @@ function abrirChatDoBanco(tel) {
   const item = document.querySelector(`[data-tel="${tel}"]`);
   if(item) item.click();
   else { setTimeout(()=>{ const it=document.querySelector(`[data-tel="${tel}"]`); if(it) it.click(); },300); }
+}
+
+function abrirReativarBanco() {
+  // Carrega candidatos do banco atual
+  const candidatos = _btTodos || [];
+  if (!candidatos.length) { toast('Nenhum candidato no Banco de Talentos', 'error'); return; }
+  // Preenche mensagem padrão
+  const cargo = document.getElementById('reativar-cargo')?.value?.trim() || '';
+  document.getElementById('reativar-msg').value =
+    `Oi, [nome]! 👋 Temos uma nova oportunidade que pode ser para você${cargo ? `: ${cargo}` : ''}.\n\nVocê tem interesse em saber mais? 😊`;
+  document.getElementById('modal-reativar-banco').classList.add('show');
+  filtrarReativar();
+}
+
+function filtrarReativar() {
+  const cargo = (document.getElementById('reativar-cargo')?.value || '').toLowerCase().trim();
+  const candidatos = _btTodos || [];
+  const filtrados = cargo
+    ? candidatos.filter(c => {
+        const cargoCand = (c.cargo || '').toLowerCase();
+        // Match parcial: se qualquer palavra do cargo buscado está no cargo do candidato
+        const palavras = cargo.split(/\s+/).filter(p => p.length >= 3);
+        return palavras.length === 0 || palavras.some(p => cargoCand.includes(p));
+      })
+    : candidatos;
+
+  const lista = document.getElementById('reativar-lista');
+  const total = document.getElementById('reativar-total');
+  if (!filtrados.length) {
+    lista.innerHTML = '<span style="color:#94a3b8">Nenhum candidato compatível com esse cargo.</span>';
+    total.textContent = '0';
+    document.getElementById('btn-confirmar-reativar').disabled = true;
+    return;
+  }
+  document.getElementById('btn-confirmar-reativar').disabled = false;
+  total.textContent = filtrados.length;
+  lista.innerHTML = filtrados.map(c =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9">
+      <span style="font-weight:700;color:#1e293b">${c.nome||'Sem nome'}</span>
+      <span style="color:#64748b">${c.cargo||'—'}</span>
+    </div>`
+  ).join('');
+
+  // Atualiza mensagem com cargo preenchido
+  const cargoFormatado = document.getElementById('reativar-cargo')?.value?.trim() || '';
+  const msgAtual = document.getElementById('reativar-msg').value;
+  if (cargoFormatado && msgAtual.includes('para você:')) {
+    const regex = /para você:.*?\./;
+    document.getElementById('reativar-msg').value = msgAtual.replace(regex, `para você: ${cargoFormatado}.\n\nVocê tem interesse em saber mais? 😊`);
+  }
+
+  // Guarda lista filtrada para envio
+  document.getElementById('modal-reativar-banco')._filtrados = filtrados;
+}
+
+async function confirmarReativacao() {
+  const modal = document.getElementById('modal-reativar-banco');
+  const filtrados = modal._filtrados || _btTodos || [];
+  const cargo = (document.getElementById('reativar-cargo')?.value || '').trim();
+  const msgTemplate = (document.getElementById('reativar-msg')?.value || '').trim();
+  if (!msgTemplate) { toast('Digite a mensagem antes de enviar', 'error'); return; }
+  if (!filtrados.length) { toast('Nenhum candidato para enviar', 'error'); return; }
+
+  const confirma = confirm(`Enviar mensagem de reativação para ${filtrados.length} candidato(s)?\n\nIsso iniciará o fluxo completo da LIA com cada um deles.`);
+  if (!confirma) return;
+
+  const btn = document.getElementById('btn-confirmar-reativar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+
+  // Monta lista de telefones e personaliza mensagem por candidato (substituindo [nome])
+  const telefones = filtrados.map(c => c.telefone).filter(Boolean);
+
+  try {
+    const r = await fetch('/inbox/reativar-banco', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cargo, mensagem: msgTemplate, telefones })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      fecharModal('modal-reativar-banco');
+      toast(`✅ Mensagens enviadas para ${d.enviados}/${d.total} candidatos!`, 'success', 5000);
+      setTimeout(() => carregarSessoes(), 3000);
+    } else {
+      toast('Erro: ' + (d.erro || 'falha desconhecida'), 'error');
+    }
+  } catch(e) {
+    toast('Erro de conexão: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Enviar para todos';
+  }
+}
+
+function removerDoBancoLista(tel) {
+  const nome = todasSessoes[tel]?.nome || getMeta(tel)?.nome || tel;
+  if (!confirm(`Remover ${nome} do Banco de Talentos?`)) return;
+  statusMap[tel] = 'Aguardando recrutador';
+  if (pipelineMap[tel] === 'Banco de Talentos') delete pipelineMap[tel];
+  const meta = getMeta(tel);
+  if (meta.dataBanco) setMeta(tel, { dataBanco: null });
+  salvarLocal();
+  registrarIntervencao('Thiara', 'Removido do Banco de Talentos', tel);
+  renderLista();
+  toast(`${nome} removido do Banco de Talentos`, 'success');
 }
 
 function removerDoBanco(tel, nome, btn) {
@@ -2217,6 +2361,7 @@ const hInfo = s.dataWhatsapp ? { texto: s.dataWhatsapp, hoje: true, ms: atvMs } 
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
           ${statusMap[tel]==='Aguardando recrutador'?`<span class="cc" style="background:#f59e0b;color:#fff;cursor:pointer" title="Clique para remover e arquivar" onclick="event.stopPropagation();resolverAguardando('${tel}')">🟠 Aguardando ✕</span>`:''}
+          ${statusMap[tel]==='Banco de Talentos'?`<span class="cc" style="background:#7c3aed;color:#fff;cursor:pointer" title="Clique para remover do Banco de Talentos" onclick="event.stopPropagation();removerDoBancoLista('${tel}')">📦 Banco ✕</span>`:''}
           ${marcadosRetorno[tel]?`<span class="cc cc-yellow" style="cursor:pointer" title="Clique para desmarcar" onclick="event.stopPropagation();marcadosRetorno['${tel}']=false;salvarLocal();renderLista();toast('Marcação removida','success')">📌 Retornar</span>`:''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
         </div>
@@ -4248,6 +4393,18 @@ async function carregarStatusIA() {
       if (spanSaldo) spanSaldo.textContent = '🚂 Billing';
     } else if (divCreditos) {
       divCreditos.style.display = 'none';
+    }
+
+    // ── Alerta de quota Gemini ──────────────────────────────────────────────
+    const gemini = data.gemini || {};
+    const divGeminiAlerta = document.getElementById('gemini-quota-alerta');
+    if (divGeminiAlerta) {
+      if (gemini.quotaAlerta) {
+        divGeminiAlerta.style.display = 'flex';
+        divGeminiAlerta.title = `${gemini.erros429} erros de quota detectados. Último: ${gemini.ultimoErro429 ? new Date(gemini.ultimoErro429).toLocaleString('pt-BR') : '—'}`;
+      } else {
+        divGeminiAlerta.style.display = 'none';
+      }
     }
   } catch(e) { /* sem Railway token ou server offline */ }
 }
