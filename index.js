@@ -1028,13 +1028,19 @@ async function carregarSessoesDoSheets() {
   }
 }
 
+// ── STARTUP: 1) Volume local (rápido) → 2) Sheets em background ──
+const localCount = carregarSessoesLocal();
+console.log(`[startup] Sessões carregadas do Volume local: ${localCount}`);
+
 carregarSessoesDoSheets().then(async () => {
   const total = Object.keys(sessoes).length;
-  console.log(`Sessões carregadas: ${total}`);
+  console.log(`Sessões carregadas do Sheets: ${total}`);
   if (total < 10) {
     console.log("Poucas sessões — tentando restaurar do backup Drive...");
     await restaurarDoUltimoBackup();
   }
+  // Salva no Volume logo após carregar do Sheets
+  if (Object.keys(sessoes).length > 0) salvarSessoesLocal();
   setTimeout(() => fazerBackup("startup"), 10 * 1000);
 }).catch(e => console.error("Erro na inicialização:", e.message));
 setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
@@ -1044,6 +1050,9 @@ setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
 // sozinho ultrapassava o intervalo de 5min e sobrecarregava o servidor, derrubando
 // também as chamadas à API da Claude.)
 const ultimoSaveSessao = {};
+
+// Salva sessões no Volume a cada 5 minutos (independente do Sheets)
+setInterval(salvarSessoesLocal, 5 * 60 * 1000);
 
 setInterval(async () => {
   const tarefas = Object.entries(sessoes)
@@ -3385,6 +3394,58 @@ supervisor.iniciarSupervisor();
 // O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
 // e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
 const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+const SESSOES_LOCAL_PATH = process.env.SESSOES_LOCAL_PATH || "/data/sessoes-local.json";
+
+function salvarSessoesLocal() {
+  try {
+    const dir = require("path").dirname(SESSOES_LOCAL_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const compacto = {};
+    Object.entries(sessoes).forEach(([tel, s]) => {
+      compacto[tel] = {
+        nome: s.nome,
+        modo: s.modo,
+        pausado: s.pausado,
+        motivoPausa: s.motivoPausa,
+        unreadCount: s.unreadCount || 0,
+        discResult: s.discResult || null,
+        ultimaAnalise: s.ultimaAnalise || null,
+        historico: (s.historico || []).slice(-30),
+        curriculos: s.curriculos || [],
+        curriculo: s.curriculo || null
+      };
+    });
+    fs.writeFileSync(SESSOES_LOCAL_PATH, JSON.stringify({ ts: Date.now(), sessoes: compacto }), "utf8");
+  } catch(e) { console.error("salvarSessoesLocal:", e.message); }
+}
+
+function carregarSessoesLocal() {
+  try {
+    if (!fs.existsSync(SESSOES_LOCAL_PATH)) return 0;
+    const raw = JSON.parse(fs.readFileSync(SESSOES_LOCAL_PATH, "utf8"));
+    if (!raw.sessoes) return 0;
+    let n = 0;
+    Object.entries(raw.sessoes).forEach(([tel, s]) => {
+      if (!sessoes[tel]) {
+        sessoes[tel] = {
+          historico: (s.historico || []).map(normalizarEventoHistorico),
+          nome: s.nome || null,
+          modo: s.modo || "automatico",
+          pausado: s.pausado || false,
+          motivoPausa: s.motivoPausa || "",
+          unreadCount: Number(s.unreadCount || 0),
+          discResult: s.discResult || null,
+          ultimaAnalise: s.ultimaAnalise || null,
+          curriculos: s.curriculos || [],
+          curriculo: s.curriculo || null
+        };
+        if (s.pausado) atendimentosManuais.add(tel);
+        n++;
+      }
+    });
+    return n;
+  } catch(e) { console.error("carregarSessoesLocal:", e.message); return 0; }
+}
 let inboxDataCache = null;
 
 function lerDadosInbox() {
