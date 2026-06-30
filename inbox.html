@@ -578,10 +578,12 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <div id="gu-atualizado" style="font-size:9px;color:#9ca3af;text-align:right;margin-top:8px">—</div>
       </div>
     </div>
-    <!-- CRÉDITOS RAILWAY — atualizado a cada 10min -->
+    <!-- RAILWAY -->
     <a href="https://railway.app/account/billing" target="_blank" title="Ver billing e créditos Railway" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,0.12);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;text-decoration:none">
-      🚂 Billing
+      🚂 Railway
     </a>
+    <!-- MEU APP — visível no header -->
+    <button class="rbtn" onclick="mostrarView('meu-app')" title="Abrir Meu App" style="flex-shrink:0">🖥️ App</button>
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
@@ -894,6 +896,10 @@ font-family:'Montserrat',sans-serif
       <label class="modal-label">Observações</label>
       <textarea class="modal-input" id="ent-obs" rows="2" placeholder="Link do Meet, endereço, etc."></textarea>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+      <input type="checkbox" id="ent-lembrete" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a">
+      <label for="ent-lembrete" style="font-size:11px;font-weight:700;color:#15803d;cursor:pointer;user-select:none">🔔 Ativar lembrete (notificação 30 min antes)</label>
+    </div>
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-entrevista')">Cancelar</button>
       <button class="modal-btn modal-confirm" onclick="salvarEntrevista()">Agendar</button>
@@ -1108,10 +1114,46 @@ font-family:'Montserrat',sans-serif
       <div class="ev-title">📅 Agenda de Entrevistas</div>
       <div class="ev-subtitle">Calendário de entrevistas + Faltosos</div>
     </div>
-    <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários Lia</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="rbtn" style="background:#16a34a;color:#fff;font-weight:700" onclick="abrirModalLembrete()" title="Criar lembrete pessoal">🔔 Novo Lembrete</button>
+      <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários Lia</button>
+    </div>
   </div>
   <div class="agenda-body" id="agenda-body">
     <!-- preenchido por renderAgenda() -->
+  </div>
+</div>
+
+<!-- MODAL: LEMBRETE PESSOAL -->
+<div class="modal-overlay" id="modal-lembrete">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">🔔 Novo Lembrete</div>
+    <div class="modal-field">
+      <label class="modal-label">Título do lembrete</label>
+      <input class="modal-input" type="text" id="lem-titulo" placeholder="Ex: Ligar para cliente, Enviar proposta...">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label class="modal-label">Data</label>
+        <input class="modal-input" type="date" id="lem-data">
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Horário</label>
+        <input class="modal-input" type="time" id="lem-hora">
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Descrição (opcional)</label>
+      <textarea class="modal-input" id="lem-desc" rows="2" placeholder="Detalhes adicionais..."></textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+      <input type="checkbox" id="lem-notif" checked style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a">
+      <label for="lem-notif" style="font-size:11px;font-weight:700;color:#15803d;cursor:pointer;user-select:none">🔔 Ativar notificação (30 min antes)</label>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-lembrete')">Cancelar</button>
+      <button class="modal-btn modal-confirm" onclick="salvarLembrete()">Salvar Lembrete</button>
+    </div>
   </div>
 </div>
 
@@ -2629,12 +2671,29 @@ function renderPainelPerfil(s){
     <div class="rp-row"><span class="rp-label">Nome</span><span class="rp-val">${anal.nome||s.nome||'—'}</span></div>
     <div class="rp-row"><span class="rp-label">Telefone</span><span class="rp-val">${telDisplay(tel)}</span></div>
     <div class="rp-row"><span class="rp-label">Cidade</span><span class="rp-val">${anal.cidade||'—'}</span></div>
-    <div class="rp-row"><span class="rp-label">Vaga</span><span class="rp-val">${anal.vagaInteresse||'—'}</span></div>
     <div class="rp-row"><span class="rp-label">Escolaridade</span><span class="rp-val">${anal.escolaridadeCompativel||'—'}</span></div>
-    <div class="rp-row"><span class="rp-label">Experiência</span><span class="rp-val">${anal.anosExperiencia||'—'}</span></div>
     <div class="rp-row"><span class="rp-label">Cadastro</span><span class="rp-val">${primeiraMsgTs?formatarDataMensagem(primeiraMsgTs):'—'}</span></div>
   </div>
   `:''}
+  <div class="rp-section" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+    <div style="font-size:10px;font-weight:800;color:#0369a1;margin-bottom:8px">🎯 TRIAGEM DE CANDIDATURA</div>
+    <div class="rp-row">
+      <span class="rp-label">💬 Interesse declarado</span>
+      <span class="rp-val" style="color:#0369a1;font-weight:700">${s.vagaInteresseDeclarado||'—'}</span>
+    </div>
+    <div class="rp-row">
+      <span class="rp-label">🤖 Vaga sugerida</span>
+      <span class="rp-val">${anal.vagaInteresse||'—'}</span>
+    </div>
+    <div class="rp-row">
+      <span class="rp-label">💼 Experiência geral</span>
+      <span class="rp-val">${[anal.anosExperiencia?anal.anosExperiencia+' anos':'',anal.experienciaCompativel||''].filter(Boolean).join(' · ')||anal.areaInteresse||'—'}</span>
+    </div>
+    <div class="rp-row">
+      <span class="rp-label">✅ Aceite do candidato</span>
+      <span class="rp-val" style="font-weight:800;color:${s.aceiteVaga?'#16a34a':s.aguardandoConfirmacaoInteresse?'#d97706':'#6b7280'}">${s.aceiteVaga?'✅ Confirmou interesse':s.aguardandoConfirmacaoInteresse?'⏳ Aguardando resposta':'—'}</span>
+    </div>
+  </div>
   ${compat?`
   <div class="rp-section">
     <div class="rp-section-title">🎯 Compatibilidade com Vaga</div>
@@ -3767,8 +3826,8 @@ function usarVaga(idx){
   if(!input)return;
   input.value=texto;
   autoResize(input);
-  input.focus();
-  toast('📋 Detalhes da vaga inseridos — revise antes de enviar','success');
+  // Envia automaticamente sem passo extra de confirmação
+  setTimeout(()=>enviarMsg(),100);
 }
 
 
@@ -5346,143 +5405,180 @@ function renderPainelSaude(){
       <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #ef4444">
         <div style="font-size:24px;font-weight:800;color:#ef4444">${travadas.length}</div>
         <div style="font-size:11px;color:var(--muted);font-weight:600">⚠️ Travadas +24h</div>
-        ${travadas.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${travadas.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${travadas.length>3?'...':''}</div>`:''}
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #f59e0b">
-        <div style="font-size:24px;font-weight:800;color:#f59e0b">${manualLongo.length}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600">👩 Manual +2h</div>
-        ${manualLongo.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${manualLongo.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${manualLongo.length>3?'...':''}</div>`:''}
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #8ed1b2">
-        <div style="font-size:24px;font-weight:800;color:#8ed1b2">${entsHoje.length}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600">📅 Entrevistas Hoje</div>
-        ${entsHoje.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${entsHoje.map(e=>`${e.hora}`).join(', ')}</div>`:''}
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #ef4444">
-        <div style="font-size:24px;font-weight:800;color:#ef4444">${quentes}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600">🔥 Candidatos Quentes</div>
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid var(--navy)">
-        <div style="font-size:24px;font-weight:800;color:var(--navy)">${todas.length}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600">👥 Total Conversas</div>
-      </div>
-    </div>
+        ${travadas.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${travadas.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${trav
+// ── LEMBRETES PESSOAIS ────────────────────────────────────────────────────────
+let _lembretes = JSON.parse(localStorage.getItem('effect_lembretes') || '[]');
+let _lembreteTimers = {};
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-        <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:10px">📌 Candidatos por Status</div>
-        ${Object.entries(porStatus).sort((a,b)=>b[1]-a[1]).map(([st,cnt])=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
-            <span style="color:${PIPELINE_CORES[st]||'var(--muted)'};font-weight:600">${st}</span>
-            <span style="font-weight:800">${cnt}</span>
-          </div>`).join('')}
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-        <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:10px">⚠️ Ações Necessárias</div>
-        ${!travadas.length&&!manualLongo.length?'<div style="font-size:11px;color:var(--green)">✅ Tudo em ordem!</div>':''}
-        ${travadas.slice(0,5).map(([tel,s])=>`
-          <div style="background:#fef2f2;border-radius:8px;padding:8px;margin-bottom:6px;font-size:11px;cursor:pointer" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${tel}'),200)">
-            <b>${s.nome||telDisplay(tel)}</b><br>
-            <span style="color:#ef4444">⚠️ Sem resposta há +24h</span>
-          </div>`).join('')}
-        ${manualLongo.slice(0,3).map(([tel,s])=>`
-          <div style="background:#fffbeb;border-radius:8px;padding:8px;margin-bottom:6px;font-size:11px;cursor:pointer" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${tel}'),200)">
-            <b>${s.nome||telDisplay(tel)}</b><br>
-            <span style="color:#f59e0b">👩 Em manual há mais de 2h</span>
-          </div>`).join('')}
-        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
-          <button onclick="arquivarInativos(30)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--navy)">📦 Arquivar inativos (30+ dias)</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
+function salvarLembretesStorage() {
+  localStorage.setItem('effect_lembretes', JSON.stringify(_lembretes));
 }
 
-// ─── PATCH: mostrarView — adiciona 'saude' + iframe views ────────────────────────
-(function(){
-  var _orig=mostrarView;
-  window.mostrarView=function(v){
-    _orig(v);
-    const saudeEl=document.getElementById('view-saude');
-    if(saudeEl)saudeEl.style.display=v==='saude'?'flex':'none';
-    const navSaude=document.getElementById('nav-saude');
-    if(navSaude)navSaude.style.background=v==='saude'?'rgba(255,255,255,.22)':'';
-    if(v==='saude')renderPainelSaude();
-    // iframe views
-    ['dashboard','ats','financeiro','meu-app'].forEach(id=>{
-      const el=document.getElementById('view-'+id);
-      if(el) el.style.display=v===id?'flex':'none';
-    });
-  };
-})();
+function abrirModalLembrete() {
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('lem-titulo').value = '';
+  document.getElementById('lem-data').value = hoje;
+  document.getElementById('lem-hora').value = '09:00';
+  document.getElementById('lem-desc').value = '';
+  document.getElementById('lem-notif').checked = true;
+  document.getElementById('modal-lembrete').classList.add('show');
+  setTimeout(() => document.getElementById('lem-titulo').focus(), 100);
+}
 
-// ─── PATCH: marcarEntrevista — NPS ao marcar Realizada ───────────
-(function(){
-  var _orig=marcarEntrevista;
-  window.marcarEntrevista=function(tel,id,status){
-    _orig(tel,id,status);
-    if(status==='Realizada'){
-      setTimeout(()=>{
-        if(confirm(`Enviar pesquisa NPS para ${todasSessoes[tel]?.nome||tel}?`)){
-          enviarNPS(tel);
-        }
-      },500);
-    }
-  };
-})();
+function salvarLembrete() {
+  const titulo = document.getElementById('lem-titulo').value.trim();
+  const data   = document.getElementById('lem-data').value;
+  const hora   = document.getElementById('lem-hora').value;
+  const desc   = document.getElementById('lem-desc').value.trim();
+  const notif  = document.getElementById('lem-notif').checked;
 
-// ─── PATCH: abrirConversa — resumo quando manual + pipeline ──────
-(function(){
-  var _orig=abrirConversa;
-  window.abrirConversa=function(tel){
-    _orig(tel);
-    const s=todasSessoes[tel];
-    // Pipeline já é atualizado pelo abrirConversa original via statusMap[tel]
-    const isManual=s&&(s.modo==='manual'||s.pausado===true);
-    if(isManual){
-      setTimeout(()=>mostrarResumoCandidato(s,tel),100);
+  if (!titulo) { toast('Informe o título do lembrete', 'error'); return; }
+  if (!data)   { toast('Informe a data', 'error'); return; }
+
+  const lembrete = { id: 'lem_' + Date.now(), titulo, data, hora, desc, notif, feito: false };
+  _lembretes.push(lembrete);
+  salvarLembretesStorage();
+
+  if (notif) {
+    pedirPermissaoNotificacao();
+    agendarNotificacaoLembrete(lembrete);
+  }
+
+  fecharModal('modal-lembrete');
+  toast('🔔 Lembrete salvo!', 'success');
+  renderCalendario();
+}
+
+function excluirLembrete(id) {
+  _lembretes = _lembretes.filter(l => l.id !== id);
+  salvarLembretesStorage();
+  if (_lembreteTimers[id]) { clearTimeout(_lembreteTimers[id]); delete _lembreteTimers[id]; }
+  renderCalendario();
+  if (typeof calDiaSel !== 'undefined') selecionarDia(calDiaSel);
+  toast('Lembrete removido', 'success');
+}
+
+function marcarLembreteFeito(id) {
+  const l = _lembretes.find(x => x.id === id);
+  if (l) { l.feito = !l.feito; salvarLembretesStorage(); }
+  if (typeof calDiaSel !== 'undefined') selecionarDia(calDiaSel);
+}
+
+function pedirPermissaoNotificacao() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function agendarNotificacaoLembrete(l) {
+  if (!l.hora || !l.data) return;
+  const [h, m] = l.hora.split(':').map(Number);
+  const dataHora = new Date(`${l.data}T${l.hora}`);
+  const aviso = new Date(dataHora.getTime() - 30 * 60 * 1000); // 30 min antes
+  const agora = Date.now();
+  const delay = aviso.getTime() - agora;
+  if (delay < 0) return; // já passou
+  _lembreteTimers[l.id] = setTimeout(() => {
+    if (Notification.permission === 'granted') {
+      new Notification('🔔 Lembrete Effect', {
+        body: `${l.titulo}${l.hora ? ' às ' + l.hora : ''}${l.desc ? '\n' + l.desc : ''}`,
+        icon: '/favicon.ico'
+      });
     } else {
-      const r=document.getElementById('resumo-candidato-card');
-      if(r){r.innerHTML='';r.style.display='none';}
+      toast(`🔔 Lembrete: ${l.titulo}`, 'success');
     }
-  };
-})();
-
-// ─── HEADER: menu ⋯ Mais ─────────────────────────────────────────
-function toggleHmais(e){e.stopPropagation();document.getElementById('hmais-menu').classList.toggle('open');}
-function fecharHmais(){document.getElementById('hmais-menu')?.classList.remove('open');}
-document.addEventListener('click',fecharHmais);
-
-// ─── ATUALIZAR TÍTULO DA ABA ─────────────────────────────────────
-function atualizarTitulo(){
-  const naoLidas=Object.values(todasSessoes||{}).filter(s=>(s.naoLidas||0)>0).length;
-  document.title=naoLidas>0?`(${naoLidas}) Effect — Lia Inbox`:'Effect — Lia Inbox';
+  }, delay);
 }
 
-// ─── TIMER ADICIONAL: check-in 30min antes da entrevista ─────────
-setInterval(()=>{
-  const agora=new Date();
-  Object.entries(entrevistas||{}).forEach(([tel,ents])=>{
-    (ents||[]).forEach(e=>{
-      if(e.status==='Realizada'||e.status==='Cancelada'||e.status==='Não Compareceu')return;
-      const dt=new Date(`${e.data}T${e.hora}`);
-      const diff=dt-agora;
-      if(diff>0&&diff<=30*60*1000&&!e._checkIn30){
-        e._checkIn30=true;salvarLocal();
-        enviarCheckIn(tel,e);
+// Ativa timers de lembretes com notificação ao carregar
+function iniciarTimersLembretes() {
+  pedirPermissaoNotificacao();
+  _lembretes.filter(l => l.notif && !l.feito).forEach(agendarNotificacaoLembrete);
+}
+
+// Adiciona lembretes ao detalhe do dia no calendário
+const _selecionarDiaOriginal = typeof selecionarDia === 'function' ? selecionarDia : null;
+// Patch: injeta lembretes do dia após renderização
+function renderLembretesNoDia(ds, container) {
+  const dosDia = _lembretes.filter(l => l.data === ds);
+  if (!dosDia.length) return;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-top:12px';
+  wrap.innerHTML = `<div style="font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px">🔔 LEMBRETES DO DIA</div>` +
+    dosDia.map(l => `
+      <div style="background:${l.feito?'#f0fdf4':'#fff'};border:1px solid ${l.notif?'#86efac':'#e5e7eb'};border-radius:8px;padding:8px 10px;margin-bottom:6px;opacity:${l.feito?'.6':'1'}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;font-size:11px;text-decoration:${l.feito?'line-through':''}">${l.titulo}</span>
+          <div style="display:flex;gap:4px">
+            <button onclick="marcarLembreteFeito('${l.id}')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:${l.feito?'#e5e7eb':'#d1fae5'};color:${l.feito?'#6b7280':'#065f46'}">${l.feito?'↩':'✓'}</button>
+            <button onclick="excluirLembrete('${l.id}')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626">✕</button>
+          </div>
+        </div>
+        ${l.hora?`<div style="font-size:9px;color:#6b7280;margin-top:2px">⏰ ${l.hora}${l.notif?' · 🔔 Lembrete ativo':''}</div>`:''}
+        ${l.desc?`<div style="font-size:10px;color:#374151;margin-top:3px">${l.desc}</div>`:''}
+      </div>`).join('');
+  container.appendChild(wrap);
+}
+
+// Também mostra pontos de lembrete no calendário mensal (patch no renderCalendario)
+const _renderCalendarioOriginal = typeof renderCalendario === 'function' ? renderCalendario : null;
+function adicionarPontosLembrete() {
+  _lembretes.forEach(l => {
+    if (!l.data || l.feito) return;
+    const cells = document.querySelectorAll('.cal-day');
+    cells.forEach(cell => {
+      const onclick = cell.getAttribute('onclick') || '';
+      if (onclick.includes(`'${l.data}'`)) {
+        if (!cell.querySelector('.dot-lembrete')) {
+          const dot = document.createElement('div');
+          dot.className = 'cal-dot dot-lembrete';
+          dot.style.cssText = 'background:#16a34a';
+          const row = cell.querySelector('.cal-dot-row');
+          if (row) row.appendChild(dot);
+          else {
+            const newRow = document.createElement('div');
+            newRow.className = 'cal-dot-row';
+            newRow.appendChild(dot);
+            cell.appendChild(newRow);
+          }
+        }
       }
     });
   });
-},60000);
+}
 
-// ─── INJETAR HTML: resumo card + painel saúde + nav botão ────────
-document.addEventListener('DOMContentLoaded',()=>{
-  // Card de resumo no painel direito (inserir antes do rp-tabs)
-  const rpTabs=document.querySelector('.rp-tabs');
-  if(rpTabs){
-    const cardDiv=document.createElement('div');
-    cardDiv.id='resumo-candidato-card';
-    cardDiv.style.cssText='display:none;padding:8px 10px 0;';
+// Patch na selecionarDia para injetar lembretes
+const _origSelecionarDia = window.selecionarDia;
+window.selecionarDia = function(ds) {
+  if (_origSelecionarDia) _origSelecionarDia(ds);
+  const detail = document.getElementById('cal-detail');
+  if (detail) renderLembretesNoDia(ds, detail);
+};
+
+// Também adicionar lembrete ao salvar entrevista — respeita checkbox
+const _origSalvarEntrevista = window.salvarEntrevista;
+window.salvarEntrevista = function() {
+  const comLembrete = document.getElementById('ent-lembrete')?.checked;
+  if (_origSalvarEntrevista) _origSalvarEntrevista();
+  if (comLembrete) {
+    const data = document.getElementById('ent-data')?.value;
+    const hora = document.getElementById('ent-hora')?.value;
+    const cargo = document.getElementById('ent-cargo')?.value || 'Entrevista';
+    const nome = sessaoAtual ? (todasSessoes[sessaoAtual]?.nome || '') : '';
+    if (data && hora) {
+      const l = { id: 'lem_ent_' + Date.now(), titulo: `Entrevista: ${nome||cargo}`, data, hora, desc: cargo, notif: true, feito: false };
+      _lembretes.push(l);
+      salvarLembretesStorage();
+      pedirPermissaoNotificacao();
+      agendarNotificacaoLembrete(l);
+    }
+  }
+};
+
+// Inicia ao carregar
+setTimeout(iniciarTimersLembretes, 2000);
+setTimeout(adicionarPontosLembrete, 3000);
+8px 10px 0;';
     rpTabs.parentNode.insertBefore(cardDiv,rpTabs);
   }
 
