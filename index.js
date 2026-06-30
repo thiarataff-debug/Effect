@@ -949,7 +949,7 @@ async function carregarSessoesDoSheets() {
   try {
     if (!CONFIG.VAGAS_URL) return;
     const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-    const r = await axios.get(`${urlBase}?acao=conversas`, { timeout: 15000, maxRedirects: 5 });
+    const r = await axios.get(`${urlBase}?acao=conversas`, { timeout: 45000, maxRedirects: 5 });
     const data = r.data;
     if (!data.sucesso || !data.sessoes) return;
 
