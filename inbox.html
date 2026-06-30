@@ -2941,32 +2941,36 @@ function atualizarPreviewEntrevista(){
 async function confirmarMsgStatus(enviar){
   if(!_statusPendente) return;
   const texto = document.getElementById('modal-msg-status-texto').value.trim();
-  const erroDiv = document.getElementById('modal-msg-status-erro');
-  const btnEnviar = document.getElementById('btn-enviar-status');
-  erroDiv.style.display='none';
-  if(enviar && btnEnviar){ btnEnviar.disabled=true; btnEnviar.textContent='⏳ Enviando...'; }
-  let sucesso = false;
-  try{
-    const resultado = await Promise.race([
-      _salvarStatus(_statusPendente, enviar, texto),
-      new Promise((_,rej) => setTimeout(() => rej(new Error('Tempo esgotado (15s). Tente novamente.')), 15000))
-    ]);
-    if(resultado && resultado.erroEnvio){
-      erroDiv.style.display='block';
-      erroDiv.innerHTML='⚠️ <strong>Status salvo, mas mensagem NÃO enviada.</strong><br>Erro da Meta/WhatsApp: <code style="word-break:break-all">' + resultado.erroEnvio + '</code>';
-      return; // mantém modal aberto para user ver o erro
+  const statusParaSalvar = _statusPendente;
+  const telefoneAtual = sessaoAtual;
+
+  // 1. Salva status localmente de imediato e fecha o modal — sem esperar o WhatsApp
+  _salvarStatus(statusParaSalvar, false, '');
+  fecharModal('modal-msg-status');
+  _statusPendente = null;
+
+  // 2. Se pediu envio, dispara a mensagem em background
+  if(enviar && texto){
+    toast('📤 Enviando mensagem...', 'info');
+    try{
+      const r = await Promise.race([
+        fetch(`${API}/inbox/enviar`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({telefone: telefoneAtual, mensagem: texto, modo: 'camila'})
+        }),
+        new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), 45000))
+      ]);
+      const d = await r.json().catch(()=>({}));
+      if(d.ok){
+        toast('✅ Mensagem enviada ao candidato','success');
+        setTimeout(()=>carregarSessoes(), 2500);
+      } else {
+        toast('⚠️ Status salvo, mas mensagem falhou: ' + (d.erro||d.error||'erro desconhecido'), 'error');
+      }
+    }catch(e){
+      toast('⚠️ Status salvo. Mensagem não enviada (timeout/rede)', 'error');
     }
-    sucesso = true;
-  }catch(err){
-    erroDiv.style.display='block';
-    erroDiv.innerHTML='⚠️ ' + (err.message || 'Erro de conexão');
-  }finally{
-    // Sempre reabilita o botão, independente do resultado
-    if(btnEnviar){ btnEnviar.disabled=false; btnEnviar.textContent='📤 Enviar e atualizar'; }
-  }
-  if(sucesso){
-    fecharModal('modal-msg-status');
-    _statusPendente = null;
   }
 }
 
