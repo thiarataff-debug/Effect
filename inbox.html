@@ -537,6 +537,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
       <span id="gemini-dot" style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
       <span id="gemini-label">🤖 IA ON</span>
     </button>
+    <!-- CRÉDITOS RAILWAY — atualizado a cada 10min -->
+    <div id="railway-creditos" title="Créditos Railway restantes — clique para atualizar" onclick="carregarStatusIA()" style="display:none;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,0.12);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0">
+      💳 <span id="railway-saldo">—</span>
+    </div>
     <div class="dot-live"></div>
     <span class="hstatus">Bot ativo</span>
     <span class="upd" id="upd"></span>
@@ -4029,16 +4033,38 @@ async function carregarStatusIA() {
     _geminiAtivo = data.geminiAtivo;
     atualizarBotaoIA();
 
-    // Alerta visual se créditos Railway baixos
-    if (data.railway) {
-      for (const t of data.railway) {
-        if (parseFloat(t.creditBalance || 0) < 2.00) {
-          toast(`⚠️ Créditos Railway baixos: $${parseFloat(t.creditBalance).toFixed(2)} — Recarregue em railway.app`, 'error', 8000);
+    // Exibir créditos Railway
+    const divCreditos = document.getElementById('railway-creditos');
+    const spanSaldo = document.getElementById('railway-saldo');
+    if (data.railway && data.railway.length > 0) {
+      const creditos = parseFloat(data.railway[0].creditBalance || 0);
+      if (divCreditos) divCreditos.style.display = 'flex';
+      if (spanSaldo) {
+        spanSaldo.textContent = `$${creditos.toFixed(2)}`;
+        // Colorir conforme nível
+        if (divCreditos) {
+          if (creditos < 2) {
+            divCreditos.style.background = '#dc2626';
+            divCreditos.title = '⚠️ Créditos baixos! Recarregue em railway.app/account/usage';
+          } else if (creditos < 5) {
+            divCreditos.style.background = '#f59e0b';
+          } else {
+            divCreditos.style.background = 'rgba(255,255,255,0.12)';
+          }
         }
       }
+      // Alerta se abaixo de $2
+      if (creditos < 2.00) {
+        toast(`⚠️ Créditos Railway: $${creditos.toFixed(2)} — Recarregue em railway.app/account/usage`, 'error', 8000);
+      }
+    } else if (divCreditos) {
+      divCreditos.style.display = 'none'; // sem RAILWAY_TOKEN configurado
     }
   } catch(e) { /* sem Railway token ou server offline */ }
 }
+
+// Renovar créditos a cada 10 minutos
+setInterval(carregarStatusIA, 10 * 60 * 1000);
 
 function atualizarBotaoIA() {
   const btn = document.getElementById('btn-gemini-toggle');
