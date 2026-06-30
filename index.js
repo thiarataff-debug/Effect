@@ -395,6 +395,11 @@ const AREA_SYNONYMS = {
     "zelador", "zeladora", "auxiliar de limpeza", "copeira", "copeiro",
     "lavanderia", "higienizacao", "higienização", "portaria", "porteiro", "diaria", "diária"
   ],
+  seguranca: [
+    "vigilante", "vigilância", "vigilancia", "seguranca patrimonial", "segurança patrimonial",
+    "curso de vigilante", "formacao de vigilante", "formação de vigilante",
+    "agente de seguranca", "agente de segurança", "monitoramento", "ronda", "portaria armada"
+  ],
   vendas: [
     "vendas", "vendedor", "vendedora", "comercial", "representante", "consultor de vendas",
     "atendimento ao cliente", "atendente", "balconista", "caixa", "promotor", "promotora",
@@ -447,7 +452,7 @@ function buscarVagaRH(vagas = []) {
 }
 
 function detectarAreaCandidato(texto = "") {
-  const areas = ["logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
+  const areas = ["seguranca", "logistica", "administrativo", "operacional", "projetos", "alimentos", "limpeza", "vendas", "rh"];
   return areas.find(area => candidatoTemPerfilArea(texto, area)) || null;
 }
 
@@ -2530,7 +2535,13 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
               || normalizarTexto(analise.mensagemCandidato || "").includes("nao ha vagas")
               || normalizarTexto(analise.mensagemCandidato || "").includes("não há vagas")
               || normalizarTexto(analise.mensagemCandidato || "").includes("oportunidade em aberto");
-            if (semMatch) {
+
+            // CORREÇÃO CRÍTICA: nunca forçar vaga que tem requisito obrigatório
+            // que o candidato não comprova no currículo (ex: Curso de Vigilante).
+            const reqObrigArea = normalizarTexto(campo(vagaArea, ["requisitoObrigatorio", "Requisito Obrigatório", "Requisito Obrigatorio"]) || "");
+            const candidatoAtendReq = !reqObrigArea || normalizarTexto(textoCurriculo).includes(reqObrigArea);
+
+            if (semMatch && candidatoAtendReq) {
               analise.vagaInteresse = cargoArea || analise.vagaInteresse;
               analise.idVaga = idArea || analise.idVaga || "";
               analise.cidade = analise.cidade || cidadeArea || "";
