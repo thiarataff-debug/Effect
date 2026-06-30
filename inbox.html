@@ -596,6 +596,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <button class="hmais-btn" style="color:#059669" onclick="exportarDados();fecharHmais()">💾 Backup dos dados</button>
         <label class="hmais-btn" style="color:#7c3aed;cursor:pointer">📥 Restaurar backup<input type="file" accept=".json" onchange="importarDados(event);fecharHmais()" style="display:none"></label>
         <button class="hmais-btn" onclick="fazerBackupManual();fecharHmais()">💾 Backup</button>
+        <button class="hmais-btn" style="color:#dc2626;font-weight:800" onclick="recarregarDoSheets();fecharHmais()">🔄 Recarregar do Sheets</button>
         <button class="hmais-btn" style="color:#1fa5f0" onclick="abrirReengajamento();fecharHmais()">📢 Reengajamento</button>
         <hr style="border:none;border-top:1px solid #f1f5f9;margin:4px 0">
         <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
@@ -5724,6 +5725,26 @@ window.salvarEntrevista = function() {
     }
   }
 };
+
+async function recarregarDoSheets() {
+  const btn = event?.target;
+  if (btn) { btn.textContent = '⏳ Recarregando...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/inbox/recarregar');
+    const d = await r.json();
+    if (d.ok && d.depois > 0) {
+      showToast('✅ ' + d.msg);
+      await carregarSessoes();
+    } else {
+      showToast('⚠️ ' + (d.msg || d.erro || 'Falha ao recarregar'), 5000);
+    }
+  } catch(e) {
+    showToast('❌ Erro ao recarregar: ' + e.message, 5000);
+  } finally {
+    if (btn) { btn.textContent = '🔄 Recarregar do Sheets'; btn.disabled = false; }
+  }
+}
+
 
 // Inicia ao carregar
 setTimeout(iniciarTimersLembretes, 2000);
