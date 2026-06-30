@@ -508,7 +508,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 <!-- ALERTA ENTREVISTA -->
 <!-- BANNER GEMINI OFF — aparece quando IA está desativada -->
-<div id="banner-gemini-off" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;text-align:center;padding:8px 16px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;letter-spacing:.3px;cursor:pointer" onclick="toggleGemini()" title="Clique para reativar a IA">
+<div id="banner-gemini-off" style="display:none!important;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;text-align:center;padding:8px 16px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;letter-spacing:.3px;cursor:pointer" onclick="toggleGemini()" title="Clique para reativar a IA">
   🔴 IA GEMINI DESATIVADA — LIA não está respondendo. Clique aqui para reativar.
 </div>
 
@@ -4417,13 +4417,13 @@ function atualizarBotaoIA() {
   const label = document.getElementById('gemini-label');
   const banner = document.getElementById('banner-gemini-off');
   if (_geminiAtivo) {
-    if(btn)   { btn.style.background='#22c55e'; btn.title='IA ativa — clique para DESATIVAR em emergência de créditos'; }
+    if(btn)   { btn.style.background='#22c55e'; btn.style.animation=''; btn.title='IA ativa — clique para DESATIVAR em emergência de créditos'; }
     if(label) label.textContent = '🤖 IA ON';
     if(banner) banner.style.display = 'none';
   } else {
-    if(btn)   { btn.style.background='#dc2626'; btn.title='IA DESATIVADA — clique para reativar'; }
+    if(btn)   { btn.style.background='#dc2626'; btn.title='IA DESATIVADA — clique para reativar'; btn.style.animation='pulse 1.5s infinite'; }
     if(label) label.textContent = '🔴 IA OFF';
-    if(banner) banner.style.display = 'block';
+    // banner removido — o botão vermelho piscando já indica o estado
   }
 }
 
