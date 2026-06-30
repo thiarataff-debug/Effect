@@ -46,6 +46,14 @@ const CONFIG = {
 // ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
 let geminiAtivo = true;
 
+// ── MONITORAMENTO DE QUOTA GEMINI ─────────────────────────────────────────────
+const geminiStats = {
+  totalCalls: 0,
+  erros429: 0,
+  ultimoErro429: null,
+  quotaAlerta: false   // true quando detecta rate limit/quota recorrente
+};
+
 const sessoes = {};
 const mensagensProcessadas = new Set();
 const curriculosProcessados = new Set();
@@ -2102,6 +2110,66 @@ async function processarMensagem(telefoneOriginal, mensagem) {
   const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
   if (estaEmManual(telefone)) { console.log("BLOQUEIO INTERNO — IA NÃO CHAMADA:", telefone); return null; }
+
+  // ── REATIVAÇÃO DO BANCO DE TALENTOS: candidato respondeu ──────────────────
+  if (sessao.aguardandoReativacao) {
+    const textoNorm = normalizarTexto(mensagem);
+    const ehPositivo = ["sim","tenho interesse","quero","aceito","pode ser","com certeza","claro","vamos","bora","yes","interesse","quero sim","tenho sim"].some(p => textoNorm === p || textoNorm.includes(p));
+    const ehNegativo = ["nao","não","agora nao","agora não","sem interesse","obrigado mas não","obrigado mas nao","não tenho interesse"].some(p => textoNorm === p || textoNorm.includes(p));
+
+    if (ehPositivo) {
+      sessao.aguardandoReativacao = false;
+      const vagaReativacao = sessao.vagaReativacao || "";
+      // Limpa estado antigo mantendo nome e currículo
+      const nomeAnterior = sessao.nome;
+      const curriculoAnterior = sessao.curriculo;
+      const curriculosAnteriores = sessao.curriculos;
+      const ultimaAnaliseAnterior = sessao.ultimaAnalise;
+      sessao.historico = sessao.historico.slice(-10); // mantém últimas 10 msgs de contexto
+      sessao.aguardandoConfirmacaoInteresse = false;
+      sessao.aguardandoDisponibilidade = false;
+      sessao.preTriagem = null;
+      sessao.miniQuestionario = null;
+      sessao.vagaReativacao = null;
+      // Pré-carrega vaga de interesse declarada
+      if (vagaReativacao) {
+        sessao.vagaInteresseDeclarado = vagaReativacao;
+        if (ultimaAnaliseAnterior) sessao.ultimaAnalise = { ...ultimaAnaliseAnterior, vagaInteresse: vagaReativacao };
+      }
+      const nomeCand = primeiroNome(nomeAnterior || "");
+      let resposta;
+      // Se tem currículo/análise → vai direto para confirmação de interesse
+      if (curriculoAnterior && ultimaAnaliseAnterior) {
+        sessao.aguardandoConfirmacaoInteresse = true;
+        resposta = `Que ótimo${nomeCand ? ", " + nomeCand : ""}! 😊 Que bom ter você de volta!\n\nVamos retomar sua candidatura${vagaReativacao ? ` para a vaga de ${vagaReativacao}` : ""}. Seu perfil já está registrado aqui comigo.\n\nSó confirmar: você ainda tem disponibilidade para participar do processo seletivo?`;
+      } else {
+        // Sem currículo → recomeça coleta
+        resposta = `Ótimo${nomeCand ? ", " + nomeCand : ""}! 😊 Vou retomar seu cadastro para${vagaReativacao ? ` a vaga de ${vagaReativacao}` : " essa oportunidade"}.\n\nPode me enviar seu currículo atualizado? Aceito PDF, Word ou imagem. 📄`;
+      }
+      registrarEntradaSessao(sessao, "assistant", resposta);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", resposta, nomeAnterior);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, nomeAnterior);
+      console.log(`[REATIVAÇÃO] ${telefone} respondeu positivamente para vaga: ${vagaReativacao}`);
+      return resposta;
+    }
+
+    if (ehNegativo) {
+      sessao.aguardandoReativacao = false;
+      sessao.vagaReativacao = null;
+      const nomeCand = primeiroNome(sessao.nome || "");
+      const resposta = `Tudo bem${nomeCand ? ", " + nomeCand : ""}! 😊 Obrigada por responder. Seu contato continua salvo no nosso Banco de Talentos.\n\nQuando surgir uma oportunidade mais alinhada com seu perfil, entro em contato novamente. 💙`;
+      registrarEntradaSessao(sessao, "assistant", resposta);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+      await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      return resposta;
+    }
+    // Resposta ambígua → passa para o Gemini interpretar normalmente
+  }
+
   if (ehSaudacaoSimples(mensagem) && sessao.historico.length <= 1) {
     const candidatoExistente = await buscarCandidatoNaPlanilha(telefone);
     if (candidatoExistente?.encontrado) {
@@ -2313,20 +2381,14 @@ async function processarMensagem(telefoneOriginal, mensagem) {
     resposta = await chamarClaudeTexto(prompt);
   }
 
-  // Se ainda falhou após retry, envia acuse de recibo neutro ao candidato e alerta Thiara
+  // Se ainda falhou após retry — fica em silêncio e alerta Thiara (sem enviar nada ao candidato)
   if (resposta === FALLBACK_INSTABILIDADE || resposta === FALLBACK_RATE_LIMIT) {
     if (!sessao._alertaInstabilidadeEnviado || (Date.now() - sessao._alertaInstabilidadeEnviado) > 10 * 60 * 1000) {
       sessao._alertaInstabilidadeEnviado = Date.now();
-      await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA NÃO RESPONDEU", mensagem);
+      await enviarAlertaSimplesThiara(telefone, "🔥 FALHA AO CHAMAR A IA — LIA ficou em silêncio (candidato NÃO foi avisado)", mensagem);
     }
-    // Envia acuse de recibo neutro para o candidato não ficar sem resposta
-    const respostaFallback = `Recebi sua mensagem! 😊 Em instantes te retorno. 💙`;
-    registrarEntradaSessao(sessao, "assistant", respostaFallback);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
-    await salvarMensagemSheets(telefone, "assistant", respostaFallback, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
-    return respostaFallback;
+    console.warn(`[SILÊNCIO] IA falhou para ${telefone} — nenhuma msg enviada ao candidato.`);
+    return null;
   }
 
   const respostaTravada = await aplicarTravasResposta(telefone, resposta, mensagem);
@@ -2753,6 +2815,7 @@ async function chamarGemini(prompt, tentativa = 1) {
       console.error("chamarGemini: GEMINI_API_KEY não configurada.");
       return FALLBACK_INSTABILIDADE;
     }
+    if (tentativa === 1) geminiStats.totalCalls++;
 
     const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
     const response = await axios.post(
@@ -2784,6 +2847,12 @@ async function chamarGemini(prompt, tentativa = 1) {
     const corpoTexto = JSON.stringify(corpo || "").toLowerCase();
     const ehRateLimit = status === 429 || corpoTexto.includes("rate") || corpoTexto.includes("quota");
     const ehTimeoutOuRede = !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT" || erro.code === "ECONNRESET";
+
+    if (ehRateLimit) {
+      geminiStats.erros429++;
+      geminiStats.ultimoErro429 = new Date().toISOString();
+      if (geminiStats.erros429 >= 3) geminiStats.quotaAlerta = true;
+    }
 
     if (ehRateLimit && tentativa < 3) {
       await sleep(3000 * tentativa);
@@ -2869,7 +2938,17 @@ async function chamarClaude(prompt, tentativa = 1) {
 
 // GET /admin/status → retorna estado atual da IA e créditos Railway
 app.get("/admin/status", async (req, res) => {
-  const status = { geminiAtivo, railway: null };
+  const status = {
+    geminiAtivo,
+    railway: null,
+    gemini: {
+      quotaAlerta: geminiStats.quotaAlerta,
+      erros429: geminiStats.erros429,
+      totalCalls: geminiStats.totalCalls,
+      ultimoErro429: geminiStats.ultimoErro429,
+      usageUrl: "https://aistudio.google.com/app/usage"
+    }
+  };
   if (CONFIG.RAILWAY_TOKEN) {
     try {
       // Verifica apenas se o token é válido — Railway não expõe saldo via API pública
@@ -2899,11 +2978,49 @@ app.post("/admin/gemini-toggle", (req, res) => {
   } else {
     geminiAtivo = !geminiAtivo; // toggle se não passar valor
   }
+  // Ao reativar, reseta o alerta de quota (usuário recarregou créditos)
+  if (geminiAtivo) {
+    geminiStats.erros429 = 0;
+    geminiStats.quotaAlerta = false;
+    geminiStats.ultimoErro429 = null;
+  }
   const msg = geminiAtivo
     ? "✅ Gemini ATIVADO — LIA respondendo normalmente."
     : "⚠️ Gemini DESATIVADO — LIA em silêncio. Ative novamente quando recarregar créditos.";
   console.log(msg);
   res.json({ ok: true, geminiAtivo, mensagem: msg });
+});
+
+// POST /inbox/reativar-banco → envia msg de reativação para candidatos do Banco de Talentos
+app.post("/inbox/reativar-banco", async (req, res) => {
+  const { cargo, mensagem, telefones } = req.body || {};
+  if (!mensagem || !Array.isArray(telefones) || telefones.length === 0) {
+    return res.json({ ok: false, erro: "Parâmetros inválidos" });
+  }
+  const resultados = [];
+  for (const tel of telefones) {
+    try {
+      // Marca sessão como aguardando reativação
+      if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
+      sessoes[tel].aguardandoReativacao = true;
+      sessoes[tel].vagaReativacao = cargo || "";
+      sessoes[tel].pausado = false;
+      sessoes[tel].modo = "automatico";
+      atendimentosManuais.delete(tel);
+      // Envia mensagem WhatsApp
+      const r = await enviarMensagem(tel, mensagem);
+      // Registra no histórico
+      const nomeCand = sessoes[tel].nome || tel;
+      registrarEntradaSessao(sessoes[tel], "assistant", mensagem);
+      await salvarMensagemSheets(tel, "assistant", mensagem, nomeCand);
+      resultados.push({ telefone: tel, ok: true });
+    } catch(e) {
+      resultados.push({ telefone: tel, ok: false, erro: e.message });
+    }
+  }
+  const enviados = resultados.filter(r => r.ok).length;
+  console.log(`[REATIVAR-BANCO] Enviado para ${enviados}/${telefones.length} candidatos — cargo: ${cargo}`);
+  res.json({ ok: true, total: telefones.length, enviados, resultados });
 });
 
 // Monitoramento automático de créditos Railway a cada 6h
