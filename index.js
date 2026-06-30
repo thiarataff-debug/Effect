@@ -2988,6 +2988,29 @@ app.get("/admin/status", async (req, res) => {
 });
 
 // POST /admin/gemini-toggle → liga/desliga Gemini sem redeploy
+// ── DIAGNÓSTICO E RECARGA FORÇADA ────────────────────────────────────────────
+app.get("/inbox/diagnostico", async (req, res) => {
+  const antes = Object.keys(sessoes).length;
+  let erroSheets = null;
+  try {
+    await carregarSessoesDoSheets();
+  } catch(e) { erroSheets = e.message; }
+  const depois = Object.keys(sessoes).length;
+  let erroBackup = null;
+  if (depois < 5) {
+    try { await restaurarDoUltimoBackup(); } catch(e) { erroBackup = e.message; }
+  }
+  res.json({
+    sessoes_antes: antes,
+    sessoes_depois: Object.keys(sessoes).length,
+    vagas_url_configurada: !!CONFIG.VAGAS_URL,
+    drive_script_configurado: !!CONFIG.DRIVE_SCRIPT_URL,
+    google_service_account: !!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON,
+    erro_sheets: erroSheets,
+    erro_backup: erroBackup
+  });
+});
+
 app.post("/admin/gemini-toggle", (req, res) => {
   const { ativo } = req.body || {};
   if (typeof ativo === "boolean") {
