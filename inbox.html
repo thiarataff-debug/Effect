@@ -1530,7 +1530,8 @@ function sincronizarComServidor() {
         vagaMap,
         intervencoes,
         marcadosRetorno,
-        arquivadas
+        arquivadas,
+        horariosConfig
       };
       await fetch('/inbox/agenda-sync', {
         method: 'POST',
@@ -1551,7 +1552,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -1582,6 +1583,10 @@ async function restaurarDoServidor() {
     if (dados.intervencoes)    Object.assign(intervencoes, dados.intervencoes);
     if (dados.marcadosRetorno) Object.assign(marcadosRetorno, dados.marcadosRetorno);
     if (dados.arquivadas)      Object.assign(arquivadas, dados.arquivadas);
+    if (dados.horariosConfig && Array.isArray(dados.horariosConfig) && dados.horariosConfig.length > 0) {
+      horariosConfig = dados.horariosConfig;
+      try { localStorage.setItem('effect_horarios_v1', JSON.stringify(horariosConfig)); } catch(e) {}
+    }
 
     // Salvar merge no localStorage
     salvarLocal();
