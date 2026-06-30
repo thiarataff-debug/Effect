@@ -40,7 +40,8 @@ const CONFIG = {
   DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,          // opcional: para monitorar créditos
-  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID // opcional: ID do projeto Railway
+  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID, // opcional: ID do projeto Railway
+  SHEETS_ID: process.env.SHEETS_ID || "1Bqrwjjy0JwAVouppOg-LGCENrYrTsQCYrqntCBf9mSk"
 };
 
 // ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
@@ -945,6 +946,107 @@ async function restaurarDoUltimoBackup() {
     return false;
   }
 }
+// ─── LEITOR DIRETO DO GOOGLE SHEETS (fallback sem Apps Script) ───
+let sheetsClient = null;
+async function getSheetsClient() {
+  if (sheetsClient) return sheetsClient;
+  if (!CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON) return null;
+  try {
+    const credentials = JSON.parse(CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    });
+    sheetsClient = google.sheets({ version: "v4", auth });
+    return sheetsClient;
+  } catch(e) { console.error("getSheetsClient:", e.message); return null; }
+}
+
+async function carregarSessoesViaAPI() {
+  try {
+    const sheets = await getSheetsClient();
+    if (!sheets) { console.log("Sheets API: sem credenciais"); return 0; }
+
+    // Descobre o nome da aba pelo gid
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: CONFIG.SHEETS_ID });
+    const aba = meta.data.sheets.find(s => String(s.properties.sheetId) === "1932944674")
+                 || meta.data.sheets[0];
+    const nomAba = aba.properties.title;
+    console.log(`[Sheets API] Lendo aba: ${nomAba}`);
+
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: CONFIG.SHEETS_ID,
+      range: `${nomAba}!A1:Z`
+    });
+    const rows = resp.data.values || [];
+    if (rows.length < 2) { console.log("[Sheets API] Planilha vazia"); return 0; }
+
+    const headers = rows[0].map(h => (h||'').toLowerCase().trim());
+    const idxTel    = headers.findIndex(h => h.includes('telefone') || h.includes('phone') || h === 'tel');
+    const idxNome   = headers.findIndex(h => h.includes('nome') || h.includes('name'));
+    const idxHist   = headers.findIndex(h => h.includes('historico') || h.includes('histórico') || h.includes('history'));
+    const idxModo   = headers.findIndex(h => h === 'modo' || h === 'mode');
+    const idxPaus   = headers.findIndex(h => h.includes('pausado') || h.includes('paused'));
+    const idxMotiv  = headers.findIndex(h => h.includes('motivo') || h.includes('reason'));
+    const idxDisc   = headers.findIndex(h => h.includes('disc'));
+    const idxAnalise= headers.findIndex(h => h.includes('analise') || h.includes('análise'));
+    const idxCurric = headers.findIndex(h => h.includes('curriculo') || h.includes('curriculos'));
+
+    console.log(`[Sheets API] Headers: ${JSON.stringify(headers)}`);
+    console.log(`[Sheets API] tel=${idxTel} nome=${idxNome} hist=${idxHist}`);
+
+    if (idxTel < 0) { console.log("[Sheets API] Coluna telefone não encontrada"); return 0; }
+
+    let n = 0;
+    rows.slice(1).forEach(row => {
+      const tel = limparTelefone(row[idxTel] || '');
+      if (!tel || tel.length < 8) return;
+      if (sessoes[tel]) return; // já carregado do Volume
+      let historico = [];
+      if (idxHist >= 0 && row[idxHist]) {
+        try { historico = JSON.parse(row[idxHist]); } catch(e) {}
+      }
+      historico = Array.isArray(historico) ? historico.map(normalizarEventoHistorico) : [];
+      let discResult = null;
+      if (idxDisc >= 0 && row[idxDisc]) {
+        try { discResult = JSON.parse(row[idxDisc]); } catch(e) {}
+      }
+      let ultimaAnalise = null;
+      if (idxAnalise >= 0 && row[idxAnalise]) {
+        try { ultimaAnalise = JSON.parse(row[idxAnalise]); } catch(e) {}
+      }
+      let curriculos = [];
+      if (idxCurric >= 0 && row[idxCurric]) {
+        try {
+          const cv = JSON.parse(row[idxCurric]);
+          curriculos = Array.isArray(cv) ? cv : (cv ? [cv] : []);
+        } catch(e) {}
+      }
+      const modo = (idxModo >= 0 ? row[idxModo] : '') || 'automatico';
+      const pausado = idxPaus >= 0 ? row[idxPaus] === 'true' || row[idxPaus] === true : false;
+      sessoes[tel] = {
+        historico,
+        nome: (idxNome >= 0 ? row[idxNome] : '') || null,
+        modo,
+        pausado,
+        motivoPausa: (idxMotiv >= 0 ? row[idxMotiv] : '') || '',
+        unreadCount: 0,
+        discResult,
+        ultimaAnalise,
+        curriculos,
+        curriculo: curriculos[0] || null
+      };
+      if (pausado) atendimentosManuais.add(tel);
+      n++;
+    });
+    console.log(`[Sheets API] ${n} sessões carregadas diretamente`);
+    return n;
+  } catch(e) {
+    console.error("[Sheets API] Erro:", e.message);
+    return 0;
+  }
+}
+
 async function carregarSessoesDoSheets() {
   try {
     if (!CONFIG.VAGAS_URL) return;
@@ -1033,13 +1135,18 @@ const localCount = carregarSessoesLocal();
 console.log(`[startup] Sessões carregadas do Volume local: ${localCount}`);
 
 carregarSessoesDoSheets().then(async () => {
-  const total = Object.keys(sessoes).length;
+  let total = Object.keys(sessoes).length;
   console.log(`Sessões carregadas do Sheets: ${total}`);
   if (total < 10) {
-    console.log("Poucas sessões — tentando restaurar do backup Drive...");
-    await restaurarDoUltimoBackup();
+    console.log("Apps Script lento — tentando Sheets API direta...");
+    const n = await carregarSessoesViaAPI();
+    total = Object.keys(sessoes).length;
+    if (total < 10) {
+      console.log("Poucas sessões — tentando restaurar do backup Drive...");
+      await restaurarDoUltimoBackup();
+    }
   }
-  // Salva no Volume logo após carregar do Sheets
+  // Salva no Volume logo após carregar
   if (Object.keys(sessoes).length > 0) salvarSessoesLocal();
   setTimeout(() => fazerBackup("startup"), 10 * 1000);
 }).catch(e => console.error("Erro na inicialização:", e.message));
@@ -1159,11 +1266,16 @@ app.get("/inbox/recarregar", async (req, res) => {
   try {
     const antes = Object.keys(sessoes).length;
     await carregarSessoesDoSheets();
-    const depois = Object.keys(sessoes).length;
-    // Se ainda vazio, tenta restaurar do backup Drive
+    let depois = Object.keys(sessoes).length;
+    if (depois === 0) {
+      console.log("[recarregar] Apps Script falhou — tentando Sheets API direta...");
+      await carregarSessoesViaAPI();
+      depois = Object.keys(sessoes).length;
+    }
     if (depois === 0) {
       await restaurarDoUltimoBackup();
     }
+    if (Object.keys(sessoes).length > 0) salvarSessoesLocal();
     const final = Object.keys(sessoes).length;
     return res.json({
       ok: true,
