@@ -5504,19 +5504,26 @@ function renderLembretesNoDia(ds, container) {
   if (!dosDia.length) return;
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-top:12px';
-  wrap.innerHTML = `<div style="font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px">🔔 LEMBRETES DO DIA</div>` +
-    dosDia.map(l => `
-      <div style="background:${l.feito?'#f0fdf4':'#fff'};border:1px solid ${l.notif?'#86efac':'#e5e7eb'};border-radius:8px;padding:8px 10px;margin-bottom:6px;opacity:${l.feito?'.6':'1'}">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:700;font-size:11px;text-decoration:${l.feito?'line-through':''}">${l.titulo}</span>
-          <div style="display:flex;gap:4px">
-            <button onclick="marcarLembreteFeito('${l.id}')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:${l.feito?'#e5e7eb':'#d1fae5'};color:${l.feito?'#6b7280':'#065f46'}">${l.feito?'↩':'✓'}</button>
-            <button onclick="excluirLembrete('${l.id}')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626">✕</button>
-          </div>
-        </div>
-        ${l.hora?`<div style="font-size:9px;color:#6b7280;margin-top:2px">⏰ ${l.hora}${l.notif?' · 🔔 Lembrete ativo':''}</div>`:''}
-        ${l.desc?`<div style="font-size:10px;color:#374151;margin-top:3px">${l.desc}</div>`:''}
-      </div>`).join('');
+  wrap.innerHTML = '<div style="font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px">🔔 LEMBRETES DO DIA</div>' +
+    dosDia.map(function(l) {
+      var bgCard   = l.feito ? '#f0fdf4' : '#fff';
+      var border   = l.notif ? '#86efac' : '#e5e7eb';
+      var opacity  = l.feito ? '.6' : '1';
+      var tdeco    = l.feito ? 'line-through' : 'none';
+      var bgOk     = l.feito ? '#e5e7eb' : '#d1fae5';
+      var colOk    = l.feito ? '#6b7280' : '#065f46';
+      var btnLabel = l.feito ? '↩' : '✓';
+      var horaHtml = l.hora ? ('<div style="font-size:9px;color:#6b7280;margin-top:2px">⏰ ' + l.hora + (l.notif ? ' · 🔔 Lembrete ativo' : '') + '</div>') : '';
+      var descHtml = l.desc ? ('<div style="font-size:10px;color:#374151;margin-top:3px">' + l.desc + '</div>') : '';
+      return '<div style="background:' + bgCard + ';border:1px solid ' + border + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;opacity:' + opacity + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="font-weight:700;font-size:11px;text-decoration:' + tdeco + '">' + l.titulo + '</span>' +
+          '<div style="display:flex;gap:4px">' +
+            '<button onclick="marcarLembreteFeito(\'' + l.id + '\')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:' + bgOk + ';color:' + colOk + '">' + btnLabel + '</button>' +
+            '<button onclick="excluirLembrete(\'' + l.id + '\')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626">✕</button>' +
+          '</div>' +
+        '</div>' + horaHtml + descHtml + '</div>';
+    }).join('');
   container.appendChild(wrap);
 }
 
@@ -5566,7 +5573,7 @@ window.salvarEntrevista = function() {
     const cargo = document.getElementById('ent-cargo')?.value || 'Entrevista';
     const nome = sessaoAtual ? (todasSessoes[sessaoAtual]?.nome || '') : '';
     if (data && hora) {
-      const l = { id: 'lem_ent_' + Date.now(), titulo: `Entrevista: ${nome||cargo}`, data, hora, desc: cargo, notif: true, feito: false };
+      const l = { id: 'lem_ent_' + Date.now(), titulo: 'Entrevista: ' + (nome||cargo), data: data, hora: hora, desc: cargo, notif: true, feito: false };
       _lembretes.push(l);
       salvarLembretesStorage();
       pedirPermissaoNotificacao();
@@ -5578,26 +5585,3 @@ window.salvarEntrevista = function() {
 // Inicia ao carregar
 setTimeout(iniciarTimersLembretes, 2000);
 setTimeout(adicionarPontosLembrete, 3000);
-8px 10px 0;';
-    rpTabs.parentNode.insertBefore(cardDiv,rpTabs);
-  }
-
-  // View painel de saúde
-  const viewInbox=document.getElementById('view-inbox');
-  if(viewInbox&&viewInbox.parentNode){
-    const saudeDiv=document.createElement('div');
-    saudeDiv.id='view-saude';
-    saudeDiv.style.cssText='display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa';
-    viewInbox.parentNode.insertBefore(saudeDiv,viewInbox.nextSibling);
-  }
-
-  // Botão nav painel de saúde
-  const navAgenda=document.getElementById('nav-agenda');
-  if(navAgenda&&navAgenda.parentNode){
-
-  }
-
-});
-</script>
-</body>
-</html>
