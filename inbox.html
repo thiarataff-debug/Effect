@@ -590,7 +590,6 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
     <button class="rbtn" style="background:#f59e0b;color:#fff;font-weight:700" onclick="assumirTodasParaLaura()" title="Assumir todas as conversas ativas para Laura">👩 Assumir Todas p/ Laura</button>
     <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar Todas para Lia</button>
-    <button class="rbtn" id="btn-novas-manual" onclick="toggleNovasManual()">🆕 Novas: Lia</button>
     <div class="hmais-wrap">
       <button class="rbtn" onclick="toggleHmais(event)">⋯ Mais</button>
       <div class="hmais-menu" id="hmais-menu">
@@ -5057,6 +5056,22 @@ function usarSlotsNoChat(){
 }
 
 // ─── DROPDOWN MAIS ───
+function toggleHmais(e){
+  e.stopPropagation();
+  const menu = document.getElementById('hmais-menu');
+  if(menu.classList.contains('open')){
+    menu.classList.remove('open');
+    return;
+  }
+  menu.classList.add('open');
+  setTimeout(()=>document.addEventListener('click', function h(ev){
+    if(!menu.contains(ev.target)){menu.classList.remove('open');document.removeEventListener('click',h);}
+  }),0);
+}
+function fecharHmais(){
+  document.getElementById('hmais-menu')?.classList.remove('open');
+}
+
 function toggleDropdownMais(e, btn){
   e.stopPropagation();
   const menu = document.getElementById('dropdown-mais-menu');
@@ -5592,7 +5607,7 @@ window.salvarEntrevista = function() {
     const cargo = document.getElementById('ent-cargo')?.value || 'Entrevista';
     const nome = sessaoAtual ? (todasSessoes[sessaoAtual]?.nome || '') : '';
     if (data && hora) {
-      const l = { id: 'lem_ent_' + Date.now(), titulo: 'Entrevista: ' + (nome||cargo), data: data, hora: hora, desc: cargo, notif: true, feito: false };
+      const l = { id: 'lem_ent_' + Date.now(), data, hora, desc: cargo + (nome ? ' — ' + nome : ''), notif: true, feito: false };
       _lembretes.push(l);
       salvarLembretesStorage();
       pedirPermissaoNotificacao();
