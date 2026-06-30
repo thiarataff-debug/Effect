@@ -1145,9 +1145,19 @@ font-family:'Montserrat',sans-serif
       <input type="checkbox" id="lem-notif" checked style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a">
       <label for="lem-notif" style="font-size:11px;font-weight:700;color:#15803d;cursor:pointer;user-select:none">🔔 Ativar notificação (30 min antes)</label>
     </div>
+    <div class="modal-field" style="margin-top:8px">
+      <label class="modal-label">🔁 Recorrência</label>
+      <select class="modal-input" id="lem-recorrencia" style="cursor:pointer">
+        <option value="nenhuma">Sem recorrência (evento único)</option>
+        <option value="diaria">Diária</option>
+        <option value="semanal">Semanal</option>
+        <option value="mensal">Mensal</option>
+        <option value="anual">Anual</option>
+      </select>
+    </div>
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-lembrete')">Cancelar</button>
-      <button class="modal-btn modal-confirm" onclick="salvarLembrete()">Salvar Lembrete</button>
+      <button class="modal-btn modal-confirm" onclick="salvarLembrete()">Salvar</button>
     </div>
   </div>
 </div>
@@ -4790,6 +4800,10 @@ function renderAgenda(){
     </div>
     <div>
       <div class="agenda-card" style="margin-bottom:16px">
+        <div class="agenda-card-title">🗂️ Próximos Eventos</div>
+        <div id="proximos-wrap"></div>
+      </div>
+      <div class="agenda-card" style="margin-bottom:16px">
         <div class="agenda-card-title">📊 Faltosos & Comparecimentos</div>
         <div id="falt-wrap"></div>
       </div>
@@ -4801,6 +4815,7 @@ function renderAgenda(){
   renderCalendario();
   renderFaltosos();
   verificarConfirmacoes24h();
+  renderProximosEventos();
 }
 
 function renderCalendario(){
@@ -5452,13 +5467,15 @@ function salvarLembretesStorage() {
   localStorage.setItem('effect_lembretes', JSON.stringify(_lembretes));
 }
 
-function abrirModalLembrete() {
-  const hoje = new Date().toISOString().split('T')[0];
+function abrirModalLembrete(dataInicial) {
+  const hoje = dataInicial || new Date().toISOString().split('T')[0];
   document.getElementById('lem-titulo').value = '';
   document.getElementById('lem-data').value = hoje;
   document.getElementById('lem-hora').value = '09:00';
   document.getElementById('lem-desc').value = '';
   document.getElementById('lem-notif').checked = true;
+  const rec = document.getElementById('lem-recorrencia');
+  if (rec) rec.value = 'nenhuma';
   document.getElementById('modal-lembrete').classList.add('show');
   setTimeout(() => document.getElementById('lem-titulo').focus(), 100);
 }
@@ -5473,7 +5490,8 @@ function salvarLembrete() {
   if (!titulo) { toast('Informe o título do lembrete', 'error'); return; }
   if (!data)   { toast('Informe a data', 'error'); return; }
 
-  const lembrete = { id: 'lem_' + Date.now(), titulo, data, hora, desc, notif, feito: false };
+  const recorrencia = (document.getElementById('lem-recorrencia')||{}).value || 'nenhuma';
+  const lembrete = { id: 'lem_' + Date.now(), titulo, data, hora, desc, notif, recorrencia, feito: false };
   _lembretes.push(lembrete);
   salvarLembretesStorage();
 
@@ -5534,61 +5552,78 @@ function iniciarTimersLembretes() {
   _lembretes.filter(l => l.notif && !l.feito).forEach(agendarNotificacaoLembrete);
 }
 
-// Adiciona lembretes ao detalhe do dia no calendário
-const _selecionarDiaOriginal = typeof selecionarDia === 'function' ? selecionarDia : null;
-// Patch: injeta lembretes do dia após renderização
+// ─── HELPER: verifica se lembrete se aplica a uma data (inclui recorrência) ───
+function lembreteAplicaNoDia(l, ds) {
+  if (!l.data) return false;
+  if (ds < l.data) return false;
+  const rec = l.recorrencia || 'nenhuma';
+  if (rec === 'nenhuma') return l.data === ds;
+  if (rec === 'diaria') return true;
+  const [oy, om, od] = l.data.split('-').map(Number);
+  const [ty, tm, td] = ds.split('-').map(Number);
+  const orig = new Date(oy, om - 1, od);
+  const tgt  = new Date(ty, tm - 1, td);
+  if (rec === 'semanal') return orig.getDay() === tgt.getDay();
+  if (rec === 'mensal')  return od === td;
+  if (rec === 'anual')   return om === tm && od === td;
+  return false;
+}
+
+// ─── HELPER: badge de recorrência ───
+function recBadge(rec) {
+  const map = { diaria: '🔁 Diária', semanal: '🗓️ Semanal', mensal: '📅 Mensal', anual: '🎯 Anual' };
+  return map[rec] ? '<span style="font-size:8px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px">' + map[rec] + '</span>' : '';
+}
+
+// Adiciona lembretes ao detalhe do dia no calendário (com suporte a recorrência)
 function renderLembretesNoDia(ds, container) {
-  const dosDia = _lembretes.filter(l => l.data === ds);
+  const dosDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
   if (!dosDia.length) return;
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-top:12px';
-  wrap.innerHTML = '<div style="font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px">🔔 LEMBRETES DO DIA</div>' +
-    dosDia.map(function(l) {
-      var bgCard   = l.feito ? '#f0fdf4' : '#fff';
-      var border   = l.notif ? '#86efac' : '#e5e7eb';
-      var opacity  = l.feito ? '.6' : '1';
-      var tdeco    = l.feito ? 'line-through' : 'none';
-      var bgOk     = l.feito ? '#e5e7eb' : '#d1fae5';
-      var colOk    = l.feito ? '#6b7280' : '#065f46';
-      var btnLabel = l.feito ? '↩' : '✓';
-      var horaHtml = l.hora ? ('<div style="font-size:9px;color:#6b7280;margin-top:2px">⏰ ' + l.hora + (l.notif ? ' · 🔔 Lembrete ativo' : '') + '</div>') : '';
-      var descHtml = l.desc ? ('<div style="font-size:10px;color:#374151;margin-top:3px">' + l.desc + '</div>') : '';
-      return '<div style="background:' + bgCard + ';border:1px solid ' + border + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;opacity:' + opacity + '">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '<span style="font-weight:700;font-size:11px;text-decoration:' + tdeco + '">' + l.titulo + '</span>' +
-          '<div style="display:flex;gap:4px">' +
-            '<button onclick="marcarLembreteFeito(\'' + l.id + '\')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:' + bgOk + ';color:' + colOk + '">' + btnLabel + '</button>' +
-            '<button onclick="excluirLembrete(\'' + l.id + '\')" style="padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626">✕</button>' +
-          '</div>' +
-        '</div>' + horaHtml + descHtml + '</div>';
-    }).join('');
+  const items = dosDia.map(function(l) {
+    const rec = l.recorrencia || 'nenhuma';
+    const border = l.notif ? '#86efac' : '#e5e7eb';
+    const horaHtml = l.hora
+      ? ("<div style='font-size:9px;color:#6b7280;margin-top:2px'>⏰ " + l.hora + (l.notif ? " · 🔔" : "") + recBadge(rec) + "</div>")
+      : (rec !== 'nenhuma' ? "<div style='margin-top:3px'>" + recBadge(rec) + "</div>" : "");
+    const descHtml = l.desc ? ("<div style='font-size:10px;color:#374151;margin-top:3px'>" + l.desc + "</div>") : "";
+    const okBtn  = "<button onclick=\"marcarLembreteFeito('" + l.id + "')\" style='padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#d1fae5;color:#065f46'>✓</button>";
+    const delBtn = rec === 'nenhuma'
+      ? "<button onclick=\"excluirLembrete('" + l.id + "')\" style='padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626'>✕</button>"
+      : "";
+    return "<div style='background:#fff;border:1px solid " + border + ";border-radius:8px;padding:8px 10px;margin-bottom:6px'>" +
+      "<div style='display:flex;justify-content:space-between;align-items:center'>" +
+        "<span style='font-weight:700;font-size:11px'>" + l.titulo + "</span>" +
+        "<div style='display:flex;gap:4px'>" + okBtn + delBtn + "</div>" +
+      "</div>" + horaHtml + descHtml + "</div>";
+  });
+  wrap.innerHTML = "<div style='font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px'>🔔 LEMBRETES DO DIA</div>" + items.join('');
   container.appendChild(wrap);
 }
 
-// Também mostra pontos de lembrete no calendário mensal (patch no renderCalendario)
-const _renderCalendarioOriginal = typeof renderCalendario === 'function' ? renderCalendario : null;
+// Pontos de lembrete no calendário (com suporte a recorrência)
 function adicionarPontosLembrete() {
-  _lembretes.forEach(l => {
-    if (!l.data || l.feito) return;
-    const cells = document.querySelectorAll('.cal-day');
-    cells.forEach(cell => {
-      const onclick = cell.getAttribute('onclick') || '';
-      if (onclick.includes(`'${l.data}'`)) {
-        if (!cell.querySelector('.dot-lembrete')) {
-          const dot = document.createElement('div');
-          dot.className = 'cal-dot dot-lembrete';
-          dot.style.cssText = 'background:#16a34a';
-          const row = cell.querySelector('.cal-dot-row');
-          if (row) row.appendChild(dot);
-          else {
-            const newRow = document.createElement('div');
-            newRow.className = 'cal-dot-row';
-            newRow.appendChild(dot);
-            cell.appendChild(newRow);
-          }
-        }
+  const cells = document.querySelectorAll('.cal-day');
+  cells.forEach(cell => {
+    const onclick = cell.getAttribute('onclick') || '';
+    const m = onclick.match(/'(\d{4}-\d{2}-\d{2})'/);
+    if (!m) return;
+    const ds = m[1];
+    const temLem = _lembretes.some(l => !l.feito && lembreteAplicaNoDia(l, ds));
+    if (temLem && !cell.querySelector('.dot-lembrete')) {
+      const dot = document.createElement('div');
+      dot.className = 'cal-dot dot-lembrete';
+      dot.style.cssText = 'background:#16a34a';
+      const row = cell.querySelector('.cal-dot-row');
+      if (row) row.appendChild(dot);
+      else {
+        const newRow = document.createElement('div');
+        newRow.className = 'cal-dot-row';
+        newRow.appendChild(dot);
+        cell.appendChild(newRow);
       }
-    });
+    }
   });
 }
 
@@ -5599,6 +5634,76 @@ window.selecionarDia = function(ds) {
   const detail = document.getElementById('cal-detail');
   if (detail) renderLembretesNoDia(ds, detail);
 };
+
+// ─── PRÓXIMOS EVENTOS: entrevistas + lembretes pessoais (14 dias) ───
+function renderProximosEventos() {
+  const wrap = document.getElementById('proximos-wrap');
+  if (!wrap) return;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const mesesAbr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const semsAbr  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html = '';
+  let temAlgo = false;
+
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(hoje);
+    d.setDate(hoje.getDate() + i);
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+    const entsNoDia = [];
+    Object.entries(entrevistas).forEach(([tel, ents]) => {
+      ents.forEach(e => {
+        if (e.data === ds && e.status !== 'Cancelada') {
+          const s = todasSessoes[tel];
+          entsNoDia.push({...e, nome: s?.nome || telDisplay(tel)});
+        }
+      });
+    });
+    const lemsNoDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
+
+    if (!entsNoDia.length && !lemsNoDia.length) continue;
+    temAlgo = true;
+
+    const dLabel = i === 0 ? 'Hoje' : (i === 1 ? 'Amanhã' : semsAbr[d.getDay()]);
+    html += '<div style="margin-bottom:10px">';
+    html += '<div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + dLabel + ' · ' + d.getDate() + ' ' + mesesAbr[d.getMonth()] + '</div>';
+
+    const itens = [
+      ...entsNoDia.map(e => ({hora: e.hora || '00:00', tipo: 'entrevista', dados: e})),
+      ...lemsNoDia.map(l => ({hora: l.hora || '00:00', tipo: 'lembrete', dados: l}))
+    ].sort((a, b) => a.hora.localeCompare(b.hora));
+
+    itens.forEach(item => {
+      if (item.tipo === 'entrevista') {
+        const e = item.dados;
+        const cor = e.status === 'Realizada' ? '#059669' : e.status === 'Não Compareceu' ? '#dc2626' : e.status === 'Remarcou' ? '#d97706' : '#2563eb';
+        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid ' + cor + '">' +
+          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + e.hora + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">👤 ' + e.nome + '</div>' +
+            '<div style="font-size:9px;color:var(--muted)">' + (e.tipo || 'Entrevista') + (e.status ? ' · ' + e.status : '') + '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        const l = item.dados;
+        const rec = l.recorrencia || 'nenhuma';
+        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid #16a34a">' +
+          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + (l.hora || '—') + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔔 ' + l.titulo + recBadge(rec) + '</div>' +
+            (l.desc ? '<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + l.desc + '</div>' : '') +
+          '</div>' +
+        '</div>';
+      }
+    });
+    html += '</div>';
+  }
+
+  if (!temAlgo) html = '<div class="empty" style="padding:12px">Nenhum evento nos próximos 14 dias</div>';
+  html += '<button class="entrevista-btn" style="width:100%;margin-top:4px" onclick="abrirModalLembrete()">+ Novo evento pessoal</button>';
+  wrap.innerHTML = html;
+}
 
 // Também adicionar lembrete ao salvar entrevista — respeita checkbox
 const _origSalvarEntrevista = window.salvarEntrevista;
