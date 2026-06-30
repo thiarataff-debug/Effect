@@ -2837,37 +2837,21 @@ app.get("/admin/status", async (req, res) => {
   const status = { geminiAtivo, railway: null };
   if (CONFIG.RAILWAY_TOKEN) {
     try {
-      // Tenta query principal: crédito direto no usuário
-      const query = `{ me { creditBalance email name } }`;
+      // Verifica apenas se o token é válido — Railway não expõe saldo via API pública
+      const query = `{ me { name } }`;
       const r = await fetch("https://backboard.railway.app/graphql/v2", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
         body: JSON.stringify({ query })
       });
       const data = await r.json();
-      console.log("[Railway] resposta:", JSON.stringify(data).slice(0, 300));
-      const me = data?.data?.me;
-      if (me) {
-        const credito = parseFloat(me.creditBalance ?? 0);
-        status.railway = [{ team: me.name || me.email || "Conta", creditBalance: credito }];
-      } else if (data?.errors) {
-        // Se falhar, tenta query alternativa com teams
-        const query2 = `{ me { teams { edges { node { name creditBalance } } } } }`;
-        const r2 = await fetch("https://backboard.railway.app/graphql/v2", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
-          body: JSON.stringify({ query: query2 })
-        });
-        const data2 = await r2.json();
-        console.log("[Railway] fallback resposta:", JSON.stringify(data2).slice(0, 300));
-        const teams = data2?.data?.me?.teams?.edges || [];
-        if (teams.length) {
-          status.railway = teams.map(e => ({ team: e.node.name, creditBalance: parseFloat(e.node.creditBalance ?? 0) }));
-        } else {
-          status.railwayErro = JSON.stringify(data?.errors);
-        }
+      const nome = data?.data?.me?.name;
+      if (nome) {
+        status.railway = { conectado: true, nome, billingUrl: "https://railway.com/billing" };
+      } else {
+        status.railway = { conectado: false };
       }
-    } catch(e) { status.railwayErro = e.message; }
+    } catch(e) { status.railway = { conectado: false, erro: e.message }; }
   }
   res.json(status);
 });
