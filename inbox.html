@@ -1189,7 +1189,7 @@ function filtrarBanco() {
     const iniciais = (c.nome||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     const cores = ['#4f46e5','#0ea5e9','#22c55e','#f59e0b','#ec4899','#7c3aed','#0891b2'];
     const cor = cores[(c.nome||'').charCodeAt(0)%cores.length];
-    return `<div class="bt-card">
+    return `<div class="bt-card" data-tel-card="${c.telefone||''}">
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
         <div style="width:42px;height:42px;border-radius:50%;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0">${iniciais}</div>
         <div style="flex:1;min-width:0">
@@ -1208,6 +1208,7 @@ function filtrarBanco() {
         <div style="display:flex;gap:6px">
           ${c.driveLink?`<a href="${c.driveLink}" target="_blank" style="padding:5px 10px;border-radius:7px;background:#eff6ff;color:#2563eb;font-size:10px;font-weight:700;text-decoration:none;border:1px solid #bfdbfe">📄 CV</a>`:''}
           ${c.telefone?`<button onclick="abrirChatDoBanco('${c.telefone}')" style="padding:5px 10px;border-radius:7px;background:#f0fdf4;color:#16a34a;font-size:10px;font-weight:700;border:1px solid #bbf7d0;cursor:pointer;font-family:inherit">💬 Chat</button>`:''}
+          ${c.telefone?`<button onclick="removerDoBanco('${c.telefone}','${(c.nome||'').replace(/'/g,"\\'")}',this)" style="padding:5px 10px;border-radius:7px;background:#fff1f2;color:#e11d48;font-size:10px;font-weight:700;border:1px solid #fecdd3;cursor:pointer;font-family:inherit">🗑️ Remover</button>`:''}
         </div>
       </div>
     </div>`;
@@ -1220,6 +1221,27 @@ function abrirChatDoBanco(tel) {
   const item = document.querySelector(`[data-tel="${tel}"]`);
   if(item) item.click();
   else { setTimeout(()=>{ const it=document.querySelector(`[data-tel="${tel}"]`); if(it) it.click(); },300); }
+}
+
+function removerDoBanco(tel, nome, btn) {
+  if(!confirm(`Remover ${nome||tel} do Banco de Talentos?\n\nO status voltará para "Aguardando recrutador".`)) return;
+  // Atualiza statusMap
+  statusMap[tel] = 'Aguardando recrutador';
+  if(pipelineMap[tel] === 'Banco de Talentos') delete pipelineMap[tel];
+  // Limpa dataBanco dos metaDados para não reaparecer com status errado
+  const meta = getMeta(tel);
+  if(meta.dataBanco) setMeta(tel, {dataBanco: null});
+  salvarLocal();
+  registrarIntervencao('Thiara','Removido do Banco de Talentos', tel);
+  // Remove o card visualmente
+  const card = btn.closest('[data-tel-card]');
+  if(card) { card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(()=>card.remove(),300); }
+  // Atualiza array interno e contagem
+  _btTodos = _btTodos.filter(c=>c.telefone!==tel);
+  _btFiltrados = _btFiltrados.filter(c=>c.telefone!==tel);
+  const header = document.querySelector('#modal-banco-talentos [id="bt-total"]') || document.getElementById('bt-total');
+  if(header) header.textContent = _btTodos.length + ' candidatos';
+  toast(`${nome||tel} removido do Banco de Talentos`, 'success');
 }
 
 function exportarBancoCSV() {
