@@ -2984,6 +2984,13 @@ app.post("/admin/gemini-toggle", (req, res) => {
     geminiStats.quotaAlerta = false;
     geminiStats.ultimoErro429 = null;
   }
+  // Persiste estado no Volume para sobreviver a deploys
+  try {
+    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
+    inboxDataCache.geminiAtivo = geminiAtivo;
+    gravarDadosInbox(inboxDataCache);
+    console.log(`[IA] Estado salvo no Volume: geminiAtivo = ${geminiAtivo}`);
+  } catch(e) { console.error("[IA] Erro ao salvar estado no Volume:", e.message); }
   const msg = geminiAtivo
     ? "✅ Gemini ATIVADO — LIA respondendo normalmente."
     : "⚠️ Gemini DESATIVADO — LIA em silêncio. Ative novamente quando recarregar créditos.";
@@ -3360,8 +3367,14 @@ function gravarDadosInbox(dados) {
 
 // Carregar no startup do servidor
 inboxDataCache = lerDadosInbox();
-if (inboxDataCache) console.log("\u2705 Dados do Inbox restaurados de", INBOX_DATA_PATH);
-else console.log("\u2139\uFE0F  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "\u2014 come\u00E7ando do zero");
+if (inboxDataCache) {
+  console.log("\u2705 Dados do Inbox restaurados de", INBOX_DATA_PATH);
+  // Restaura estado da IA (persiste entre deploys)
+  if (typeof inboxDataCache.geminiAtivo === "boolean") {
+    geminiAtivo = inboxDataCache.geminiAtivo;
+    console.log(`[IA] Estado restaurado do Volume: geminiAtivo = ${geminiAtivo}`);
+  }
+} else console.log("\u2139\uFE0F  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "\u2014 come\u00E7ando do zero");
 
 // GET /inbox/agenda-sync \u2192 devolve dados para o browser
 app.get("/inbox/agenda-sync", (req, res) => {
