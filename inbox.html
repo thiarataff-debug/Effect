@@ -539,6 +539,45 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
        title="Créditos Gemini baixos — clique para verificar">
       ⚡ Gemini
     </a>
+    <!-- BOTÃO SALDO GEMINI -->
+    <div style="position:relative;flex-shrink:0">
+      <button id="btn-gemini-uso" onclick="togglePopupGemini()" title="Ver uso da IA Gemini"
+        style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;transition:all .2s">
+        💎 Gemini
+      </button>
+      <div id="popup-gemini-uso" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:240px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);padding:14px 16px;z-index:9999;font-family:'Montserrat',sans-serif">
+        <div style="font-size:12px;font-weight:800;color:#1e3a5f;margin-bottom:10px">💎 Uso da IA Gemini</div>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:11px;color:#374151">
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#6b7280">Chamadas (sessão)</span>
+            <span id="gu-calls" style="font-weight:700">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#6b7280">Erros de quota (429)</span>
+            <span id="gu-erros" style="font-weight:700">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#6b7280">Último erro</span>
+            <span id="gu-ultimo" style="font-weight:700;font-size:10px">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:#6b7280">Status quota</span>
+            <span id="gu-status" style="font-weight:800">—</span>
+          </div>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid #f3f4f6;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+          <a href="https://aistudio.google.com/app/usage" target="_blank"
+             style="display:block;text-align:center;padding:7px;border-radius:8px;background:#1e3a5f;color:#fff;font-size:11px;font-weight:700;text-decoration:none">
+            📊 Ver uso no AI Studio
+          </a>
+          <a href="https://console.cloud.google.com/billing" target="_blank"
+             style="display:block;text-align:center;padding:7px;border-radius:8px;background:#f3f4f6;color:#1e3a5f;font-size:11px;font-weight:700;text-decoration:none">
+            💳 Billing Google Cloud
+          </a>
+        </div>
+        <div id="gu-atualizado" style="font-size:9px;color:#9ca3af;text-align:right;margin-top:8px">—</div>
+      </div>
+    </div>
     <!-- CRÉDITOS RAILWAY — atualizado a cada 10min -->
     <a href="https://railway.app/account/billing" target="_blank" title="Ver billing e créditos Railway" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,0.12);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;text-decoration:none">
       🚂 Billing
@@ -4406,7 +4445,42 @@ async function carregarStatusIA() {
         divGeminiAlerta.style.display = 'none';
       }
     }
+
+    // ── Popup de uso Gemini ─────────────────────────────────────────────────
+    _geminiUsoData = gemini;
+    const erros = Number(gemini.erros429 || 0);
+    const el = id => document.getElementById(id);
+    if (el('gu-calls'))    el('gu-calls').textContent    = gemini.totalCalls ?? '—';
+    if (el('gu-erros'))  { el('gu-erros').textContent    = erros; el('gu-erros').style.color = erros > 0 ? '#dc2626' : '#16a34a'; }
+    if (el('gu-ultimo'))   el('gu-ultimo').textContent   = gemini.ultimoErro429 ? new Date(gemini.ultimoErro429).toLocaleString('pt-BR') : 'Nenhum';
+    if (el('gu-status')) { el('gu-status').textContent   = gemini.quotaAlerta ? '⚠️ Alerta' : '✅ OK'; el('gu-status').style.color = gemini.quotaAlerta ? '#d97706' : '#16a34a'; }
+    if (el('gu-atualizado')) el('gu-atualizado').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+    // Muda cor do botão se tiver alerta
+    const btnUso = document.getElementById('btn-gemini-uso');
+    if (btnUso) btnUso.style.background = gemini.quotaAlerta ? '#f59e0b' : 'rgba(255,255,255,0.15)';
   } catch(e) { /* sem Railway token ou server offline */ }
+}
+
+let _geminiUsoData = {};
+let _popupGeminiAberto = false;
+function togglePopupGemini() {
+  const popup = document.getElementById('popup-gemini-uso');
+  if (!popup) return;
+  _popupGeminiAberto = !_popupGeminiAberto;
+  popup.style.display = _popupGeminiAberto ? 'block' : 'none';
+  if (_popupGeminiAberto) {
+    // fecha ao clicar fora
+    setTimeout(() => document.addEventListener('click', _fecharPopupGemini), 10);
+  }
+}
+function _fecharPopupGemini(e) {
+  const popup = document.getElementById('popup-gemini-uso');
+  const btn   = document.getElementById('btn-gemini-uso');
+  if (popup && !popup.contains(e.target) && e.target !== btn) {
+    popup.style.display = 'none';
+    _popupGeminiAberto = false;
+    document.removeEventListener('click', _fecharPopupGemini);
+  }
 }
 
 // Renovar créditos a cada 10 minutos
