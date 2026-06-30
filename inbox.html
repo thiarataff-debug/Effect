@@ -2690,6 +2690,19 @@ function formatarDataBr(dataISO){
 function atualizarStatus(val){
   if(!sessaoAtual)return;
   statusMap[sessaoAtual]=val;
+  // Quando entra no Banco de Talentos, grava data + cargo + DISC no metaDados (persiste no Volume)
+  if(val==='Banco de Talentos'){
+    const s=sessoes[sessaoAtual]||{};
+    const hoje=new Date().toLocaleDateString('pt-BR');
+    const meta=getMeta(sessaoAtual);
+    if(!meta.dataBanco) setMeta(sessaoAtual,{
+      dataBanco: hoje,
+      cargo: s.ultimaAnalise?.vagaInteresse||s.vagaInteresse||meta.cargo||'',
+      disc: s.discResult?.primario||meta.disc||'',
+      perfil: s.ultimaAnalise?.perfilResumido||s.ultimaAnalise?.motivoMatch||meta.perfil||'',
+      nome: s.nome||s.ultimaAnalise?.nome||meta.nome||''
+    });
+  }
   salvarLocal();
   registrarIntervencao('Thiara','Status alterado',`→ ${val}`);
   renderLista();
