@@ -4452,7 +4452,7 @@ document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusI
 
 // ── BACKUP / RESTAURAÇÃO MANUAL ───────────────────────────────────────────────
 function exportarDados() {
-  const dados = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas};
+  const dados = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig};
   const json = JSON.stringify(dados, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4481,6 +4481,10 @@ function importarDados(event) {
       if (dados.intervencoes)   intervencoes   = dados.intervencoes;
       if (dados.marcadosRetorno) marcadosRetorno = dados.marcadosRetorno;
       if (dados.arquivadas)     arquivadas     = dados.arquivadas;
+      if (dados.horariosConfig && Array.isArray(dados.horariosConfig) && dados.horariosConfig.length > 0) {
+        horariosConfig = dados.horariosConfig;
+        try { localStorage.setItem('effect_horarios_v1', JSON.stringify(horariosConfig)); } catch(e) {}
+      }
       salvarLocal(); // salva no localStorage + sobe para o Volume
       if(typeof renderLista==='function') renderLista();
       if(typeof renderCalendario==='function') renderCalendario();
