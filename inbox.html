@@ -1900,9 +1900,15 @@ async function carregarSessoes(){
       }
 
       // Auto-status: candidato respondeu → Aguardando recrutador
+      // Proteção de race condition: se a última msg LOCAL for do recrutador e mais recente,
+      // não sobrescreve (evita reset durante os 5s de polling após o recrutador responder)
       if(ultima&&ultima.role==='user'&&msgNova){
+        const histLocal=(todasSessoes[tel]||{}).historico||[];
+        const ultLocal=histLocal[histLocal.length-1];
+        const recrutadorRespondeuLocalmente=ultLocal&&ultLocal.role==='assistant'&&
+          Number(ultLocal.timestampMs||0)>Number(ultima.timestampMs||0);
         const stAtual=statusMap[tel]||'Novo';
-        if(stAtual!=='Finalizado'&&stAtual!=='Aguardando recrutador'){
+        if(!recrutadorRespondeuLocalmente&&stAtual!=='Finalizado'&&stAtual!=='Aguardando recrutador'){
           statusMap[tel]='Aguardando recrutador';
           salvarLocal();
         }
