@@ -1145,6 +1145,29 @@ app.post("/inbox/backup", async (req, res) => {
   });
 });
 
+// ─── RECARREGAR SESSÕES DO SHEETS MANUALMENTE ───
+app.get("/inbox/recarregar", async (req, res) => {
+  try {
+    const antes = Object.keys(sessoes).length;
+    await carregarSessoesDoSheets();
+    const depois = Object.keys(sessoes).length;
+    // Se ainda vazio, tenta restaurar do backup Drive
+    if (depois === 0) {
+      await restaurarDoUltimoBackup();
+    }
+    const final = Object.keys(sessoes).length;
+    return res.json({
+      ok: true,
+      antes,
+      depois: final,
+      vagasUrl: CONFIG.VAGAS_URL ? 'configurada' : 'NÃO CONFIGURADA',
+      msg: final > 0 ? `${final} sessões carregadas com sucesso` : 'Nenhuma sessão carregada — verifique VAGAS_URL e o Apps Script'
+    });
+  } catch(e) {
+    return res.json({ ok: false, erro: e.message });
+  }
+});
+
 // Endpoint de status do backup
 app.get("/inbox/backup/status", (req, res) => {
   res.json({
@@ -3382,35 +3405,4 @@ function gravarDadosInbox(dados) {
   } catch(e) { console.error("gravarDadosInbox:", e.message); return false; }
 }
 
-// Carregar no startup do servidor
-inboxDataCache = lerDadosInbox();
-if (inboxDataCache) {
-  console.log("\u2705 Dados do Inbox restaurados de", INBOX_DATA_PATH);
-  // Restaura estado da IA (persiste entre deploys)
-  if (typeof inboxDataCache.geminiAtivo === "boolean") {
-    geminiAtivo = inboxDataCache.geminiAtivo;
-    console.log(`[IA] Estado restaurado do Volume: geminiAtivo = ${geminiAtivo}`);
-  }
-} else console.log("\u2139\uFE0F  Nenhum dado de Inbox encontrado em", INBOX_DATA_PATH, "\u2014 come\u00E7ando do zero");
-
-// GET /inbox/agenda-sync \u2192 devolve dados para o browser
-app.get("/inbox/agenda-sync", (req, res) => {
-  try {
-    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
-    res.json({ ok: true, dados: inboxDataCache || {} });
-  } catch(e) { res.json({ ok: false, erro: e.message, dados: {} }); }
-});
-
-// POST /inbox/agenda-sync \u2192 recebe dados do browser e persiste no Volume
-app.post("/inbox/agenda-sync", (req, res) => {
-  try {
-    const dados = req.body || {};
-    if (!dados || typeof dados !== "object") return res.json({ ok: false, erro: "payload inv\u00E1lido" });
-    inboxDataCache = dados;
-    const ok = gravarDadosInbox(dados);
-    if (!ok) console.warn("agenda-sync: falha ao gravar em", INBOX_DATA_PATH, "\u2014 dados s\u00F3 em mem\u00F3ria at\u00E9 pr\u00F3ximo deploy");
-    res.json({ ok: true, persistido: ok, path: INBOX_DATA_PATH });
-  } catch(e) { res.json({ ok: false, erro: e.message }); }
-});
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+// Carregar no
