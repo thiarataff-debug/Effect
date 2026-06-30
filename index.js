@@ -1233,22 +1233,36 @@ app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html"
 app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
 
-// Banco de Talentos: retorna candidatos com status "Banco de Talentos" das sessões ativas
+// Banco de Talentos: lê do Volume (statusMap persistido pelo browser) + enriquece com sessoes
 app.get("/sheets/banco-talentos", (req, res) => {
   try {
-    const banco = Object.entries(sessoes)
-      .filter(([, s]) => s.statusProcesso === "Banco de Talentos")
-      .map(([tel, s]) => ({
+    const cache = inboxDataCache || lerDadosInbox() || {};
+    const statusMap = cache.statusMap || {};
+    const metaDados = cache.metaDados || {};
+    const notas = cache.notas || {};
+
+    // Pega todos com status "Banco de Talentos" do Volume (fonte confiável)
+    const tels = Object.entries(statusMap)
+      .filter(([, st]) => st === "Banco de Talentos")
+      .map(([tel]) => tel);
+
+    const banco = tels.map(tel => {
+      const s = sessoes[tel] || {};
+      const m = metaDados[tel] || {};
+      return {
         telefone: tel,
-        nome: s.nome || s.ultimaAnalise?.nome || "",
-        cargo: s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || "",
-        cidade: s.ultimaAnalise?.cidade || s.cidade || "",
-        driveLink: s.curriculo?.driveLink || s.ultimaAnalise?.curriculoDriveLink || "",
-        perfilResumido: s.ultimaAnalise?.perfilResumido || s.ultimaAnalise?.motivoMatch || "",
-        discPrimario: s.discResult?.primario || "",
-        dataEntrada: s.dataBanco || new Date().toLocaleDateString("pt-BR")
-      }));
-    res.json({ ok: true, total: banco.length, candidatos: banco });
+        nome: s.nome || s.ultimaAnalise?.nome || m.nome || "",
+        cargo: s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || m.cargo || "",
+        cidade: s.ultimaAnalise?.cidade || s.cidade || m.cidade || "",
+        driveLink: s.curriculo?.driveLink || s.ultimaAnalise?.curriculoDriveLink || m.driveLink || "",
+        perfilResumido: s.ultimaAnalise?.perfilResumido || s.ultimaAnalise?.motivoMatch || m.perfil || "",
+        discPrimario: s.discResult?.primario || m.disc || "",
+        notaInterna: notas[tel] || "",
+        dataEntrada: m.dataBanco || s.dataBanco || new Date().toLocaleDateString("pt-BR")
+      };
+    });
+
+    res.json({ ok: true, total: banco.length, candidatos: banco, fonte: "volume" });
   } catch(e) {
     res.json({ ok: false, erro: e.message, candidatos: [] });
   }
