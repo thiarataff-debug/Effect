@@ -1070,6 +1070,172 @@ font-family:'Montserrat',sans-serif
   </div>
 </div>
 
+<!-- MODAL: BANCO DE TALENTOS -->
+<div class="modal-overlay" id="modal-banco-talentos" style="display:none;align-items:flex-start;padding:0">
+  <div style="width:100%;height:100vh;background:#f0f4f8;display:flex;flex-direction:column;overflow:hidden">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:20px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0">
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:900;letter-spacing:.3px">🌟 Banco de Talentos</div>
+        <div style="font-size:12px;opacity:.8;margin-top:2px">Candidatos qualificados aguardando oportunidade</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:8px 16px;text-align:center">
+          <div style="font-size:22px;font-weight:900" id="bt-total">0</div>
+          <div style="font-size:10px;opacity:.8">candidatos</div>
+        </div>
+        <input id="bt-busca" type="text" placeholder="🔍 Buscar por nome, cargo, cidade..." oninput="filtrarBanco()"
+          style="padding:8px 14px;border-radius:8px;border:none;font-size:12px;font-family:inherit;width:260px;background:rgba(255,255,255,.2);color:#fff;outline:none">
+        <select id="bt-filtro-disc" onchange="filtrarBanco()"
+          style="padding:8px 12px;border-radius:8px;border:none;font-size:12px;font-family:inherit;background:rgba(255,255,255,.2);color:#fff;outline:none">
+          <option value="">Todos os perfis DISC</option>
+          <option value="D">🔴 D — Dominância</option>
+          <option value="I">🟡 I — Influência</option>
+          <option value="S">🟢 S — Estabilidade</option>
+          <option value="C">🔵 C — Conformidade</option>
+        </select>
+        <button onclick="exportarBancoCSV()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📥 Exportar</button>
+        <button onclick="fecharModal('modal-banco-talentos')" style="padding:8px 12px;border-radius:8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:16px;cursor:pointer">✕</button>
+      </div>
+    </div>
+    <!-- Filtros rápidos -->
+    <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 24px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0" id="bt-filtros-cargo"></div>
+    <!-- Grid de cards -->
+    <div style="flex:1;overflow-y:auto;padding:20px 24px">
+      <div id="bt-loading" style="text-align:center;padding:60px;color:#94a3b8">
+        <div style="font-size:32px;margin-bottom:12px">⏳</div>
+        <div style="font-weight:600">Carregando candidatos...</div>
+      </div>
+      <div id="bt-vazio" style="display:none;text-align:center;padding:60px;color:#94a3b8">
+        <div style="font-size:40px;margin-bottom:12px">🌟</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px">Nenhum candidato encontrado</div>
+        <div style="font-size:12px">Tente outros filtros ou aguarde novos candidatos qualificados</div>
+      </div>
+      <div id="bt-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.bt-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border:2px solid transparent;transition:.15s;cursor:default}
+.bt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12);border-color:#e0e7ff;transform:translateY(-1px)}
+.bt-disc-D{background:#fef2f2;color:#dc2626;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;display:inline-block}
+.bt-disc-I{background:#fffbeb;color:#d97706;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;display:inline-block}
+.bt-disc-S{background:#f0fdf4;color:#16a34a;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;display:inline-block}
+.bt-disc-C{background:#eff6ff;color:#2563eb;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;display:inline-block}
+.bt-disc-{background:#f1f5f9;color:#64748b;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;display:inline-block}
+.bt-chip{background:#f1f5f9;color:#475569;border-radius:8px;padding:2px 8px;font-size:10px;font-weight:600;display:inline-block;margin:2px 2px 0 0}
+.bt-cargo-btn{padding:5px 12px;border-radius:20px;border:1.5px solid #e5e7eb;background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit;color:#475569}
+.bt-cargo-btn:hover,.bt-cargo-btn.ativo{background:#4f46e5;color:#fff;border-color:#4f46e5}
+</style>
+
+<script>
+let _btTodos = [];
+let _btCargoAtivo = '';
+
+async function abrirBancoTalentos() {
+  const modal = document.getElementById('modal-banco-talentos');
+  modal.style.display = 'flex';
+  document.getElementById('bt-loading').style.display = 'block';
+  document.getElementById('bt-vazio').style.display = 'none';
+  document.getElementById('bt-grid').innerHTML = '';
+  document.getElementById('bt-busca').value = '';
+  document.getElementById('bt-filtro-disc').value = '';
+  _btCargoAtivo = '';
+  try {
+    const r = await fetch('/sheets/banco-talentos');
+    const data = await r.json();
+    _btTodos = data.candidatos || [];
+    document.getElementById('bt-total').textContent = _btTodos.length;
+    document.getElementById('bt-loading').style.display = 'none';
+    _renderFiltrosCargo();
+    filtrarBanco();
+  } catch(e) {
+    document.getElementById('bt-loading').innerHTML = '<div style="color:#ef4444;font-size:13px">❌ Erro ao carregar candidatos. Tente novamente.</div>';
+  }
+}
+
+function _renderFiltrosCargo() {
+  const cargos = [...new Set(_btTodos.map(c=>c.cargo).filter(Boolean))].sort();
+  const div = document.getElementById('bt-filtros-cargo');
+  div.innerHTML = `<button class="bt-cargo-btn ativo" onclick="filtrarCargo('',this)">Todos</button>` +
+    cargos.map(c=>`<button class="bt-cargo-btn" onclick="filtrarCargo('${c.replace(/'/g,"\\'")}',this)">${c}</button>`).join('');
+}
+
+function filtrarCargo(cargo, btn) {
+  _btCargoAtivo = cargo;
+  document.querySelectorAll('.bt-cargo-btn').forEach(b=>b.classList.remove('ativo'));
+  if(btn) btn.classList.add('ativo');
+  filtrarBanco();
+}
+
+function filtrarBanco() {
+  const busca = (document.getElementById('bt-busca').value || '').toLowerCase();
+  const disc = document.getElementById('bt-filtro-disc').value;
+  const filtrados = _btTodos.filter(c => {
+    const txt = `${c.nome} ${c.cargo} ${c.cidade}`.toLowerCase();
+    const matchBusca = !busca || txt.includes(busca);
+    const matchDisc = !disc || (c.discPrimario||'').toUpperCase().startsWith(disc);
+    const matchCargo = !_btCargoAtivo || c.cargo === _btCargoAtivo;
+    return matchBusca && matchDisc && matchCargo;
+  });
+  const grid = document.getElementById('bt-grid');
+  const vazio = document.getElementById('bt-vazio');
+  if(!filtrados.length) { grid.innerHTML=''; vazio.style.display='block'; return; }
+  vazio.style.display='none';
+  grid.innerHTML = filtrados.map(c => {
+    const discClass = 'bt-disc-' + (c.discPrimario||'').charAt(0).toUpperCase();
+    const discLabel = c.discPrimario ? `${c.discPrimario.charAt(0).toUpperCase()} — ${{D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'}[c.discPrimario.charAt(0).toUpperCase()]||c.discPrimario}` : 'DISC não avaliado';
+    const iniciais = (c.nome||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const cores = ['#4f46e5','#0ea5e9','#22c55e','#f59e0b','#ec4899','#7c3aed','#0891b2'];
+    const cor = cores[(c.nome||'').charCodeAt(0)%cores.length];
+    return `<div class="bt-card">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+        <div style="width:42px;height:42px;border-radius:50%;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0">${iniciais}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome||'Sem nome'}</div>
+          <div style="font-size:11px;color:#64748b;margin-top:1px">${c.cargo||'Cargo não informado'}</div>
+        </div>
+        <span class="${discClass}">${discLabel}</span>
+      </div>
+      ${c.cidade?`<div style="font-size:11px;color:#64748b;margin-bottom:8px">📍 ${c.cidade}</div>`:''}
+      ${c.perfilResumido?`<div style="font-size:11px;color:#374151;background:#f8fafc;border-radius:7px;padding:8px;margin-bottom:8px;line-height:1.5;border-left:3px solid ${cor}">${c.perfilResumido.slice(0,180)}${c.perfilResumido.length>180?'...':''}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <div>
+          ${c.dataEntrada?`<span class="bt-chip">📅 ${c.dataEntrada}</span>`:''}
+          ${c.telefone?`<span class="bt-chip">📱 ${c.telefone}</span>`:''}
+        </div>
+        <div style="display:flex;gap:6px">
+          ${c.driveLink?`<a href="${c.driveLink}" target="_blank" style="padding:5px 10px;border-radius:7px;background:#eff6ff;color:#2563eb;font-size:10px;font-weight:700;text-decoration:none;border:1px solid #bfdbfe">📄 CV</a>`:''}
+          ${c.telefone?`<button onclick="abrirChatDoBanco('${c.telefone}')" style="padding:5px 10px;border-radius:7px;background:#f0fdf4;color:#16a34a;font-size:10px;font-weight:700;border:1px solid #bbf7d0;cursor:pointer;font-family:inherit">💬 Chat</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirChatDoBanco(tel) {
+  fecharModal('modal-banco-talentos');
+  // Abre a conversa no inbox
+  const item = document.querySelector(`[data-tel="${tel}"]`);
+  if(item) item.click();
+  else { setTimeout(()=>{ const it=document.querySelector(`[data-tel="${tel}"]`); if(it) it.click(); },300); }
+}
+
+function exportarBancoCSV() {
+  if(!_btTodos.length){toast('Nenhum candidato para exportar','error');return;}
+  const header = 'Nome,Cargo,Cidade,DISC,Perfil,Telefone,Data Entrada,Link CV';
+  const rows = _btTodos.map(c=>[c.nome,c.cargo,c.cidade,c.discPrimario,`"${(c.perfilResumido||'').replace(/"/g,"'")}"`,c.telefone,c.dataEntrada,c.driveLink].join(','));
+  const csv = [header,...rows].join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `banco-talentos-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+  a.click();
+  toast('CSV exportado!','success');
+}
+</script>
+
 <!-- MODAL: TEMPLATES DE RETOMADA -->
 <div class="modal-overlay" id="modal-template">
   <div class="modal" style="width:480px">
