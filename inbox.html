@@ -2657,7 +2657,7 @@ function renderPainelPerfil(s){
   const timeline=gerarTimeline(s);
   div.innerHTML=`
   <div class="rp-section">
-    <div class="rp-section-title">📋 Status do Processo</div>
+    <div class="rp-section-title">📋 Etapas</div>
     <div onclick="abrirModalStatus()" title="Clique para alterar o status" style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)};cursor:pointer">${st||'Novo'} ✎</div>
   </div>
   ${anal.nome?`
@@ -3513,9 +3513,11 @@ async function enviarMsg(){
       todasSessoes[telefoneAtual].historico.push(eventoLocal);
       todasSessoes[telefoneAtual].lastMessage=texto;
       todasSessoes[telefoneAtual].lastMessageRole='assistant';
-      // Auto-status: se status for Novo ou Aguardando recrutador, move para Em atendimento
-      if(!statusMap[telefoneAtual]||statusMap[telefoneAtual]==='Aguardando recrutador'||statusMap[telefoneAtual]==='Novo'){
-        statusMap[telefoneAtual]='Em atendimento';
+      // Auto-status: recrutador respondeu → Aguardando candidato
+      const stAtualEnvio = statusMap[telefoneAtual] || '';
+      const statusBloqueadosEnvio = ['Finalizado','Reprovado','Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor','Banco de Talentos','Banco de talentos'];
+      if(!statusBloqueadosEnvio.includes(stAtualEnvio)){
+        statusMap[telefoneAtual]='Aguardando candidato';
         salvarLocal();
       }
       todasSessoes[telefoneAtual].lastMessageAtMs=eventoLocal.timestampMs;
