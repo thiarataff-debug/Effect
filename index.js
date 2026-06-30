@@ -2868,7 +2868,7 @@ app.get("/admin/status", async (req, res) => {
       const data = await r.json();
       const me = data?.data?.me;
       if (me !== null && me !== undefined) {
-        status.railway = { conectado: true, nome: me.name || "Railway", billingUrl: "https://railway.com/billing" };
+        status.railway = { conectado: true, nome: me.name || "Railway", billingUrl: "https://railway.app/account/billing" };
       } else {
         status.railway = { conectado: false };
       }
