@@ -1232,6 +1232,27 @@ app.post("/webhook", async (req, res) => {
 app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
 app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
+
+// Banco de Talentos: retorna candidatos com status "Banco de Talentos" das sessões ativas
+app.get("/sheets/banco-talentos", (req, res) => {
+  try {
+    const banco = Object.entries(sessoes)
+      .filter(([, s]) => s.statusProcesso === "Banco de Talentos")
+      .map(([tel, s]) => ({
+        telefone: tel,
+        nome: s.nome || s.ultimaAnalise?.nome || "",
+        cargo: s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || "",
+        cidade: s.ultimaAnalise?.cidade || s.cidade || "",
+        driveLink: s.curriculo?.driveLink || s.ultimaAnalise?.curriculoDriveLink || "",
+        perfilResumido: s.ultimaAnalise?.perfilResumido || s.ultimaAnalise?.motivoMatch || "",
+        discPrimario: s.discResult?.primario || "",
+        dataEntrada: s.dataBanco || new Date().toLocaleDateString("pt-BR")
+      }));
+    res.json({ ok: true, total: banco.length, candidatos: banco });
+  } catch(e) {
+    res.json({ ok: false, erro: e.message, candidatos: [] });
+  }
+});
 app.get("/inbox", (req, res) => {
   try {
     let html = fs.readFileSync(path.join(__dirname, "inbox.html"), "utf8");
