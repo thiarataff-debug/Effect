@@ -5405,7 +5405,26 @@ function renderPainelSaude(){
       <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #ef4444">
         <div style="font-size:24px;font-weight:800;color:#ef4444">${travadas.length}</div>
         <div style="font-size:11px;color:var(--muted);font-weight:600">⚠️ Travadas +24h</div>
-        ${travadas.length?`<div style="font-size:9px;color:var(--muted);margin-top:4px">${travadas.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')}${trav
+        ${travadas.length?('<div style="font-size:9px;color:var(--muted);margin-top:4px">'+travadas.slice(0,3).map(([t,s])=>s.nome||telDisplay(t)).join(', ')+(travadas.length>3?'...':'')+'</div>'):''}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #f59e0b">
+        <div style="font-size:24px;font-weight:800;color:#f59e0b">${manualLongo.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">🖐️ Manual +2h</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #22c55e">
+        <div style="font-size:24px;font-weight:800;color:#22c55e">${quentes}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">🔥 Quentes</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:3px solid #6366f1">
+        <div style="font-size:24px;font-weight:800;color:#6366f1">${entsHoje.length}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">📅 Entrevistas hoje</div>
+      </div>
+    </div>
+    ${entsHoje.length?('<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">📅 Entrevistas de Hoje</div>'+entsHoje.map(e=>'<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><strong>'+telDisplay(e.tel)+'</strong> — '+e.cargo+' às '+e.hora+'</div>').join('')+'</div>'):''}
+  </div>
+  `;
+}
+
 // ── LEMBRETES PESSOAIS ────────────────────────────────────────────────────────
 let _lembretes = JSON.parse(localStorage.getItem('effect_lembretes') || '[]');
 let _lembreteTimers = {};
@@ -5585,3 +5604,6 @@ window.salvarEntrevista = function() {
 // Inicia ao carregar
 setTimeout(iniciarTimersLembretes, 2000);
 setTimeout(adicionarPontosLembrete, 3000);
+</script>
+</body>
+</html>
