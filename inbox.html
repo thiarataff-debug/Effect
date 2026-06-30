@@ -4838,9 +4838,9 @@ function renderCalendario(){
 
   let html=`
     <div class="cal-nav">
-      <button class="rbtn" onclick="navCal(-1)">‹</button>
-      <span style="font-weight:800;font-size:13px">${meses[calMes]} ${calAno}</span>
-      <button class="rbtn" onclick="navCal(1)">›</button>
+      <button onclick="navCal(-1)" style="background:var(--bg);border:1.5px solid #dde3ea;color:var(--navy);border-radius:8px;padding:5px 13px;font-size:15px;font-weight:800;cursor:pointer;line-height:1">‹</button>
+      <span style="font-weight:800;font-size:13px;color:var(--navy)">${meses[calMes]} ${calAno}</span>
+      <button onclick="navCal(1)" style="background:var(--bg);border:1.5px solid #dde3ea;color:var(--navy);border-radius:8px;padding:5px 13px;font-size:15px;font-weight:800;cursor:pointer;line-height:1">›</button>
     </div>
     <div class="cal-grid">
       <div class="cal-dow">Dom</div><div class="cal-dow">Seg</div><div class="cal-dow">Ter</div>
