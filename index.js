@@ -1130,6 +1130,79 @@ async function carregarSessoesDoSheets() {
   }
 }
 
+const SESSOES_LOCAL_PATH = process.env.SESSOES_LOCAL_PATH || "/data/sessoes-local.json";
+
+function salvarSessoesLocal() {
+  try {
+    const dir = require("path").dirname(SESSOES_LOCAL_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const compacto = {};
+    Object.entries(sessoes).forEach(([tel, s]) => {
+      compacto[tel] = {
+        nome: s.nome,
+        modo: s.modo,
+        pausado: s.pausado,
+        motivoPausa: s.motivoPausa,
+        unreadCount: s.unreadCount || 0,
+        discResult: s.discResult || null,
+        ultimaAnalise: s.ultimaAnalise || null,
+        historico: (s.historico || []).slice(-30),
+        curriculos: s.curriculos || [],
+        curriculo: s.curriculo || null
+      };
+    });
+    fs.writeFileSync(SESSOES_LOCAL_PATH, JSON.stringify({ ts: Date.now(), sessoes: compacto }), "utf8");
+  } catch(e) { console.error("salvarSessoesLocal:", e.message); }
+}
+
+function carregarSessoesLocal() {
+  try {
+    if (!fs.existsSync(SESSOES_LOCAL_PATH)) return 0;
+    const raw = JSON.parse(fs.readFileSync(SESSOES_LOCAL_PATH, "utf8"));
+    if (!raw.sessoes) return 0;
+    let n = 0;
+    Object.entries(raw.sessoes).forEach(([tel, s]) => {
+      if (!sessoes[tel]) {
+        sessoes[tel] = {
+          historico: (s.historico || []).map(normalizarEventoHistorico),
+          nome: s.nome || null,
+          modo: s.modo || "automatico",
+          pausado: s.pausado || false,
+          motivoPausa: s.motivoPausa || "",
+          unreadCount: Number(s.unreadCount || 0),
+          discResult: s.discResult || null,
+          ultimaAnalise: s.ultimaAnalise || null,
+          curriculos: s.curriculos || [],
+          curriculo: s.curriculo || null
+        };
+        if (s.pausado) atendimentosManuais.add(tel);
+        n++;
+      }
+    });
+    return n;
+  } catch(e) { console.error("carregarSessoesLocal:", e.message); return 0; }
+}
+let inboxDataCache = null;
+
+function lerDadosInbox() {
+  try {
+    if (!fs.existsSync(INBOX_DATA_PATH)) return null;
+    const raw = fs.readFileSync(INBOX_DATA_PATH, "utf8");
+    return JSON.parse(raw);
+  } catch(e) { console.error("lerDadosInbox:", e.message); return null; }
+}
+
+function gravarDadosInbox(dados) {
+  try {
+    // Garantir que o diretório existe
+    const dir = require("path").dirname(INBOX_DATA_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(INBOX_DATA_PATH, JSON.stringify(dados), "utf8");
+    return true;
+  } catch(e) { console.error("gravarDadosInbox:", e.message); return false; }
+}
+
+// Carregar n
 // ── STARTUP: 1) Volume local (rápido) → 2) Sheets em background ──
 const localCount = carregarSessoesLocal();
 console.log(`[startup] Sessões carregadas do Volume local: ${localCount}`);
@@ -3505,77 +3578,4 @@ supervisor.iniciarSupervisor();
 // Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
 // O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
 // e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
-const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
-const SESSOES_LOCAL_PATH = process.env.SESSOES_LOCAL_PATH || "/data/sessoes-local.json";
-
-function salvarSessoesLocal() {
-  try {
-    const dir = require("path").dirname(SESSOES_LOCAL_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const compacto = {};
-    Object.entries(sessoes).forEach(([tel, s]) => {
-      compacto[tel] = {
-        nome: s.nome,
-        modo: s.modo,
-        pausado: s.pausado,
-        motivoPausa: s.motivoPausa,
-        unreadCount: s.unreadCount || 0,
-        discResult: s.discResult || null,
-        ultimaAnalise: s.ultimaAnalise || null,
-        historico: (s.historico || []).slice(-30),
-        curriculos: s.curriculos || [],
-        curriculo: s.curriculo || null
-      };
-    });
-    fs.writeFileSync(SESSOES_LOCAL_PATH, JSON.stringify({ ts: Date.now(), sessoes: compacto }), "utf8");
-  } catch(e) { console.error("salvarSessoesLocal:", e.message); }
-}
-
-function carregarSessoesLocal() {
-  try {
-    if (!fs.existsSync(SESSOES_LOCAL_PATH)) return 0;
-    const raw = JSON.parse(fs.readFileSync(SESSOES_LOCAL_PATH, "utf8"));
-    if (!raw.sessoes) return 0;
-    let n = 0;
-    Object.entries(raw.sessoes).forEach(([tel, s]) => {
-      if (!sessoes[tel]) {
-        sessoes[tel] = {
-          historico: (s.historico || []).map(normalizarEventoHistorico),
-          nome: s.nome || null,
-          modo: s.modo || "automatico",
-          pausado: s.pausado || false,
-          motivoPausa: s.motivoPausa || "",
-          unreadCount: Number(s.unreadCount || 0),
-          discResult: s.discResult || null,
-          ultimaAnalise: s.ultimaAnalise || null,
-          curriculos: s.curriculos || [],
-          curriculo: s.curriculo || null
-        };
-        if (s.pausado) atendimentosManuais.add(tel);
-        n++;
-      }
-    });
-    return n;
-  } catch(e) { console.error("carregarSessoesLocal:", e.message); return 0; }
-}
-let inboxDataCache = null;
-
-function lerDadosInbox() {
-  try {
-    if (!fs.existsSync(INBOX_DATA_PATH)) return null;
-    const raw = fs.readFileSync(INBOX_DATA_PATH, "utf8");
-    return JSON.parse(raw);
-  } catch(e) { console.error("lerDadosInbox:", e.message); return null; }
-}
-
-function gravarDadosInbox(dados) {
-  try {
-    // Garantir que o diretório existe
-    const dir = require("path").dirname(INBOX_DATA_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(INBOX_DATA_PATH, JSON.stringify(dados), "utf8");
-    return true;
-  } catch(e) { console.error("gravarDadosInbox:", e.message); return false; }
-}
-
-// Carregar no
+const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";o
