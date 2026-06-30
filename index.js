@@ -2837,15 +2837,36 @@ app.get("/admin/status", async (req, res) => {
   const status = { geminiAtivo, railway: null };
   if (CONFIG.RAILWAY_TOKEN) {
     try {
-      const query = `{ me { teams { edges { node { name creditBalance } } } } }`;
+      // Tenta query principal: crédito direto no usuário
+      const query = `{ me { creditBalance email name } }`;
       const r = await fetch("https://backboard.railway.app/graphql/v2", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
         body: JSON.stringify({ query })
       });
       const data = await r.json();
-      const teams = data?.data?.me?.teams?.edges || [];
-      status.railway = teams.map(e => ({ team: e.node.name, creditBalance: e.node.creditBalance }));
+      console.log("[Railway] resposta:", JSON.stringify(data).slice(0, 300));
+      const me = data?.data?.me;
+      if (me) {
+        const credito = parseFloat(me.creditBalance ?? 0);
+        status.railway = [{ team: me.name || me.email || "Conta", creditBalance: credito }];
+      } else if (data?.errors) {
+        // Se falhar, tenta query alternativa com teams
+        const query2 = `{ me { teams { edges { node { name creditBalance } } } } }`;
+        const r2 = await fetch("https://backboard.railway.app/graphql/v2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
+          body: JSON.stringify({ query: query2 })
+        });
+        const data2 = await r2.json();
+        console.log("[Railway] fallback resposta:", JSON.stringify(data2).slice(0, 300));
+        const teams = data2?.data?.me?.teams?.edges || [];
+        if (teams.length) {
+          status.railway = teams.map(e => ({ team: e.node.name, creditBalance: parseFloat(e.node.creditBalance ?? 0) }));
+        } else {
+          status.railwayErro = JSON.stringify(data?.errors);
+        }
+      }
     } catch(e) { status.railwayErro = e.message; }
   }
   res.json(status);
@@ -2870,22 +2891,18 @@ app.post("/admin/gemini-toggle", (req, res) => {
 async function verificarCreditosRailway() {
   if (!CONFIG.RAILWAY_TOKEN) return;
   try {
-    const query = `{ me { teams { edges { node { name creditBalance } } } } }`;
+    const query = `{ me { creditBalance } }`;
     const r = await fetch("https://backboard.railway.app/graphql/v2", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
       body: JSON.stringify({ query })
     });
     const data = await r.json();
-    const teams = data?.data?.me?.teams?.edges || [];
-    for (const { node } of teams) {
-      const creditos = parseFloat(node.creditBalance || 0);
-      // Alerta se créditos < $2.00
-      if (creditos < 2.00) {
-        const msg = `⚠️ *ALERTA RAILWAY*\n\nCréditos Railway baixos: *$${creditos.toFixed(2)}*\n\nA LIA pode parar de funcionar em breve. Acesse railway.app para recarregar.`;
-        await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg).catch(() => {});
-        console.warn("⚠️ Créditos Railway baixos:", creditos);
-      }
+    const creditos = parseFloat(data?.data?.me?.creditBalance ?? -1);
+    if (creditos >= 0 && creditos < 2.00) {
+      const msg = `⚠️ *ALERTA RAILWAY*\n\nCréditos Railway baixos: *$${creditos.toFixed(2)}*\n\nA LIA pode parar de funcionar em breve. Acesse railway.app para recarregar.`;
+      await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg).catch(() => {});
+      console.warn("⚠️ Créditos Railway baixos:", creditos);
     }
   } catch(e) { console.error("Erro ao verificar créditos Railway:", e.message); }
 }
