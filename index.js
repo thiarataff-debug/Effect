@@ -1429,6 +1429,11 @@ app.post("/webhook", async (req, res) => {
     }
     if (message.document) {
       const emManual = estaEmManual(from);
+      // BUG CRÍTICO CORRIGIDO: antes, o botão "IA OFF" (geminiAtivo=false) não tinha
+      // nenhum efeito aqui — o currículo era analisado pelo Gemini e a mensagem com a
+      // vaga sugerida era enviada ao candidato mesmo com a IA desligada. Agora, IA OFF
+      // é tratado como modo manual: o currículo é salvo, mas nada é enviado sozinho.
+      const modoSilencioso = emManual || !geminiAtivo;
       const conteudoDoc = `[Documento/Currículo recebido]`;
 
       // Evita duplicar a mesma linha no histórico quando a Meta reenvia o evento.
@@ -1442,14 +1447,14 @@ app.post("/webhook", async (req, res) => {
       marcarMensagemRecebida(sessaoAtual, messageTimestampMs);
       sessaoAtual.historico = sessaoAtual.historico.slice(-500);
 
-      if (!emManual) {
+      if (!modoSilencioso) {
         await enviarMensagem(from, "Perfeito, recebi seu currículo. 💙");
       } else {
-        console.log("CURRÍCULO RECEBIDO EM MANUAL — salvando silenciosamente:", from);
+        console.log(`CURRÍCULO RECEBIDO EM MODO SILENCIOSO (manual=${emManual}, iaOff=${!geminiAtivo}) — salvando sem responder:`, from);
       }
 
-      const resposta = await processarCurriculo(from, message.document, { silencioso: emManual, timestampMs: messageTimestampMs });
-      if (!emManual && resposta) await enviarMensagem(from, resposta);
+      const resposta = await processarCurriculo(from, message.document, { silencioso: modoSilencioso, timestampMs: messageTimestampMs });
+      if (!modoSilencioso && resposta) await enviarMensagem(from, resposta);
       return;
     }
   } catch (erro) {
@@ -2704,6 +2709,15 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
       return silencioso ? null : "Recebi seu currículo com sucesso. A análise automática não conseguiu ler o conteúdo do arquivo, mas ele ficou salvo para avaliação da equipe. 💙";
     }
 
+    // IA OFF (modo emergência): não chama o Gemini para analisar o currículo — o arquivo
+    // já está salvo no Drive/Sheets, só a análise automática fica pendente até reativar.
+    if (!geminiAtivo) {
+      if (cvSalvo) cvSalvo.analiseStatus = "aguardando_ia_reativada";
+      await enviarAlertaSimplesThiara(telefone, "📄 CURRÍCULO RECEBIDO COM IA DESLIGADA", "Análise automática pausada (IA OFF). Currículo salvo no Drive, aguardando reativação da IA ou avaliação manual.");
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+      return silencioso ? null : "Recebi seu currículo com sucesso. Ele já está salvo com a nossa equipe para avaliação. 💙";
+    }
+
     // 2) ANÁLISE DA IA — opcional. Se falhar, não invalida o currículo.
     let analise;
     try {
@@ -2758,8 +2772,20 @@ Vou registrar seu interesse e encaminhar seu perfil para avaliação da nossa eq
 
             // CORREÇÃO CRÍTICA: nunca forçar vaga que tem requisito obrigatório
             // que o candidato não comprova no currículo (ex: Curso de Vigilante).
+            //
+            // BUG CORRIGIDO: quando a coluna "Requisito Obrigatório" da vaga estava
+            // vazia na planilha, a regra antiga assumia "requisito cumprido" por
+            // padrão — na prática, isso permitia forçar QUALQUER candidato cujo
+            // currículo tocasse de leve em uma palavra da área (ex: "monitoramento",
+            // "ronda") para a vaga de Vigilante, mesmo sem o curso obrigatório por lei.
+            // Para áreas regulamentadas (hoje: segurança), a falta de requisito
+            // configurado na planilha agora BLOQUEIA o encaixe automático, em vez de
+            // liberá-lo — é preciso cadastrar o requisito na planilha ou avaliar manual.
+            const AREAS_REGULAMENTADAS = ["seguranca"];
             const reqObrigArea = normalizarTexto(campo(vagaArea, ["requisitoObrigatorio", "Requisito Obrigatório", "Requisito Obrigatorio"]) || "");
-            const candidatoAtendReq = !reqObrigArea || normalizarTexto(textoCurriculo).includes(reqObrigArea);
+            const candidatoAtendReq = reqObrigArea
+              ? normalizarTexto(textoCurriculo).includes(reqObrigArea)
+              : !AREAS_REGULAMENTADAS.includes(areaCv);
 
             if (semMatch && candidatoAtendReq) {
               analise.vagaInteresse = cargoArea || analise.vagaInteresse;
@@ -3540,6 +3566,29 @@ app.get("/agenda/disponibilidade", async (req, res) => {
   } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// ── AGENDA SYNC: persiste entrevistas, lembretes, status e config no Volume ──
+// (o inbox.html chama essas rotas para sincronizar dados entre dispositivos e
+// sobreviver a deploys — antes essa rota não existia e o sync falhava em silêncio)
+app.get("/inbox/agenda-sync", (req, res) => {
+  try {
+    const cache = inboxDataCache || lerDadosInbox() || {};
+    res.json({ ok: true, dados: cache.agendaSync || {} });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message, dados: {} });
+  }
+});
+
+app.post("/inbox/agenda-sync", (req, res) => {
+  try {
+    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
+    inboxDataCache.agendaSync = { ...(req.body || {}), _syncEm: new Date().toISOString() };
+    const persistido = gravarDadosInbox(inboxDataCache);
+    res.json({ ok: true, persistido });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
 // ── FINANCEIRO ────────────────────────────────────────────────────────────
 app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
 app.get("/avaliacao", (req, res) => res.sendFile(path.join(__dirname, "avaliacao.html")));
@@ -3579,5 +3628,22 @@ supervisor.iniciarSupervisor();
 // O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
 // e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
 const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+
+// ── RESTAURA geminiAtivo DO VOLUME AO LIGAR O SERVIDOR ──────────────────────
+// BUG CRÍTICO CORRIGIDO: geminiAtivo era sempre resetado para `true` a cada
+// deploy/restart do Railway, mesmo quando o estado salvo no Volume era `false`.
+// Isso fazia a Lia voltar a responder sozinha depois de qualquer redeploy,
+// mesmo com o botão "IA OFF" marcado (o botão mostrava o último estado salvo
+// no navegador, mas o servidor já tinha voltado a chamar o Gemini normalmente).
+try {
+  const dadosSalvos = lerDadosInbox();
+  if (dadosSalvos && typeof dadosSalvos.geminiAtivo === "boolean") {
+    geminiAtivo = dadosSalvos.geminiAtivo;
+    inboxDataCache = dadosSalvos;
+    console.log(`[IA] Estado restaurado do Volume ao iniciar: geminiAtivo = ${geminiAtivo}`);
+  }
+} catch (e) {
+  console.error("[IA] Erro ao restaurar geminiAtivo do Volume:", e.message);
+}
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
