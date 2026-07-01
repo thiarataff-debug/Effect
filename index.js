@@ -219,6 +219,21 @@ function normalizarEventoHistorico(evento) {
       return isNaN(d.getTime()) ? 0 : d.getTime();
     }
 
+    // BUG ENCONTRADO E CORRIGIDO: o Apps Script da planilha (Conversas) guarda o
+    // horário como texto formatado, mas o Google Sheets detecta esse texto como uma
+    // data de verdade e converte a célula sozinho. Quando o Apps Script lê de volta
+    // com getValues() e faz String(valor), o resultado não é mais "01/07/2026 14:16:00"
+    // — vira o formato padrão do JavaScript, tipo "Wed Jul 01 2026 14:16:00 GMT-0300
+    // (Horário Padrão de Brasília)". Isso não batia com nenhum dos formatos acima, e
+    // toda mensagem que passou por esse caminho ficava com timestamp zerado (o "--:--"
+    // que via na tela). Esse formato específico É seguro de reconhecer com new Date()
+    // (diferente de um texto curto tipo "09:02", que o comentário abaixo evitava com
+    // razão — aquilo o JS interpretava como today's date, o que é outro bug).
+    if (/^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}\s+\d{1,2}:\d{2}:\d{2}/.test(s)) {
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+
     // Não usar new Date() livre para texto curto tipo "09:02".
     // Isso foi uma das causas de o Inbox assumir o horário atual.
     return 0;
@@ -286,6 +301,13 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     else if (nextMs)      msg.timestampMs = nextMs - 1;
     if (msg.timestampMs > 0) msg._approxMs = msg.timestampMs;
   });
+
+  // Removido o fallback que inventava um horário atual quando nenhuma mensagem da
+  // conversa tinha timestamp real — a pedido, o sistema não deve mostrar hora
+  // inventada como se fosse real. Só loga, pra facilitar diagnóstico dessas conversas.
+  if (historicoNormalizado.length && historicoNormalizado.every(m => !(Number(m.timestampMs) > 0))) {
+    console.warn(`[timestamp] Sessão ${telefone}: nenhuma mensagem com timestamp real (${historicoNormalizado.length} msgs sem hora).`);
+  }
 
   // BUG CORRIGIDO: essa função roda a CADA consulta do painel (a cada 5s) e criava
   // um array novo toda vez — o timestamp sintético calculado aqui nunca era salvo
@@ -1158,6 +1180,14 @@ async function carregarSessoesDoSheets() {
           const ms = Number(historicoNorm[i].timestampMs || 0);
           if (ms > 0) { ancoraMs = ms; break; }
         }
+      }
+      // Removido o "último recurso" que inventava o horário atual quando não havia
+      // NENHUM timestamp real — a pedido, preferimos não mostrar hora nenhuma a
+      // mostrar uma hora inventada. O foco agora é garantir que toda mensagem NOVA
+      // já chegue com timestamp real (ver /webhook e salvarMensagemSheets) em vez
+      // de tentar adivinhar depois.
+      if (!ancoraMs && historicoNorm.length) {
+        console.warn(`[timestamp] Sessão ${tel}: nenhuma mensagem com timestamp real encontrada (${historicoNorm.length} msgs). Vão aparecer sem horário até que uma msg nova com timestamp real chegue.`);
       }
       if (ancoraMs > 0) {
         // BUG CORRIGIDO: esse cálculo rodava do zero a cada sincronização com o Sheets,
@@ -2124,7 +2154,11 @@ async function localizarCurriculo(tel, idxSolicitado) {
     if (dlAnalise) return { ok: true, tipo: "link", link: dlAnalise, nomeCandidato: sessao?.nome || tel };
     const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
     if (achado) return { ok: true, tipo: "link", link: achado.link, nomeCandidato: sessao?.nome || tel };
-    return { ok: false, nomeCandidato: sessao?.nome || tel };
+    // Currículo recebido há pouco tempo (menos de 2 min): o upload pro Drive roda em
+    // background com até 3 tentativas — pode simplesmente ainda não ter terminado.
+    const ultimaMsgMs = Number(sessao?.lastMessageAtMs || 0);
+    const recemChegado = ultimaMsgMs > 0 && (Date.now() - ultimaMsgMs) < 2 * 60 * 1000;
+    return { ok: false, nomeCandidato: sessao?.nome || tel, podeEstarProcessando: recemChegado };
   }
 
   const idx = Math.max(0, Math.min(Number(idxSolicitado || 0), lista.length - 1));
@@ -2162,8 +2196,15 @@ app.get("/inbox/curriculo-check/:telefone", async (req, res) => {
     if (!resultado.ok) {
       const avisoSync = !sincronizacaoInicialCompleta
         ? " ATENÇÃO: o servidor ainda está sincronizando os dados (reiniciou há pouco) — esse resultado pode ser falso negativo. Espere 1-2 minutos e tente de novo antes de pedir reenvio."
-        : "";
-      return res.json({ ok: false, nomeCandidato: resultado.nomeCandidato, telefone: tel, aindaSincronizando: !sincronizacaoInicialCompleta, motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)." + avisoSync });
+        : (resultado.podeEstarProcessando ? " Este currículo foi recebido há menos de 2 minutos — o upload pro Drive pode ainda estar em andamento. Espere ~30s e tente de novo antes de pedir reenvio." : "");
+      return res.json({
+        ok: false,
+        nomeCandidato: resultado.nomeCandidato,
+        telefone: tel,
+        aindaSincronizando: !sincronizacaoInicialCompleta,
+        podeEstarProcessando: !!resultado.podeEstarProcessando,
+        motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)." + avisoSync
+      });
     }
     if (resultado.tipo === "link") return res.json({ ok: true, tipo: "link", link: resultado.link });
     // tipo "arquivo": a própria rota /inbox/curriculo/:telefone serve o binário — o
