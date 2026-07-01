@@ -2093,6 +2093,13 @@ async function localizarCurriculo(tel, idxSolicitado) {
   }
 
   if (!lista.length) {
+    // BUG CORRIGIDO: quando não havia nada em "curriculos"/"curriculo", o código pulava
+    // direto pra busca automática no Drive sem checar o link salvo em ultimaAnalise
+    // (que é preenchido pela análise de IA e costuma existir mesmo quando o array de
+    // curriculos não sincronizou). Isso causava falsos negativos em massa — candidatos
+    // com currículo perfeitamente disponível apareciam como "não encontrado".
+    const dlAnalise = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
+    if (dlAnalise) return { ok: true, tipo: "link", link: dlAnalise, nomeCandidato: sessao?.nome || tel };
     const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
     if (achado) return { ok: true, tipo: "link", link: achado.link, nomeCandidato: sessao?.nome || tel };
     return { ok: false, nomeCandidato: sessao?.nome || tel };
@@ -3605,18 +3612,34 @@ app.post("/inbox/reengajamento/disparar", async (req, res) => {
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
+// Evita pedir reenvio de currículo repetidas vezes pro mesmo candidato em pouco tempo
+const PEDIDOS_REENVIO_CV = {}; // { telefone: timestampMs do último pedido }
+const INTERVALO_MIN_REENVIO_MS = 24 * 60 * 60 * 1000; // 24h
+
 app.get("/inbox/curriculo/:telefone/pedir-reenvio", async (req, res) => {
   try {
     const tel = limparTelefone(req.params.telefone);
     const sessao = sessoes[tel] || {};
+
+    // BUG CORRIGIDO: não existia nenhum limite — cada clique (ou clique duplo)
+    // mandava uma mensagem nova pro candidato pedindo o currículo de novo. Agora,
+    // se já foi pedido nas últimas 24h, avisa em vez de mandar outra mensagem.
+    const ultimoPedido = PEDIDOS_REENVIO_CV[tel] || 0;
+    const agora = Date.now();
+    if (agora - ultimoPedido < INTERVALO_MIN_REENVIO_MS) {
+      const horasRestantes = Math.ceil((INTERVALO_MIN_REENVIO_MS - (agora - ultimoPedido)) / (60 * 60 * 1000));
+      return res.json({ ok: true, jaSolicitado: true, mensagem: `Já foi pedido reenvio pra este candidato recentemente. Aguarde ~${horasRestantes}h antes de pedir de novo (evita mandar a mesma mensagem repetida).` });
+    }
+
     const nome = (sessao.nome || 'Candidato').split(' ')[0];
     const msg = `Olá, ${nome}! Precisamos do seu currículo atualizado para dar continuidade ao processo seletivo. Por favor, envie seu currículo aqui pelo WhatsApp. 😊`;
     await enviarMensagem(tel, msg);
     registrarEntradaSessao(sessao, 'assistant', msg);
     salvarConversaCompletaSheets(tel, sessao.historico || [], sessao.nome || '').catch(() => {});
-    res.send('<html><body style="font-family:sans-serif;padding:32px"><h3>✅ Solicitação enviada!</h3><p>Mensagem enviada pedindo reenvio do currículo.</p><p><a href="javascript:window.close()">Fechar</a></p></body></html>');
+    PEDIDOS_REENVIO_CV[tel] = agora;
+    res.json({ ok: true, jaSolicitado: false, mensagem: 'Mensagem enviada pedindo reenvio do currículo.' });
   } catch (e) {
-    res.status(500).send('Erro ao enviar mensagem: ' + e.message);
+    res.status(500).json({ ok: false, erro: e.message });
   }
 });
 
