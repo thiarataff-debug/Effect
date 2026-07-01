@@ -609,7 +609,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
       <div class="today-progress">
-        <span id="prog-filled">0</span>/7 campos
+        <span id="prog-filled">0</span>/10 campos
       </div>
       <button class="btn btn-primary" onclick="saveDay()">💾 Salvar</button>
     </div>
@@ -619,7 +619,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
   <!-- HUMOR + ANSIEDADE (simplificado) -->
   <div class="card">
-    <div class="card-title">🎭 Bem-estar Emocional</div>
+    <div class="card-title">🎭 Bem-estar Emocional <span class="badge" title="Voltaram a pedido — você precisa desses números pra levar ao médico">acompanhamento p/ médico</span></div>
     <div class="slider-grid">
       <div class="slider-item">
         <label>Humor <span class="badge">escala 0-10</span></label>
@@ -629,20 +629,37 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
         </div>
       </div>
       <div class="slider-item">
+        <label>Energia <span class="badge">escala 0-10</span></label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-energia" oninput="updateSlider(this,'val-energia')">
+          <span class="slider-val" id="val-energia">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <label>Ansiedade <span class="badge">escala 0-10</span></label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-ansiedade" oninput="updateSlider(this,'val-ansiedade')">
+          <span class="slider-val" id="val-ansiedade">5</span>
+        </div>
+      </div>
+      <div class="slider-item">
         <label>Ansiedade — que horas?</label>
         <input type="time" id="hor-ansiedade" class="psi-time-input" onchange="updateProgress()">
       </div>
+      <div class="slider-item">
+        <label>Compulsão alimentar <span class="badge">escala 0-10</span></label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" value="5" id="sl-compulsao" oninput="updateSlider(this,'val-compulsao')">
+          <span class="slider-val" id="val-compulsao">5</span>
+        </div>
+      </div>
     </div>
-    <!-- Campos antigos mantidos ocultos (não aparecem mais na tela, mas seguem
-         alimentando o Dashboard/Histórico/PDF que já existiam antes da simplificação) -->
+    <!-- Agitação tarde e Libido continuam ocultos — não foram pedidos de volta.
+         Seguem existindo por baixo dos panos só pra não quebrar dado histórico. -->
     <div style="display:none">
-      <input type="range" min="0" max="10" value="5" id="sl-energia">
-      <input type="range" min="0" max="10" value="5" id="sl-ansiedade">
       <input type="range" min="0" max="10" value="5" id="sl-agitacao">
       <input type="range" min="0" max="10" value="5" id="sl-libido">
-      <input type="range" min="0" max="10" value="5" id="sl-compulsao">
-      <span id="val-energia"></span><span id="val-ansiedade"></span>
-      <span id="val-agitacao"></span><span id="val-libido"></span><span id="val-compulsao"></span>
+      <span id="val-agitacao"></span><span id="val-libido"></span>
     </div>
   </div>
 
@@ -676,10 +693,14 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <textarea id="txt-sintomas-gerais" rows="2" placeholder="Ex: dor de cabeça, tontura, náusea, boca seca..."></textarea>
   </div>
 
-  <!-- MEDICAMENTOS (agora gerado a partir da sua lista configurável, com horário) -->
+  <!-- MEDICAMENTOS (gerado a partir da sua lista configurável, com horário editável) -->
   <div class="card">
-    <div class="card-title">💊 Medicamentos <span class="badge" title="Adicione, remova ou mude o horário no painel 'Estoque de Medicamentos' logo acima">edite no painel acima ↑</span></div>
+    <div class="card-title" style="justify-content:space-between;display:flex;align-items:center">
+      <span>💊 Medicamentos</span>
+      <button onclick="psiAddMed()" style="padding:5px 10px;background:var(--green);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:11px;font-family:inherit">+ Adicionar remédio</button>
+    </div>
     <div class="med-grid" id="med-checklist-dinamico"><!-- preenchido por psiRenderMedChecklist() --></div>
+    <div style="font-size:10px;color:var(--tx3,#999);margin-top:8px">Clique no ✏️ ao lado de um remédio pra mudar o horário dele.</div>
   </div>
 
   <div style="display:none">
@@ -1716,15 +1737,15 @@ function initSliders() {
 
 function updateProgress() {
   let filled = 0;
-  // Humor e Sono sempre contam (têm valor padrão no slider)
-  filled += 2;
+  // Humor, Energia, Ansiedade, Compulsão e Sono sempre contam (têm valor padrão no slider)
+  filled += 5;
   const anyMed = Array.from(document.querySelectorAll('#med-checklist-dinamico input[type=checkbox]')).some(cb => cb.checked);
   if (anyMed) filled += 1;
   if ((document.getElementById('hor-ansiedade')?.value||'').trim()) filled += 1;
   if ((document.getElementById('hor-sonolencia')?.value||'').trim()) filled += 1;
   if ((document.getElementById('txt-sintomas-gerais')?.value||'').trim()) filled += 1;
   if ((document.getElementById('txt-obs')?.value||'').trim()) filled += 1;
-  document.getElementById('prog-filled').textContent = Math.min(filled, 7);
+  document.getElementById('prog-filled').textContent = Math.min(filled, 10);
 }
 
 function toggleMed(el) {
@@ -2788,6 +2809,19 @@ function psiAddMed(){
   psiRenderMedStock();
 }
 
+// Edição rápida do horário de UM medicamento específico, direto do card do dia
+// (sem precisar rolar até o painel de Estoque de Medicamentos lá em cima).
+function psiEditarHorarioMed(medId){
+  const meds=psiGetMedStock();
+  const idx=meds.findIndex(m=>m.id===medId);
+  if(idx===-1)return;
+  const atual=(meds[idx].horarios||[]).join(', ');
+  const novo=prompt(`Horário(s) de "${meds[idx].name}" (separe por vírgula se for mais de um):`, atual);
+  if(novo===null)return; // cancelou
+  psiUpdateHorarios(idx, novo);
+  psiRenderMedChecklist();
+}
+
 // ─── CHECKLIST DIÁRIO DE MEDICAMENTOS (dinâmico, a partir da lista configurada acima) ───
 function psiRenderMedChecklist(){
   const el=document.getElementById('med-checklist-dinamico');
@@ -2804,6 +2838,7 @@ function psiRenderMedChecklist(){
           <div class="med-name">${m.name}</div>
           <div class="med-dose">🕐 ${h}</div>
         </div>
+        <span onclick="event.preventDefault();event.stopPropagation();psiEditarHorarioMed('${m.id}')" title="Editar horário(s) deste remédio" style="cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0">✏️</span>
       </label>`;
     });
   });
