@@ -81,6 +81,9 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 
 .ftabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;flex-wrap:wrap}
 .ftab-red{border-color:#dc2626;color:#dc2626}.ftab-red.active{background:#dc2626;color:#fff}
+.ftab-blue{color:#1fa5ff}.ftab-blue.active{background:#1fa5ff;color:#fff}
+.ftab-navy{color:var(--navy)}.ftab-navy.active{background:var(--navy);color:#fff}
+.ftab-orange{color:#b45309}.ftab-orange.active{background:#f59e0b;color:#fff}
 .ftab-green{border-color:#16a34a;color:#16a34a}.ftab-green.active{background:#16a34a;color:#fff}
 .ftab-yellow{border-color:#ca8a04;color:#92400e}.ftab-yellow.active{background:#fef08a;color:#92400e;border-color:#ca8a04}
 .ftab{padding:5px 11px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:4px}
@@ -817,12 +820,12 @@ font-family:'Montserrat',sans-serif
       </div>
     </div>
     <div class="ftabs">
+      <!-- 4 abas principais, padronizadas: mesmo formato de pílula, cada uma com sua cor,
+           e clicar de novo na aba já ativa desliga o filtro e volta pra "Todas" (setTab). -->
       <button class="ftab ftab-blue active" id="ftab-novas" onclick="setTab(this,'novas')">🔵 Não Lidas <span class="ftab-count" id="cnt-novas">0</span></button>
-      <button class="ftab" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
-      <!-- Promovidas pra abas principais (antes ficavam escondidas dentro de "⋯ Mais" e o
-           contador de "Aguardando você" nem era calculado — sempre mostrava 0) -->
-      <button class="ftab" id="ftab-aguardando-recrutador" onclick="setTab(this,'aguardando-recrutador')" style="border:1.5px solid #f59e0b;color:#b45309" title="Conversas esperando resposta sua">🟠 Aguardando você <span class="ftab-count" id="cnt-aguardando-recrutador">0</span></button>
-      <button class="ftab" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')" style="border:1.5px solid #ca8a04;color:#854d0e" title="Conversas esperando resposta do candidato">🟡 Aguardando candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
+      <button class="ftab ftab-navy" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <button class="ftab ftab-orange" id="ftab-aguardando-recrutador" onclick="setTab(this,'aguardando-recrutador')" title="Conversas esperando resposta sua">🟠 Aguardando você <span class="ftab-count" id="cnt-aguardando-recrutador">0</span></button>
+      <button class="ftab ftab-yellow" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')" title="Conversas esperando resposta do candidato">🟡 Aguardando candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
       <!-- contadores mantidos para compatibilidade -->
       <span style="display:none" id="cnt-novos">0</span>
       <span style="display:none" id="cnt-aguardando-effect">0</span>
@@ -5721,7 +5724,21 @@ function toggleMaisAbas(e){
     setTimeout(()=>document.addEventListener('click',function h(){m.classList.remove('show');document.removeEventListener('click',h);}),0);
   }
 }
+// Clicar de novo num filtro já ativo desliga ele e volta pra "Todas" — vale pra
+// qualquer subdivisão (abas principais, abas do menu "Mais" e chips de Por Status).
+function voltarParaTodas(){
+  document.querySelectorAll('.ftab-mais-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));
+  const elTodas=document.getElementById('ftab-todas');
+  if(elTodas) elTodas.classList.add('active');
+  document.getElementById('ftab-mais-menu')?.classList.remove('show');
+  tab='todas';
+  statusFiltro=null;
+  document.getElementById('status-filter-bar')?.classList.remove('show');
+  renderLista();
+}
 function setTabMais(t,id){
+  if(tab===t){ voltarParaTodas(); return; }
   // desmarca todos os items do menu
   document.querySelectorAll('.ftab-mais-item').forEach(x=>x.classList.remove('active'));
   // desmarca tabs principais
@@ -5751,7 +5768,9 @@ function syncMaisContadores(){
   });
 }
 function setTab(el,t){
+  if(tab===t && t!=='todas'){ voltarParaTodas(); return; }
   tab=t;
+  document.querySelectorAll('.ftab-mais-item').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
   const bar=document.getElementById('status-filter-bar');
@@ -5773,7 +5792,8 @@ function renderStatusFilterBar(){
     if(!cnt)return'';
     const ativo=statusFiltro===st;
     const cor=PIPELINE_CORES[st]||'#64748b';
-    return`<button onclick="statusFiltro='${st}';renderLista()" style="padding:3px 10px;border-radius:20px;border:2px solid ${cor};background:${ativo?cor:'transparent'};color:${ativo?'#fff':cor};font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:.2s">${st} <span style="opacity:.7">${cnt}</span></button>`;
+    // Clicar de novo no chip já ativo desliga o sub-filtro (volta a mostrar todos os status)
+    return`<button onclick="statusFiltro=${ativo}?null:'${st}';renderStatusFilterBar();renderLista()" style="padding:3px 10px;border-radius:20px;border:2px solid ${cor};background:${ativo?cor:'transparent'};color:${ativo?'#fff':cor};font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:.2s">${st} <span style="opacity:.7">${cnt}</span></button>`;
   }).join('');
 }
 
