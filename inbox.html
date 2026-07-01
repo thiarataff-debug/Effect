@@ -411,36 +411,133 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .status-badge.st-aguard_recrutador{background:#ffedd5;color:#9a3412}
 .status-badge.st-finalizado{background:#f3f4f6;color:#6b7280}
 
-/* ── CALENDÁRIO ── */
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-dow{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:4px 0;text-transform:uppercase}
-.cal-day{min-height:44px;border-radius:6px;padding:4px;cursor:pointer;transition:background .1s;display:flex;flex-direction:column;align-items:center}
-.cal-day:hover:not(.cal-empty){background:#e8f4fd}
-.cal-empty{cursor:default;opacity:.3}
-.cal-hoje .cal-num{background:var(--navy);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-.cal-tem-ent{background:#f0f9ff}
-.cal-num{font-size:11px;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-.cal-dot-row{display:flex;gap:2px;margin-top:2px}
-.cal-dot{width:5px;height:5px;border-radius:50%}
-.dot-blue{background:var(--blue)}.dot-green{background:#059669}.dot-red{background:var(--pink)}.dot-orange{background:#d97706}
-
-/* ── FALTOSOS ── */
-.falt-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
-.falt-tab{padding:4px 10px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:var(--bg);color:var(--muted);transition:all .15s}
-.falt-tab.active{background:var(--navy);color:#fff}
-.falt-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.falt-stat{background:#fff;border-radius:10px;padding:10px 12px;flex:1;min-width:55px;text-align:center;box-shadow:var(--shadow)}
-.falt-stat-num{font-size:20px;font-weight:800}
-.falt-stat-label{font-size:9px;color:var(--muted);margin-top:2px}
-
-/* ── AGENDA VIEW ── */
+/* ══════════════════════════ AGENDA 2.0 ══════════════════════════ */
 .agenda-view{display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa}
 .agenda-view.show{display:flex}
-.agenda-body{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:16px;align-items:start}
-@media(max-width:900px){.agenda-body{grid-template-columns:1fr}}
-.agenda-card{background:#fff;border-radius:12px;padding:14px;box-shadow:var(--shadow)}
-.agenda-card-title{font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+
+/* ── TOOLBAR ── */
+.ag2-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:linear-gradient(135deg,var(--navy),#254a73);color:#fff;flex-shrink:0;flex-wrap:wrap}
+.ag2-title{font-size:16px;font-weight:800;letter-spacing:.2px}
+.ag2-subtitle{font-size:11px;opacity:.75;margin-top:1px}
+.ag2-tb-center{display:flex;align-items:center;gap:8px}
+.ag2-nav-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:8px;width:28px;height:28px;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s;line-height:1}
+.ag2-nav-btn:hover{background:rgba(255,255,255,.26)}
+.ag2-hoje-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s}
+.ag2-hoje-btn:hover{background:rgba(255,255,255,.26)}
+.ag2-periodo{font-size:13px;font-weight:800;min-width:160px;text-align:center;letter-spacing:.2px;text-transform:capitalize}
+.ag2-tb-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ag2-switch{display:flex;background:rgba(255,255,255,.12);border-radius:9px;padding:2px;gap:2px}
+.ag2-switch-btn{background:transparent;border:none;color:rgba(255,255,255,.75);border-radius:7px;padding:6px 12px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.ag2-switch-btn:hover{color:#fff}
+.ag2-switch-btn.ativo{background:#fff;color:var(--navy)}
+
+/* ── ALERT BAR ── */
+.ag2-alertbar{display:none;gap:8px;padding:8px 20px;background:#fffbeb;border-bottom:1px solid #fde68a;flex-wrap:wrap;flex-shrink:0}
+.ag2-alert-chip{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:20px;cursor:default}
+.ag2-alert-red{background:#fee2e2;color:#991b1b}
+.ag2-alert-amber{background:#fef3c7;color:#92400e}
+
+/* ── BODY LAYOUT ── */
+.ag2-body{flex:1;display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 20px;overflow:hidden}
+.ag2-main{overflow-y:auto;min-height:0}
+.ag2-side{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:14px}
+@media(max-width:1000px){.ag2-body{grid-template-columns:1fr}}
+.ag2-card{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.ag2-card-title{font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.ag2-link-btn{width:100%;background:transparent;border:1.5px dashed var(--border);color:var(--navy);border-radius:8px;padding:7px;font-family:'Montserrat',sans-serif;font-size:10.5px;font-weight:700;cursor:pointer;margin-top:8px;transition:.15s}
+.ag2-link-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── MÊS ── */
+.ag2-month{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.ag2-month-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.ag2-month-dow div{text-align:center;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.ag2-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.ag2-mday{min-height:76px;border-radius:10px;padding:6px;cursor:pointer;background:#f8fafc;transition:all .12s;display:flex;flex-direction:column}
+.ag2-mday:hover{background:#eef4fb}
+.ag2-mday-empty{background:transparent;cursor:default}
+.ag2-mday.ag2-hoje{background:#e0edff;box-shadow:inset 0 0 0 2px var(--blue)}
+.ag2-mday.ag2-sel{box-shadow:inset 0 0 0 2px var(--navy)}
+.ag2-mday.ag2-tem{background:#f0f9ff}
+.ag2-mday-num{font-size:12px;font-weight:700;color:var(--text)}
+.ag2-mday.ag2-hoje .ag2-mday-num{color:var(--navy);font-weight:900}
+.ag2-mday-dots{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.ag2-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.ag2-mday-count{margin-top:auto;font-size:9px;font-weight:700;color:var(--muted)}
+
+/* ── SEMANA ── */
+.ag2-week{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow);overflow-x:auto}
+.ag2-week-head{display:grid;grid-template-columns:52px repeat(7,1fr);margin-bottom:6px;min-width:640px}
+.ag2-week-daycol-head{text-align:center;padding:6px 2px;border-radius:8px;cursor:pointer;transition:background .12s}
+.ag2-week-daycol-head:hover{background:#f0f4f8}
+.ag2-week-daycol-head.ag2-hoje{background:#e0edff}
+.ag2-week-dow{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.ag2-week-num{font-size:14px;font-weight:800;color:var(--navy)}
+.ag2-week-grid{display:grid;grid-template-columns:52px repeat(7,1fr);min-width:640px}
+.ag2-week-gutter-col{display:flex;flex-direction:column}
+.ag2-week-hour-label{height:48px;font-size:9px;color:var(--muted);font-weight:700;text-align:right;padding-right:6px;transform:translateY(-6px)}
+.ag2-week-daycol{position:relative;border-left:1px solid var(--border);cursor:pointer}
+.ag2-week-hourline{height:48px;border-bottom:1px solid #f1f5f9}
+.ag2-week-block{position:absolute;left:2px;right:2px;background:#dbeafe;border-left:3px solid var(--blue);border-radius:6px;padding:2px 5px;font-size:9px;font-weight:700;color:var(--navy);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;z-index:2}
+.ag2-week-block-lem{background:#dcfce7;border-left-color:#16a34a;color:#15803d}
+
+/* ── DIA ── */
+.ag2-day{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.ag2-day-timeline{position:relative}
+.ag2-day-hourrow{display:flex;height:56px;border-bottom:1px solid #f1f5f9}
+.ag2-day-hourlabel{width:56px;font-size:10px;color:var(--muted);font-weight:700;transform:translateY(-7px)}
+.ag2-day-hourline{flex:1}
+.ag2-day-block{position:absolute;left:64px;right:8px;background:#eff6ff;border-left:4px solid var(--blue);border-radius:8px;padding:6px 10px;min-height:44px;cursor:pointer;transition:transform .1s}
+.ag2-day-block:hover{transform:translateX(2px)}
+.ag2-day-block-lem{background:#f0fdf4;border-left-color:#16a34a}
+.ag2-day-block-time{font-size:9px;font-weight:800;color:var(--muted)}
+.ag2-day-block-title{font-size:12px;font-weight:700;color:var(--text)}
+.ag2-day-block-meta{font-size:10px;color:var(--muted);margin-top:1px}
+.ag2-day-now{position:absolute;left:56px;right:8px;height:0;border-top:2px solid var(--red);z-index:3}
+.ag2-day-now span{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+
+/* ── ANO (heatmap) ── */
+.ag2-year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1300px){.ag2-year-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.ag2-year-grid{grid-template-columns:repeat(2,1fr)}}
+.ag2-year-month{background:#fff;border-radius:12px;padding:10px;box-shadow:var(--shadow)}
+.ag2-year-month-title{font-size:11px;font-weight:800;color:var(--navy);margin-bottom:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.3px}
+.ag2-year-month-title:hover{color:var(--blue)}
+.ag2-year-grid-mini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.ag2-year-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;border-radius:3px;background:#f1f5f9;color:var(--muted);cursor:pointer}
+.ag2-year-day-empty{background:transparent;cursor:default}
+.ag2-year-day.ag2-hoje{box-shadow:inset 0 0 0 1.5px var(--navy)}
+.ag2-year-day.nivel-1{background:#bfdbfe;color:#1e3a8a}
+.ag2-year-day.nivel-2{background:#60a5fa;color:#fff}
+.ag2-year-day.nivel-3{background:#1d4ed8;color:#fff}
+
+/* ── EVENTO / LEMBRETE (painel lateral e detalhe do dia) ── */
+.ag2-ev-card{background:#f8fafc;border-left:3px solid var(--blue);border-radius:8px;padding:9px 10px;margin-bottom:8px}
+.ag2-lem-card{background:#f0fdf4;border-left:3px solid #16a34a;border-radius:8px;padding:9px 10px;margin-bottom:8px}
+.ag2-ev-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ag2-ev-nome{font-weight:700;font-size:11.5px}
+.ag2-ev-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;white-space:nowrap}
+.ag2-ev-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.ag2-ev-obs{font-size:10px;color:#374151;margin-top:3px}
+.ag2-ev-actions{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.ag2-mini-btn{padding:4px 8px;border-radius:6px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer}
+
+/* ── STATS / FALTOSOS ── */
+.ag2-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.ag2-stat{background:var(--bg);border-radius:10px;padding:10px;text-align:center}
+.ag2-stat-num{font-size:19px;font-weight:800}
+.ag2-stat-label{font-size:9px;color:var(--muted);margin-top:2px;font-weight:700}
+.ag2-falt-tabs{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.ag2-falt-tab{padding:4px 9px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-size:9.5px;font-weight:700;cursor:pointer;background:var(--bg);color:var(--muted)}
+.ag2-falt-tab.active{background:var(--navy);color:#fff}
+.ag2-falt-list{margin-top:8px}
+.ag2-falt-item{background:var(--bg);border-radius:8px;padding:7px 9px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:10px}
+.ag2-falt-nome{font-weight:700}
+.ag2-falt-meta{color:var(--muted)}
+
+/* ── CANDIDATO PICKER (modal entrevista) ── */
+.ent-cand-opt{padding:8px 10px;font-size:11.5px;cursor:pointer;border-bottom:1px solid var(--border)}
+.ent-cand-opt:last-child{border-bottom:none}
+.ent-cand-opt:hover,.ent-cand-opt.ativo{background:var(--bg);font-weight:700}
 
 /* ── MODAL HORÁRIOS ── */
 .horario-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;margin:3px;transition:border .15s}
@@ -471,6 +568,11 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .pl-conn{flex:1;height:2px;background:#e2e8f0;margin-top:6px;flex-shrink:0;min-width:6px;max-width:20px}
 .pl-conn.passado{background:#64748b}
 .pl-reject-row{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+/* Versão compacta da mesma track de pipeline, usada no painel Status (aba Perfil) */
+#rp-pipeline{background:#f8fafc;border-radius:8px;padding:10px 8px 8px}
+#rp-pipeline .pl-track{overflow-x:auto;padding-bottom:2px}
+#rp-pipeline .pl-reject-row{margin-top:8px}
+#rp-pipeline .pl-rbtn{font-size:8px;padding:3px 6px}
 .pl-rbtn{font-size:8.5px;font-weight:700;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;color:#fff;font-family:'Montserrat',sans-serif;opacity:.7;transition:opacity .15s}
 .pl-rbtn:hover{opacity:1}.pl-rbtn.ativo{opacity:1;filter:brightness(1.35);border:2px solid #fff !important;box-shadow:0 0 0 2px rgba(0,0,0,.4),0 3px 10px rgba(0,0,0,.25);transform:scale(1.04)}
 /* ── Header ⋯ Mais dropdown ── */
@@ -794,7 +896,7 @@ font-family:'Montserrat',sans-serif
       <div class="status-banner sb-camila" id="banner-camila">🩷 <strong>Camila</strong> está respondendo — foco em agendamento de entrevistas.</div>
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
       <!-- Pipeline de Status — Opção C (colapsável) -->
-      <div class="pipeline-bar" id="pipeline-bar">
+      <div class="pipeline-bar pipeline-track-wrap" id="pipeline-bar">
         <div class="pl-toggle" onclick="togglePipeline()" id="pl-toggle">
           <div id="pl-status-label" style="font-size:10px;font-weight:700;letter-spacing:.3px;color:#94a3b8">● Nenhum status</div>
           <span class="pl-toggle-arrow">▼</span>
@@ -862,8 +964,16 @@ font-family:'Montserrat',sans-serif
 
 <!-- MODAL: AGENDAR ENTREVISTA -->
 <div class="modal-overlay" id="modal-entrevista">
-  <div class="modal">
+  <div class="modal" style="width:420px">
     <div class="modal-title">📅 Agendar Entrevista</div>
+    <div class="modal-field" id="ent-candidato-wrap" style="display:none;position:relative">
+      <label class="modal-label">Candidato</label>
+      <input class="modal-input" type="text" id="ent-candidato-busca" placeholder="Buscar por nome ou telefone..."
+        autocomplete="off"
+        oninput="renderEntCandidatoOpcoes(this.value);document.getElementById('ent-candidato-lista').style.display='block'"
+        onfocus="renderEntCandidatoOpcoes(this.value);document.getElementById('ent-candidato-lista').style.display='block'">
+      <div id="ent-candidato-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:170px;overflow-y:auto;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
+    </div>
     <div class="modal-row">
       <div class="modal-field">
         <label class="modal-label">Data</label>
@@ -893,7 +1003,7 @@ font-family:'Montserrat',sans-serif
       <textarea class="modal-input" id="ent-obs" rows="2" placeholder="Link do Meet, endereço, etc."></textarea>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
-      <input type="checkbox" id="ent-lembrete" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a">
+      <input type="checkbox" id="ent-lembrete" style="width:16px;height:16px;cursor:pointer;accent-color:#16a34a" checked>
       <label for="ent-lembrete" style="font-size:11px;font-weight:700;color:#15803d;cursor:pointer;user-select:none">🔔 Ativar lembrete (notificação 30 min antes)</label>
     </div>
     <div class="modal-footer">
@@ -1103,20 +1213,45 @@ font-family:'Montserrat',sans-serif
   <iframe src="/meu-app" style="width:100%;height:100%;border:none;flex:1" id="iframe-meu-app"></iframe>
 </div>
 
-<!-- VIEW: AGENDA (CALENDÁRIO) -->
+<!-- VIEW: AGENDA -->
 <div class="agenda-view" id="view-agenda">
-  <div class="ev-header" style="display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <div class="ev-title">📅 Agenda de Entrevistas</div>
-      <div class="ev-subtitle">Calendário de entrevistas + Faltosos</div>
+  <div class="ag2-toolbar">
+    <div class="ag2-tb-left">
+      <div class="ag2-title">📅 Agenda</div>
+      <div class="ag2-subtitle">Entrevistas, lembretes e compromissos</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div class="ag2-tb-center">
+      <button class="ag2-nav-btn" onclick="agNav(-1)" title="Anterior (←)">‹</button>
+      <button class="ag2-hoje-btn" onclick="agHoje()" title="Hoje (T)">Hoje</button>
+      <button class="ag2-nav-btn" onclick="agNav(1)" title="Próximo (→)">›</button>
+      <div class="ag2-periodo" id="ag2-periodo">—</div>
+    </div>
+    <div class="ag2-tb-right">
+      <div class="ag2-switch" id="ag2-switch">
+        <button class="ag2-switch-btn" data-v="dia" onclick="agSetView('dia')" title="Atalho: 1">Dia</button>
+        <button class="ag2-switch-btn" data-v="semana" onclick="agSetView('semana')" title="Atalho: 2">Semana</button>
+        <button class="ag2-switch-btn" data-v="mes" onclick="agSetView('mes')" title="Atalho: 3">Mês</button>
+        <button class="ag2-switch-btn" data-v="ano" onclick="agSetView('ano')" title="Atalho: 4">Ano</button>
+      </div>
+      <button class="rbtn" style="background:#2563eb;color:#fff;font-weight:700" onclick="abrirModalEntrevista()" title="Agendar entrevista">📅 Nova Entrevista</button>
       <button class="rbtn" style="background:#16a34a;color:#fff;font-weight:700" onclick="abrirModalLembrete()" title="Criar lembrete pessoal">🔔 Novo Lembrete</button>
-      <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários Lia</button>
+      <button class="rbtn" onclick="abrirModalHorarios()" title="Configurar horários disponíveis">⚙️ Horários</button>
     </div>
   </div>
-  <div class="agenda-body" id="agenda-body">
-    <!-- preenchido por renderAgenda() -->
+  <div class="ag2-alertbar" id="ag2-alertbar"></div>
+  <div class="ag2-body">
+    <div class="ag2-main" id="ag2-main"><!-- preenchido por renderAgendaAtual() --></div>
+    <div class="ag2-side">
+      <div class="ag2-card" id="ag2-stats"><!-- preenchido por renderAgStats() --></div>
+      <div class="ag2-card">
+        <div class="ag2-card-title">🗂️ Próximos Eventos</div>
+        <div id="proximos-wrap"></div>
+      </div>
+      <div class="ag2-card" id="ag2-detail-card" style="display:none">
+        <div class="ag2-card-title" id="ag2-detail-title">📅</div>
+        <div id="ag2-detail"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1784,7 +1919,8 @@ function sincronizarComServidor() {
         intervencoes,
         marcadosRetorno,
         arquivadas,
-        horariosConfig
+        horariosConfig,
+        lembretes: (typeof _lembretes !== 'undefined') ? _lembretes : []
       };
       await fetch('/inbox/agenda-sync', {
         method: 'POST',
@@ -1805,7 +1941,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -1839,6 +1975,13 @@ async function restaurarDoServidor() {
     if (dados.horariosConfig && Array.isArray(dados.horariosConfig) && dados.horariosConfig.length > 0) {
       horariosConfig = dados.horariosConfig;
       try { localStorage.setItem('effect_horarios_v1', JSON.stringify(horariosConfig)); } catch(e) {}
+    }
+    // Lembretes pessoais — antes só existiam no localStorage (perdidos ao trocar de
+    // dispositivo ou limpar o navegador). Agora fazem merge por id com o servidor.
+    if (dados.lembretes && Array.isArray(dados.lembretes) && typeof _lembretes !== 'undefined') {
+      const idsLocais = new Set(_lembretes.map(l => l.id));
+      dados.lembretes.forEach(l => { if (!idsLocais.has(l.id)) _lembretes.push(l); });
+      if (typeof salvarLembretesStorage === 'function') salvarLembretesStorage();
     }
 
     // Salvar merge no localStorage
@@ -2674,8 +2817,33 @@ function renderPainelPerfil(s){
   const timeline=gerarTimeline(s);
   div.innerHTML=`
   <div class="rp-section">
-    <div class="rp-section-title">📋 Etapas</div>
-    <div onclick="abrirModalStatus()" title="Clique para alterar o status" style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)};cursor:pointer">${st||'Novo'} ✎</div>
+    <div class="rp-section-title">Status</div>
+    <div onclick="abrirModalStatus()" title="Clique para alterar o status" style="display:inline-block;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${corStatusPipeline(st)};cursor:pointer;margin-bottom:8px">${st||'Novo'} ✎</div>
+    <div class="pipeline-track-wrap" id="rp-pipeline">
+      <div class="pl-track">
+        <div class="pl-step" data-pl="Triado" onclick="definirStatusPipeline('Triado')"><div class="pl-step-dot"></div><div class="pl-step-label">Triado</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Em Vaga" onclick="definirStatusPipeline('Em Vaga')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Vaga</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Entrevista Agendada" onclick="definirStatusPipeline('Entrevista Agendada')"><div class="pl-step-dot"></div><div class="pl-step-label">Entrev. Ag.</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Aprovado 1ª Etapa" onclick="definirStatusPipeline('Aprovado 1ª Etapa')"><div class="pl-step-dot"></div><div class="pl-step-label">Aprov. 1ª</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Entrevista Gestor Agendada" onclick="definirStatusPipeline('Entrevista Gestor Agendada')"><div class="pl-step-dot"></div><div class="pl-step-label">Entr. Gestor</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Em Teste" onclick="definirStatusPipeline('Em Teste')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Teste</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Aprovado Gestor" onclick="definirStatusPipeline('Aprovado Gestor')"><div class="pl-step-dot"></div><div class="pl-step-label">Aprov. Gestor</div></div>
+        <div class="pl-conn"></div>
+        <div class="pl-step" data-pl="Em Admissão" onclick="definirStatusPipeline('Em Admissão')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Admissão</div></div>
+      </div>
+      <div class="pl-reject-row">
+        <button class="pl-rbtn" style="background:#b91c1c" data-pl="Reprovado Triagem" onclick="definirStatusPipeline('Reprovado Triagem')">✗ Rep. Triagem</button>
+        <button class="pl-rbtn" style="background:#ef4444" data-pl="Reprovado 1ª Etapa" onclick="definirStatusPipeline('Reprovado 1ª Etapa')">✗ Rep. 1ª Etapa</button>
+        <button class="pl-rbtn" style="background:#dc2626" data-pl="Reprovado Gestor" onclick="definirStatusPipeline('Reprovado Gestor')">✗ Rep. Gestor</button>
+        <button class="pl-rbtn" style="background:#6b7280" data-pl="Banco de Talentos" onclick="definirStatusPipeline('Banco de Talentos')">📦 Banco de Talentos</button>
+      </div>
+    </div>
   </div>
   ${anal.nome?`
   <div class="rp-section">
@@ -2793,6 +2961,10 @@ function renderPainelPerfil(s){
     </div>
   </div>
   `;
+  // Garante que a trilha de status recém-criada no HTML acima já nasça
+  // com o progresso correto marcado (sem isso, ficaria sempre "zerada"
+  // até a próxima troca de status ou de conversa).
+  atualizarPipelineAtivo(st);
 }
 
 function renderPainelEntrevista(s){
@@ -3384,20 +3556,24 @@ async function _salvarStatus(status, enviar, mensagem){
 function atualizarPipelineAtivo(statusAtual){
   const TRACK=['Triado','Em Vaga','Entrevista Agendada','Aprovado 1ª Etapa','Entrevista Gestor Agendada','Em Teste','Aprovado Gestor','Em Admissão'];
   const ativoIdx=TRACK.indexOf(statusAtual);
-  document.querySelectorAll('#pipeline-bar .pl-step').forEach(step=>{
+  // Atualiza TODAS as trilhas de pipeline na tela (a barra de cima + a do painel Status)
+  document.querySelectorAll('.pipeline-track-wrap .pl-step').forEach(step=>{
     const pl=step.dataset.pl;
     const idx=TRACK.indexOf(pl);
     step.classList.remove('ativo','passado');
     if(pl===statusAtual)step.classList.add('ativo');
     else if(ativoIdx>-1&&idx>-1&&idx<ativoIdx)step.classList.add('passado');
   });
-  document.querySelectorAll('#pipeline-bar .pl-conn').forEach((conn,i)=>{
-    conn.classList.toggle('passado',ativoIdx>-1&&i<ativoIdx);
+  document.querySelectorAll('.pipeline-track-wrap .pl-conn').forEach((conn,i)=>{
+    const track=conn.closest('.pipeline-track-wrap');
+    const connsDoTrack=Array.from(track.querySelectorAll('.pl-conn'));
+    const idxNoTrack=connsDoTrack.indexOf(conn);
+    conn.classList.toggle('passado',ativoIdx>-1&&idxNoTrack<ativoIdx);
   });
-  document.querySelectorAll('#pipeline-bar .pl-rbtn').forEach(btn=>{
+  document.querySelectorAll('.pipeline-track-wrap .pl-rbtn').forEach(btn=>{
     btn.classList.toggle('ativo',btn.dataset.pl===statusAtual);
   });
-  // Label de status (sempre visível, parte do toggle)
+  // Label de status (sempre visível, parte do toggle da barra de cima)
   const lbl=document.getElementById('pl-status-label');
   if(lbl){
     if(statusAtual){
@@ -4003,32 +4179,86 @@ async function salvarObsRapida(){
 }
 
 // ─── ENTREVISTAS ───
-function abrirModalEntrevista(){
-  const hoje=new Date().toISOString().split('T')[0];
+// _entModalTelefone: candidato escolhido no picker quando o modal é aberto
+// fora de uma conversa (ex: clicando num dia vazio da Agenda)
+let _entModalTelefone=null;
+function abrirModalEntrevista(dataPrefill){
+  const hoje=dataPrefill||new Date().toISOString().split('T')[0];
   document.getElementById('ent-data').value=hoje;
   document.getElementById('ent-hora').value='09:00';
   document.getElementById('ent-obs').value='';
+  const chk=document.getElementById('ent-lembrete');if(chk)chk.checked=true;
+  _entModalTelefone=sessaoAtual||null;
+  const pickerWrap=document.getElementById('ent-candidato-wrap');
+  if(pickerWrap){
+    if(!sessaoAtual){
+      pickerWrap.style.display='block';
+      document.getElementById('ent-candidato-busca').value='';
+      renderEntCandidatoOpcoes('');
+    }else{
+      pickerWrap.style.display='none';
+    }
+  }
   document.getElementById('modal-entrevista').classList.add('show');
+  if(!sessaoAtual)setTimeout(()=>document.getElementById('ent-candidato-busca')?.focus(),100);
+}
+function renderEntCandidatoOpcoes(filtro){
+  const box=document.getElementById('ent-candidato-lista');
+  if(!box)return;
+  const f=(filtro||'').toLowerCase();
+  const itens=Object.entries(todasSessoes)
+    .map(([tel,s])=>({tel,nome:s.nome||s.ultimaAnalise?.nome||telDisplay(tel)}))
+    .filter(x=>!f||x.nome.toLowerCase().includes(f)||x.tel.includes(f))
+    .sort((a,b)=>a.nome.localeCompare(b.nome))
+    .slice(0,30);
+  box.innerHTML=itens.map(x=>`<div class="ent-cand-opt${x.tel===_entModalTelefone?' ativo':''}" onclick="selecionarEntCandidato('${x.tel}')">${x.nome}</div>`).join('')
+    ||'<div class="empty" style="padding:8px">Nenhum candidato encontrado</div>';
+}
+function selecionarEntCandidato(tel){
+  _entModalTelefone=tel;
+  const s=todasSessoes[tel]||{};
+  document.getElementById('ent-candidato-busca').value=s.nome||s.ultimaAnalise?.nome||telDisplay(tel);
+  document.getElementById('ent-candidato-lista').style.display='none';
 }
 function salvarEntrevista(){
-  if(!sessaoAtual)return;
+  const tel=sessaoAtual||_entModalTelefone;
+  if(!tel){toast('Selecione um candidato','error');return;}
   const data=document.getElementById('ent-data').value;
   const hora=document.getElementById('ent-hora').value;
   const tipo=document.getElementById('ent-tipo').value;
   const resp=document.getElementById('ent-responsavel').value;
   const obs=document.getElementById('ent-obs').value;
+  const comLembrete=document.getElementById('ent-lembrete')?.checked;
   if(!data||!hora){toast('Preencha data e horário','error');return;}
-  if(!entrevistas[sessaoAtual])entrevistas[sessaoAtual]=[];
+  if(!entrevistas[tel])entrevistas[tel]=[];
   const id='ent_'+Date.now();
-  entrevistas[sessaoAtual].push({id,data,hora,tipo,responsavel:resp,obs,status:'Pendente'});
+  const s=todasSessoes[tel]||{};
+  const nomeCand=s.nome||s.ultimaAnalise?.nome||telDisplay(tel);
+  entrevistas[tel].push({id,data,hora,tipo,responsavel:resp,obs,status:'Pendente'});
   salvarLocal();
   // Atualizar status
-  statusMap[sessaoAtual]='Entrevista agendada';
+  statusMap[tel]='Entrevista agendada';
   registrarIntervencao('Thiara','Entrevista agendada',`${formatarDataBr(data)} às ${hora} — ${tipo}`);
   fecharModal('modal-entrevista');
-  toast(`📅 Entrevista agendada: ${formatarDataBr(data)} às ${hora}`,'success');
+  toast(`📅 Entrevista agendada: ${nomeCand} — ${formatarDataBr(data)} às ${hora}`,'success');
   renderPainelDireito();renderLista();
-  if(rpTab==='entrevista')renderPainelEntrevista(todasSessoes[sessaoAtual]);
+  if(rpTab==='entrevista'&&sessaoAtual===tel)renderPainelEntrevista(todasSessoes[tel]);
+  if(document.getElementById('view-agenda')&&document.getElementById('view-agenda').style.display==='flex')renderAgenda();
+
+  // Lembrete automático (30 min antes) — respeita o checkbox
+  if(comLembrete){
+    const l={id:'lem_ent_'+id,data,hora,titulo:'Entrevista: '+nomeCand,desc:tipo+(obs?(' · '+obs):''),notif:true,recorrencia:'nenhuma',feito:false};
+    _lembretes.push(l);
+    salvarLembretesStorage();
+    pedirPermissaoNotificacao();
+    agendarNotificacaoLembrete(l);
+  }
+
+  // Sincroniza com Google Calendar (best-effort — não bloqueia o fluxo se falhar)
+  fetch('/agenda/salvar',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({candidato:nomeCand,cargo:s.ultimaAnalise?.vagaInteresse||'',data,hora,tipo,local:obs,telefone:tel})
+  }).catch(()=>{});
 }
 function atualizarStatusEntrevista(id,novoStatus){
   if(!sessaoAtual||!entrevistas[sessaoAtual])return;
@@ -4599,7 +4829,7 @@ document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusI
 
 // ── BACKUP / RESTAURAÇÃO MANUAL ───────────────────────────────────────────────
 function exportarDados() {
-  const dados = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig};
+  const dados = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
   const json = JSON.stringify(dados, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4631,6 +4861,10 @@ function importarDados(event) {
       if (dados.horariosConfig && Array.isArray(dados.horariosConfig) && dados.horariosConfig.length > 0) {
         horariosConfig = dados.horariosConfig;
         try { localStorage.setItem('effect_horarios_v1', JSON.stringify(horariosConfig)); } catch(e) {}
+      }
+      if (dados.lembretes && Array.isArray(dados.lembretes) && typeof _lembretes !== 'undefined') {
+        _lembretes = dados.lembretes;
+        if (typeof salvarLembretesStorage === 'function') salvarLembretesStorage();
       }
       salvarLocal(); // salva no localStorage + sobe para o Volume
       if(typeof renderLista==='function') renderLista();
@@ -4786,207 +5020,367 @@ function renderPainelHistoricoHTML(s){
   </div>`;
 }
 
-// ─── AGENDA / CALENDÁRIO ───
-let calMes=new Date().getMonth();
-let calAno=new Date().getFullYear();
-let calDiaSel='';
+// ═══════════════ AGENDA 2.0 — DIA / SEMANA / MÊS / ANO ═══════════════
+let agView = localStorage.getItem('effect_ag_view') || 'mes';
+let agData = new Date();
+let calDiaSel = '';
+let faltTab = 'todas';
+const AG_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const AG_MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const AG_DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const AG_DIAS_ABR = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-function renderAgenda(){
-  const body=document.getElementById('agenda-body');
-  if(!body)return;
-  body.innerHTML=`
-    <div class="agenda-card">
-      <div class="agenda-card-title">🗓️ Calendário</div>
-      <div id="cal-wrap"></div>
-    </div>
-    <div>
-      <div class="agenda-card" style="margin-bottom:16px">
-        <div class="agenda-card-title">🗂️ Próximos Eventos</div>
-        <div id="proximos-wrap"></div>
-      </div>
-      <div class="agenda-card" style="margin-bottom:16px">
-        <div class="agenda-card-title">📊 Faltosos & Comparecimentos</div>
-        <div id="falt-wrap"></div>
-      </div>
-      <div class="agenda-card" id="cal-detail-card" style="display:none">
-        <div class="agenda-card-title" id="cal-detail-title">📅</div>
-        <div id="cal-detail"></div>
-      </div>
-    </div>`;
-  renderCalendario();
-  renderFaltosos();
-  verificarConfirmacoes24h();
-  renderProximosEventos();
-}
+function agDS(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function agHojeDS(){ return agDS(new Date()); }
 
-function renderCalendario(){
-  const wrap=document.getElementById('cal-wrap');if(!wrap)return;
-  const hoje=new Date();
-  const primeiroDia=new Date(calAno,calMes,1);
-  const diasNoMes=new Date(calAno,calMes+1,0).getDate();
-  const primeiroDS=primeiroDia.getDay();
-  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-  // Index de entrevistas por data
-  const entsByDate={};
+// ── Coleta / índice de dados ──
+function ag2CollectEntrevistas(){
+  const list=[];
   Object.entries(entrevistas).forEach(([tel,ents])=>{
-    ents.forEach(e=>{
-      if(!entsByDate[e.data])entsByDate[e.data]=[];
-      const s=todasSessoes[tel];
-      entsByDate[e.data].push({...e,telefone:tel,nome:s?.nome||telDisplay(tel)});
+    (ents||[]).forEach(e=>{
+      const s=todasSessoes[tel]||{};
+      list.push({...e,telefone:tel,nome:s.nome||s.ultimaAnalise?.nome||e.cand||telDisplay(tel),cargo:s.ultimaAnalise?.vagaInteresse||e.vagaTitulo||'—'});
     });
   });
+  return list;
+}
+function ag2PorData(ds){
+  return {
+    ents: ag2CollectEntrevistas().filter(e=>e.data===ds && e.status!=='Cancelada'),
+    lems: _lembretes.filter(l=>lembreteAplicaNoDia(l,ds) && !l.feito)
+  };
+}
+function ag2Cor(status){
+  return status==='Realizada'?'#059669':(status==='Não Compareceu'||status==='Cancelada')?'#dc2626':status==='Remarcou'?'#d97706':status==='Confirmada'?'#2563eb':'#64748b';
+}
 
-  let html=`
-    <div class="cal-nav">
-      <button onclick="navCal(-1)" style="background:var(--bg);border:1.5px solid #dde3ea;color:var(--navy);border-radius:8px;padding:5px 13px;font-size:15px;font-weight:800;cursor:pointer;line-height:1">‹</button>
-      <span style="font-weight:800;font-size:13px;color:var(--navy)">${meses[calMes]} ${calAno}</span>
-      <button onclick="navCal(1)" style="background:var(--bg);border:1.5px solid #dde3ea;color:var(--navy);border-radius:8px;padding:5px 13px;font-size:15px;font-weight:800;cursor:pointer;line-height:1">›</button>
+// ── Entrada / navegação ──
+function renderAgenda(){
+  atualizarSwitchUI();
+  renderAgendaAtual();
+  renderAgSidebar();
+  verificarConfirmacoes24h();
+  renderAlertasAgenda();
+}
+// alias legado — algumas partes do código ainda chamam renderCalendario()/selecionarDia()
+function renderCalendario(){ renderAgendaAtual(); renderAgSidebar(); }
+function selecionarDia(ds){ agAbrirDia(ds); }
+
+function atualizarSwitchUI(){
+  document.querySelectorAll('.ag2-switch-btn').forEach(b=>b.classList.toggle('ativo', b.dataset.v===agView));
+}
+function agSetView(v){
+  agView=v;
+  try{localStorage.setItem('effect_ag_view', v);}catch(e){}
+  atualizarSwitchUI();
+  renderAgendaAtual();
+}
+function agNav(dir){
+  const d=new Date(agData);
+  if(agView==='dia') d.setDate(d.getDate()+dir);
+  else if(agView==='semana') d.setDate(d.getDate()+dir*7);
+  else if(agView==='ano') d.setFullYear(d.getFullYear()+dir);
+  else d.setMonth(d.getMonth()+dir);
+  agData=d;
+  renderAgendaAtual();
+}
+function agHoje(){ agData=new Date(); renderAgendaAtual(); }
+
+function renderAgendaAtual(){
+  const main=document.getElementById('ag2-main');
+  if(!main)return;
+  atualizarSwitchUI();
+  if(agView==='dia') renderAgDia(main);
+  else if(agView==='semana') renderAgSemana(main);
+  else if(agView==='ano') renderAgAno(main);
+  else renderAgMes(main);
+  renderAgSidebar();
+}
+
+function agAbrirDia(ds){
+  calDiaSel=ds;
+  if(agView==='mes'||agView==='semana'||agView==='ano'){
+    const main=document.getElementById('ag2-main');
+    if(main){
+      if(agView==='mes') renderAgMes(main);
+      else if(agView==='semana') renderAgSemana(main);
+    }
+  }
+  agMostrarDetalheDia(ds);
+}
+
+function ag2CardEntrevista(e, ds){
+  const cor=ag2Cor(e.status);
+  return `<div class="ag2-ev-card" style="border-left-color:${cor}">
+    <div class="ag2-ev-top">
+      <div class="ag2-ev-nome">${e.nome}</div>
+      <span class="ag2-ev-badge" style="background:${cor}22;color:${cor}">${e.status||'Pendente'}</span>
     </div>
-    <div class="cal-grid">
-      <div class="cal-dow">Dom</div><div class="cal-dow">Seg</div><div class="cal-dow">Ter</div>
-      <div class="cal-dow">Qua</div><div class="cal-dow">Qui</div><div class="cal-dow">Sex</div><div class="cal-dow">Sáb</div>`;
+    <div class="ag2-ev-meta">🕐 ${e.hora||'—'} · ${e.tipo||'—'} · ${e.cargo||''}</div>
+    ${e.obs?`<div class="ag2-ev-obs">📝 ${e.obs}</div>`:''}
+    <div class="ag2-ev-actions">
+      <button class="ev-act-btn confirmar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Confirmada');agAbrirDia('${ds}')">✓ Conf</button>
+      <button class="ev-act-btn realizar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Realizada');agAbrirDia('${ds}')">✅ Compareceu</button>
+      <button class="ev-act-btn cancelar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Não Compareceu');agAbrirDia('${ds}')">✕ Faltou</button>
+      <button class="ag2-mini-btn" style="background:#e0e7ff;color:#3730a3" onclick="marcarEntrevista('${e.telefone}','${e.id}','Remarcou');agAbrirDia('${ds}')">🔄 Remarcou</button>
+      <button class="rbtn" style="font-size:10px;padding:3px 8px;background:var(--navy);color:#fff" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬 Conversa</button>
+    </div>
+  </div>`;
+}
+function ag2CardLembrete(l){
+  const rec=l.recorrencia||'nenhuma';
+  return `<div class="ag2-lem-card">
+    <div class="ag2-ev-top">
+      <div class="ag2-ev-nome">🔔 ${l.titulo}</div>
+      <div style="display:flex;gap:4px">
+        <button class="ag2-mini-btn" style="background:#d1fae5;color:#065f46" onclick="marcarLembreteFeito('${l.id}');agAbrirDia(calDiaSel)">✓</button>
+        ${rec==='nenhuma'?`<button class="ag2-mini-btn" style="background:#fee2e2;color:#dc2626" onclick="excluirLembrete('${l.id}')">✕</button>`:''}
+      </div>
+    </div>
+    <div class="ag2-ev-meta">${l.hora?('⏰ '+l.hora):''}${l.notif?' · 🔔':''}${recBadge(rec)}</div>
+    ${l.desc?`<div class="ag2-ev-obs">${l.desc}</div>`:''}
+  </div>`;
+}
 
-  for(let i=0;i<primeiroDS;i++)html+='<div class="cal-day cal-empty"></div>';
+function agMostrarDetalheDia(ds){
+  const card=document.getElementById('ag2-detail-card');
+  const detail=document.getElementById('ag2-detail');
+  const title=document.getElementById('ag2-detail-title');
+  if(!card||!detail)return;
+  const {ents,lems}=ag2PorData(ds);
+  const [y,m,d]=ds.split('-');
+  card.style.display='block';
+  title.textContent=`📅 ${d}/${m}/${y}`;
 
-  for(let d=1;d<=diasNoMes;d++){
-    const ds=`${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isHoje=hoje.getDate()===d&&hoje.getMonth()===calMes&&hoje.getFullYear()===calAno;
-    const isSel=calDiaSel===ds;
-    const entsNoDia=entsByDate[ds]||[];
-    const dots=entsNoDia.slice(0,4).map(e=>{
-      const cor=e.status==='Realizada'?'dot-green':e.status==='Cancelada'||e.status==='Não Compareceu'?'dot-red':e.status==='Remarcou'?'dot-orange':'dot-blue';
-      return`<div class="cal-dot ${cor}"></div>`;
-    }).join('');
-    html+=`<div class="cal-day${isHoje?' cal-hoje':''}${entsNoDia.length?' cal-tem-ent':''}${isSel?' cal-tem-ent':''}" onclick="selecionarDia('${ds}')">
-      <span class="cal-num">${d}</span>
-      ${dots?`<div class="cal-dot-row">${dots}</div>`:''}
+  let html='';
+  if(!ents.length && !lems.length){
+    html='<div class="empty" style="padding:14px 4px">Nada agendado neste dia</div>';
+  } else {
+    ents.sort((a,b)=>(a.hora||'').localeCompare(b.hora||'')).forEach(e=>{ html+=ag2CardEntrevista(e,ds); });
+    lems.forEach(l=>{ html+=ag2CardLembrete(l); });
+  }
+  html += `<button class="entrevista-btn" onclick="abrirModalEntrevista('${ds}')">📅 Agendar entrevista</button>
+    <button class="entrevista-btn" style="background:#16a34a" onclick="abrirModalLembrete('${ds}')">🔔 Novo lembrete</button>
+    <button class="entrevista-btn" style="background:transparent;color:var(--navy);border:1.5px solid var(--border)" onclick="agData=new Date('${ds}T12:00:00');agSetView('dia')">🔎 Ver dia completo</button>`;
+  detail.innerHTML=html;
+}
+
+// ── MÊS ──
+function renderAgMes(main){
+  const ano=agData.getFullYear(), mes=agData.getMonth();
+  const hoje=agHojeDS();
+  const primeiroDia=new Date(ano,mes,1);
+  const diasNoMes=new Date(ano,mes+1,0).getDate();
+  const primeiroDS=primeiroDia.getDay();
+  const periodoEl=document.getElementById('ag2-periodo');
+  if(periodoEl)periodoEl.textContent=AG_MESES[mes]+' '+ano;
+
+  let html='<div class="ag2-month"><div class="ag2-month-dow">'+AG_DIAS_ABR.map(d=>'<div>'+d+'</div>').join('')+'</div><div class="ag2-month-grid">';
+  for(let i=0;i<primeiroDS;i++) html+='<div class="ag2-mday ag2-mday-empty"></div>';
+  for(let d=1; d<=diasNoMes; d++){
+    const ds=ano+'-'+String(mes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const {ents,lems}=ag2PorData(ds);
+    const isHoje=ds===hoje, isSel=ds===calDiaSel;
+    const dots=ents.slice(0,4).map(e=>'<span class="ag2-dot" style="background:'+ag2Cor(e.status)+'"></span>').join('')
+      + (lems.length?'<span class="ag2-dot" style="background:#16a34a"></span>':'');
+    html+=`<div class="ag2-mday${isHoje?' ag2-hoje':''}${isSel?' ag2-sel':''}${(ents.length||lems.length)?' ag2-tem':''}" onclick="agAbrirDia('${ds}')">
+      <span class="ag2-mday-num">${d}</span>
+      ${(ents.length||lems.length)?`<div class="ag2-mday-dots">${dots}</div>`:''}
+      ${ents.length?`<div class="ag2-mday-count">${ents.length} entr.</div>`:''}
     </div>`;
+  }
+  html+='</div></div>';
+  main.innerHTML=html;
+}
+
+// ── SEMANA ──
+function renderAgSemana(main){
+  const start=new Date(agData);
+  start.setDate(start.getDate()-start.getDay());
+  const dias=[]; for(let i=0;i<7;i++){ const d=new Date(start); d.setDate(start.getDate()+i); dias.push(d); }
+  const hoje=agHojeDS();
+  const periodoEl=document.getElementById('ag2-periodo');
+  if(periodoEl)periodoEl.textContent=`${dias[0].getDate()} ${AG_MESES_ABR[dias[0].getMonth()]} – ${dias[6].getDate()} ${AG_MESES_ABR[dias[6].getMonth()]} ${dias[6].getFullYear()}`;
+
+  const HI=7, HF=20, totalH=HF-HI;
+
+  let head='<div class="ag2-week-head"><div class="ag2-week-gutter"></div>';
+  dias.forEach(d=>{
+    const ds=agDS(d);
+    head+=`<div class="ag2-week-daycol-head${ds===hoje?' ag2-hoje':''}" onclick="agAbrirDia('${ds}')">
+      <div class="ag2-week-dow">${AG_DIAS_ABR[d.getDay()]}</div><div class="ag2-week-num">${d.getDate()}</div>
+    </div>`;
+  });
+  head+='</div>';
+
+  let grid='<div class="ag2-week-grid"><div class="ag2-week-gutter-col">';
+  for(let h=HI; h<HF; h++) grid+=`<div class="ag2-week-hour-label">${String(h).padStart(2,'0')}:00</div>`;
+  grid+='</div>';
+
+  dias.forEach(d=>{
+    const ds=agDS(d);
+    const {ents,lems}=ag2PorData(ds);
+    let col=`<div class="ag2-week-daycol" style="height:${totalH*48}px" onclick="agAbrirDia('${ds}')">`;
+    for(let h=HI; h<HF; h++) col+='<div class="ag2-week-hourline"></div>';
+    ents.forEach(e=>{
+      const [eh,em]=(e.hora||'09:00').split(':').map(Number);
+      let top=((eh+em/60)-HI)/totalH*100;
+      top=Math.max(0,Math.min(96,top));
+      const cor=ag2Cor(e.status);
+      col+=`<div class="ag2-week-block" style="top:${top}%;border-left-color:${cor};background:${cor}18" onclick="event.stopPropagation();agAbrirDia('${ds}')"><b>${e.hora}</b> ${e.nome}</div>`;
+    });
+    lems.forEach(l=>{
+      if(!l.hora)return;
+      const [lh,lm]=l.hora.split(':').map(Number);
+      let top=((lh+lm/60)-HI)/totalH*100;
+      top=Math.max(0,Math.min(96,top));
+      col+=`<div class="ag2-week-block ag2-week-block-lem" style="top:${top}%" onclick="event.stopPropagation();agAbrirDia('${ds}')">🔔 ${l.titulo}</div>`;
+    });
+    col+='</div>';
+    grid+=col;
+  });
+  grid+='</div>';
+
+  main.innerHTML='<div class="ag2-week">'+head+grid+'</div>';
+}
+
+// ── DIA ──
+function renderAgDia(main){
+  const ds=agDS(agData);
+  const hoje=agHojeDS();
+  const periodoEl=document.getElementById('ag2-periodo');
+  if(periodoEl)periodoEl.textContent=`${AG_DIAS[agData.getDay()]}, ${agData.getDate()} ${AG_MESES[agData.getMonth()]} ${agData.getFullYear()}`;
+
+  const {ents,lems}=ag2PorData(ds);
+  const HI=6, HF=21, totalH=HF-HI;
+
+  let grid=`<div class="ag2-day-timeline" style="height:${totalH*56}px">`;
+  for(let h=HI; h<HF; h++){
+    grid+=`<div class="ag2-day-hourrow"><div class="ag2-day-hourlabel">${String(h).padStart(2,'0')}:00</div><div class="ag2-day-hourline"></div></div>`;
+  }
+  if(ds===hoje){
+    const agora=new Date();
+    const hAtual=agora.getHours()+agora.getMinutes()/60;
+    if(hAtual>=HI && hAtual<=HF){
+      grid+=`<div class="ag2-day-now" style="top:${(hAtual-HI)*56}px"><span></span></div>`;
+    }
+  }
+  ents.forEach(e=>{
+    const [eh,em]=(e.hora||'09:00').split(':').map(Number);
+    if(eh<HI||eh>=HF)return;
+    const cor=ag2Cor(e.status);
+    grid+=`<div class="ag2-day-block" style="top:${((eh+em/60)-HI)*56}px;border-left-color:${cor};background:${cor}14" onclick="agAbrirDia('${ds}')">
+      <div class="ag2-day-block-time">${e.hora}</div>
+      <div class="ag2-day-block-title">${e.nome}</div>
+      <div class="ag2-day-block-meta">${e.tipo||''} · ${e.cargo||''}</div>
+    </div>`;
+  });
+  lems.forEach(l=>{
+    if(!l.hora)return;
+    const [lh,lm]=l.hora.split(':').map(Number);
+    if(lh<HI||lh>=HF)return;
+    grid+=`<div class="ag2-day-block ag2-day-block-lem" style="top:${((lh+lm/60)-HI)*56}px" onclick="agAbrirDia('${ds}')">
+      <div class="ag2-day-block-time">${l.hora}</div>
+      <div class="ag2-day-block-title">🔔 ${l.titulo}</div>
+    </div>`;
+  });
+  grid+='</div>';
+
+  main.innerHTML=`<div class="ag2-day">${grid}</div>`;
+  agAbrirDia(ds);
+}
+
+// ── ANO (heatmap) ──
+function renderAgAno(main){
+  const ano=agData.getFullYear();
+  const hoje=agHojeDS();
+  const periodoEl=document.getElementById('ag2-periodo');
+  if(periodoEl)periodoEl.textContent=String(ano);
+
+  let html='<div class="ag2-year-grid">';
+  for(let mes=0; mes<12; mes++){
+    const primeiroDia=new Date(ano,mes,1);
+    const diasNoMes=new Date(ano,mes+1,0).getDate();
+    const primeiroDS=primeiroDia.getDay();
+    let mini=`<div class="ag2-year-month"><div class="ag2-year-month-title" onclick="agData=new Date(${ano},${mes},1);agSetView('mes')">${AG_MESES[mes]}</div><div class="ag2-year-grid-mini">`;
+    for(let i=0;i<primeiroDS;i++) mini+='<div class="ag2-year-day ag2-year-day-empty"></div>';
+    for(let d=1; d<=diasNoMes; d++){
+      const ds=ano+'-'+String(mes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const {ents,lems}=ag2PorData(ds);
+      const n=ents.length+lems.length;
+      const nivel=n===0?0:n===1?1:n<=3?2:3;
+      const isHoje=ds===hoje;
+      mini+=`<div class="ag2-year-day nivel-${nivel}${isHoje?' ag2-hoje':''}" title="${ds}: ${n} evento(s)" onclick="agData=new Date('${ds}T12:00:00');agSetView('dia')">${d}</div>`;
+    }
+    mini+='</div></div>';
+    html+=mini;
   }
   html+='</div>';
-
-  // Legenda
-  html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:9px;color:var(--muted)">
-    <span><span class="cal-dot dot-blue" style="display:inline-block;margin-right:3px"></span>Pendente</span>
-    <span><span class="cal-dot dot-green" style="display:inline-block;margin-right:3px"></span>Realizada</span>
-    <span><span class="cal-dot dot-orange" style="display:inline-block;margin-right:3px"></span>Remarcou</span>
-    <span><span class="cal-dot dot-red" style="display:inline-block;margin-right:3px"></span>Faltou/Cancelada</span>
-  </div>`;
-
-  wrap.innerHTML=html;
+  main.innerHTML=html;
 }
 
-function navCal(dir){
-  calMes+=dir;
-  if(calMes>11){calMes=0;calAno++;}
-  if(calMes<0){calMes=11;calAno--;}
-  renderCalendario();
-}
-
-function selecionarDia(ds){
-  calDiaSel=ds;
-  renderCalendario();
-  const card=document.getElementById('cal-detail-card');
-  const detail=document.getElementById('cal-detail');
-  const title=document.getElementById('cal-detail-title');
-  if(!card||!detail)return;
-
-  const entsNoDia=[];
-  Object.entries(entrevistas).forEach(([tel,ents])=>{
-    ents.forEach(e=>{
-      if(e.data===ds){
-        const s=todasSessoes[tel];
-        entsNoDia.push({...e,telefone:tel,nome:s?.nome||telDisplay(tel),cargo:s?.ultimaAnalise?.vagaInteresse||'—'});
-      }
-    });
-  });
-
-  const[y,m,d]=ds.split('-');
-  title.textContent=`📅 ${d}/${m}/${y} — ${entsNoDia.length} entrevista(s)`;
-  card.style.display='block';
-
-  if(!entsNoDia.length){
-    detail.innerHTML=`<div class="empty" style="padding:16px">Nenhuma entrevista</div>
-      <button class="entrevista-btn" onclick="abrirModalEntrevistaData('${ds}')">📅 Agendar neste dia</button>`;
-    return;
-  }
-
-  detail.innerHTML=entsNoDia.map(e=>`
-    <div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${e.status==='Realizada'?'var(--green)':e.status==='Cancelada'||e.status==='Não Compareceu'?'var(--red)':e.status==='Remarcou'?'#d97706':'var(--blue)'}">
-      <div style="font-weight:700;font-size:11px">${e.nome}</div>
-      <div style="font-size:10px;color:var(--muted)">${e.hora} · ${e.tipo} · ${e.cargo}</div>
-      <div style="font-size:10px;margin-top:2px"><strong>Status:</strong> ${e.status||'Pendente'}</div>
-      <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-        <button class="ev-act-btn confirmar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Confirmada');selecionarDia('${ds}');renderFaltosos()">✓ Conf</button>
-        <button class="ev-act-btn realizar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Realizada');selecionarDia('${ds}');renderFaltosos()">✅ Compareceu</button>
-        <button class="ev-act-btn cancelar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Não Compareceu');selecionarDia('${ds}');renderFaltosos()">✕ Faltou</button>
-        <button style="padding:4px 8px;border-radius:6px;border:none;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;cursor:pointer;background:#e0e7ff;color:#3730a3" onclick="marcarEntrevista('${e.telefone}','${e.id}','Remarcou');selecionarDia('${ds}');renderFaltosos()">🔄 Remarcou</button>
-        <button class="rbtn" style="font-size:10px;padding:3px 8px" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬 Conversa</button>
-      </div>
-    </div>`).join('')+
-    `<button class="entrevista-btn" onclick="abrirModalEntrevistaData('${ds}')">📅 Agendar nova neste dia</button>`;
-}
-
-function abrirModalEntrevistaData(ds){
-  document.getElementById('ent-data').value=ds;
-  document.getElementById('ent-hora').value='09:00';
-  document.getElementById('ent-obs').value='';
-  document.getElementById('modal-entrevista').classList.add('show');
-}
-
-// ─── FALTOSOS / ESTATÍSTICAS ───
-let faltTab='todas';
-function renderFaltosos(){
-  const wrap=document.getElementById('falt-wrap');if(!wrap)return;
-
-  const todas=[];
-  Object.entries(entrevistas).forEach(([tel,ents])=>{
-    ents.forEach(e=>{
-      const s=todasSessoes[tel];
-      todas.push({...e,telefone:tel,nome:s?.nome||telDisplay(tel),cargo:s?.ultimaAnalise?.vagaInteresse||'—'});
-    });
-  });
-
+// ── PAINEL LATERAL: STATS + FALTOSOS ──
+function setFaltTab(t){ faltTab=t; renderAgStats(); }
+function renderAgStats(){
+  const wrap=document.getElementById('ag2-stats');
+  if(!wrap)return;
+  const todas=ag2CollectEntrevistas();
   const compareceu=todas.filter(e=>e.status==='Realizada');
   const faltou=todas.filter(e=>e.status==='Não Compareceu');
   const remarcou=todas.filter(e=>e.status==='Remarcou');
   const pendente=todas.filter(e=>!e.status||e.status==='Pendente'||e.status==='Confirmada');
 
-  let html=`
-    <div class="falt-stats">
-      <div class="falt-stat"><div class="falt-stat-num" style="color:#059669">${compareceu.length}</div><div class="falt-stat-label">✅ Compareceu</div></div>
-      <div class="falt-stat"><div class="falt-stat-num" style="color:var(--red)">${faltou.length}</div><div class="falt-stat-label">✕ Faltou</div></div>
-      <div class="falt-stat"><div class="falt-stat-num" style="color:#d97706">${remarcou.length}</div><div class="falt-stat-label">🔄 Remarcou</div></div>
-      <div class="falt-stat"><div class="falt-stat-num" style="color:var(--blue)">${pendente.length}</div><div class="falt-stat-label">⏳ Pendente</div></div>
+  let html=`<div class="ag2-card-title">📊 Faltosos & Comparecimentos</div>
+    <div class="ag2-stat-grid">
+      <div class="ag2-stat"><div class="ag2-stat-num" style="color:#059669">${compareceu.length}</div><div class="ag2-stat-label">✅ Compareceu</div></div>
+      <div class="ag2-stat"><div class="ag2-stat-num" style="color:#dc2626">${faltou.length}</div><div class="ag2-stat-label">✕ Faltou</div></div>
+      <div class="ag2-stat"><div class="ag2-stat-num" style="color:#d97706">${remarcou.length}</div><div class="ag2-stat-label">🔄 Remarcou</div></div>
+      <div class="ag2-stat"><div class="ag2-stat-num" style="color:#2563eb">${pendente.length}</div><div class="ag2-stat-label">⏳ Pendente</div></div>
     </div>
-    <div class="falt-tabs">
-      <button class="falt-tab ${faltTab==='todas'?'active':''}" onclick="setFaltTab('todas')">Todas (${todas.length})</button>
-      <button class="falt-tab ${faltTab==='faltou'?'active':''}" onclick="setFaltTab('faltou')">✕ Faltou (${faltou.length})</button>
-      <button class="falt-tab ${faltTab==='remarcou'?'active':''}" onclick="setFaltTab('remarcou')">🔄 Remarcou (${remarcou.length})</button>
-      <button class="falt-tab ${faltTab==='compareceu'?'active':''}" onclick="setFaltTab('compareceu')">✅ Compareceu (${compareceu.length})</button>
+    <div class="ag2-falt-tabs">
+      <button class="ag2-falt-tab ${faltTab==='todas'?'active':''}" onclick="setFaltTab('todas')">Todas (${todas.length})</button>
+      <button class="ag2-falt-tab ${faltTab==='faltou'?'active':''}" onclick="setFaltTab('faltou')">✕ Faltou (${faltou.length})</button>
+      <button class="ag2-falt-tab ${faltTab==='remarcou'?'active':''}" onclick="setFaltTab('remarcou')">🔄 Remarcou (${remarcou.length})</button>
+      <button class="ag2-falt-tab ${faltTab==='compareceu'?'active':''}" onclick="setFaltTab('compareceu')">✅ Compareceu (${compareceu.length})</button>
     </div>`;
 
   const lista=faltTab==='faltou'?faltou:faltTab==='remarcou'?remarcou:faltTab==='compareceu'?compareceu:todas;
-  if(!lista.length){html+='<div class="empty" style="padding:12px">Nenhum registro</div>';}
+  if(!lista.length){ html+='<div class="empty" style="padding:12px">Nenhum registro</div>'; }
   else{
-    html+=lista.sort((a,b)=>(b.data+b.hora).localeCompare(a.data+a.hora)).slice(0,20).map(e=>`
-      <div style="background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:5px;font-size:10px;display:flex;justify-content:space-between;align-items:center;gap:6px">
-        <div>
-          <div style="font-weight:700">${e.nome}</div>
-          <div style="color:var(--muted)">${formatarDataBr(e.data)} ${e.hora} · ${e.tipo}</div>
-        </div>
+    html+='<div class="ag2-falt-list">'+lista.sort((a,b)=>(b.data+b.hora).localeCompare(a.data+a.hora)).slice(0,15).map(e=>`
+      <div class="ag2-falt-item">
+        <div><div class="ag2-falt-nome">${e.nome}</div><div class="ag2-falt-meta">${formatarDataBr(e.data)} ${e.hora} · ${e.tipo}</div></div>
         <div style="display:flex;gap:4px;align-items:center">
-          <span style="background:${e.status==='Realizada'?'#d1fae5':e.status==='Não Compareceu'?'#fee2e2':e.status==='Remarcou'?'#fef3c7':'#f3f4f6'};color:${e.status==='Realizada'?'#065f46':e.status==='Não Compareceu'?'var(--red)':e.status==='Remarcou'?'#92400e':'var(--muted)'};border-radius:6px;padding:2px 7px;font-weight:700;font-size:9px">${e.status||'Pendente'}</span>
-          <button class="rbtn" style="font-size:9px;padding:2px 6px" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬</button>
+          <span class="ag2-ev-badge" style="background:${ag2Cor(e.status)}22;color:${ag2Cor(e.status)}">${e.status||'Pendente'}</span>
+          <button class="rbtn" style="font-size:9px;padding:2px 6px;background:var(--navy);color:#fff" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬</button>
         </div>
-      </div>`).join('');
+      </div>`).join('')+'</div>';
   }
-
   wrap.innerHTML=html;
 }
-function setFaltTab(t){faltTab=t;renderFaltosos();}
+function renderAgSidebar(){
+  renderAgStats();
+  renderProximosEventos();
+}
 
-// ─── CONFIRMAÇÃO 24H ANTES ───
+// ── BANNER DE ALERTAS (lembretes atrasados + entrevistas de amanhã sem confirmação) ──
+function renderAlertasAgenda(){
+  const bar=document.getElementById('ag2-alertbar');
+  if(!bar)return;
+  const hoje=agHojeDS();
+  const todas=ag2CollectEntrevistas();
+  const atrasados=_lembretes.filter(l=>!l.feito && (l.recorrencia||'nenhuma')==='nenhuma' && l.data<hoje);
+  const amanha=new Date(); amanha.setDate(amanha.getDate()+1);
+  const amanhaDS=agDS(amanha);
+  const semConfirmacao=todas.filter(e=>e.data===amanhaDS && (!e.status||e.status==='Pendente'));
+  const chips=[];
+  if(atrasados.length) chips.push(`<span class="ag2-alert-chip ag2-alert-red">⏰ ${atrasados.length} lembrete(s) atrasado(s)</span>`);
+  if(semConfirmacao.length) chips.push(`<span class="ag2-alert-chip ag2-alert-amber">📅 ${semConfirmacao.length} entrevista(s) amanhã sem confirmação</span>`);
+  bar.innerHTML=chips.join('');
+  bar.style.display=chips.length?'flex':'none';
+}
+
+// ── CONFIRMAÇÃO 24H ANTES ───
 function verificarConfirmacoes24h(){
   const amanha=new Date();
   amanha.setDate(amanha.getDate()+1);
@@ -5009,6 +5403,21 @@ function verificarConfirmacoes24h(){
     });
   });
 }
+
+// ── ATALHOS DE TECLADO (apenas quando a Agenda está visível e nenhum input focado) ──
+document.addEventListener('keydown', function(e){
+  const ag=document.getElementById('view-agenda');
+  if(!ag || ag.style.display!=='flex') return;
+  const tag=(document.activeElement||{}).tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  if(e.key==='ArrowLeft'){ agNav(-1); }
+  else if(e.key==='ArrowRight'){ agNav(1); }
+  else if(e.key.toLowerCase()==='t'){ agHoje(); }
+  else if(e.key==='1'){ agSetView('dia'); }
+  else if(e.key==='2'){ agSetView('semana'); }
+  else if(e.key==='3'){ agSetView('mes'); }
+  else if(e.key==='4'){ agSetView('ano'); }
+});
 
 // ─── HORÁRIOS DISPONÍVEIS (Lia oferece slots) ───
 let horariosConfig=JSON.parse(localStorage.getItem('effect_horarios_v1')||'["09:00","11:00","14:00"]');
@@ -5576,66 +5985,6 @@ function recBadge(rec) {
   return map[rec] ? '<span style="font-size:8px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px">' + map[rec] + '</span>' : '';
 }
 
-// Adiciona lembretes ao detalhe do dia no calendário (com suporte a recorrência)
-function renderLembretesNoDia(ds, container) {
-  const dosDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
-  if (!dosDia.length) return;
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-top:12px';
-  const items = dosDia.map(function(l) {
-    const rec = l.recorrencia || 'nenhuma';
-    const border = l.notif ? '#86efac' : '#e5e7eb';
-    const horaHtml = l.hora
-      ? ("<div style='font-size:9px;color:#6b7280;margin-top:2px'>⏰ " + l.hora + (l.notif ? " · 🔔" : "") + recBadge(rec) + "</div>")
-      : (rec !== 'nenhuma' ? "<div style='margin-top:3px'>" + recBadge(rec) + "</div>" : "");
-    const descHtml = l.desc ? ("<div style='font-size:10px;color:#374151;margin-top:3px'>" + l.desc + "</div>") : "";
-    const okBtn  = "<button onclick=\"marcarLembreteFeito('" + l.id + "')\" style='padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#d1fae5;color:#065f46'>✓</button>";
-    const delBtn = rec === 'nenhuma'
-      ? "<button onclick=\"excluirLembrete('" + l.id + "')\" style='padding:2px 7px;border-radius:5px;border:none;font-size:9px;font-weight:700;cursor:pointer;background:#fee2e2;color:#dc2626'>✕</button>"
-      : "";
-    return "<div style='background:#fff;border:1px solid " + border + ";border-radius:8px;padding:8px 10px;margin-bottom:6px'>" +
-      "<div style='display:flex;justify-content:space-between;align-items:center'>" +
-        "<span style='font-weight:700;font-size:11px'>" + l.titulo + "</span>" +
-        "<div style='display:flex;gap:4px'>" + okBtn + delBtn + "</div>" +
-      "</div>" + horaHtml + descHtml + "</div>";
-  });
-  wrap.innerHTML = "<div style='font-size:10px;font-weight:800;color:#15803d;margin-bottom:6px'>🔔 LEMBRETES DO DIA</div>" + items.join('');
-  container.appendChild(wrap);
-}
-
-// Pontos de lembrete no calendário (com suporte a recorrência)
-function adicionarPontosLembrete() {
-  const cells = document.querySelectorAll('.cal-day');
-  cells.forEach(cell => {
-    const onclick = cell.getAttribute('onclick') || '';
-    const m = onclick.match(/'(\d{4}-\d{2}-\d{2})'/);
-    if (!m) return;
-    const ds = m[1];
-    const temLem = _lembretes.some(l => !l.feito && lembreteAplicaNoDia(l, ds));
-    if (temLem && !cell.querySelector('.dot-lembrete')) {
-      const dot = document.createElement('div');
-      dot.className = 'cal-dot dot-lembrete';
-      dot.style.cssText = 'background:#16a34a';
-      const row = cell.querySelector('.cal-dot-row');
-      if (row) row.appendChild(dot);
-      else {
-        const newRow = document.createElement('div');
-        newRow.className = 'cal-dot-row';
-        newRow.appendChild(dot);
-        cell.appendChild(newRow);
-      }
-    }
-  });
-}
-
-// Patch na selecionarDia para injetar lembretes
-const _origSelecionarDia = window.selecionarDia;
-window.selecionarDia = function(ds) {
-  if (_origSelecionarDia) _origSelecionarDia(ds);
-  const detail = document.getElementById('cal-detail');
-  if (detail) renderLembretesNoDia(ds, detail);
-};
-
 // ─── PRÓXIMOS EVENTOS: entrevistas + lembretes pessoais (14 dias) ───
 function renderProximosEventos() {
   const wrap = document.getElementById('proximos-wrap');
@@ -5706,25 +6055,8 @@ function renderProximosEventos() {
   wrap.innerHTML = html;
 }
 
-// Também adicionar lembrete ao salvar entrevista — respeita checkbox
-const _origSalvarEntrevista = window.salvarEntrevista;
-window.salvarEntrevista = function() {
-  const comLembrete = document.getElementById('ent-lembrete')?.checked;
-  if (_origSalvarEntrevista) _origSalvarEntrevista();
-  if (comLembrete) {
-    const data = document.getElementById('ent-data')?.value;
-    const hora = document.getElementById('ent-hora')?.value;
-    const cargo = document.getElementById('ent-cargo')?.value || 'Entrevista';
-    const nome = sessaoAtual ? (todasSessoes[sessaoAtual]?.nome || '') : '';
-    if (data && hora) {
-      const l = { id: 'lem_ent_' + Date.now(), data, hora, desc: cargo + (nome ? ' — ' + nome : ''), notif: true, feito: false };
-      _lembretes.push(l);
-      salvarLembretesStorage();
-      pedirPermissaoNotificacao();
-      agendarNotificacaoLembrete(l);
-    }
-  }
-};
+// (O lembrete automático de 30min ao agendar entrevista já é criado dentro da
+// própria função salvarEntrevista() — ver seção de agendamento de entrevistas.)
 
 async function recarregarDoSheets() {
   const btn = event?.target;
@@ -5748,7 +6080,6 @@ async function recarregarDoSheets() {
 
 // Inicia ao carregar
 setTimeout(iniciarTimersLembretes, 2000);
-setTimeout(adicionarPontosLembrete, 3000);
 </script>
 </body>
 </html>
