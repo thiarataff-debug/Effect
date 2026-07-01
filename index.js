@@ -287,6 +287,24 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     if (msg.timestampMs > 0) msg._approxMs = msg.timestampMs;
   });
 
+  // BUG CORRIGIDO: essa função roda a CADA consulta do painel (a cada 5s) e criava
+  // um array novo toda vez — o timestamp sintético calculado aqui nunca era salvo
+  // de volta na sessão em memória. Então, a cada nova mensagem que chegava, esse
+  // cálculo de interpolação partia dos vizinhos atuais (diferentes de antes) e
+  // mensagens antigas sem horário real podiam receber um horário sintético
+  // diferente a cada consulta — fazendo elas "pularem de posição" na tela.
+  // Agora gravamos o valor calculado de volta no histórico em memória, então da
+  // próxima vez ele já vem pronto (estável) em vez de ser recalculado do zero.
+  if (Array.isArray(sessao?.historico)) {
+    historicoNormalizado.forEach((msg, i) => {
+      const original = sessao.historico[i];
+      if (original && msg.timestampMs > 0 && !Number(original.timestampMs)) {
+        original.timestampMs = msg.timestampMs;
+        original._approxMs = msg.timestampMs;
+      }
+    });
+  }
+
   historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
 
   const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
@@ -2043,84 +2061,110 @@ app.post("/inbox/enviar", async (req, res) => {
   }
 });
 
+// Função compartilhada: localiza o currículo (local, Sheets, ou busca automática no
+// Drive) e devolve OU um link pra abrir OU null. Não escreve na resposta — quem
+// chama decide o que fazer (redirecionar, servir o arquivo, ou responder JSON).
+async function localizarCurriculo(tel, idxSolicitado) {
+  let sessao = sessoes[tel];
+  let lista = sessao
+    ? (Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []))
+    : [];
+
+  if (!lista.length && CONFIG.VAGAS_URL) {
+    try {
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      const r = await axios.get(`${urlBase}?acao=conversas&telefone=${tel}`, { timeout: 8000, maxRedirects: 3 });
+      const d = r.data;
+      if (d?.sessoes) {
+        const telKey = Object.keys(d.sessoes).find(k => limparTelefone(k) === tel);
+        if (telKey) {
+          const s = d.sessoes[telKey];
+          const cvs = Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
+          if (cvs.length) {
+            if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: s.nome || null, modo: "automatico", pausado: false, motivoPausa: "", unreadCount: 0, curriculos: [], curriculo: null, ultimaAnalise: null };
+            sessoes[tel].curriculos = cvs;
+            sessoes[tel].curriculo = cvs[0];
+            sessao = sessoes[tel];
+            lista = cvs;
+          }
+        }
+      }
+    } catch (e) { console.error("Fallback Sheets curriculo:", e.message); }
+  }
+
+  if (!lista.length) {
+    const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
+    if (achado) return { ok: true, tipo: "link", link: achado.link, nomeCandidato: sessao?.nome || tel };
+    return { ok: false, nomeCandidato: sessao?.nome || tel };
+  }
+
+  const idx = Math.max(0, Math.min(Number(idxSolicitado || 0), lista.length - 1));
+  const cv = lista[idx];
+
+  if (cv?.driveLink) return { ok: true, tipo: "link", link: cv.driveLink, nomeCandidato: sessao?.nome || tel };
+
+  let buffer = null;
+  if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
+  else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+
+  if (buffer) return { ok: true, tipo: "arquivo", buffer, mimeType: cv.mimeType, filename: cv.filename, nomeCandidato: sessao?.nome || tel };
+
+  const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
+  if (dlFallback) return { ok: true, tipo: "link", link: dlFallback, nomeCandidato: sessao?.nome || tel };
+
+  const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
+  if (achado) return { ok: true, tipo: "link", link: achado.link, nomeCandidato: sessao?.nome || tel };
+
+  return { ok: false, nomeCandidato: sessao?.nome || tel };
+}
+
+// GET /inbox/curriculo-check/:telefone → SEMPRE responde JSON (nunca redireciona).
+// BUG CORRIGIDO: o front-end verificava disponibilidade com fetch() nesta mesma
+// rota que fazia redirect pro Google Drive — fetch() bate numa política de CORS
+// nesse redirecionamento entre domínios e falha mesmo quando o arquivo existe
+// (diferente de uma navegação normal, que não tem essa restrição). Por isso um
+// currículo que abria antes passou a aparecer como "não encontrado". Agora o
+// front-end consulta esta rota (sempre JSON, mesma origem, sem CORS) primeiro,
+// e só então abre o link/arquivo numa navegação de verdade.
+app.get("/inbox/curriculo-check/:telefone", async (req, res) => {
+  try {
+    const tel = limparTelefone(req.params.telefone);
+    const resultado = await localizarCurriculo(tel, req.query.idx);
+    if (!resultado.ok) {
+      return res.json({ ok: false, nomeCandidato: resultado.nomeCandidato, telefone: tel, motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)." });
+    }
+    if (resultado.tipo === "link") return res.json({ ok: true, tipo: "link", link: resultado.link });
+    // tipo "arquivo": a própria rota /inbox/curriculo/:telefone serve o binário — o
+    // front-end abre essa URL diretamente (mesma origem, sem passar por aqui de novo)
+    const idx = Math.max(0, Number(req.query.idx || 0));
+    return res.json({ ok: true, tipo: "arquivo", link: `/inbox/curriculo/${encodeURIComponent(tel)}?idx=${idx}&inline=1` });
+  } catch (erro) {
+    console.error("Erro /inbox/curriculo-check:", erro.message);
+    res.status(500).json({ ok: false, motivo: erro.message });
+  }
+});
+
 app.get("/inbox/curriculo/:telefone", async (req, res) => {
   try {
     const tel = limparTelefone(req.params.telefone);
-    let sessao = sessoes[tel];
+    const resultado = await localizarCurriculo(tel, req.query.idx);
 
-    // Se sessão não existe ou não tem currículo, tenta recarregar do Sheets
-    let lista = sessao
-      ? (Array.isArray(sessao.curriculos) && sessao.curriculos.length ? sessao.curriculos : (sessao.curriculo ? [sessao.curriculo] : []))
-      : [];
-
-    if (!lista.length && CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        const r = await axios.get(`${urlBase}?acao=conversas&telefone=${tel}`, { timeout: 8000, maxRedirects: 3 });
-        const d = r.data;
-        if (d?.sessoes) {
-          const telKey = Object.keys(d.sessoes).find(k => limparTelefone(k) === tel);
-          if (telKey) {
-            const s = d.sessoes[telKey];
-            const cvs = Array.isArray(s.curriculos) ? s.curriculos : (s.curriculo ? [s.curriculo] : []);
-            if (cvs.length) {
-              // Salva de volta na sessão em memória
-              if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: s.nome || null, modo: "automatico", pausado: false, motivoPausa: "", unreadCount: 0, curriculos: [], curriculo: null, ultimaAnalise: null };
-              sessoes[tel].curriculos = cvs;
-              sessoes[tel].curriculo = cvs[0];
-              sessao = sessoes[tel];
-              lista = cvs;
-            }
-          }
-        }
-      } catch (e) { console.error("Fallback Sheets curriculo:", e.message); }
-    }
-
-    if (!lista.length) {
-      const nomeCandidato = sessao?.nome || tel;
-      // BUSCA AUTOMÁTICA: antes disso a Thiara precisava copiar o nome e procurar
-      // manualmente no Drive numa página separada. Agora tenta achar sozinho primeiro.
-      const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
-      if (achado) return res.redirect(achado.link);
+    if (!resultado.ok) {
       return res.status(404).json({
         ok: false,
         disponivel: false,
-        nomeCandidato,
+        nomeCandidato: resultado.nomeCandidato,
         telefone: tel,
         motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)."
       });
     }
 
-    const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
-    const cv = lista[idx];
-
-    // Se tem driveLink, redireciona diretamente para o Drive
-    if (cv?.driveLink) return res.redirect(cv.driveLink);
-
-    let buffer = null;
-    if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
-    else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
-
-    if (!buffer) {
-      // Arquivo local sumiu (reinício do Railway) — tenta driveLink da análise
-      const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
-      if (dlFallback) return res.redirect(dlFallback);
-      // BUSCA AUTOMÁTICA antes de desistir (ver comentário acima)
-      const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
-      if (achado) return res.redirect(achado.link);
-      return res.status(404).json({
-        ok: false,
-        disponivel: false,
-        nomeCandidato: sessao?.nome || tel,
-        telefone: tel,
-        motivo: "Arquivo local foi apagado (reinício do servidor) e não foi encontrado no Drive automaticamente."
-      });
-    }
+    if (resultado.tipo === "link") return res.redirect(resultado.link);
 
     const inline = req.query.inline === "1" || req.query.inline === "true";
-    res.set("Content-Type", cv.mimeType || "application/octet-stream");
-    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${cv.filename || "curriculo"}"`);
-    res.send(buffer);
+    res.set("Content-Type", resultado.mimeType || "application/octet-stream");
+    res.set("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${resultado.filename || "curriculo"}"`);
+    res.send(resultado.buffer);
   } catch (erro) {
     console.error("Erro /inbox/curriculo:", erro.message);
     res.status(500).send("Erro ao obter currículo");
