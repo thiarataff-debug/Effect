@@ -4173,14 +4173,32 @@ function mostrarCvIndisponivel(tel, dados){
     `O currículo de <strong>${nome}</strong> não foi encontrado — nem localmente, nem numa busca automática no Google Drive.<br><br>Peça o reenvio direto pelo WhatsApp:`;
   document.getElementById('modal-cv-indisponivel').classList.add('show');
 }
+let _reenvioCvEmAndamento = false;
 async function solicitarReenvioCv(){
-  if(!_cvIndispTelefone)return;
+  if(!_cvIndispTelefone || _reenvioCvEmAndamento)return; // trava contra clique duplo
+  // Confirmação extra: isso manda uma mensagem REAL de WhatsApp pro candidato.
+  const nomeConfirma = todasSessoes[_cvIndispTelefone]?.nome || telDisplay(_cvIndispTelefone);
+  if(!confirm(`Confirma o envio de uma mensagem de WhatsApp pra ${nomeConfirma} pedindo o currículo de novo?\n\nSó confirme se tiver certeza de que o currículo realmente não está disponível.`)) return;
+  _reenvioCvEmAndamento = true;
+  const btn = event?.target;
+  if(btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
   try{
     const r = await fetch(`${API}/inbox/curriculo/${encodeURIComponent(_cvIndispTelefone)}/pedir-reenvio`);
+    const d = await r.json().catch(()=>({}));
     fecharModal('modal-cv-indisponivel');
-    toast(r.ok ? '📩 Pedido de reenvio enviado ao candidato!' : 'Falha ao solicitar reenvio.', r.ok?'success':'error');
+    if(!r.ok || d.ok===false){
+      toast('Falha ao solicitar reenvio.', 'error');
+    } else if(d.jaSolicitado){
+      // Proteção contra pedir reenvio repetido: já não manda mensagem de novo
+      toast('⏳ '+(d.mensagem||'Já foi pedido reenvio recentemente.'), 'error');
+    } else {
+      toast('📩 Pedido de reenvio enviado ao candidato!', 'success');
+    }
   }catch(e){
     toast('Erro ao solicitar reenvio: '+e.message, 'error');
+  }finally{
+    _reenvioCvEmAndamento = false;
+    if(btn){ btn.disabled = false; btn.textContent = '📩 Solicitar reenvio via WhatsApp'; }
   }
 }
 
