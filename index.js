@@ -260,13 +260,18 @@ function normalizarEventoHistorico(evento) {
 
   const iso = ms ? new Date(ms).toISOString() : "";
 
+  // Quando ms=0 (nenhum timestamp real reconhecido), NÃO reaproveita o texto antigo
+  // que já estava no campo (evento?.timestamp etc.) — isso é o que fazia um valor
+  // corrompido tipo a string literal "Invalid Date" (gravada no Sheets por algum bug
+  // antigo) se perpetuar pra sempre, já que "" || "Invalid Date" sempre retornava
+  // "Invalid Date" de novo. Sem timestamp real, os campos ficam vazios mesmo.
   return {
     ...(evento || {}),
-    timestamp: iso || (evento?.timestamp || ""),
-    timestampISO: iso || (evento?.timestampISO || ""),
+    timestamp: iso,
+    timestampISO: iso,
     timestampMs: ms,
-    horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : (evento?.horario || ""),
-    horarioFormatado: ms ? formatarDataWhatsApp(ms) : (evento?.horarioFormatado || "")
+    horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "",
+    horarioFormatado: ms ? formatarDataWhatsApp(ms) : ""
   };
 }
 
@@ -290,44 +295,30 @@ function calcularUnreadSessao(sessao) {
 function normalizarSessaoParaInbox(telefone, sessao) {
   const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
 
-  // Interpola timestampMs em msgs sem hora
-  historicoNormalizado.forEach((msg, i) => {
-    if (Number(msg.timestampMs) > 0) return;
-    let prevMs = 0, nextMs = 0;
-    for (let j = i - 1; j >= 0; j--) { if (Number(historicoNormalizado[j].timestampMs) > 0) { prevMs = Number(historicoNormalizado[j].timestampMs); break; } }
-    for (let j = i + 1; j < historicoNormalizado.length; j++) { if (Number(historicoNormalizado[j].timestampMs) > 0) { nextMs = Number(historicoNormalizado[j].timestampMs); break; } }
-    if (prevMs && nextMs) msg.timestampMs = Math.round((prevMs + nextMs) / 2);
-    else if (prevMs)      msg.timestampMs = prevMs + 1;
-    else if (nextMs)      msg.timestampMs = nextMs - 1;
-    if (msg.timestampMs > 0) msg._approxMs = msg.timestampMs;
-  });
-
-  // Removido o fallback que inventava um horário atual quando nenhuma mensagem da
-  // conversa tinha timestamp real — a pedido, o sistema não deve mostrar hora
-  // inventada como se fosse real. Só loga, pra facilitar diagnóstico dessas conversas.
+  // REMOVIDO: interpolação de timestampMs (média entre vizinhos) para mensagens sem
+  // hora real, e a gravação desse valor "adivinhado" de volta na sessão em memória.
+  // Essa era a fonte mais frequente de horários/datas errados na tela: essa função
+  // roda a cada consulta do painel (a cada 5s), e o valor inventado, uma vez escrito
+  // de volta em sessao.historico[i].timestampMs, ficava indistinguível de um
+  // timestamp real — e depois era salvo no Sheets pelo salvamento periódico como se
+  // fosse verdadeiro, corrompendo os dados de forma permanente. A pedido, o sistema
+  // não deve mostrar (nem guardar) hora inventada como se fosse real: mensagem sem
+  // timestamp real simplesmente fica sem horário até chegar uma mensagem nova de
+  // verdade.
   if (historicoNormalizado.length && historicoNormalizado.every(m => !(Number(m.timestampMs) > 0))) {
     console.warn(`[timestamp] Sessão ${telefone}: nenhuma mensagem com timestamp real (${historicoNormalizado.length} msgs sem hora).`);
   }
 
-  // BUG CORRIGIDO: essa função roda a CADA consulta do painel (a cada 5s) e criava
-  // um array novo toda vez — o timestamp sintético calculado aqui nunca era salvo
-  // de volta na sessão em memória. Então, a cada nova mensagem que chegava, esse
-  // cálculo de interpolação partia dos vizinhos atuais (diferentes de antes) e
-  // mensagens antigas sem horário real podiam receber um horário sintético
-  // diferente a cada consulta — fazendo elas "pularem de posição" na tela.
-  // Agora gravamos o valor calculado de volta no histórico em memória, então da
-  // próxima vez ele já vem pronto (estável) em vez de ser recalculado do zero.
-  if (Array.isArray(sessao?.historico)) {
-    historicoNormalizado.forEach((msg, i) => {
-      const original = sessao.historico[i];
-      if (original && msg.timestampMs > 0 && !Number(original.timestampMs)) {
-        original.timestampMs = msg.timestampMs;
-        original._approxMs = msg.timestampMs;
-      }
-    });
-  }
-
-  historicoNormalizado.sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
+  // Ordena por timestamp real quando os DOIS lados têm; quando um dos dois (ou os
+  // dois) não tem timestamp real, mantém a ordem original de chegada em vez de
+  // jogar pro início da lista (0 sempre seria "menor" que qualquer hora real).
+  historicoNormalizado.forEach((m, i) => { m._ordemOriginal = i; });
+  historicoNormalizado.sort((a, b) => {
+    const msA = Number(a.timestampMs || 0), msB = Number(b.timestampMs || 0);
+    if (msA > 0 && msB > 0) return msA - msB;
+    return a._ordemOriginal - b._ordemOriginal;
+  });
+  historicoNormalizado.forEach(m => { delete m._ordemOriginal; });
 
   const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
   const lastMessageAtMs = ultima?.timestampMs || 0;
@@ -1170,50 +1161,18 @@ async function carregarSessoesDoSheets() {
         ? sessao.historico.map(normalizarEventoHistorico).filter(h => h && h.content !== undefined)
         : [];
 
-      // Âncora estável: usa o timestampMs salvo na sessão do Sheets (nunca Date.now())
-      // Assim o horário aproximado não muda a cada refresh
-      const ancoraSessaoMs = Number(sessao.timestampMs || sessao.lastMessageAtMs || 0);
-      let ancoraMs = ancoraSessaoMs;
-      if (!ancoraMs) {
-        // Procura a última msg com timestamp real como âncora
-        for (let i = historicoNorm.length - 1; i >= 0; i--) {
-          const ms = Number(historicoNorm[i].timestampMs || 0);
-          if (ms > 0) { ancoraMs = ms; break; }
-        }
-      }
-      // Removido o "último recurso" que inventava o horário atual quando não havia
-      // NENHUM timestamp real — a pedido, preferimos não mostrar hora nenhuma a
-      // mostrar uma hora inventada. O foco agora é garantir que toda mensagem NOVA
-      // já chegue com timestamp real (ver /webhook e salvarMensagemSheets) em vez
-      // de tentar adivinhar depois.
-      if (!ancoraMs && historicoNorm.length) {
+      // IMPORTANTE: não inventamos mais horário nenhum aqui — nem "agora", nem
+      // interpolado/aproximado por posição, nem reaproveitado por "mensagem parecida"
+      // (role+conteúdo). Esse reaproveitamento por conteúdo causava troca de horário
+      // entre mensagens idênticas (ex: várias mensagens "oi" do mesmo candidato
+      // recebiam horários errados umas das outras a cada sincronização), e o horário
+      // "inventado" ficava sendo salvo de volta no Sheets como se fosse real,
+      // corrompendo os dados permanentemente. Mensagem sem timestamp real definido
+      // em normalizarEventoHistorico() simplesmente fica sem horário (timestampMs: 0)
+      // até chegar uma mensagem nova de verdade — mostrar nada é melhor que mostrar
+      // errado.
+      if (historicoNorm.length && historicoNorm.every(m => !(Number(m.timestampMs) > 0))) {
         console.warn(`[timestamp] Sessão ${tel}: nenhuma mensagem com timestamp real encontrada (${historicoNorm.length} msgs). Vão aparecer sem horário até que uma msg nova com timestamp real chegue.`);
-      }
-      if (ancoraMs > 0) {
-        // BUG CORRIGIDO: esse cálculo rodava do zero a cada sincronização com o Sheets,
-        // usando o tamanho ATUAL do histórico — então, quando uma msg nova chegava, o
-        // timestamp sintético de mensagens ANTIGAS sem hora real mudava, e elas
-        // "pulavam de posição" na conversa (o candidato via mensagens fora de ordem).
-        // Agora, antes de recalcular, tenta reaproveitar o timestamp sintético já
-        // atribuído a essa mesma mensagem numa sincronização anterior (por role+conteúdo),
-        // então a posição dela fica estável entre atualizações.
-        const historicoAnterior = Array.isArray(existente.historico) ? existente.historico : [];
-        for (let i = historicoNorm.length - 1; i >= 0; i--) {
-          if (!Number(historicoNorm[i].timestampMs)) {
-            const msgAtual = historicoNorm[i];
-            const anteriorCorrespondente = historicoAnterior.find(m =>
-              m && m.role === msgAtual.role &&
-              String(m.content || "") === String(msgAtual.content || "") &&
-              Number(m._approxMs || m.timestampMs) > 0
-            );
-            if (anteriorCorrespondente) {
-              historicoNorm[i].timestampMs = Number(anteriorCorrespondente._approxMs || anteriorCorrespondente.timestampMs);
-            } else {
-              historicoNorm[i].timestampMs = ancoraMs - (historicoNorm.length - 1 - i) * 90000;
-            }
-            historicoNorm[i]._approxMs = historicoNorm[i].timestampMs;
-          }
-        }
       }
 
       sessoes[tel] = {
@@ -1341,6 +1300,15 @@ carregarSessoesDoSheets().then(async () => {
   console.log("[startup] Sincronização inicial completa.");
 }).catch(e => { console.error("Erro na inicialização:", e.message); sincronizacaoInicialCompleta = true; });
 setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
+
+// Recarga automática periódica do Sheets — antes só recarregava quando o servidor
+// ligava, então qualquer correção feita na planilha/Apps Script só entrava em vigor
+// depois de reiniciar o Railway ou clicar manualmente em "Recarregar do Sheets".
+// Agora recarrega sozinho a cada 30 minutos, sem precisar de nenhuma ação manual.
+setInterval(() => {
+  console.log("[auto-sync] Recarregando sessões do Sheets automaticamente...");
+  carregarSessoesDoSheets().catch(e => console.error("[auto-sync] Falha:", e.message));
+}, 30 * 60 * 1000);
 
 // Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
 // (antes era sequencial para TODAS as sessões, com timeout de 20s cada — sob carga isso
