@@ -907,38 +907,8 @@ font-family:'Montserrat',sans-serif
       <div class="status-banner sb-manual" id="banner-manual">👩 <strong>Laura</strong> está respondendo — assinatura automática ativa.</div>
       <div class="status-banner sb-camila" id="banner-camila">🩷 <strong>Camila</strong> está respondendo — foco em agendamento de entrevistas.</div>
       <div class="status-banner sb-atencao" id="banner-atencao">⚠️ <strong>Atenção necessária:</strong> <span id="banner-motivo">—</span></div>
-      <!-- Pipeline de Status — Opção C (colapsável) -->
-      <div class="pipeline-bar pipeline-track-wrap" id="pipeline-bar">
-        <div class="pl-toggle" onclick="togglePipeline()" id="pl-toggle">
-          <div id="pl-status-label" style="font-size:10px;font-weight:700;letter-spacing:.3px;color:#94a3b8">● Nenhum status</div>
-          <span class="pl-toggle-arrow">▼</span>
-        </div>
-        <div class="pl-body">
-          <div class="pl-track">
-            <div class="pl-step" data-pl="Triado" onclick="definirStatusPipeline('Triado')"><div class="pl-step-dot"></div><div class="pl-step-label">Triado</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Em Vaga" onclick="definirStatusPipeline('Em Vaga')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Vaga</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Entrevista Agendada" onclick="definirStatusPipeline('Entrevista Agendada')"><div class="pl-step-dot"></div><div class="pl-step-label">Entrev. Ag.</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Aprovado 1ª Etapa" onclick="definirStatusPipeline('Aprovado 1ª Etapa')"><div class="pl-step-dot"></div><div class="pl-step-label">Aprov. 1ª</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Entrevista Gestor Agendada" onclick="definirStatusPipeline('Entrevista Gestor Agendada')"><div class="pl-step-dot"></div><div class="pl-step-label">Entr. Gestor</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Em Teste" onclick="definirStatusPipeline('Em Teste')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Teste</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Aprovado Gestor" onclick="definirStatusPipeline('Aprovado Gestor')"><div class="pl-step-dot"></div><div class="pl-step-label">Aprov. Gestor</div></div>
-            <div class="pl-conn"></div>
-            <div class="pl-step" data-pl="Em Admissão" onclick="definirStatusPipeline('Em Admissão')"><div class="pl-step-dot"></div><div class="pl-step-label">Em Admissão</div></div>
-          </div>
-          <div class="pl-reject-row">
-            <button class="pl-rbtn" style="background:#b91c1c" data-pl="Reprovado Triagem" onclick="definirStatusPipeline('Reprovado Triagem')">✗ Rep. Triagem</button>
-            <button class="pl-rbtn" style="background:#ef4444" data-pl="Reprovado 1ª Etapa" onclick="definirStatusPipeline('Reprovado 1ª Etapa')">✗ Rep. 1ª Etapa</button>
-            <button class="pl-rbtn" style="background:#dc2626" data-pl="Reprovado Gestor" onclick="definirStatusPipeline('Reprovado Gestor')">✗ Rep. Gestor</button>
-            <button class="pl-rbtn" style="background:#6b7280" data-pl="Banco de Talentos" onclick="definirStatusPipeline('Banco de Talentos')">📦 Banco de Talentos</button>
-          </div>
-        </div>
-      </div>
+      <!-- Barra de pipeline do topo removida a pedido: a mesma trilha de etapas já
+           aparece na lateral direita (painel Status), então ficava duplicado. -->
       <div class="messages" id="messages"></div>
       <div class="quick-bar" id="quick-bar"></div>
       <div class="input-area">
@@ -1032,7 +1002,7 @@ font-family:'Montserrat',sans-serif
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="cv-indisp-texto">—</div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-cv-indisponivel')">Fechar</button>
-      <button class="modal-btn modal-confirm" style="background:#dc2626" onclick="solicitarReenvioCv()">📩 Solicitar reenvio via WhatsApp</button>
+      <button class="modal-btn modal-confirm" id="btn-solicitar-reenvio-cv" style="background:#dc2626" onclick="solicitarReenvioCv()">📩 Solicitar reenvio via WhatsApp</button>
     </div>
   </div>
 </div>
@@ -4169,8 +4139,19 @@ async function abrirCurriculo(tel, idx){
 function mostrarCvIndisponivel(tel, dados){
   _cvIndispTelefone = tel;
   const nome = dados?.nomeCandidato || (todasSessoes[tel]?.nome) || telDisplay(tel);
-  document.getElementById('cv-indisp-texto').innerHTML =
-    `O currículo de <strong>${nome}</strong> não foi encontrado — nem localmente, nem numa busca automática no Google Drive.<br><br>Peça o reenvio direto pelo WhatsApp:`;
+  const btnReenvio = document.getElementById('btn-solicitar-reenvio-cv');
+  if(dados?.aindaSincronizando){
+    // Proteção contra falso "não encontrado": o servidor reiniciou há pouco e ainda
+    // está carregando os dados — nesse intervalo o resultado não é confiável, então
+    // escondemos o botão de reenvio pra evitar mandar mensagem errada ao candidato.
+    document.getElementById('cv-indisp-texto').innerHTML =
+      `⚠️ O servidor reiniciou recentemente e ainda está carregando os dados — este resultado <strong>pode ser falso</strong>.<br><br>Espere 1-2 minutos e clique em "Ver currículo" de novo antes de pedir reenvio pra <strong>${nome}</strong>.`;
+    if(btnReenvio) btnReenvio.style.display = 'none';
+  } else {
+    document.getElementById('cv-indisp-texto').innerHTML =
+      `O currículo de <strong>${nome}</strong> não foi encontrado — nem localmente, nem numa busca automática no Google Drive.<br><br>Peça o reenvio direto pelo WhatsApp:`;
+    if(btnReenvio) btnReenvio.style.display = '';
+  }
   document.getElementById('modal-cv-indisponivel').classList.add('show');
 }
 let _reenvioCvEmAndamento = false;
