@@ -3579,3 +3579,5 @@ supervisor.iniciarSupervisor();
 // O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
 // e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
 const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
