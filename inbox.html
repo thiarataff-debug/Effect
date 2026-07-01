@@ -3273,6 +3273,17 @@ async function enviarDiscDireto(){
         s2.historico.push({role:'assistant',content:msg,timestamp:new Date().toISOString()});
         renderMsgs(s2);
       }
+      // BUG CORRIGIDO: este botão enviava a mensagem mas não atualizava o status —
+      // ficava mostrando "Aguardando recrutador" mesmo depois de você ter mandado o
+      // DISC pro candidato responder. Agora segue a mesma regra do envio manual.
+      const stAtualDisc=statusMap[sessaoAtual]||'';
+      const statusBloqueadosDisc=['Finalizado','Reprovado','Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor','Banco de Talentos','Banco de talentos'];
+      if(!statusBloqueadosDisc.includes(stAtualDisc)){
+        statusMap[sessaoAtual]='Aguardando candidato';
+        salvarLocal();
+        renderLista();
+        renderPainelDireito();
+      }
       toast('📊 DISC enviado!','success');
     }else{toast('Erro ao enviar DISC','error');}
   }catch(e){toast('Erro ao enviar DISC','error');console.error(e);}
