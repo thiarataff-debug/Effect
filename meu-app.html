@@ -106,6 +106,8 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .slider-row{display:flex;align-items:center;gap:8px}
 .slider-row input[type=range]{flex:1;accent-color:var(--blue)}
 .slider-val{font-weight:800;font-size:13px;color:var(--blue);min-width:18px;text-align:center}
+.psi-time-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;color:var(--text);background:var(--bg)}
+.psi-time-input:focus{border-color:var(--blue)}
 .med-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .med-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
 .med-item.taken{background:#f0fdf4;border-color:#86efac}
@@ -607,7 +609,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
       <div class="today-progress">
-        <span id="prog-filled">0</span>/12 campos
+        <span id="prog-filled">0</span>/7 campos
       </div>
       <button class="btn btn-primary" onclick="saveDay()">💾 Salvar</button>
     </div>
@@ -615,150 +617,81 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
   <div id="day-alert" style="display:none;"></div>
 
-  <!-- HUMOR, ENERGIA, ANSIEDADE -->
+  <!-- HUMOR + ANSIEDADE (simplificado) -->
   <div class="card">
-    <div class="card-title">🎭 Bem-estar Emocional <span class="badge">escala 0-10</span></div>
+    <div class="card-title">🎭 Bem-estar Emocional</div>
     <div class="slider-grid">
       <div class="slider-item">
-        <label>Humor</label>
+        <label>Humor <span class="badge">escala 0-10</span></label>
         <div class="slider-row">
           <input type="range" min="0" max="10" value="5" id="sl-humor" oninput="updateSlider(this,'val-humor')">
           <span class="slider-val" id="val-humor">5</span>
         </div>
       </div>
       <div class="slider-item">
-        <label>Energia</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-energia" oninput="updateSlider(this,'val-energia')">
-          <span class="slider-val" id="val-energia">5</span>
-        </div>
+        <label>Ansiedade — que horas?</label>
+        <input type="time" id="hor-ansiedade" class="psi-time-input" onchange="updateProgress()">
       </div>
-      <div class="slider-item">
-        <label>Ansiedade</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-ansiedade" oninput="updateSlider(this,'val-ansiedade')">
-          <span class="slider-val" id="val-ansiedade">5</span>
-        </div>
-      </div>
-      <div class="slider-item">
-        <label>Agitação tarde</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-agitacao" oninput="updateSlider(this,'val-agitacao')">
-          <span class="slider-val" id="val-agitacao">5</span>
-        </div>
-      </div>
-      <div class="slider-item">
-        <label>Libido</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-libido" oninput="updateSlider(this,'val-libido')">
-          <span class="slider-val" id="val-libido">5</span>
-        </div>
-      </div>
-      <div class="slider-item">
-        <label>Compulsão alimentar</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-compulsao" oninput="updateSlider(this,'val-compulsao')">
-          <span class="slider-val" id="val-compulsao">5</span>
-        </div>
-      </div>
+    </div>
+    <!-- Campos antigos mantidos ocultos (não aparecem mais na tela, mas seguem
+         alimentando o Dashboard/Histórico/PDF que já existiam antes da simplificação) -->
+    <div style="display:none">
+      <input type="range" min="0" max="10" value="5" id="sl-energia">
+      <input type="range" min="0" max="10" value="5" id="sl-ansiedade">
+      <input type="range" min="0" max="10" value="5" id="sl-agitacao">
+      <input type="range" min="0" max="10" value="5" id="sl-libido">
+      <input type="range" min="0" max="10" value="5" id="sl-compulsao">
+      <span id="val-energia"></span><span id="val-ansiedade"></span>
+      <span id="val-agitacao"></span><span id="val-libido"></span><span id="val-compulsao"></span>
     </div>
   </div>
 
-  <!-- SONO -->
+  <!-- SONO (simplificado) -->
   <div class="card">
     <div class="card-title">🌙 Sono</div>
     <div class="slider-grid">
       <div class="slider-item">
-        <label>Horas dormidas</label>
+        <label>Sono <span class="badge">escala 0-10</span></label>
         <div class="slider-row">
-          <input type="range" min="0" max="14" step="0.5" value="7" id="sl-horas-sono" oninput="updateSlider(this,'val-horas-sono')">
-          <span class="slider-val" id="val-horas-sono">7h</span>
+          <input type="range" min="0" max="10" value="5" id="sl-sono-geral" oninput="updateSlider(this,'val-sono-geral')">
+          <span class="slider-val" id="val-sono-geral">5</span>
         </div>
       </div>
       <div class="slider-item">
-        <label>Qualidade do sono</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-qualidade-sono" oninput="updateSlider(this,'val-qualidade-sono')">
-          <span class="slider-val" id="val-qualidade-sono">5</span>
-        </div>
+        <label>Sonolência — que horas?</label>
+        <input type="time" id="hor-sonolencia" class="psi-time-input" onchange="updateProgress()">
       </div>
-      <div class="slider-item">
-        <label>Sonolência matinal</label>
-        <div class="slider-row">
-          <input type="range" min="0" max="10" value="5" id="sl-sonolencia" oninput="updateSlider(this,'val-sonolencia')">
-          <span class="slider-val" id="val-sonolencia">5</span>
-        </div>
-      </div>
+    </div>
+    <div style="display:none">
+      <input type="range" min="0" max="14" step="0.5" value="7" id="sl-horas-sono">
+      <input type="range" min="0" max="10" value="5" id="sl-qualidade-sono">
+      <input type="range" min="0" max="10" value="5" id="sl-sonolencia">
+      <span id="val-horas-sono"></span><span id="val-qualidade-sono"></span><span id="val-sonolencia"></span>
     </div>
   </div>
 
-  <!-- MEDICAMENTOS -->
+  <!-- SINTOMAS GERAIS -->
   <div class="card">
-    <div class="card-title">💊 Medicamentos</div>
-    <div class="med-grid">
-      <label class="med-item" id="med-desv-manha" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-desv-manha">
-        <div class="med-info">
-          <div class="med-name">Desvenlafaxina 100mg</div>
-          <div class="med-dose">☀️ Manhã</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-desv-almoco" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-desv-almoco">
-        <div class="med-info">
-          <div class="med-name">Desvenlafaxina 100mg</div>
-          <div class="med-dose">🍽️ Após almoço</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-lamo-manha" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-lamo-manha">
-        <div class="med-info">
-          <div class="med-name">Lamitor</div>
-          <div class="med-dose">☀️ Manhã</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-lamo-tarde" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-lamo-tarde">
-        <div class="med-info">
-          <div class="med-name">Lamitor</div>
-          <div class="med-dose">🌤️ Tarde</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-lamo-noite" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-lamo-noite">
-        <div class="med-info">
-          <div class="med-name">Lamitor</div>
-          <div class="med-dose">🌙 Noite</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-quet" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-quet">
-        <div class="med-info">
-          <div class="med-name">Quetiapina 12,5mg</div>
-          <div class="med-dose">🌙 Noite</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-uni-manha" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-uni-manha">
-        <div class="med-info">
-          <div class="med-name">Uninaltrex ½cp</div>
-          <div class="med-dose">☀️ Manhã</div>
-        </div>
-      </label>
-      <label class="med-item" id="med-uni-tarde" onclick="toggleMed(this)">
-        <input type="checkbox" id="chk-uni-tarde">
-        <div class="med-info">
-          <div class="med-name">Uninaltrex ½cp</div>
-          <div class="med-dose">🌤️ Tarde</div>
-        </div>
-      </label>
-    </div>
-    <div style="margin-top:0.75rem;">
-      <div class="form-group">
-        <label>Efeitos colaterais percebidos hoje</label>
-        <textarea id="txt-efeitos" rows="2" placeholder="Ex: leve tontura pela manhã, boca seca..."></textarea>
-      </div>
-    </div>
+    <div class="card-title">🩺 Sintomas Gerais</div>
+    <textarea id="txt-sintomas-gerais" rows="2" placeholder="Ex: dor de cabeça, tontura, náusea, boca seca..."></textarea>
+  </div>
+
+  <!-- MEDICAMENTOS (agora gerado a partir da sua lista configurável, com horário) -->
+  <div class="card">
+    <div class="card-title">💊 Medicamentos <span class="badge" title="Adicione, remova ou mude o horário no painel 'Estoque de Medicamentos' logo acima">edite no painel acima ↑</span></div>
+    <div class="med-grid" id="med-checklist-dinamico"><!-- preenchido por psiRenderMedChecklist() --></div>
+  </div>
+
+  <div style="display:none">
+    <label class="med-item" id="med-desv-manha"><input type="checkbox" id="chk-desv-manha"></label>
+    <label class="med-item" id="med-desv-almoco"><input type="checkbox" id="chk-desv-almoco"></label>
+    <label class="med-item" id="med-lamo-manha"><input type="checkbox" id="chk-lamo-manha"></label>
+    <label class="med-item" id="med-lamo-tarde"><input type="checkbox" id="chk-lamo-tarde"></label>
+    <label class="med-item" id="med-lamo-noite"><input type="checkbox" id="chk-lamo-noite"></label>
+    <label class="med-item" id="med-quet"><input type="checkbox" id="chk-quet"></label>
+    <label class="med-item" id="med-uni-manha"><input type="checkbox" id="chk-uni-manha"></label>
+    <label class="med-item" id="med-uni-tarde"><input type="checkbox" id="chk-uni-tarde"></label>
+    <textarea id="txt-efeitos"></textarea>
   </div>
 
   <!-- OBSERVAÇÕES -->
@@ -794,9 +727,20 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <!-- STAT CARDS -->
   <div class="stat-grid" id="stat-grid"></div>
 
+  <!-- ACOMPANHAMENTO SIMPLIFICADO (novos campos) -->
+  <div class="card">
+    <div class="card-title">📈 Humor e Sono <span class="badge">registro simplificado</span></div>
+    <div class="chart-wrap"><canvas id="ch-simplificado"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🕐 Horários de Ansiedade e Sonolência</div>
+    <div class="chart-wrap"><canvas id="ch-horarios"></canvas></div>
+  </div>
+
   <!-- CHARTS -->
   <div class="card">
-    <div class="card-title">📈 Humor, Energia e Ansiedade</div>
+    <div class="card-title">📈 Humor, Energia e Ansiedade (escala 0-10)</div>
     <div class="chart-wrap"><canvas id="ch-hea"></canvas></div>
   </div>
 
@@ -1772,15 +1716,15 @@ function initSliders() {
 
 function updateProgress() {
   let filled = 0;
-  const sliders = ['sl-humor','sl-energia','sl-ansiedade','sl-agitacao','sl-libido','sl-compulsao','sl-horas-sono','sl-qualidade-sono','sl-sonolencia'];
-  // count sliders as always filled (they have default values)
-  filled += 9;
-  const checkboxes = ['chk-desv-manha','chk-desv-almoco','chk-lamo-manha','chk-lamo-tarde','chk-lamo-noite','chk-quet','chk-uni-manha','chk-uni-tarde'];
-  const anyMed = checkboxes.some(id => document.getElementById(id).checked);
+  // Humor e Sono sempre contam (têm valor padrão no slider)
+  filled += 2;
+  const anyMed = Array.from(document.querySelectorAll('#med-checklist-dinamico input[type=checkbox]')).some(cb => cb.checked);
   if (anyMed) filled += 1;
-  if (document.getElementById('txt-efeitos').value.trim()) filled += 1;
-  if (document.getElementById('txt-obs').value.trim()) filled += 1;
-  document.getElementById('prog-filled').textContent = Math.min(filled, 12);
+  if ((document.getElementById('hor-ansiedade')?.value||'').trim()) filled += 1;
+  if ((document.getElementById('hor-sonolencia')?.value||'').trim()) filled += 1;
+  if ((document.getElementById('txt-sintomas-gerais')?.value||'').trim()) filled += 1;
+  if ((document.getElementById('txt-obs')?.value||'').trim()) filled += 1;
+  document.getElementById('prog-filled').textContent = Math.min(filled, 7);
 }
 
 function toggleMed(el) {
@@ -1810,6 +1754,14 @@ function saveDay() {
   const totalMeds = Object.keys(meds).length;
   const takenMeds = Object.values(meds).filter(Boolean).length;
 
+  // Checklist dinâmico de medicamentos (gerado a partir da lista configurável)
+  const medsDinamico = {};
+  document.querySelectorAll('#med-checklist-dinamico input[type=checkbox]').forEach(cb=>{
+    medsDinamico[cb.id] = cb.checked;
+  });
+  const totalMedsDin = Object.keys(medsDinamico).length;
+  const takenMedsDin = Object.values(medsDinamico).filter(Boolean).length;
+
   db[key] = {
     humor: +document.getElementById('sl-humor').value,
     energia: +document.getElementById('sl-energia').value,
@@ -1820,8 +1772,15 @@ function saveDay() {
     horasSono: +document.getElementById('sl-horas-sono').value,
     qualidadeSono: +document.getElementById('sl-qualidade-sono').value,
     sonolencia: +document.getElementById('sl-sonolencia').value,
+    // Campos simplificados (novos)
+    sonoGeral: +document.getElementById('sl-sono-geral').value,
+    ansiedadeHorario: (document.getElementById('hor-ansiedade')?.value||''),
+    sonolenciaHorario: (document.getElementById('hor-sonolencia')?.value||''),
+    sintomasGerais: (document.getElementById('txt-sintomas-gerais')?.value||'').trim(),
+    medsDinamico,
+    adesaoDinamica: totalMedsDin ? Math.round(takenMedsDin / totalMedsDin * 100) : 0,
     meds,
-    adesao: Math.round(takenMeds / totalMeds * 100),
+    adesao: totalMeds ? Math.round(takenMeds / totalMeds * 100) : 0,
     efeitos: document.getElementById('txt-efeitos').value.trim(),
     obs: document.getElementById('txt-obs').value.trim(),
     ts: new Date().toISOString(),
@@ -1861,6 +1820,9 @@ function psiSelectDay(val){
   });
   document.getElementById('txt-efeitos').value='';
   document.getElementById('txt-obs').value='';
+  const horAns=document.getElementById('hor-ansiedade'); if(horAns) horAns.value='';
+  const horSono=document.getElementById('hor-sonolencia'); if(horSono) horSono.value='';
+  const txtSint=document.getElementById('txt-sintomas-gerais'); if(txtSint) txtSint.value='';
   loadToday();
 }
 
@@ -1889,6 +1851,7 @@ function loadToday() {
     setSlider('sl-horas-sono', d.horasSono);
     setSlider('sl-qualidade-sono', d.qualidadeSono);
     setSlider('sl-sonolencia', d.sonolencia);
+    setSlider('sl-sono-geral', d.sonoGeral !== undefined ? d.sonoGeral : 5);
 
     if (d.meds) {
       Object.entries(d.meds).forEach(([k,v]) => {
@@ -1904,7 +1867,13 @@ function loadToday() {
     }
     if (d.efeitos) document.getElementById('txt-efeitos').value = d.efeitos;
     if (d.obs) document.getElementById('txt-obs').value = d.obs;
+    const horAns=document.getElementById('hor-ansiedade'); if(horAns) horAns.value = d.ansiedadeHorario||'';
+    const horSono=document.getElementById('hor-sonolencia'); if(horSono) horSono.value = d.sonolenciaHorario||'';
+    const txtSint=document.getElementById('txt-sintomas-gerais'); if(txtSint) txtSint.value = d.sintomasGerais||'';
   }
+  // Reconstrói o checklist de medicamentos do dia (lê medsDinamico salvo, se houver)
+  if(typeof psiRenderMedChecklist==='function') psiRenderMedChecklist();
+  updateProgress();
 }
 
 // ═══════════════════════ NAVIGATION ═══════════════════════
@@ -1991,6 +1960,47 @@ function renderDashboard() {
 
   // LABELS & DATASETS
   const labels = data.map(d => formatDate(d.key));
+
+  // ── ACOMPANHAMENTO SIMPLIFICADO ──
+  // Humor + Sono (escala 0-10) dia a dia
+  destroyChart('simplificado');
+  chartInstances['simplificado'] = new Chart(document.getElementById('ch-simplificado'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        lineDS('Humor', data.map(d=>d.humor), '#8ed1b2'),
+        lineDS('Sono', data.map(d=>d.sonoGeral!==undefined?d.sonoGeral:null), '#1fa5f0'),
+      ]
+    },
+    options: chartOpts(0, 10)
+  });
+
+  // Horário (convertido em hora decimal) em que ansiedade/sonolência ocorreram, dia a dia
+  destroyChart('horarios');
+  const horaDecimal = (hhmm) => {
+    if (!hhmm) return null;
+    const [h,m] = String(hhmm).split(':').map(Number);
+    if (isNaN(h)) return null;
+    return +(h + (m||0)/60).toFixed(2);
+  };
+  chartInstances['horarios'] = new Chart(document.getElementById('ch-horarios'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { ...lineDS('Ansiedade', data.map(d=>horaDecimal(d.ansiedadeHorario)), '#f4afa1'), spanGaps: true, showLine: false, pointRadius: 5 },
+        { ...lineDS('Sonolência', data.map(d=>horaDecimal(d.sonolenciaHorario)), '#d97706'), spanGaps: true, showLine: false, pointRadius: 5 },
+      ]
+    },
+    options: {
+      ...chartOpts(0, 24),
+      scales: {
+        ...chartOpts(0, 24).scales,
+        y: { min:0, max:24, ticks:{ stepSize:4, callback:(v)=>String(v).padStart(2,'0')+'h', font:{family:'Montserrat',size:10}, color:'#a1a1aa' }, grid:{color:'#f0f0f0'} }
+      }
+    }
+  });
 
   // Humor / Energia / Ansiedade
   destroyChart('hea');
@@ -2624,11 +2634,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── PSI MEDICATION STOCK TRACKER ──
 const PSI_MEDS_DEFAULT = [
-  {id:'desvenla',name:'Desvenlafaxina',doseDay:1,stock:0,boxSize:30,alertDays:10},
-  {id:'lamotrigina',name:'Lamotrigina',doseDay:1,stock:0,boxSize:60,alertDays:10},
-  {id:'quetiapina',name:'Quetiapina',doseDay:1,stock:0,boxSize:30,alertDays:7},
-  {id:'uninaltrex',name:'Uninaltrex (Naltrexona)',doseDay:1,stock:0,boxSize:30,alertDays:7},
-  {id:'citoneurin',name:'Citoneurin',doseDay:1,stock:0,boxSize:30,alertDays:10},
+  {id:'desvenla',name:'Desvenlafaxina',doseDay:1,stock:0,boxSize:30,alertDays:10,horarios:['08:00']},
+  {id:'lamotrigina',name:'Lamotrigina',doseDay:1,stock:0,boxSize:60,alertDays:10,horarios:['08:00']},
+  {id:'quetiapina',name:'Quetiapina',doseDay:1,stock:0,boxSize:30,alertDays:7,horarios:['22:00']},
+  {id:'uninaltrex',name:'Uninaltrex (Naltrexona)',doseDay:1,stock:0,boxSize:30,alertDays:7,horarios:['08:00']},
+  {id:'citoneurin',name:'Citoneurin',doseDay:1,stock:0,boxSize:30,alertDays:10,horarios:['08:00']},
 ];
 
 function psiGetMedStock(){
@@ -2643,6 +2653,10 @@ function psiGetMedStock(){
       saved.push(JSON.parse(JSON.stringify(def)));
       changed=true;
     }
+  });
+  // Migração: medicamentos salvos antes do campo "horarios" existir ganham um horário padrão
+  saved.forEach(m=>{
+    if(!Array.isArray(m.horarios)||!m.horarios.length){ m.horarios=['08:00']; changed=true; }
   });
   if(changed) psiSaveMedStock(saved);
   return saved;
@@ -2673,7 +2687,7 @@ function psiCheckRestock(){
 // ── INIT ──
 document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedStock();
+renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedChecklist();
 cicloInit();
 
 seiRender();
@@ -2735,11 +2749,16 @@ function psiRenderMedStock(){
           <input type="number" min="1" class="psi-stock-input" value="${m.alertDays}" onchange="psiUpdateStock(${i},'alertDays',+this.value)">
         </div>
       </div>
+      <div class="psi-stock-field" style="margin-top:8px">
+        <label>Horário(s) — separados por vírgula</label>
+        <input type="text" class="psi-stock-input" style="width:100%" value="${(m.horarios||[]).join(', ')}" placeholder="Ex: 08:00, 20:00" onchange="psiUpdateHorarios(${i},this.value)">
+      </div>
     </div>`;
   });
   html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';
   html+='</div>';
   el.innerHTML=html;
+  if(typeof psiRenderMedChecklist==='function') psiRenderMedChecklist();
 }
 
 function psiUpdateStock(idx,field,val){
@@ -2749,13 +2768,57 @@ function psiUpdateStock(idx,field,val){
   psiRenderMedStock();
 }
 
+function psiUpdateHorarios(idx,val){
+  const meds=psiGetMedStock();
+  if(!meds[idx])return;
+  const horarios=String(val||'').split(',').map(h=>h.trim()).filter(Boolean);
+  meds[idx].horarios=horarios.length?horarios:['08:00'];
+  psiSaveMedStock(meds);
+  psiRenderMedStock();
+}
+
 function psiAddMed(){
   const name=prompt('Nome do medicamento:');
   if(!name||!name.trim())return;
+  const horario=prompt('Horário (ex: 08:00) — se tiver mais de um, separe por vírgula:','08:00');
+  const horarios=String(horario||'08:00').split(',').map(h=>h.trim()).filter(Boolean);
   const meds=psiGetMedStock();
-  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:1,stock:0,boxSize:30,alertDays:7});
+  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:horarios.length||1,stock:0,boxSize:30,alertDays:7,horarios:horarios.length?horarios:['08:00']});
   psiSaveMedStock(meds);
   psiRenderMedStock();
+}
+
+// ─── CHECKLIST DIÁRIO DE MEDICAMENTOS (dinâmico, a partir da lista configurada acima) ───
+function psiRenderMedChecklist(){
+  const el=document.getElementById('med-checklist-dinamico');
+  if(!el)return;
+  const meds=psiGetMedStock();
+  if(!meds.length){ el.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:12px">Nenhum medicamento cadastrado ainda. Use "+ Adicionar medicamento" no painel de estoque acima.</div>'; return; }
+  let html='';
+  meds.forEach(m=>{
+    (m.horarios&&m.horarios.length?m.horarios:['—']).forEach(h=>{
+      const chkId='chkd-'+m.id+'-'+h.replace(':','');
+      html+=`<label class="med-item" id="itemd-${chkId}" onclick="toggleMed(this)">
+        <input type="checkbox" id="${chkId}" data-med-id="${m.id}" data-horario="${h}">
+        <div class="med-info">
+          <div class="med-name">${m.name}</div>
+          <div class="med-dose">🕐 ${h}</div>
+        </div>
+      </label>`;
+    });
+  });
+  el.innerHTML=html;
+  // Reaplica os "tomados" do dia carregado, se já houver dados salvos
+  if(typeof _psiDayKey!=='undefined'){
+    const db=getDB();
+    const dia=db[_psiDayKey];
+    if(dia&&dia.medsDinamico){
+      Object.entries(dia.medsDinamico).forEach(([chkId,val])=>{
+        const cb=document.getElementById(chkId);
+        if(cb){ cb.checked=val; cb.closest('.med-item')?.classList.toggle('taken',val); }
+      });
+    }
+  }
 }
 
 </script>
