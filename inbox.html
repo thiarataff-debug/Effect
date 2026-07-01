@@ -819,10 +819,13 @@ font-family:'Montserrat',sans-serif
     <div class="ftabs">
       <button class="ftab ftab-blue active" id="ftab-novas" onclick="setTab(this,'novas')">🔵 Não Lidas <span class="ftab-count" id="cnt-novas">0</span></button>
       <button class="ftab" id="ftab-todas" onclick="setTab(this,'todas')">Todas <span class="ftab-count" id="cnt-todas">0</span></button>
+      <!-- Promovidas pra abas principais (antes ficavam escondidas dentro de "⋯ Mais" e o
+           contador de "Aguardando você" nem era calculado — sempre mostrava 0) -->
+      <button class="ftab" id="ftab-aguardando-recrutador" onclick="setTab(this,'aguardando-recrutador')" style="border:1.5px solid #f59e0b;color:#b45309" title="Conversas esperando resposta sua">🟠 Aguardando você <span class="ftab-count" id="cnt-aguardando-recrutador">0</span></button>
+      <button class="ftab" id="ftab-aguardando-candidato" onclick="setTab(this,'aguardando-candidato')" style="border:1.5px solid #ca8a04;color:#854d0e" title="Conversas esperando resposta do candidato">🟡 Aguardando candidato <span class="ftab-count" id="cnt-aguardando-candidato">0</span></button>
       <!-- contadores mantidos para compatibilidade -->
       <span style="display:none" id="cnt-novos">0</span>
       <span style="display:none" id="cnt-aguardando-effect">0</span>
-      <span style="display:none" id="cnt-aguardando-candidato">0</span>
 
       <!-- contadores ocultos das abas extras -->
       <span style="display:none" id="cnt-atencao">0</span>
@@ -834,11 +837,9 @@ font-family:'Montserrat',sans-serif
       <div class="ftab-mais-wrap">
         <button class="ftab" onclick="toggleMaisAbas(event)">⋯ Mais</button>
         <div class="ftab-mais-menu" id="ftab-mais-menu">
-          <div class="ftab-mais-item" id="ftabm-aguardando-candidato" onclick="setTabMais('aguardando-candidato','ftabm-aguardando-candidato')">🟡 Candidato <span class="ftab-mais-cnt" id="cntm-aguardando-candidato">0</span></div>
           <div class="ftab-mais-item" id="ftabm-manual" onclick="setTabMais('manual','ftabm-manual')">👩 Laura <span class="ftab-mais-cnt" id="cntm-manual">0</span></div>
           <div class="ftab-mais-item" id="ftabm-lia" onclick="setTabMais('lia','ftabm-lia')">🤖 Lia <span class="ftab-mais-cnt" id="cntm-lia">0</span></div>
           <div class="ftab-mais-item" id="ftabm-curriculos" onclick="setTabMais('curriculos','ftabm-curriculos')">📄 CVs <span class="ftab-mais-cnt" id="cntm-curriculos">0</span></div>
-          <div class="ftab-mais-item" id="ftabm-aguardando-recrutador" onclick="setTabMais('aguardando-recrutador','ftabm-aguardando-recrutador')">🟠 Aguardando <span class="ftab-mais-cnt" id="cntm-aguardando-recrutador">0</span></div>
           <div class="ftab-mais-item" id="ftabm-retornar" onclick="setTabMais('retornar','ftabm-retornar')">📌 Retornar <span class="ftab-mais-cnt" id="cntm-retornar">0</span></div>
           <div class="ftab-mais-item" id="ftabm-arquivadas" onclick="setTabMais('arquivadas','ftabm-arquivadas')">📦 Arquivadas <span class="ftab-mais-cnt" id="cntm-arquivadas">0</span></div>
           <div class="ftab-mais-item" id="ftabm-camila" onclick="setTabMais('camila','ftabm-camila')">📅 Camila <span class="ftab-mais-cnt" id="cntm-camila">0</span></div>
@@ -2526,6 +2527,9 @@ function renderLista(){
   document.getElementById('cnt-novos').textContent=all.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
   document.getElementById('cnt-aguardando-effect').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
   document.getElementById('cnt-aguardando-candidato').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
+  // BUG CORRIGIDO: este contador nunca era calculado — o badge de "Aguardando você"
+  // sempre mostrava 0, mesmo escondido dentro do menu "⋯ Mais".
+  document.getElementById('cnt-aguardando-recrutador').textContent=all.filter(([tel])=>statusMap[tel]==='Aguardando recrutador').length;
   document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
@@ -5739,7 +5743,7 @@ function setTabMais(t,id){
 }
 // Sincroniza contadores do menu com os spans ocultos
 function syncMaisContadores(){
-  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas','aguardando-recrutador':'cntm-aguardando-recrutador'};
+  const map={atencao:'cntm-atencao',novas:'cntm-novas',manual:'cntm-manual',lia:'cntm-lia',curriculos:'cntm-curriculos',retornar:'cntm-retornar',arquivadas:'cntm-arquivadas'};
   Object.entries(map).forEach(([k,id])=>{
     const src=document.getElementById('cnt-'+k);
     const dst=document.getElementById(id);
