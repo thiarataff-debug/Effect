@@ -2103,6 +2103,15 @@ function mostrarView(v){
   if(agendaEl)agendaEl.style.display=v==='agenda'?'flex':'none';
   const meuAppEl=document.getElementById('view-meu-app');
   if(meuAppEl)meuAppEl.style.display=v==='meu-app'?'flex':'none';
+  // BUG CORRIGIDO: Financeiro, Dashboard e ATS Viewer nunca eram exibidos aqui —
+  // a função escondia todas as outras views mas não mostrava estas três, então
+  // a tela ficava inteiramente em branco ao clicar em "Financeiro" no menu.
+  const finEl=document.getElementById('view-financeiro');
+  if(finEl)finEl.style.display=v==='financeiro'?'flex':'none';
+  const dashEl=document.getElementById('view-dashboard');
+  if(dashEl)dashEl.style.display=v==='dashboard'?'flex':'none';
+  const atsEl=document.getElementById('view-ats');
+  if(atsEl)atsEl.style.display=v==='ats'?'flex':'none';
   const ni=document.getElementById('nav-inbox');if(ni)ni.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   const ne=document.getElementById('nav-entrevistas');if(ne)ne.style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
   const navAg=document.getElementById('nav-agenda');
@@ -2111,6 +2120,8 @@ function mostrarView(v){
   if(navConv)navConv.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   const navMeuApp=document.getElementById('nav-meuapp');
   if(navMeuApp)navMeuApp.style.background=v==='meu-app'?'rgba(255,255,255,.22)':'';
+  const navFin=document.getElementById('nav-financeiro');
+  if(navFin)navFin.style.background=v==='financeiro'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
   if(v==='agenda') renderAgenda();
 }
