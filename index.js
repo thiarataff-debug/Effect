@@ -540,13 +540,28 @@ function curriculoTemArquivo(cv) {
 // reinício do Railway). Procura por telefone (mais confiável, sempre presente
 // no nome do arquivo) e, se não achar, pelo nome do candidato.
 async function buscarCurriculoNoDriveAutomaticamente(telefone, nomeCandidato) {
-  try {
-    const drive = getDriveClient();
-    if (!drive) return null;
-    const termos = [telefone, nomeCandidato].filter(Boolean);
-    for (const termoBruto of termos) {
+  const drive = getDriveClient();
+  if (!drive) {
+    console.error(`[Drive] Busca automática abortada para ${telefone}: getDriveClient() retornou null — verifique GOOGLE_SERVICE_ACCOUNT_JSON no Railway.`);
+    return null;
+  }
+  // Ampliado: tenta várias variações do telefone (com/sem DDI 55, só os últimos
+  // dígitos) e o primeiro nome isolado — nomes/telefones salvos em épocas
+  // diferentes do sistema nem sempre batem 100% com o formato atual.
+  const telLimpo = String(telefone || "").replace(/\D/g, "");
+  const variacoesTel = [
+    telLimpo,
+    telLimpo.startsWith("55") ? telLimpo.slice(2) : null,
+    telLimpo.length > 9 ? telLimpo.slice(-9) : null,
+    telLimpo.length > 8 ? telLimpo.slice(-8) : null,
+  ].filter(Boolean);
+  const primeiroNome = nomeCandidato ? String(nomeCandidato).trim().split(/\s+/)[0] : null;
+  const termos = [...new Set([...variacoesTel, nomeCandidato, primeiroNome].filter(Boolean))];
+
+  for (const termoBruto of termos) {
+    try {
       const termo = String(termoBruto).replace(/'/g, "\\'").trim();
-      if (!termo) continue;
+      if (!termo || termo.length < 3) continue; // termo curto demais gera falso positivo
       const r = await drive.files.list({
         q: `name contains '${termo}' and trashed = false`,
         fields: "files(id, name, webViewLink)",
@@ -558,12 +573,12 @@ async function buscarCurriculoNoDriveAutomaticamente(telefone, nomeCandidato) {
       if (arquivo) {
         return { id: arquivo.id, link: arquivo.webViewLink || `https://drive.google.com/file/d/${arquivo.id}/view`, nome: arquivo.name };
       }
+    } catch (e) {
+      console.error(`[Drive] Busca automática falhou pro termo "${termoBruto}" (telefone ${telefone}):`, e.message);
     }
-    return null;
-  } catch (e) {
-    console.error("[Drive] Busca automática de currículo falhou:", e.message);
-    return null;
   }
+  console.warn(`[Drive] Nenhum currículo encontrado automaticamente pra ${nomeCandidato || telefone} (termos tentados: ${termos.join(", ")}).`);
+  return null;
 }
 
 function nomePastaCargo(cargo) {
@@ -1272,6 +1287,11 @@ function gravarDadosInbox(dados) {
 const localCount = carregarSessoesLocal();
 console.log(`[startup] Sessões carregadas do Volume local: ${localCount}`);
 
+// Flag usada pra avisar quando uma consulta (ex: busca de currículo) acontece
+// ANTES da sincronização inicial terminar — nesse intervalo, dados de sessões
+// mais antigas podem estar incompletos, gerando falsos "não encontrado".
+let sincronizacaoInicialCompleta = false;
+
 carregarSessoesDoSheets().then(async () => {
   let total = Object.keys(sessoes).length;
   console.log(`Sessões carregadas do Sheets: ${total}`);
@@ -1287,7 +1307,9 @@ carregarSessoesDoSheets().then(async () => {
   // Salva no Volume logo após carregar
   if (Object.keys(sessoes).length > 0) salvarSessoesLocal();
   setTimeout(() => fazerBackup("startup"), 10 * 1000);
-}).catch(e => console.error("Erro na inicialização:", e.message));
+  sincronizacaoInicialCompleta = true;
+  console.log("[startup] Sincronização inicial completa.");
+}).catch(e => { console.error("Erro na inicialização:", e.message); sincronizacaoInicialCompleta = true; });
 setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
 
 // Salvamento periódico — em paralelo e só para sessões com mudança desde o último ciclo.
@@ -2138,7 +2160,10 @@ app.get("/inbox/curriculo-check/:telefone", async (req, res) => {
     const tel = limparTelefone(req.params.telefone);
     const resultado = await localizarCurriculo(tel, req.query.idx);
     if (!resultado.ok) {
-      return res.json({ ok: false, nomeCandidato: resultado.nomeCandidato, telefone: tel, motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)." });
+      const avisoSync = !sincronizacaoInicialCompleta
+        ? " ATENÇÃO: o servidor ainda está sincronizando os dados (reiniciou há pouco) — esse resultado pode ser falso negativo. Espere 1-2 minutos e tente de novo antes de pedir reenvio."
+        : "";
+      return res.json({ ok: false, nomeCandidato: resultado.nomeCandidato, telefone: tel, aindaSincronizando: !sincronizacaoInicialCompleta, motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)." + avisoSync });
     }
     if (resultado.tipo === "link") return res.json({ ok: true, tipo: "link", link: resultado.link });
     // tipo "arquivo": a própria rota /inbox/curriculo/:telefone serve o binário — o
