@@ -2234,6 +2234,17 @@ function tsParaMs(ts){
       return isNaN(d.getTime())?0:d.getTime();
     }
 
+    // BUG ENCONTRADO E CORRIGIDO: o Google Sheets converte sozinho o texto de data
+    // salvo pelo Apps Script em célula de data de verdade — ao ler de volta e fazer
+    // String(valor), vem no formato padrão do JavaScript ("Wed Jul 01 2026 14:16:00
+    // GMT-0300 (Horário Padrão de Brasília)"), que não batia com nada acima e ficava
+    // com timestamp zerado ("--:--" na tela). Esse formato específico é seguro pra
+    // reconhecer (diferente de texto curto tipo "09:02", que continua sendo evitado).
+    if(/^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}\s+\d{1,2}:\d{2}:\d{2}/.test(s)){
+      const d=new Date(s);
+      if(!isNaN(d.getTime()))return d.getTime();
+    }
+
     // Importante: não usar new Date() genérico em textos como "09:02".
     return 0;
   }catch(e){
@@ -4146,6 +4157,12 @@ function mostrarCvIndisponivel(tel, dados){
     // escondemos o botão de reenvio pra evitar mandar mensagem errada ao candidato.
     document.getElementById('cv-indisp-texto').innerHTML =
       `⚠️ O servidor reiniciou recentemente e ainda está carregando os dados — este resultado <strong>pode ser falso</strong>.<br><br>Espere 1-2 minutos e clique em "Ver currículo" de novo antes de pedir reenvio pra <strong>${nome}</strong>.`;
+    if(btnReenvio) btnReenvio.style.display = 'none';
+  } else if(dados?.podeEstarProcessando){
+    // Currículo recebido há pouco — o upload pro Drive (com retries) pode ainda
+    // estar rodando em segundo plano. Mesma proteção: some com o botão de reenvio.
+    document.getElementById('cv-indisp-texto').innerHTML =
+      `⏳ O currículo de <strong>${nome}</strong> foi recebido há menos de 2 minutos — o upload pro Drive pode ainda estar em andamento.<br><br>Espere uns 30 segundos e clique em "Ver currículo" de novo antes de pedir reenvio.`;
     if(btnReenvio) btnReenvio.style.display = 'none';
   } else {
     document.getElementById('cv-indisp-texto').innerHTML =
