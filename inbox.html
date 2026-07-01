@@ -217,6 +217,8 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .rp-label{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
 .rp-val{font-size:11px;font-weight:600;text-align:right;word-break:break-word}
 .rp-val.link{color:var(--blue);cursor:pointer;text-decoration:underline}
+.rp-edit-input{flex:1;min-width:0;font-size:11px;font-weight:600;text-align:right;padding:2px 6px;border:1.5px solid #bae6fd;border-radius:5px;font-family:'Montserrat',sans-serif;background:#fff;color:var(--text);outline:none}
+.rp-edit-input:focus{border-color:var(--blue)}
 
 /* Resumo IA */
 .ai-summary{background:var(--bg);border-radius:8px;padding:10px;font-size:11px;line-height:1.5;color:var(--text);border-left:3px solid var(--blue)}
@@ -568,9 +570,15 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
 .pl-conn{flex:1;height:2px;background:#e2e8f0;margin-top:6px;flex-shrink:0;min-width:6px;max-width:20px}
 .pl-conn.passado{background:#64748b}
 .pl-reject-row{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-/* Versão compacta da mesma track de pipeline, usada no painel Status (aba Perfil) */
+/* Versão compacta da mesma track de pipeline, usada no painel Status (aba Perfil).
+   Diferente da barra de cima (que rola na horizontal), aqui as etapas quebram em
+   linhas — a sidebar é estreita demais pras 8 etapas caberem numa linha só, e
+   scroll horizontal escondido é fácil de não perceber que existe mais conteúdo. */
 #rp-pipeline{background:#f8fafc;border-radius:8px;padding:10px 8px 8px}
-#rp-pipeline .pl-track{overflow-x:auto;padding-bottom:2px}
+#rp-pipeline .pl-track{flex-wrap:wrap;overflow-x:visible;row-gap:12px;column-gap:2px}
+#rp-pipeline .pl-step{flex:0 0 22%;min-width:0}
+#rp-pipeline .pl-step-label{font-size:7px;max-width:100%}
+#rp-pipeline .pl-conn{display:none}
 #rp-pipeline .pl-reject-row{margin-top:8px}
 #rp-pipeline .pl-rbtn{font-size:8px;padding:3px 6px}
 .pl-rbtn{font-size:8.5px;font-weight:700;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;color:#fff;font-family:'Montserrat',sans-serif;opacity:.7;transition:opacity .15s}
@@ -2607,7 +2615,8 @@ const hInfo = s.dataWhatsapp ? { texto: s.dataWhatsapp, hoje: true, ms: atvMs } 
           ${s.modo==='camila'?'<span class="cc" style="background:#fce7f3;color:#db2777">📅 Camila</span>':isManual?'<span class="cc cc-pink">👩 Laura</span>':'<span class="cc cc-gray">🤖 Lia</span>'}
           ${aten?'<span class="cc cc-yellow">⭐ Prioritário</span>':''}
           ${s.curriculo?'<span class="cc cc-blue">📄 Currículo</span>':''}
-          ${statusMap[tel]==='Aguardando recrutador'?`<span class="cc" style="background:#f59e0b;color:#fff;cursor:pointer" title="Clique para remover e arquivar" onclick="event.stopPropagation();resolverAguardando('${tel}')">🟠 Aguardando ✕</span>`:''}
+          ${statusMap[tel]==='Aguardando recrutador'?`<span class="cc" style="background:#f59e0b;color:#fff;cursor:pointer" title="Clique para remover e arquivar" onclick="event.stopPropagation();resolverAguardando('${tel}')">🟠 Aguardando você</span>`:''}
+          ${statusMap[tel]==='Aguardando candidato'?`<span class="cc" style="background:#fef9c3;color:#854d0e" title="Esperando resposta do candidato">🟡 Aguardando candidato</span>`:''}
           ${statusMap[tel]==='Banco de Talentos'?`<span class="cc" style="background:#7c3aed;color:#fff;cursor:pointer" title="Clique para remover do Banco de Talentos" onclick="event.stopPropagation();removerDoBancoLista('${tel}')">📦 Banco ✕</span>`:''}
           ${marcadosRetorno[tel]?`<span class="cc cc-yellow" style="cursor:pointer" title="Clique para desmarcar" onclick="event.stopPropagation();marcadosRetorno['${tel}']=false;salvarLocal();renderLista();toast('Marcação removida','success')">📌 Retornar</span>`:''}
           ${compat?`<span class="cc ${compat.classe==='green'?'cc-green':compat.classe==='yellow'?'cc-yellow':'cc-red'}">${compat.label}</span>`:''}
@@ -2821,6 +2830,7 @@ function renderPainelPerfil(s){
   const hist=s.historico||[];
   const primeiraMsgTs=obterTimestampMsg(hist[0])||'';
   const tel=sessaoAtual;
+  const isManual=s.modo==='manual'||s.pausado===true;
   const curriculos=(Array.isArray(s.curriculos)&&s.curriculos.length)?s.curriculos:(s.curriculo?[s.curriculo]:[]);
   // Fallback: detecta CVs pelo histórico quando s.curriculos está vazio
   const cvMsgsNoHist = !curriculos.length && hist.some(m=>String(m.content||m.conteudo||'').includes('Documento/Currículo recebido'));
@@ -2867,22 +2877,33 @@ function renderPainelPerfil(s){
   </div>
   `:''}
   <div class="rp-section" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px;margin-bottom:8px">
-    <div style="font-size:10px;font-weight:800;color:#0369a1;margin-bottom:8px">🎯 TRIAGEM DE CANDIDATURA</div>
+    <div style="font-size:10px;font-weight:800;color:#0369a1;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+      <span>🎯 TRIAGEM DE CANDIDATURA</span>
+      ${isManual?'<span style="font-size:8.5px;font-weight:700;color:#0369a1;background:#dbeafe;padding:1px 6px;border-radius:8px">✎ editável</span>':''}
+    </div>
     <div class="rp-row">
       <span class="rp-label">💬 Interesse declarado</span>
-      <span class="rp-val" style="color:#0369a1;font-weight:700">${s.vagaInteresseDeclarado||'—'}</span>
+      ${isManual
+        ?`<input class="rp-edit-input" value="${(s.vagaInteresseDeclarado||'').replace(/"/g,'&quot;')}" placeholder="—" onblur="salvarCampoTriagem('interesseDeclarado',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+        :`<span class="rp-val" style="color:#0369a1;font-weight:700">${s.vagaInteresseDeclarado||'—'}</span>`}
     </div>
     <div class="rp-row">
       <span class="rp-label">🤖 Vaga sugerida</span>
-      <span class="rp-val">${anal.vagaInteresse||'—'}</span>
+      ${isManual
+        ?`<input class="rp-edit-input" value="${(anal.vagaInteresse||'').replace(/"/g,'&quot;')}" placeholder="—" onblur="salvarCampoTriagem('vagaSugerida',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+        :`<span class="rp-val">${anal.vagaInteresse||'—'}</span>`}
     </div>
     <div class="rp-row">
       <span class="rp-label">💼 Experiência geral</span>
-      <span class="rp-val">${[anal.anosExperiencia?anal.anosExperiencia+' anos':'',anal.experienciaCompativel||''].filter(Boolean).join(' · ')||anal.areaInteresse||'—'}</span>
+      ${isManual
+        ?`<input class="rp-edit-input" value="${(anal.experienciaManualTexto||[anal.anosExperiencia?anal.anosExperiencia+' anos':'',anal.experienciaCompativel||''].filter(Boolean).join(' · ')||anal.areaInteresse||'').replace(/"/g,'&quot;')}" placeholder="—" onblur="salvarCampoTriagem('experiencia',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+        :`<span class="rp-val">${anal.experienciaManualTexto||[anal.anosExperiencia?anal.anosExperiencia+' anos':'',anal.experienciaCompativel||''].filter(Boolean).join(' · ')||anal.areaInteresse||'—'}</span>`}
     </div>
     <div class="rp-row">
       <span class="rp-label">✅ Aceite do candidato</span>
-      <span class="rp-val" style="font-weight:800;color:${s.aceiteVaga?'#16a34a':s.aguardandoConfirmacaoInteresse?'#d97706':'#6b7280'}">${s.aceiteVaga?'✅ Confirmou interesse':s.aguardandoConfirmacaoInteresse?'⏳ Aguardando resposta':'—'}</span>
+      ${isManual
+        ?`<span class="rp-val" style="font-weight:800;cursor:pointer;color:${s.aceiteVaga?'#16a34a':s.aguardandoConfirmacaoInteresse?'#d97706':'#6b7280'}" title="Clique para alternar" onclick="alternarAceiteCandidato()">${s.aceiteVaga?'✅ Confirmou interesse':s.aguardandoConfirmacaoInteresse?'⏳ Aguardando resposta':'— (clique p/ marcar)'}</span>`
+        :`<span class="rp-val" style="font-weight:800;color:${s.aceiteVaga?'#16a34a':s.aguardandoConfirmacaoInteresse?'#d97706':'#6b7280'}">${s.aceiteVaga?'✅ Confirmou interesse':s.aguardandoConfirmacaoInteresse?'⏳ Aguardando resposta':'—'}</span>`}
     </div>
   </div>
   ${compat?`
@@ -2928,9 +2949,7 @@ function renderPainelPerfil(s){
     <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px">📄 CURRÍCULO RECEBIDO</div>
     <div style="font-size:10px;color:#166534;margin-bottom:6px">Arquivo recebido via WhatsApp</div>
     <div style="display:flex;gap:6px">
-      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0&inline=1" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">👁️ Visualizar</a>
-      <span style="color:#ccc">|</span>
-      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">⬇️ Baixar</a>
+      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0&inline=1" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">👁️ Ver currículo</a>
     </div>
   </div>
   `:''}
@@ -2952,8 +2971,7 @@ function renderPainelPerfil(s){
           <span class="cv-status ${statusClass}">${statusTxt}</span>
         </div>
         <div class="cv-actions">
-          ${link?`<button class="cv-btn" onclick="window.open('${link}','_blank')">👁️</button>`:`<button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}&inline=1','_blank')">👁️</button>`}
-          <button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}','_blank')">⬇️</button>
+          ${link?`<button class="cv-btn" onclick="window.open('${link}','_blank')">👁️ Ver</button>`:`<button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}&inline=1','_blank')">👁️ Ver</button>`}
         </div>
       </div>`;
     }).join('')}
@@ -2976,6 +2994,44 @@ function renderPainelPerfil(s){
   // com o progresso correto marcado (sem isso, ficaria sempre "zerada"
   // até a próxima troca de status ou de conversa).
   atualizarPipelineAtivo(st);
+}
+
+// ── EDIÇÃO MANUAL DOS CAMPOS DE TRIAGEM (só aparece quando a conversa está em modo manual) ──
+function salvarCampoTriagem(campo, valor){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  if(!s)return;
+  valor=(valor||'').trim();
+  if(campo==='interesseDeclarado'){
+    s.vagaInteresseDeclarado=valor;
+  }else if(campo==='vagaSugerida'){
+    if(!s.ultimaAnalise)s.ultimaAnalise={};
+    s.ultimaAnalise.vagaInteresse=valor;
+  }else if(campo==='experiencia'){
+    if(!s.ultimaAnalise)s.ultimaAnalise={};
+    s.ultimaAnalise.experienciaManualTexto=valor;
+  }
+  registrarIntervencao('Thiara','Editou triagem manualmente',campo+': '+(valor||'(vazio)'));
+  salvarLocal();
+  toast('✎ Campo atualizado','success');
+}
+function alternarAceiteCandidato(){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  if(!s)return;
+  // Cicla: nada → aguardando → confirmou → nada
+  if(!s.aceiteVaga&&!s.aguardandoConfirmacaoInteresse){
+    s.aguardandoConfirmacaoInteresse=true;
+  }else if(s.aguardandoConfirmacaoInteresse&&!s.aceiteVaga){
+    s.aguardandoConfirmacaoInteresse=false;
+    s.aceiteVaga=true;
+  }else{
+    s.aceiteVaga=false;
+    s.aguardandoConfirmacaoInteresse=false;
+  }
+  registrarIntervencao('Thiara','Editou aceite do candidato manualmente','');
+  salvarLocal();
+  renderPainelDireito();
 }
 
 function renderPainelEntrevista(s){
@@ -4075,9 +4131,8 @@ async function encaminharParaVaga(idx){
   const cargo=campoVaga(v,['cargo','Cargo','CARGO'])||'Vaga';
   const modoEmVaga=_emVagaMode;
   _emVagaMode=false;
-  const acao=modoEmVaga?'Confirmar vínculo (Em Vaga)':'Confirmar encaminhamento';
-  const ok=confirm(`${acao}:\n\n${cargo}${id?`\n${id}`:''}?`);
-  if(!ok)return;
+  // Confirmação extra removida a pedido: clicar na vaga da lista já é a ação de
+  // enviar/vincular — não precisa repetir as mesmas informações num popup depois.
   const s=todasSessoes[sessaoAtual]||{};
   const novoStatus=modoEmVaga?'Em Vaga':'Interessado';
   statusMap[sessaoAtual]=novoStatus;
