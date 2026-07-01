@@ -1420,6 +1420,68 @@ app.post("/inbox/backup", async (req, res) => {
 });
 
 // ─── RECARREGAR SESSÕES DO SHEETS MANUALMENTE ───
+// ─── LIMPEZA: apaga timestamps já gravados errado (datas futuras impossíveis /
+// "Invalid Date") de conversas antigas, de antes da correção do bug de
+// invenção de horário. Roda uma vez (ou quando quiser), varre TODAS as sessões
+// em memória, zera qualquer timestampMs que esteja mais de 7 dias no futuro
+// (tolerância de clock skew) ou que não seja um número válido, e regrava cada
+// sessão já limpa de volta no Sheets — assim a lista de conversas para de
+// mostrar datas absurdas tipo dezembro/2026 pra mensagens antigas. Mensagens
+// que ficarem sem timestamp aparecem em branco (não errado) até uma msg nova
+// de verdade chegar.
+app.get("/inbox/limpar-timestamps-invalidos", async (req, res) => {
+  try {
+    const LIMITE_FUTURO_MS = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    let sessoesAfetadas = 0;
+    let msgsLimpas = 0;
+    const telefonesParaSalvar = [];
+
+    for (const [tel, sessao] of Object.entries(sessoes)) {
+      if (!Array.isArray(sessao.historico) || !sessao.historico.length) continue;
+      let mudou = false;
+      sessao.historico.forEach(m => {
+        if (!m.timestampMs) return; // já sem timestamp, nada a limpar
+        const ms = Number(m.timestampMs);
+        const dataInvalida = !Number.isFinite(ms) || ms > LIMITE_FUTURO_MS;
+        if (dataInvalida) {
+          m.timestampMs = 0;
+          m.timestamp = "";
+          m.timestampISO = "";
+          m.horario = "";
+          m.horarioFormatado = "";
+          mudou = true;
+          msgsLimpas++;
+        }
+      });
+      if (mudou) {
+        sessoesAfetadas++;
+        telefonesParaSalvar.push(tel);
+      }
+    }
+
+    // Regrava no Sheets, em lotes pequenos pra não sobrecarregar o Apps Script
+    for (let i = 0; i < telefonesParaSalvar.length; i += 5) {
+      const lote = telefonesParaSalvar.slice(i, i + 5);
+      await Promise.allSettled(lote.map(tel =>
+        salvarConversaCompletaSheets(tel, sessoes[tel].historico, sessoes[tel].nome)
+      ));
+    }
+
+    if (sessoesAfetadas > 0) salvarSessoesLocal();
+
+    return res.json({
+      ok: true,
+      sessoesAfetadas,
+      msgsLimpas,
+      msg: sessoesAfetadas > 0
+        ? `${msgsLimpas} mensagens com data inválida foram limpas em ${sessoesAfetadas} conversas.`
+        : "Nenhuma data inválida encontrada."
+    });
+  } catch (e) {
+    return res.json({ ok: false, erro: e.message });
+  }
+});
+
 app.get("/inbox/recarregar", async (req, res) => {
   try {
     const antes = Object.keys(sessoes).length;
