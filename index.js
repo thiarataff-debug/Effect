@@ -518,6 +518,36 @@ function curriculoTemArquivo(cv) {
   return false;
 }
 
+// Busca automática no Drive quando o arquivo local não existe mais (ex: após
+// reinício do Railway). Procura por telefone (mais confiável, sempre presente
+// no nome do arquivo) e, se não achar, pelo nome do candidato.
+async function buscarCurriculoNoDriveAutomaticamente(telefone, nomeCandidato) {
+  try {
+    const drive = getDriveClient();
+    if (!drive) return null;
+    const termos = [telefone, nomeCandidato].filter(Boolean);
+    for (const termoBruto of termos) {
+      const termo = String(termoBruto).replace(/'/g, "\\'").trim();
+      if (!termo) continue;
+      const r = await drive.files.list({
+        q: `name contains '${termo}' and trashed = false`,
+        fields: "files(id, name, webViewLink)",
+        pageSize: 5,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+      const arquivo = r.data.files?.[0];
+      if (arquivo) {
+        return { id: arquivo.id, link: arquivo.webViewLink || `https://drive.google.com/file/d/${arquivo.id}/view`, nome: arquivo.name };
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error("[Drive] Busca automática de currículo falhou:", e.message);
+    return null;
+  }
+}
+
 function nomePastaCargo(cargo) {
   const limpo = String(cargo || "Sem Cargo Identificado").trim();
   return limpo
@@ -1097,10 +1127,27 @@ async function carregarSessoesDoSheets() {
         }
       }
       if (ancoraMs > 0) {
-        // Injeta _approxMs estável nas msgs sem timestamp, trabalhando de trás pra frente
+        // BUG CORRIGIDO: esse cálculo rodava do zero a cada sincronização com o Sheets,
+        // usando o tamanho ATUAL do histórico — então, quando uma msg nova chegava, o
+        // timestamp sintético de mensagens ANTIGAS sem hora real mudava, e elas
+        // "pulavam de posição" na conversa (o candidato via mensagens fora de ordem).
+        // Agora, antes de recalcular, tenta reaproveitar o timestamp sintético já
+        // atribuído a essa mesma mensagem numa sincronização anterior (por role+conteúdo),
+        // então a posição dela fica estável entre atualizações.
+        const historicoAnterior = Array.isArray(existente.historico) ? existente.historico : [];
         for (let i = historicoNorm.length - 1; i >= 0; i--) {
           if (!Number(historicoNorm[i].timestampMs)) {
-            historicoNorm[i].timestampMs = ancoraMs - (historicoNorm.length - 1 - i) * 90000;
+            const msgAtual = historicoNorm[i];
+            const anteriorCorrespondente = historicoAnterior.find(m =>
+              m && m.role === msgAtual.role &&
+              String(m.content || "") === String(msgAtual.content || "") &&
+              Number(m._approxMs || m.timestampMs) > 0
+            );
+            if (anteriorCorrespondente) {
+              historicoNorm[i].timestampMs = Number(anteriorCorrespondente._approxMs || anteriorCorrespondente.timestampMs);
+            } else {
+              historicoNorm[i].timestampMs = ancoraMs - (historicoNorm.length - 1 - i) * 90000;
+            }
             historicoNorm[i]._approxMs = historicoNorm[i].timestampMs;
           }
         }
@@ -2031,29 +2078,17 @@ app.get("/inbox/curriculo/:telefone", async (req, res) => {
 
     if (!lista.length) {
       const nomeCandidato = sessao?.nome || tel;
-      const nomeArquivo = sessao?.curriculo?.filename || '';
-      const termoBusca = nomeCandidato !== tel ? nomeCandidato : nomeArquivo || nomeCandidato;
-      const driveSearchLink = `https://drive.google.com/drive/search?q=${encodeURIComponent(termoBusca)}`;
-      return res.status(404).send(`
-        <html><head><style>
-          body{font-family:sans-serif;padding:32px;max-width:520px;color:#1e293b}
-          .nome-box{display:flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin:12px 0}
-          .nome-text{font-size:15px;font-weight:700;flex:1}
-          .copy-btn{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;white-space:nowrap}
-          .copy-btn:active{opacity:.8}
-          a{color:#2563eb}
-        </style></head>
-        <body>
-        <h3>📄 Currículo não disponível</h3>
-        <p>O arquivo de <strong>${nomeCandidato}</strong> não foi encontrado após reinicialização do servidor.</p>
-        <p><strong>Copie o nome e busque no Drive:</strong></p>
-        <div class="nome-box">
-          <span class="nome-text" id="nome">${termoBusca}</span>
-          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('nome').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',1500)})">Copiar</button>
-        </div>
-        <p><a href="${driveSearchLink}" target="_blank">🔍 Tentar abrir Drive com busca</a></p>
-        <p style="margin-top:16px"><a href="/inbox/curriculo/${tel}/pedir-reenvio" style="color:#e53e3e">📩 Pedir reenvio ao candidato via WhatsApp</a></p>
-        </body></html>`);
+      // BUSCA AUTOMÁTICA: antes disso a Thiara precisava copiar o nome e procurar
+      // manualmente no Drive numa página separada. Agora tenta achar sozinho primeiro.
+      const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
+      if (achado) return res.redirect(achado.link);
+      return res.status(404).json({
+        ok: false,
+        disponivel: false,
+        nomeCandidato,
+        telefone: tel,
+        motivo: "Currículo não encontrado localmente nem no Drive (busca automática por telefone e nome não retornou resultado)."
+      });
     }
 
     const idx = Math.max(0, Math.min(Number(req.query.idx || 0), lista.length - 1));
@@ -2070,12 +2105,16 @@ app.get("/inbox/curriculo/:telefone", async (req, res) => {
       // Arquivo local sumiu (reinício do Railway) — tenta driveLink da análise
       const dlFallback = sessao?.ultimaAnalise?.curriculoDriveLink || sessao?.ultimaAnalise?.linkCurriculo || "";
       if (dlFallback) return res.redirect(dlFallback);
-      return res.status(404).send(`
-        <html><body style="font-family:sans-serif;padding:32px">
-        <h3>📄 Arquivo indisponível</h3>
-        <p>O arquivo do currículo foi apagado após reinicialização do servidor (armazenamento temporário).</p>
-        <p>Acesse o <strong>Google Drive</strong> para encontrar o currículo salvo, ou solicite reenvio pelo WhatsApp.</p>
-        </body></html>`);
+      // BUSCA AUTOMÁTICA antes de desistir (ver comentário acima)
+      const achado = await buscarCurriculoNoDriveAutomaticamente(tel, sessao?.nome);
+      if (achado) return res.redirect(achado.link);
+      return res.status(404).json({
+        ok: false,
+        disponivel: false,
+        nomeCandidato: sessao?.nome || tel,
+        telefone: tel,
+        motivo: "Arquivo local foi apagado (reinício do servidor) e não foi encontrado no Drive automaticamente."
+      });
     }
 
     const inline = req.query.inline === "1" || req.query.inline === "true";
