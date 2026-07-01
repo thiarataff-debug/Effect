@@ -4147,14 +4147,20 @@ let _cvIndispTelefone = null;
 async function abrirCurriculo(tel, idx){
   if(!tel)return;
   idx = idx || 0;
-  const url = `${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=${idx}&inline=1`;
+  // BUG CORRIGIDO: antes isso dava fetch() direto na rota que redireciona pro
+  // Google Drive — quando o arquivo tinha driveLink (o caso mais comum), o
+  // navegador bloqueia a leitura desse redirect por política de CORS entre
+  // domínios, então a checagem sempre "falhava" mesmo com o currículo existindo
+  // (um currículo que abria normalmente passou a aparecer como "não encontrado").
+  // Agora consultamos uma rota própria que SEMPRE responde JSON (nunca redireciona)
+  // e só então abrimos o link de verdade — isso não passa por fetch, é navegação.
   try{
-    const r = await fetch(url);
-    if(r.ok || r.redirected){
-      window.open(url, '_blank');
+    const r = await fetch(`${API}/inbox/curriculo-check/${encodeURIComponent(tel)}?idx=${idx}`);
+    const dados = await r.json().catch(()=>({}));
+    if(dados.ok && dados.link){
+      window.open(dados.link, '_blank');
       return;
     }
-    const dados = await r.json().catch(()=>({}));
     mostrarCvIndisponivel(tel, dados);
   }catch(e){
     toast('Erro ao verificar currículo: '+e.message, 'error');
