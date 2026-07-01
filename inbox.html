@@ -1025,6 +1025,18 @@ font-family:'Montserrat',sans-serif
   </div>
 </div>
 
+<!-- MODAL: CURRÍCULO INDISPONÍVEL (embutido — não abre mais página separada) -->
+<div class="modal-overlay" id="modal-cv-indisponivel">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">📄 Currículo não encontrado</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="cv-indisp-texto">—</div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-cv-indisponivel')">Fechar</button>
+      <button class="modal-btn modal-confirm" style="background:#dc2626" onclick="solicitarReenvioCv()">📩 Solicitar reenvio via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: CORRIGIR LIA -->
 <div class="modal-overlay" id="modal-corrigir">
   <div class="modal">
@@ -2770,7 +2782,7 @@ const horaTexto = msg.horarioFormatado || (ts ? extrairHora(ts) : '--:--');
         b.innerHTML = `<span style="font-size:1.4em">📄</span> <strong>Currículo recebido</strong>` +
           (link
             ? `<br><a href="${link}" target="_blank" style="font-size:11px;color:#1e88e5;word-break:break-all">🔗 Abrir no Drive</a>`
-            : `<br><a href="${API}/inbox/curriculo/${encodeURIComponent(sessaoAtual)}?idx=${cvIdx}&inline=1" target="_blank" style="font-size:11px;color:#1e88e5">📂 Abrir currículo</a>`);
+            : `<br><a href="javascript:void(0)" onclick="abrirCurriculo('${sessaoAtual}',${cvIdx})" style="font-size:11px;color:#1e88e5">📂 Abrir currículo</a>`);
       } else {
         b.textContent = conteudo;
       }
@@ -2810,7 +2822,7 @@ function abrirCurriculoInbox(){
   const cv=lista[0];
   const link=cv.driveLink||s.ultimaAnalise?.curriculoDriveLink||s.ultimaAnalise?.linkCurriculo||'';
   if(link){window.open(link,'_blank');return;}
-  window.open(`/inbox/curriculo/${encodeURIComponent(sessaoAtual)}?idx=0&inline=1`,'_blank');
+  abrirCurriculo(sessaoAtual,0);
 }
 
 // ─── PAINEL DIREITO ───
@@ -2956,7 +2968,7 @@ function renderPainelPerfil(s){
     <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px">📄 CURRÍCULO RECEBIDO</div>
     <div style="font-size:10px;color:#166534;margin-bottom:6px">Arquivo recebido via WhatsApp</div>
     <div style="display:flex;gap:6px">
-      <a href="${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=0&inline=1" target="_blank" style="font-size:11px;color:#1e88e5;font-weight:600">👁️ Ver currículo</a>
+      <a href="javascript:void(0)" onclick="abrirCurriculo('${tel}',0)" style="font-size:11px;color:#1e88e5;font-weight:600">👁️ Ver currículo</a>
     </div>
   </div>
   `:''}
@@ -2978,24 +2990,12 @@ function renderPainelPerfil(s){
           <span class="cv-status ${statusClass}">${statusTxt}</span>
         </div>
         <div class="cv-actions">
-          ${link?`<button class="cv-btn" onclick="window.open('${link}','_blank')">👁️ Ver</button>`:`<button class="cv-btn" onclick="window.open('${API}/inbox/curriculo/${tel}?idx=${i}&inline=1','_blank')">👁️ Ver</button>`}
+          ${link?`<button class="cv-btn" onclick="window.open('${link}','_blank')">👁️ Ver</button>`:`<button class="cv-btn" onclick="abrirCurriculo('${tel}',${i})">👁️ Ver</button>`}
         </div>
       </div>`;
     }).join('')}
   </div>
   `:''}
-  <div class="rp-section">
-    <div class="rp-section-title">📊 Linha do Tempo</div>
-    <div class="timeline">${timeline.map(tl=>`
-      <div class="tl-item">
-        <div class="tl-dot ${tl.cor}">${tl.icon}</div>
-        <div class="tl-content">
-          <div class="tl-time">${tl.hora}</div>
-          <div class="tl-text">${tl.texto}</div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>
   `;
   // Garante que a trilha de status recém-criada no HTML acima já nasça
   // com o progresso correto marcado (sem isso, ficaria sempre "zerada"
@@ -3898,7 +3898,13 @@ function renderPainelVagas(busca){
   const b=(busca||'').toLowerCase().trim();
   const lista=vagasCache.filter(v=>{
     if(!b)return true;
-    const txt=[v.cargo||v.Cargo||'',v.cidade||v.Cidade||'',v.area||v.Área||v['Área/Setor']||'',v.palavrasChave||v['Palavras-chave']||''].join(' ').toLowerCase();
+    // Busca ampliada: também considera bairro/local completo, benefícios e requisitos
+    const txt=[
+      v.cargo||v.Cargo||'', v.cidade||v.Cidade||v['Cidade/Bairro']||'', v.area||v.Área||v['Área/Setor']||'',
+      v.palavrasChave||v['Palavras-chave']||'', v.beneficios||v['Benefícios']||'',
+      v.requisitoObrigatorio||v['Requisito Obrigatório']||'', v.perfilResumido||v['Perfil Resumido']||'',
+      v.cliente||v['Cliente / Empresa']||''
+    ].join(' ').toLowerCase();
     return txt.includes(b);
   });
   if(!lista.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada para "'+busca+'"</div>';return;}
@@ -3968,13 +3974,16 @@ function renderPainelVagas(busca){
 function usarVagaRef(idx){
   const v=vagasCache[idx];
   if(!v)return;
+  // BUG CORRIGIDO: antes isso fechava "Vagas Disponíveis" e abria um SEGUNDO modal
+  // ("Enviar Detalhes de Vaga") pedindo pra escolher a mesma vaga de novo. Clicar em
+  // "📤 Enviar" aqui já é a ação de enviar — não precisa de mais uma etapa.
   fecharModal('painel-vagas-ref');
-  // abre o modal de envio com essa vaga pré-selecionada
-  abrirModalVagas().then(()=>{
-    const busca=v.cargo||v.Cargo||'';
-    const el=document.getElementById('vaga-busca');
-    if(el){el.value=busca;renderListaVagas(busca);}
-  }).catch(()=>{});
+  const texto=montarTemplateVaga(v);
+  const input=document.getElementById('msg-input');
+  if(!input)return;
+  input.value=texto;
+  autoResize(input);
+  setTimeout(()=>enviarMsg(),100);
 }
 
 async function abrirModalVagas(){
@@ -4000,10 +4009,22 @@ function renderListaVagas(busca){
   const div=document.getElementById('lista-vagas');
   if(!vagasCache||!vagasCache.length){div.innerHTML='<div class="empty">Nenhuma vaga ativa encontrada</div>';return;}
   const b=(busca||'').toLowerCase();
+  // Busca ampliada: cargo, cidade/bairro, benefícios, requisitos e perfil resumido —
+  // antes só considerava cargo+cidade, ficava difícil achar vaga por bairro específico
+  // ou por alguma palavra que só aparece na descrição.
   const filtradas=vagasCache.filter(v=>{
-    const cargo=campoVaga(v,['cargo','Cargo','CARGO']);
-    const cidade=campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']);
-    return!b||cargo.toLowerCase().includes(b)||cidade.toLowerCase().includes(b);
+    if(!b)return true;
+    const texto=[
+      campoVaga(v,['cargo','Cargo','CARGO']),
+      campoVaga(v,['cidade','Cidade/Bairro','Cidade','Local']),
+      campoVaga(v,['area','Área/Setor','Area/Setor','Área','Area']),
+      campoVaga(v,['beneficios','Benefícios']),
+      campoVaga(v,['requisitoObrigatorio','Requisito Obrigatório','Requisito Obrigatorio']),
+      campoVaga(v,['perfilResumido','Perfil Resumido']),
+      campoVaga(v,['palavrasChave','Palavras-chave','Palavras Chave']),
+      campoVaga(v,['cliente','Cliente / Empresa','Cliente'])
+    ].join(' ').toLowerCase();
+    return texto.includes(b);
   });
   if(!filtradas.length){div.innerHTML='<div class="empty">Nenhuma vaga encontrada</div>';return;}
   div.innerHTML=filtradas.map((v,i)=>{
@@ -4111,8 +4132,50 @@ function abrirCurriculoSeguro(inline=1){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual]||{};
   if(s.curriculo&&s.curriculo.driveLink){window.open(s.curriculo.driveLink,'_blank');return;}
-  if(s.curriculo){window.open(`${API}/inbox/curriculo/${sessaoAtual}${inline?'?inline=1':''}`,'_blank');return;}
+  if(s.curriculo){abrirCurriculo(sessaoAtual,0);return;}
   toast('Currículo ainda não disponível. Aguarde o processamento ou peça reenvio.','error');
+}
+
+// ── ABRIR CURRÍCULO (verifica disponibilidade antes de navegar) ──────────────
+// BUG CORRIGIDO: antes, quando o arquivo não era encontrado, o link abria uma
+// PÁGINA SEPARADA pedindo pra copiar o nome e buscar manualmente no Drive. Agora:
+// 1) o servidor já tenta achar sozinho no Drive (por telefone e por nome) antes
+//    de desistir; 2) se mesmo assim não achar, mostramos isso direto aqui na tela
+//    da Lia, num modal simples com o botão de solicitar reenvio — sem navegar
+//    pra lugar nenhum.
+let _cvIndispTelefone = null;
+async function abrirCurriculo(tel, idx){
+  if(!tel)return;
+  idx = idx || 0;
+  const url = `${API}/inbox/curriculo/${encodeURIComponent(tel)}?idx=${idx}&inline=1`;
+  try{
+    const r = await fetch(url);
+    if(r.ok || r.redirected){
+      window.open(url, '_blank');
+      return;
+    }
+    const dados = await r.json().catch(()=>({}));
+    mostrarCvIndisponivel(tel, dados);
+  }catch(e){
+    toast('Erro ao verificar currículo: '+e.message, 'error');
+  }
+}
+function mostrarCvIndisponivel(tel, dados){
+  _cvIndispTelefone = tel;
+  const nome = dados?.nomeCandidato || (todasSessoes[tel]?.nome) || telDisplay(tel);
+  document.getElementById('cv-indisp-texto').innerHTML =
+    `O currículo de <strong>${nome}</strong> não foi encontrado — nem localmente, nem numa busca automática no Google Drive.<br><br>Peça o reenvio direto pelo WhatsApp:`;
+  document.getElementById('modal-cv-indisponivel').classList.add('show');
+}
+async function solicitarReenvioCv(){
+  if(!_cvIndispTelefone)return;
+  try{
+    const r = await fetch(`${API}/inbox/curriculo/${encodeURIComponent(_cvIndispTelefone)}/pedir-reenvio`);
+    fecharModal('modal-cv-indisponivel');
+    toast(r.ok ? '📩 Pedido de reenvio enviado ao candidato!' : 'Falha ao solicitar reenvio.', r.ok?'success':'error');
+  }catch(e){
+    toast('Erro ao solicitar reenvio: '+e.message, 'error');
+  }
 }
 
 function abrirModalEncaminhar(){
