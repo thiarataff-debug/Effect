@@ -1953,7 +1953,18 @@ async function restaurarDoServidor() {
     }
 
     // Merge: servidor ganha prioridade em entrevistas e status
-    // localStorage ganha prioridade em metaDados (leitura local)
+    // metaDados (status de lida/não-lida): mescla por telefone pegando o MAIOR
+    // ultimaMsgVista entre local e servidor. Antes o servidor era ignorado aqui,
+    // então "Marcar todas como lidas" feito em um dispositivo/navegador nunca
+    // aparecia nos outros (ex.: Laura via outro computador) — o contador de
+    // não lidas voltava a subir sempre que a página era aberta em outro lugar.
+    if (dados.metaDados) {
+      Object.entries(dados.metaDados).forEach(([tel, m]) => {
+        const servidorVista = Number((m && m.ultimaMsgVista) || 0);
+        const localVista = Number((metaDados[tel] && metaDados[tel].ultimaMsgVista) || 0);
+        metaDados[tel] = { ...(metaDados[tel]||{}), ...m, ultimaMsgVista: Math.max(servidorVista, localVista) };
+      });
+    }
     if (dados.entrevistas && Object.keys(dados.entrevistas).length > 0) {
       // Merge por telefone: manter entrevistas mais recentes
       Object.entries(dados.entrevistas).forEach(([tel, ents]) => {
@@ -6427,13 +6438,4 @@ setTimeout(iniciarTimersLembretes, 2000);
     <div id="lote-sub" style="font-size:12px;color:#666;margin-bottom:10px"></div>
     <textarea id="lote-texto" rows="7" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit" placeholder="Escreva a mensagem única..."></textarea>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:8px 0 2px"><input type="checkbox" id="lote-manual"> Assumir conversas como Laura (desliga a Lia nelas)</label>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="lote-template"> Se o candidato estiver fora da janela de 24h, enviar o template de reengajamento aprovado</label>
-    <div style="font-size:11px;color:#a16207;background:#fef9c3;border-radius:8px;padding:8px;margin-bottom:10px">⚠️ Regra do WhatsApp/Meta: mensagem livre só chega a quem falou com você nas <b>últimas 24h</b>. Para os demais, o envio falha (sem custo) — ou use o template acima.</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="bulk-btn bulk-btn-ghost" onclick="fecharModalLote()">Cancelar</button>
-      <button class="bulk-btn bulk-btn-primary" id="lote-enviar-btn" onclick="confirmarEnvioLote()">Enviar</button>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="lote-temp
