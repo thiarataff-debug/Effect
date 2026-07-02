@@ -263,6 +263,10 @@ function normalizarEventoHistorico(evento) {
     }
   }
 
+  // FIX: conserta/descarta timestamps impossiveis (datas no futuro herdadas do
+  // bug de dia/mes trocados do Apps Script antigo).
+  ms = sanearTimestampMs(ms);
+
   const iso = ms ? new Date(ms).toISOString() : "";
 
   // Quando ms=0 (nenhum timestamp real reconhecido), NÃO reaproveita o texto antigo
@@ -278,6 +282,33 @@ function normalizarEventoHistorico(evento) {
     horario: ms ? new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "",
     horarioFormatado: ms ? formatarDataWhatsApp(ms) : ""
   };
+}
+
+// Detecta e conserta timestamps IMPOSSIVEIS (no futuro). Causa conhecida: o Apps
+// Script antigo interpretava "07/12/2026" como formato AMERICANO e trocava dia/mes
+// ao gravar — essas datas "do futuro" ficavam no topo da lista para sempre.
+// Regra: se a data esta no futuro, tenta des-trocar dia<->mes; se cair num passado
+// plausivel, usa; senao descarta (melhor sem hora do que hora errada).
+function sanearTimestampMs(ms) {
+  ms = Number(ms || 0);
+  if (!ms || ms < 0) return 0;
+  const agoraMsRef = Date.now();
+  const TOL_FUTURO = 12 * 60 * 60 * 1000;                      // 12h de tolerancia
+  const LIMITE_PASSADO = agoraMsRef - 3 * 365 * 24 * 60 * 60 * 1000; // 3 anos
+  if (ms <= agoraMsRef + TOL_FUTURO) return ms >= LIMITE_PASSADO ? ms : 0;
+
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(new Date(ms)).reduce((acc, x) => { acc[x.type] = x.value; return acc; }, {});
+  const dia = Number(partes.day), mes = Number(partes.month);
+  if (dia >= 1 && dia <= 12 && mes >= 1 && mes <= 12 && dia !== mes) {
+    const hora = partes.hour === '24' ? '00' : partes.hour;
+    const pad2s = n => String(n).padStart(2, '0');
+    const trocado = new Date(`${partes.year}-${pad2s(dia)}-${pad2s(mes)}T${hora}:${partes.minute}:${partes.second}-03:00`).getTime();
+    if (trocado && trocado <= agoraMsRef + TOL_FUTURO && trocado >= LIMITE_PASSADO) return trocado;
+  }
+  return 0;
 }
 
 function obterUltimaMensagem(sessao) {
@@ -329,7 +360,7 @@ function normalizarSessaoParaInbox(telefone, sessao) {
   // FIX: se o historico voltou do Sheets sem hora nenhuma, usa o lastMessageAtMs
   // gravado na propria sessao (persistido no Volume/Sheets) — sem isso a conversa
   // ficava com ms=0, sem hora na lista e fora de ordem.
-  const lastMessageAtMs = Number(ultima?.timestampMs || 0) || Number(sessao?.lastMessageAtMs || 0) || 0;
+  const lastMessageAtMs = Number(ultima?.timestampMs || 0) || sanearTimestampMs(sessao?.lastMessageAtMs) || 0;
   const unreadCount = calcularUnreadSessao(sessao);
 
   // FIX: estilo WhatsApp de verdade — HH:MM SO se a ultima mensagem foi HOJE;
@@ -1256,8 +1287,8 @@ async function carregarSessoesDoSheets() {
       const historicoMesclado = mesclarHistoricos(existente.historico || [], historicoNorm);
       const ultimoMesclado = historicoMesclado[historicoMesclado.length - 1];
       const lastMsSessao = Math.max(
-        Number(existente.lastMessageAtMs || 0),
-        Number(sessao.lastMessageAtMs || 0),
+        sanearTimestampMs(existente.lastMessageAtMs),
+        sanearTimestampMs(sessao.lastMessageAtMs),
         Number(ultimoMesclado?.timestampMs || 0)
       ) || 0;
 
