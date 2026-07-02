@@ -2192,6 +2192,8 @@ app.post("/inbox/modo", async (req, res) => {
 
 // ─── RESUMIR CONVERSA com IA ───
 app.post("/inbox/resumir", async (req, res) => {
+  // IA OFF: o botao "Resumir" chamava o Gemini DIRETO, furando o modo emergencia.
+  if (!geminiAtivo) return res.json({ ok: false, erro: "IA desligada (IA OFF) — reative a IA para gerar resumos." });
   try {
     const telefone = limparTelefone(req.body.telefone);
     if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
@@ -3347,6 +3349,8 @@ async function chamarClaudeJSON(prompt) {
 
 // Versão JSON-only do Gemini — usada exclusivamente para análise de currículo
 async function chamarGeminiJSON(prompt) {
+  // IA OFF: bloqueio TOTAL na fonte — nenhuma chamada (e nenhum gasto) ao Gemini.
+  if (!geminiAtivo) throw new Error("IA desligada (IA OFF) — chamada ao Gemini bloqueada.");
   try {
     if (!CONFIG.GEMINI_API_KEY) return null;
     const model = CONFIG.GEMINI_MODEL || "gemini-2.0-flash";
@@ -3378,6 +3382,12 @@ async function chamarGeminiJSON(prompt) {
 // - faz 1 retry automático em caso de timeout/erro de rede antes de desistir
 // - timeout maior (45s) para reduzir falsos timeouts sob carga
 async function chamarGemini(prompt, tentativa = 1) {
+  // IA OFF: bloqueio TOTAL na fonte — nenhuma chamada (e nenhum gasto) ao Gemini,
+  // inclusive retries e qualquer caminho novo que venha a usar esta funcao.
+  if (!geminiAtivo) {
+    console.warn("[IA OFF] Chamada ao Gemini bloqueada (chamarGemini).");
+    return null;
+  }
   try {
     if (!CONFIG.GEMINI_API_KEY) {
       console.error("chamarGemini: GEMINI_API_KEY não configurada.");
