@@ -152,16 +152,21 @@ function formatarDataWhatsApp(valor) {
   if (!date) return "";
 
   const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((startToday - startDate) / 86400000);
+  // FIX: compara os DIAS no fuso de Sao Paulo. O Railway roda em UTC: usar
+  // getFullYear()/getDate() locais fazia mensagem da noite (ex: 22h BRT = 01h UTC
+  // do dia seguinte) cair no dia errado — "hoje" virava "Ontem" e vice-versa.
+  const chaveDiaSP = d => d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const startToday = new Date(`${chaveDiaSP(now)}T00:00:00`);
+  const startDate = new Date(`${chaveDiaSP(date)}T00:00:00`);
+  const diffDays = Math.round((startToday - startDate) / 86400000);
 
   if (diffDays === 0) {
     return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
   }
   if (diffDays === 1) return "Ontem";
   if (diffDays >= 2 && diffDays < 7) {
-    return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()];
+    const diaSemanaSP = new Date(date.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).getDay();
+    return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][diaSemanaSP];
   }
   return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
@@ -321,13 +326,16 @@ function normalizarSessaoParaInbox(telefone, sessao) {
   historicoNormalizado.forEach(m => { delete m._ordemOriginal; });
 
   const ultima = historicoNormalizado[historicoNormalizado.length - 1] || null;
-  const lastMessageAtMs = ultima?.timestampMs || 0;
+  // FIX: se o historico voltou do Sheets sem hora nenhuma, usa o lastMessageAtMs
+  // gravado na propria sessao (persistido no Volume/Sheets) — sem isso a conversa
+  // ficava com ms=0, sem hora na lista e fora de ordem.
+  const lastMessageAtMs = Number(ultima?.timestampMs || 0) || Number(sessao?.lastMessageAtMs || 0) || 0;
   const unreadCount = calcularUnreadSessao(sessao);
 
-  // GERA A HORA NO FUSO CORRETO DE SÃO PAULO IGUAL WHATSAPP
-  const horaFormatadaWhatsApp = lastMessageAtMs 
-    ? new Date(lastMessageAtMs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-    : '';
+  // FIX: estilo WhatsApp de verdade — HH:MM SO se a ultima mensagem foi HOJE;
+  // "Ontem", dia da semana ou dd/mm/aaaa para dias anteriores. Antes mandava sempre
+  // HH:MM, entao conversa de 3 semanas atras aparecia na lista como se fosse de hoje.
+  const horaFormatadaWhatsApp = lastMessageAtMs ? formatarDataWhatsApp(lastMessageAtMs) : '';
 
   return {
     historico: historicoNormalizado,
@@ -348,8 +356,8 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     lastMessageRole: ultima?.role || "",
     lastMessageAt: lastMessageAtMs ? new Date(lastMessageAtMs).toISOString() : "",
     lastMessageAtMs,
-    dataWhatsapp: horaFormatadaWhatsApp || formatarDataWhatsApp(lastMessageAtMs), // <--- CORREÇÃO AQUI
-    formattedLastMessageAt: horaFormatadaWhatsApp || formatarDataWhatsApp(lastMessageAtMs), // <--- CORREÇÃO AQUI
+    dataWhatsapp: horaFormatadaWhatsApp,
+    formattedLastMessageAt: horaFormatadaWhatsApp,
     unreadCount,
     semResposta: ultima?.role === "user",
     raiox: Array.isArray(sessao?.raiox) ? sessao.raiox.slice(-5) : [],
@@ -984,7 +992,7 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
       pasta: cv.pasta || "",
       analiseStatus: cv.analiseStatus || "recebido"
     }));
-    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, discResult: sessaoAtualSheets.discResult || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
+    const payload = JSON.stringify({ acao: "salvarConversaCompleta", telefone, nome: nome || "", historico: historico || [], modo: sessaoAtualSheets.modo || "automatico", pausado: sessaoAtualSheets.pausado || false, motivoPausa: sessaoAtualSheets.motivoPausa || "", unreadCount: Number(sessaoAtualSheets.unreadCount || 0), lastMessageAtMs: Number(sessaoAtualSheets.lastMessageAtMs || 0), curriculos: curriculosMeta, curriculo: curriculosMeta[0] || null, discResult: sessaoAtualSheets.discResult || null, timestamp: agora(), timestampISO: agoraISO(), timestampMs: Date.now() });
     await axios.post(urlBase, payload, { headers: { "Content-Type": "text/plain" }, timeout: 30000, maxRedirects: 5 });
   } catch (e) {
     console.error("Erro salvarConversaCompletaSheets:", e.message);
@@ -1000,8 +1008,10 @@ async function restaurarDoUltimoBackup() {
     let restauradas = 0;
     Object.entries(backup.sessoes).forEach(([tel, s]) => {
       if (!sessoes[tel] && s.historico?.length) {
+        const histBackup = (s.historico || []).map(normalizarEventoHistorico);
         sessoes[tel] = {
-          historico: (s.historico || []).map(normalizarEventoHistorico),
+          historico: histBackup,
+          lastMessageAtMs: Number(s.lastMessageAtMs || 0) || Number(histBackup[histBackup.length - 1]?.timestampMs || 0),
           nome: s.nome || null,
           modo: "automatico",
           pausado: false,
@@ -1102,6 +1112,7 @@ async function carregarSessoesViaAPI() {
       const pausado = idxPaus >= 0 ? row[idxPaus] === 'true' || row[idxPaus] === true : false;
       sessoes[tel] = {
         historico,
+        lastMessageAtMs: Number(historico[historico.length - 1]?.timestampMs || 0),
         nome: (idxNome >= 0 ? row[idxNome] : '') || null,
         modo,
         pausado,
@@ -1121,6 +1132,68 @@ async function carregarSessoesViaAPI() {
     console.error("[Sheets API] Erro:", e.message);
     return 0;
   }
+}
+
+function chaveEventoHistorico(ev) {
+  return `${ev?.role || ""}|${String(ev?.content || "").trim().slice(0, 300)}`;
+}
+
+// Junta o historico em MEMORIA (timestamps reais do WhatsApp) com o da PLANILHA
+// (mais completo, mas que muitas vezes volta sem hora). Regras:
+// 1) Base = versao da planilha (tem o historico antigo completo).
+// 2) Evento da planilha SEM hora recupera a hora da memoria apenas quando a
+//    mensagem e inequivoca (mesmo role+conteudo aparecendo UMA unica vez nos dois
+//    lados) — evita o bug antigo de trocar horarios entre varias msgs "oi" iguais.
+// 3) Mensagens que so existem na memoria (chegaram depois do ultimo salvamento no
+//    Sheets) sao preservadas em vez de descartadas pela recarga.
+function mesclarHistoricos(memoria, planilha) {
+  const mem = Array.isArray(memoria) ? memoria : [];
+  const pla = Array.isArray(planilha) ? planilha : [];
+  if (!mem.length) return pla;
+  if (!pla.length) return mem;
+
+  const contMem = new Map(), contPla = new Map();
+  mem.forEach(ev => { const k = chaveEventoHistorico(ev); contMem.set(k, (contMem.get(k) || 0) + 1); });
+  pla.forEach(ev => { const k = chaveEventoHistorico(ev); contPla.set(k, (contPla.get(k) || 0) + 1); });
+
+  const horaUnicaMem = new Map();
+  mem.forEach(ev => {
+    const k = chaveEventoHistorico(ev);
+    if (contMem.get(k) === 1 && Number(ev.timestampMs) > 0) horaUnicaMem.set(k, Number(ev.timestampMs));
+  });
+
+  const base = pla.map(ev => {
+    if (Number(ev?.timestampMs) > 0) return ev;
+    const k = chaveEventoHistorico(ev);
+    if (contPla.get(k) === 1 && horaUnicaMem.has(k)) {
+      const ms = horaUnicaMem.get(k);
+      const iso = new Date(ms).toISOString();
+      return { ...ev, timestampMs: ms, timestampISO: iso, timestamp: iso,
+        horario: new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+        horarioFormatado: formatarDataWhatsApp(ms) };
+    }
+    return ev;
+  });
+
+  // Preserva mensagens que so existem na memoria (ex: chegaram nos ultimos minutos)
+  const usados = new Map();
+  const faltantes = [];
+  mem.forEach(ev => {
+    const k = chaveEventoHistorico(ev);
+    const u = (usados.get(k) || 0) + 1;
+    usados.set(k, u);
+    if (u > (contPla.get(k) || 0)) faltantes.push(ev);
+  });
+
+  const resultado = base.concat(faltantes);
+  resultado.forEach((m, i) => { m._ordem = i; });
+  resultado.sort((a, b) => {
+    const ma = Number(a.timestampMs || 0), mb = Number(b.timestampMs || 0);
+    if (ma > 0 && mb > 0 && ma !== mb) return ma - mb;
+    return a._ordem - b._ordem;
+  });
+  resultado.forEach(m => { delete m._ordem; });
+  return resultado.slice(-500);
 }
 
 async function carregarSessoesDoSheets() {
@@ -1175,9 +1248,23 @@ async function carregarSessoesDoSheets() {
         console.warn(`[timestamp] Sessão ${tel}: nenhuma mensagem com timestamp real encontrada (${historicoNorm.length} msgs). Vão aparecer sem horário até que uma msg nova com timestamp real chegue.`);
       }
 
+      // FIX PRINCIPAL: MESCLA em vez de SUBSTITUIR. Antes, cada recarga do Sheets
+      // (no deploy e a cada 30 min) jogava fora o historico em memoria — que tem os
+      // timestamps REAIS do WhatsApp — e ficava so com a versao da planilha (que
+      // muitas vezes volta sem hora). Era por isso que os horarios "sumiam depois
+      // de cada deploy" e mensagens recentes podiam desaparecer da tela.
+      const historicoMesclado = mesclarHistoricos(existente.historico || [], historicoNorm);
+      const ultimoMesclado = historicoMesclado[historicoMesclado.length - 1];
+      const lastMsSessao = Math.max(
+        Number(existente.lastMessageAtMs || 0),
+        Number(sessao.lastMessageAtMs || 0),
+        Number(ultimoMesclado?.timestampMs || 0)
+      ) || 0;
+
       sessoes[tel] = {
-        historico: historicoNorm,
-        nome: sessao.nome || null,
+        historico: historicoMesclado,
+        lastMessageAtMs: lastMsSessao,
+        nome: sessao.nome || existente.nome || null,
         modo,
         pausado,
         motivoPausa,
@@ -1215,7 +1302,8 @@ function salvarSessoesLocal() {
         unreadCount: s.unreadCount || 0,
         discResult: s.discResult || null,
         ultimaAnalise: s.ultimaAnalise || null,
-        historico: (s.historico || []).slice(-30),
+        lastMessageAtMs: Number(s.lastMessageAtMs || 0),
+        historico: (s.historico || []).slice(-120),
         curriculos: s.curriculos || [],
         curriculo: s.curriculo || null
       };
@@ -1232,8 +1320,10 @@ function carregarSessoesLocal() {
     let n = 0;
     Object.entries(raw.sessoes).forEach(([tel, s]) => {
       if (!sessoes[tel]) {
+        const histLocal = (s.historico || []).map(normalizarEventoHistorico);
         sessoes[tel] = {
-          historico: (s.historico || []).map(normalizarEventoHistorico),
+          historico: histLocal,
+          lastMessageAtMs: Number(s.lastMessageAtMs || 0) || Number(histLocal[histLocal.length - 1]?.timestampMs || 0),
           nome: s.nome || null,
           modo: s.modo || "automatico",
           pausado: s.pausado || false,
@@ -1353,6 +1443,7 @@ async function fazerBackup(tipo) {
     Object.entries(sessoes).forEach(([tel, s]) => {
       sessoesCompactas[tel] = {
         nome: s.nome,
+        lastMessageAtMs: Number(s.lastMessageAtMs || 0),
         modo: s.modo,
         pausado: s.pausado,
         motivoPausa: s.motivoPausa,
