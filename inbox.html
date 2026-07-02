@@ -810,6 +810,7 @@ font-family:'Montserrat',sans-serif
         <span class="sb-title">💬 Conversas</span>
         <div class="sb-badges">
           <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()" title="Ativar seleção em lote [Shift+S]">☑ Selecionar</button>
+          <button class="btn-selecionar-all" id="btn-todas-lidas" onclick="marcarTodasLidas()" title="Zerar o contador: marca todas as conversas como lidas">✓✓ Todas lidas</button>
           <span class="badge badge-red" id="badge-novas" style="display:none">0</span>
           <span class="badge badge-blue" id="badge-total">0</span>
         </div>
@@ -5798,6 +5799,23 @@ async function bulkArquivar(){
   cancelarSelecao();
   renderLista();
   toast(`📦 ${n} conversa${n>1?'s':''} arquivada${n>1?'s':''}`, 'success');
+}
+
+// Zera o contador de nao lidas de UMA VEZ: marca tudo que esta carregado como visto.
+// Mensagens novas que chegarem DEPOIS voltam a contar normalmente.
+function marcarTodasLidas(){
+  const tels=Object.keys(todasSessoes||{});
+  if(!tels.length){toast('Nenhuma conversa carregada','error');return;}
+  if(!confirm(`Marcar TODAS as ${tels.length} conversas como lidas?\n\nO contador zera agora; mensagens novas voltam a contar normalmente.`))return;
+  tels.forEach(tel=>{
+    const s=todasSessoes[tel];
+    const hist=(s&&s.historico)||[];
+    setMeta(tel,{ultimaMsgVista:hist.length});
+  });
+  salvarLocal();
+  renderLista();
+  if(typeof atualizarTitulo==='function')atualizarTitulo();
+  toast(`✅ ${tels.length} conversas marcadas como lidas`,'success');
 }
 
 function bulkMarcarLidas(){
