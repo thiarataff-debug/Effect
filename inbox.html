@@ -2006,6 +2006,15 @@ function abrirTelefoneDaUrl(){
   }
 }
 
+// FIX: esta funcao era chamada no fim de carregarSessoes() mas nao existia —
+// gerava "ReferenceError: atualizarTitulo is not defined" a cada polling (5s).
+function atualizarTitulo(){
+  try{
+    const naoLidas=Object.entries(todasSessoes||{}).filter(([t,s])=>contarNaoLidas(t,s)>0).length;
+    document.title=naoLidas>0?`(${naoLidas}) Effect — Lia Inbox`:'Effect — Lia Inbox';
+  }catch(e){}
+}
+
 async function carregarSessoes(){
   try{
     const r=await fetch(`${API}/inbox/sessoes`);
@@ -2562,8 +2571,11 @@ all.filter(([t,s])=>
     const atvMs=atividadeMsSessao(s);
     const horaFallback = textoHoraFallbackSessao(s, ultima);
 
-    // Prioriza o dado vindo direto do servidor (index.js)
-const hInfo = s.dataWhatsapp ? { texto: s.dataWhatsapp, hoje: true, ms: atvMs } : (atvMs ? formatarHora(atvMs) : { texto: '--:--', hoje: false, ms: 0 });
+    // FIX: o backend mandava sempre HH:MM em dataWhatsapp (mesmo p/ conversas de
+    // semanas atras), e a lista mostrava essa hora como se fosse de hoje. Agora o
+    // timestamp real manda: formatarHora devolve HH:MM so se for HOJE, senao
+    // "Ontem"/dia da semana/data — igual WhatsApp.
+const hInfo = atvMs ? formatarHora(atvMs) : (s.dataWhatsapp ? { texto: s.dataWhatsapp, hoje: false, ms: 0 } : (horaFallback ? { texto: horaFallback, hoje: false, ms: 0 } : { texto: '', hoje: false, ms: 0 }));
 
     // Avatar: iniciais do nome ou emoji
     const iniciais=nomeIniciais(s.nome||'');
@@ -2696,8 +2708,11 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
     const tsReal=obterTimestampMsg(msg);
     const ts=tsReal||msg._approxMs||0;
     
-    // Pega a hora formatada da própria mensagem salva
-const horaTexto = msg.horarioFormatado || (ts ? extrairHora(ts) : '--:--');
+    // FIX: horarioFormatado pode conter "Ontem"/"Seg"/data (formato da LISTA) e
+    // aparecia como "hora" dentro da bolha. A hora da bolha vem SEMPRE do timestamp
+    // real; o texto salvo so e usado se parecer uma hora de verdade (HH:MM).
+const hfLimpo=String(msg.horarioFormatado||'').trim();
+const horaTexto = ts ? extrairHora(ts) : (/^\d{1,2}:\d{2}$/.test(hfLimpo) ? hfLimpo : (horaFallbackMsg(msg) || ''));
     
     const isApprox=!tsReal&&!!msg._approxMs;
     const dataMsg=ts?formatarDataMensagem(ts):'';
