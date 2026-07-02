@@ -76,6 +76,20 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ciclo-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .ciclo-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#f8fafc}
 .ciclo-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ciclo-view-btn{padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-family:Montserrat,sans-serif;font-size:10px;font-weight:700;cursor:pointer;color:var(--muted)}
+.ciclo-view-btn.active-view{background:var(--navy);color:#fff;border-color:var(--navy)}
+.ciclo-mark-btn{padding:5px 12px;border-radius:8px;border:1.5px solid #fda4af;background:#fff;font-family:Montserrat,sans-serif;font-size:10px;font-weight:700;cursor:pointer;color:#be123c}
+.ciclo-mark-btn.marcando{background:#e11d48;color:#fff;border-color:#e11d48;animation:pulse-mark 1.2s infinite}
+@keyframes pulse-mark{0%,100%{opacity:1}50%{opacity:.7}}
+.ciclo-ano-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:700px){.ciclo-ano-grid{grid-template-columns:repeat(2,1fr)}}
+.ciclo-ano-mes{border:1px solid var(--border);border-radius:10px;padding:6px}
+.ciclo-ano-mes-nome{font-size:10px;font-weight:800;color:var(--navy);text-align:center;margin-bottom:3px}
+.ciclo-ano-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.ciclo-ano-dia{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;background:#f8fafc;color:#666;cursor:pointer;border:none;padding:0}
+.ciclo-ano-dia.period{background:#ef4444;color:#fff}
+.ciclo-ano-dia.spotting{background:#fda4af;color:#7f1d1d}
+.ciclo-ano-dia.today{outline:1.5px solid var(--blue)}
 /* Phase info cards */
 .ciclo-phase-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
 .ciclo-phase-card{border-radius:12px;padding:12px;border:1.5px solid transparent;cursor:default}
@@ -450,6 +464,14 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
   <!-- Calendário -->
   <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px">
+        <button id="ciclo-view-mes" class="ciclo-view-btn active-view" onclick="cicloSetView('mes')">📅 Mensal</button>
+        <button id="ciclo-view-ano" class="ciclo-view-btn" onclick="cicloSetView('ano')">🗓️ Anual</button>
+      </div>
+      <button id="ciclo-mark-btn" class="ciclo-mark-btn" onclick="cicloToggleMarkMode()" title="Ative e clique nos dias do calendário para marcar/desmarcar menstruação">🩸 Marcar menstruação</button>
+    </div>
+    <div id="ciclo-mark-hint" style="display:none;font-size:10px;font-weight:700;color:#be123c;background:#fff1f2;border:1px solid #fda4af;border-radius:8px;padding:6px 8px;margin-bottom:8px">Modo marcação ativo: clique nos dias para marcar/desmarcar menstruação. Clique no botão de novo para sair.</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <button onclick="cicloNavMes(-1)" style="padding:4px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-weight:700;cursor:pointer">‹</button>
       <span id="ciclo-mes-label" style="font-weight:800;font-size:13px;color:var(--navy)"></span>
@@ -462,12 +484,15 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
       <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#bbf7d0"></div>Ovulação</div>
       <div class="ciclo-legend-item"><div class="ciclo-legend-dot" style="background:#fde8d8"></div>Lútea</div>
     </div>
+    <div id="ciclo-mes-wrap">
     <div class="ciclo-mini-cal">
       <div class="ciclo-mini-header">D</div><div class="ciclo-mini-header">S</div><div class="ciclo-mini-header">T</div>
       <div class="ciclo-mini-header">Q</div><div class="ciclo-mini-header">Q</div><div class="ciclo-mini-header">S</div>
       <div class="ciclo-mini-header">S</div>
     </div>
     <div class="ciclo-mini-cal" id="ciclo-cal-grid"></div>
+    </div>
+    <div id="ciclo-ano-wrap" class="ciclo-ano-grid" style="display:none"></div>
   </div>
 
   <!-- Previsões -->
@@ -581,7 +606,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('historico',this)">📅 Histórico</button>
-    <button class="psi-nav-btn" onclick="psiMostrarSec('questionarios',this)">🧠 PHQ-9/GAD-7</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('relatorios',this)">📄 Relatórios</button>
   </div>
   <div id="psi-stock-section"></div>
@@ -643,8 +667,12 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
         </div>
       </div>
       <div class="slider-item">
-        <label>Ansiedade — que horas?</label>
-        <input type="time" id="hor-ansiedade" class="psi-time-input" onchange="updateProgress()">
+        <label>Ansiedade — que horas? <span class="badge">pode registrar vários no mesmo dia</span></label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="time" id="hor-ansiedade" class="psi-time-input">
+          <button type="button" onclick="addHorarioAnsiedade()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-family:Montserrat,sans-serif;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0" title="Adicionar este horário à lista do dia">＋</button>
+        </div>
+        <div id="hor-ansiedade-lista" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
       <div class="slider-item">
         <label>Compulsão alimentar <span class="badge">escala 0-10</span></label>
@@ -814,57 +842,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 
 <!-- ═══════════════════════════════════ QUESTIONÁRIOS ═══════════════════════════════════ -->
-<div id="sec-questionarios" class="psi-sec">
-<div class="psi-container">
-
-  <h1 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Questionários Clínicos</h1>
-
-  <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('phq9')">PHQ-9 (Depressão)</button>
-    <button class="tab-btn" onclick="showTab('gad7')">GAD-7 (Ansiedade)</button>
-    <button class="tab-btn" onclick="showTab('hist-quest')">Histórico</button>
-  </div>
-
-  <!-- PHQ-9 -->
-  <div id="tab-phq9" class="tab-panel">
-    <div class="card">
-      <div class="card-title">🧠 PHQ-9 — Escala de Depressão</div>
-      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Nas últimas 2 semanas, com que frequência você foi incomodado pelos seguintes problemas?</p>
-      <div id="phq9-questions"></div>
-      <div class="score-box" id="phq9-score-box" style="display:none;"></div>
-      <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="calcPHQ9()">Calcular</button>
-        <button class="btn btn-green" onclick="savePHQ9()">Salvar resultado</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- GAD-7 -->
-  <div id="tab-gad7" class="tab-panel" style="display:none;">
-    <div class="card">
-      <div class="card-title">😰 GAD-7 — Escala de Ansiedade</div>
-      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Nas últimas 2 semanas, com que frequência você foi incomodado pelos seguintes problemas?</p>
-      <div id="gad7-questions"></div>
-      <div class="score-box" id="gad7-score-box" style="display:none;"></div>
-      <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="calcGAD7()">Calcular</button>
-        <button class="btn btn-green" onclick="saveGAD7()">Salvar resultado</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- HISTÓRICO QUESTIONÁRIOS -->
-  <div id="tab-hist-quest" class="tab-panel" style="display:none;">
-    <div class="card">
-      <div class="card-title">📊 Histórico PHQ-9 e GAD-7</div>
-      <div class="chart-wrap"><canvas id="ch-quest"></canvas></div>
-      <div id="quest-hist-table" style="margin-top:1rem;overflow-x:auto;"></div>
-    </div>
-  </div>
-
-</div>
-</div>
-
 <!-- ═══════════════════════════════════ RELATÓRIOS ═══════════════════════════════════ -->
 <div id="sec-relatorios" class="psi-sec">
 <div class="psi-container">
@@ -1256,9 +1233,82 @@ function cicloGetDayType(date, calc){
   return null;
 }
 
+let cicloView = 'mes';
+let cicloMarkMode = false;
+
 function cicloNavMes(dir){
-  cicloCurrentMonth = new Date(cicloCurrentMonth.getFullYear(), cicloCurrentMonth.getMonth() + dir, 1);
+  // Na visão anual as setas navegam de ANO em ano
+  const passo = cicloView === 'ano' ? 12 : 1;
+  cicloCurrentMonth = new Date(cicloCurrentMonth.getFullYear(), cicloCurrentMonth.getMonth() + dir * passo, 1);
   cicloRenderCalendar();
+}
+
+function cicloSetView(v){
+  cicloView = v;
+  document.getElementById('ciclo-view-mes')?.classList.toggle('active-view', v==='mes');
+  document.getElementById('ciclo-view-ano')?.classList.toggle('active-view', v==='ano');
+  const mes=document.getElementById('ciclo-mes-wrap'), ano=document.getElementById('ciclo-ano-wrap');
+  if(mes)mes.style.display = v==='mes' ? '' : 'none';
+  if(ano)ano.style.display = v==='ano' ? 'grid' : 'none';
+  cicloRenderCalendar();
+}
+
+function cicloToggleMarkMode(){
+  cicloMarkMode = !cicloMarkMode;
+  const btn=document.getElementById('ciclo-mark-btn');
+  if(btn){btn.classList.toggle('marcando', cicloMarkMode);btn.textContent = cicloMarkMode ? '✔ Marcando… (clique p/ sair)' : '🩸 Marcar menstruação';}
+  const hint=document.getElementById('ciclo-mark-hint');
+  if(hint)hint.style.display = cicloMarkMode ? '' : 'none';
+}
+
+// Clique num dia: no modo marcação alterna menstruação; senão seleciona p/ sintomas
+function cicloDayClick(key){
+  if(!cicloMarkMode){ cicloSelectDay(key); return; }
+  const data = cicloGetData();
+  if(!data[key]) data[key] = {};
+  if(data[key].tipo === 'period'){
+    delete data[key].tipo;
+  } else {
+    data[key].tipo = 'period';
+    // Se este dia inicia um novo período (dia anterior não marcado) e é mais
+    // recente que a config, atualiza o "1º dia do último período" — mantém as
+    // previsões de ovulação/próxima menstruação sempre atualizadas.
+    const anterior = new Date(key + 'T12:00:00'); anterior.setDate(anterior.getDate()-1);
+    const kAnt = cicloDateKey(anterior);
+    const cfg = cicloGetCfg();
+    if(!(data[kAnt]?.tipo === 'period') && (!cfg.ultimaMens || key > cfg.ultimaMens)){
+      cfg.ultimaMens = key;
+      cicloSaveCfg(cfg);
+      const inp=document.getElementById('ciclo-ultima-mens'); if(inp)inp.value = key;
+    }
+  }
+  cicloSaveData(data);
+  cicloRender();
+}
+
+// Visão ANUAL: 12 meses, dias de menstruação em vermelho — clique também marca
+function cicloRenderAno(){
+  const wrap = document.getElementById('ciclo-ano-wrap');
+  if(!wrap) return;
+  const year = cicloCurrentMonth.getFullYear();
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const data = cicloGetData();
+  const todayKey = cicloToday();
+  let html = '';
+  for(let m=0;m<12;m++){
+    const firstDay = new Date(year,m,1).getDay();
+    const daysInMonth = new Date(year,m+1,0).getDate();
+    let dias='';
+    for(let i=0;i<firstDay;i++) dias+='<span></span>';
+    for(let d=1;d<=daysInMonth;d++){
+      const key = cicloDateKey(new Date(year,m,d,12));
+      const tipo = data[key]?.tipo;
+      const cls = (tipo==='period'?' period':tipo==='spotting'?' spotting':'') + (key===todayKey?' today':'');
+      dias += `<button class="ciclo-ano-dia${cls}" onclick="cicloDayClick('${key}')" title="${key}">${d}</button>`;
+    }
+    html += `<div class="ciclo-ano-mes"><div class="ciclo-ano-mes-nome">${months[m]}</div><div class="ciclo-ano-dias">${dias}</div></div>`;
+  }
+  wrap.innerHTML = html;
 }
 
 function cicloRenderCalendar(){
@@ -1267,7 +1317,7 @@ function cicloRenderCalendar(){
   const month = cicloCurrentMonth.getMonth();
   const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const label = document.getElementById('ciclo-mes-label');
-  if(label) label.textContent = months[month] + ' ' + year;
+  if(label) label.textContent = (typeof cicloView!=='undefined' && cicloView==='ano') ? ('Ano de ' + year) : (months[month] + ' ' + year);
   
   const grid = document.getElementById('ciclo-cal-grid');
   if(!grid) return;
@@ -1289,9 +1339,10 @@ function cicloRenderCalendar(){
     const todayClass = isToday ? ' today' : '';
     const selClass = isSel ? ' selected' : '';
     const hasSym = data[key]?.sintomas?.length > 0 ? '<span class="ciclo-dot" style="background:var(--navy)"></span>' : '';
-    html += `<button class="ciclo-day${typeClass}${todayClass}${selClass}" onclick="cicloSelectDay('${key}')">${d}${hasSym}</button>`;
+    html += `<button class="ciclo-day${typeClass}${todayClass}${selClass}" onclick="cicloDayClick('${key}')">${d}${hasSym}</button>`;
   }
   grid.innerHTML = html;
+  if (typeof cicloView !== 'undefined' && cicloView === 'ano') cicloRenderAno();
 }
 
 function cicloSelectDay(key){
@@ -1741,7 +1792,7 @@ function updateProgress() {
   filled += 5;
   const anyMed = Array.from(document.querySelectorAll('#med-checklist-dinamico input[type=checkbox]')).some(cb => cb.checked);
   if (anyMed) filled += 1;
-  if ((document.getElementById('hor-ansiedade')?.value||'').trim()) filled += 1;
+  if (_ansiedadeHorarios.length || (document.getElementById('hor-ansiedade')?.value||'').trim()) filled += 1;
   if ((document.getElementById('hor-sonolencia')?.value||'').trim()) filled += 1;
   if ((document.getElementById('txt-sintomas-gerais')?.value||'').trim()) filled += 1;
   if ((document.getElementById('txt-obs')?.value||'').trim()) filled += 1;
@@ -1755,6 +1806,31 @@ function toggleMed(el) {
     el.classList.toggle('taken', cb.checked);
     updateProgress();
   }, 0);
+}
+
+// ── ANSIEDADE: MULTIPLOS HORARIOS NO MESMO DIA ──────────────────────────────
+let _ansiedadeHorarios = [];
+function addHorarioAnsiedade(){
+  const inp=document.getElementById('hor-ansiedade');
+  const v=(inp?.value||'').trim();
+  if(!v)return;
+  if(!_ansiedadeHorarios.includes(v))_ansiedadeHorarios.push(v);
+  _ansiedadeHorarios.sort();
+  if(inp)inp.value='';
+  renderHorariosAnsiedade();
+  updateProgress();
+}
+function removeHorarioAnsiedade(v){
+  _ansiedadeHorarios=_ansiedadeHorarios.filter(x=>x!==v);
+  renderHorariosAnsiedade();
+  updateProgress();
+}
+function renderHorariosAnsiedade(){
+  const div=document.getElementById('hor-ansiedade-lista');
+  if(!div)return;
+  div.innerHTML=_ansiedadeHorarios.length
+    ? _ansiedadeHorarios.map(h=>`<span style="background:#fde8e8;color:#991b1b;border-radius:12px;padding:3px 9px;font-size:11px;font-weight:700;display:inline-flex;gap:5px;align-items:center">🕐 ${h} <a onclick="removeHorarioAnsiedade('${h}')" style="cursor:pointer;font-weight:800" title="Remover">×</a></span>`).join('')
+    : '<span style="font-size:10px;color:var(--muted)">Nenhum episódio registrado hoje — use o ＋ para adicionar</span>';
 }
 
 // ═══════════════════════ SAVE DAY ═══════════════════════
@@ -1795,7 +1871,14 @@ function saveDay() {
     sonolencia: +document.getElementById('sl-sonolencia').value,
     // Campos simplificados (novos)
     sonoGeral: +document.getElementById('sl-sono-geral').value,
-    ansiedadeHorario: (document.getElementById('hor-ansiedade')?.value||''),
+    // Compatibilidade: ansiedadeHorario (1º episódio) segue existindo p/ gráficos
+    // antigos; ansiedadeHorarios guarda TODOS os episódios do dia.
+    ansiedadeHorarios: (function(){
+      const v=(document.getElementById('hor-ansiedade')?.value||'').trim();
+      if(v&&!_ansiedadeHorarios.includes(v)){_ansiedadeHorarios.push(v);_ansiedadeHorarios.sort();}
+      return [..._ansiedadeHorarios];
+    })(),
+    ansiedadeHorario: (_ansiedadeHorarios[0]||(document.getElementById('hor-ansiedade')?.value||'')),
     sonolenciaHorario: (document.getElementById('hor-sonolencia')?.value||''),
     sintomasGerais: (document.getElementById('txt-sintomas-gerais')?.value||'').trim(),
     medsDinamico,
@@ -1842,6 +1925,7 @@ function psiSelectDay(val){
   document.getElementById('txt-efeitos').value='';
   document.getElementById('txt-obs').value='';
   const horAns=document.getElementById('hor-ansiedade'); if(horAns) horAns.value='';
+  _ansiedadeHorarios=[]; renderHorariosAnsiedade();
   const horSono=document.getElementById('hor-sonolencia'); if(horSono) horSono.value='';
   const txtSint=document.getElementById('txt-sintomas-gerais'); if(txtSint) txtSint.value='';
   loadToday();
@@ -1888,7 +1972,9 @@ function loadToday() {
     }
     if (d.efeitos) document.getElementById('txt-efeitos').value = d.efeitos;
     if (d.obs) document.getElementById('txt-obs').value = d.obs;
-    const horAns=document.getElementById('hor-ansiedade'); if(horAns) horAns.value = d.ansiedadeHorario||'';
+    _ansiedadeHorarios = Array.isArray(d.ansiedadeHorarios) ? [...d.ansiedadeHorarios] : (d.ansiedadeHorario ? [d.ansiedadeHorario] : []);
+    renderHorariosAnsiedade();
+    const horAns=document.getElementById('hor-ansiedade'); if(horAns) horAns.value='';
     const horSono=document.getElementById('hor-sonolencia'); if(horSono) horSono.value = d.sonolenciaHorario||'';
     const txtSint=document.getElementById('txt-sintomas-gerais'); if(txtSint) txtSint.value = d.sintomasGerais||'';
   }
@@ -2010,7 +2096,7 @@ function renderDashboard() {
     data: {
       labels,
       datasets: [
-        { ...lineDS('Ansiedade', data.map(d=>horaDecimal(d.ansiedadeHorario)), '#f4afa1'), spanGaps: true, showLine: false, pointRadius: 5 },
+        { ...lineDS('Ansiedade (1º episódio do dia)', data.map(d=>horaDecimal((Array.isArray(d.ansiedadeHorarios)&&d.ansiedadeHorarios[0])||d.ansiedadeHorario)), '#f4afa1'), spanGaps: true, showLine: false, pointRadius: 5 },
         { ...lineDS('Sonolência', data.map(d=>horaDecimal(d.sonolenciaHorario)), '#d97706'), spanGaps: true, showLine: false, pointRadius: 5 },
       ]
     },
@@ -2372,9 +2458,8 @@ function saveGAD7() {
 }
 
 function renderQuestionarios() {
-  renderQuestForm(PHQ9_Q, 'phq9', 'phq9-questions');
-  renderQuestForm(GAD7_Q, 'gad7', 'gad7-questions');
-  renderQuestHistChart();
+  // Teste PHQ-9/GAD-7 removido da interface a pedido — dados antigos continuam
+  // salvos no armazenamento, apenas nao ha mais tela para novos testes.
 }
 
 function renderQuestHistChart() {
@@ -2542,47 +2627,36 @@ function exportPDF() {
   });
   y = doc.lastAutoTable.finalY + 8;
 
-  // PHQ-9 / GAD-7 history
-  const questArr = getQuestDB();
-  if (questArr.length) {
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.text('Histórico PHQ-9 e GAD-7:', 14, y); y += 4;
-    doc.autoTable({
-      startY: y,
-      head: [['Data','Escala','Pontuação','Interpretação']],
-      body: questArr.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(q => [
-        formatDate(q.date), q.type, q.score,
-        q.type==='PHQ9' ? phq9Interp(q.score).text : gad7Interp(q.score).text
-      ]),
-      theme: 'grid',
-      headStyles: {fillColor:[142,209,178], textColor:[42,42,43], fontStyle:'bold', fontSize:9},
-      bodyStyles: {fontSize:9},
-      margin: {left:14, right:14},
-    });
-    y = doc.lastAutoTable.finalY + 8;
-  }
-
   // Daily records
   if (y > 230) { doc.addPage(); y = 15; }
   doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.text('Registros diários (últimos 30 dias):', 14, y); y += 4;
+  doc.text('Registros diários (últimos 30 dias):', 14, y); y += 5;
+  // NOTA EXPLÍCITA PARA O MÉDICO: pode haver mais de um episódio de ansiedade
+  // por dia — a coluna "Horários ansiedade" lista todos.
+  doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(120,60,60);
+  doc.text('Nota: a paciente pode registrar MÚLTIPLOS episódios de ansiedade no mesmo dia.', 14, y); y += 4;
+  doc.text('A coluna "Horários ansiedade" lista TODOS os horários registrados naquele dia.', 14, y); y += 4;
+  doc.setTextColor(42,42,43);
 
   doc.autoTable({
     startY: y,
-    head: [['Data','Humor','Energia','Ans.','Sono','Comp.','Adesão','Efeitos / Obs.']],
+    head: [['Data','Humor','Energia','Ans.','Horários ansiedade','Sono','Comp.','Adesão','Efeitos / Obs.']],
     body: keys.slice(-30).reverse().map(k => {
       const d = db[k];
+      const horariosAns = (Array.isArray(d.ansiedadeHorarios) && d.ansiedadeHorarios.length)
+        ? d.ansiedadeHorarios.join(', ')
+        : (d.ansiedadeHorario || '—');
       return [
-        formatDate(k), d.humor, d.energia, d.ansiedade, d.horasSono+'h',
+        formatDate(k), d.humor, d.energia, d.ansiedade, horariosAns, d.horasSono+'h',
         d.compulsao, (d.adesao||0)+'%',
-        [(d.efeitos||''),(d.obs||'')].filter(Boolean).join(' | ').substring(0,50)
+        [(d.efeitos||''),(d.obs||'')].filter(Boolean).join(' | ').substring(0,40)
       ];
     }),
     theme: 'striped',
     headStyles: {fillColor:[31,165,240], textColor:255, fontStyle:'bold', fontSize:8},
     bodyStyles: {fontSize:7.5},
     margin: {left:14, right:14},
-    columnStyles: {7:{cellWidth:55}},
+    columnStyles: {4:{cellWidth:32}, 8:{cellWidth:38}},
   });
 
   // Footer
