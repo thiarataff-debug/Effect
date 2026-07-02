@@ -1400,14 +1400,42 @@ function cicloToggleSymp(btn){
   btn.classList.toggle('active');
 }
 function cicloMarcarHoje(){
+  // BUG CORRIGIDO: com o seletor em "— Nada —" o botão não fazia NADA e não
+  // avisava — parecia que "não deixava salvar". Agora sempre há feedback, e
+  // "— Nada —" passa a servir para LIMPAR a marcação de hoje.
   const tipo = document.getElementById('ciclo-marcar-tipo')?.value;
-  if(!tipo) return;
   const key = cicloToday();
   const data = cicloGetData();
   if(!data[key]) data[key] = {};
+
+  if(!tipo){
+    if(data[key].tipo){
+      delete data[key].tipo;
+      cicloSaveData(data);
+      cicloRender();
+      toast('🧹 Marcação de hoje removida');
+    } else {
+      toast('Escolha uma opção em "Marcar hoje como" — ou use 🩸 Marcar menstruação no calendário','error');
+    }
+    return;
+  }
+
   data[key].tipo = tipo;
+  // Menstruação marcada hoje (e ontem não): atualiza o "1º dia do último período"
+  // automaticamente, mantendo as previsões corretas.
+  if(tipo === 'period'){
+    const ontem = new Date(); ontem.setDate(ontem.getDate()-1); ontem.setHours(12,0,0,0);
+    const kAnt = cicloDateKey(ontem);
+    const cfg = cicloGetCfg();
+    if(!(data[kAnt]?.tipo === 'period') && (!cfg.ultimaMens || key > cfg.ultimaMens)){
+      cfg.ultimaMens = key;
+      cicloSaveCfg(cfg);
+      const inp = document.getElementById('ciclo-ultima-mens'); if(inp) inp.value = key;
+    }
+  }
   cicloSaveData(data);
   cicloRender();
+  toast('🌸 Marcação de hoje salva!');
 }
 function cicloSalvarDia(){
   const key = cicloSelectedDate || cicloToday();
