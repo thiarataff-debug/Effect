@@ -2267,6 +2267,160 @@ app.post("/inbox/enviar", async (req, res) => {
   }
 });
 
+// ── ENVIO EM LOTE — mesma mensagem para varias conversas ────────────────────
+// Roda em SEGUNDO PLANO no servidor (~1 msg/seg), registra no historico de cada
+// sessao e nao depende do navegador ficar aberto.
+// Acompanhe em GET /inbox/enviar-lote/status.
+let loteEnvio = { rodando: false, total: 0, enviadas: 0, falhas: 0, foraJanela: 0, iniciadoEm: null, terminadoEm: null, ultimoErro: "" };
+
+app.get("/inbox/enviar-lote/status", (req, res) => res.json({ ok: true, ...loteEnvio }));
+
+// Motor compartilhado pelo envio em lote comum e pela Mensagem SOS.
+function iniciarEnvioLote(telefones, mensagem, opts = {}) {
+  loteEnvio = { rodando: true, total: telefones.length, enviadas: 0, falhas: 0, foraJanela: 0, iniciadoEm: new Date().toISOString(), terminadoEm: null, ultimoErro: "" };
+
+  (async () => {
+    for (const tel of telefones) {
+      try {
+        await enviarMensagem(tel, mensagem);
+        const sessao = garantirSessao(tel);
+        if (opts.assumirManual) {
+          atendimentosManuais.add(tel);
+          sessao.modo = "manual";
+          sessao.pausado = true;
+          sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
+        }
+        registrarEntradaSessao(sessao, "assistant", mensagem);
+        marcarConversaRespondida(sessao);
+        sessao.historico = sessao.historico.slice(-500);
+        salvarMensagemSheets(tel, "assistant", mensagem, sessao.nome || "").catch(() => {});
+        loteEnvio.enviadas++;
+        if (opts.aoEnviar) { try { opts.aoEnviar(tel); } catch (_) {} }
+      } catch (e) {
+        // Erro 131047 da Meta = candidato fora da janela de 24h (mensagem livre
+        // nao e permitida). Opcionalmente cai para o template aprovado.
+        const foraJanela = String(e.message || "").includes("131047") || String(e.message || "").toLowerCase().includes("re-engagement");
+        if (foraJanela) loteEnvio.foraJanela++;
+        if (foraJanela && opts.templateFallback) {
+          const t = await enviarTemplate(tel);
+          if (t.sucesso) {
+            const sessao = garantirSessao(tel);
+            registrarEntradaSessao(sessao, "assistant", "[Template de reengajamento enviado]");
+            sessao.historico = sessao.historico.slice(-500);
+            loteEnvio.enviadas++;
+            if (opts.aoEnviar) { try { opts.aoEnviar(tel); } catch (_) {} }
+          } else {
+            loteEnvio.falhas++;
+            loteEnvio.ultimoErro = `${tel}: template falhou — ${t.erro}`;
+          }
+        } else {
+          loteEnvio.falhas++;
+          loteEnvio.ultimoErro = `${tel}: ${e.message}`;
+          console.error("[enviar-lote] Falha:", tel, e.message);
+        }
+      }
+      await sleep(1100);
+    }
+    loteEnvio.rodando = false;
+    loteEnvio.terminadoEm = new Date().toISOString();
+    console.log(`[enviar-lote] Concluído: ${loteEnvio.enviadas} enviadas, ${loteEnvio.falhas} falhas (${loteEnvio.foraJanela} fora da janela 24h) de ${loteEnvio.total}.`);
+    if (opts.aoTerminar) { try { opts.aoTerminar(loteEnvio); } catch (_) {} }
+  })().catch(e => {
+    loteEnvio.rodando = false;
+    loteEnvio.terminadoEm = new Date().toISOString();
+    console.error("[enviar-lote] Erro fatal:", e.message);
+  });
+}
+
+app.post("/inbox/enviar-lote", (req, res) => {
+  const telefones = Array.isArray(req.body.telefones)
+    ? [...new Set(req.body.telefones.map(limparTelefone).filter(t => t && t.length >= 8))]
+    : [];
+  const mensagem = String(req.body.mensagem || "").trim();
+  if (!telefones.length || !mensagem) return res.json({ ok: false, erro: "Informe telefones e mensagem" });
+  if (loteEnvio.rodando) return res.json({ ok: false, erro: `Já existe um envio em andamento (${loteEnvio.enviadas + loteEnvio.falhas}/${loteEnvio.total}). Aguarde terminar.` });
+
+  iniciarEnvioLote(telefones, mensagem, {
+    assumirManual: req.body.assumirManual === true,
+    templateFallback: req.body.templateFallback === true
+  });
+  res.json({ ok: true, total: telefones.length });
+});
+
+// ── MENSAGEM SOS ─────────────────────────────────────────────────────────────
+// Texto fixo salvo no servidor (Volume) + fila com memoria: quem ja recebeu a
+// SOS NUNCA recebe de novo. Permite mandar "um pouco por dia" com seguranca —
+// protege a nota de qualidade do numero na Meta.
+const SOS_PATH = process.env.SOS_PATH || "/data/sos-config.json";
+
+function lerSos() {
+  try {
+    if (fs.existsSync(SOS_PATH)) {
+      const cfg = JSON.parse(fs.readFileSync(SOS_PATH, "utf8"));
+      return { texto: cfg.texto || "", enviados: cfg.enviados || {} };
+    }
+  } catch (e) { console.error("lerSos:", e.message); }
+  return { texto: "", enviados: {} };
+}
+
+function gravarSos(cfg) {
+  try {
+    const dir = require("path").dirname(SOS_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SOS_PATH, JSON.stringify(cfg), "utf8");
+    return true;
+  } catch (e) { console.error("gravarSos:", e.message); return false; }
+}
+
+// Estado atual: texto salvo + quantos ja receberam
+app.get("/inbox/sos", (req, res) => {
+  const cfg = lerSos();
+  res.json({ ok: true, texto: cfg.texto, totalEnviados: Object.keys(cfg.enviados).length, loteRodando: loteEnvio.rodando });
+});
+
+// Salva/edita o texto da Mensagem SOS
+app.post("/inbox/sos/salvar", (req, res) => {
+  const texto = String(req.body.texto || "").trim();
+  if (!texto) return res.json({ ok: false, erro: "Texto vazio" });
+  const cfg = lerSos();
+  cfg.texto = texto;
+  res.json({ ok: gravarSos(cfg) });
+});
+
+// Dispara o lote do dia: pega ate N telefones da fila que AINDA NAO receberam
+app.post("/inbox/sos/enviar", (req, res) => {
+  const cfg = lerSos();
+  const texto = String(req.body.texto || cfg.texto || "").trim();
+  if (!texto) return res.json({ ok: false, erro: "Salve a Mensagem SOS primeiro" });
+  if (loteEnvio.rodando) return res.json({ ok: false, erro: `Já existe um envio em andamento (${loteEnvio.enviadas + loteEnvio.falhas}/${loteEnvio.total}). Aguarde terminar.` });
+
+  const quantidade = Math.max(1, Math.min(500, Number(req.body.quantidade || 50)));
+  const pool = Array.isArray(req.body.telefones) && req.body.telefones.length
+    ? req.body.telefones.map(limparTelefone)
+    : Object.keys(sessoes);
+  const fila = [...new Set(pool.filter(t => t && t.length >= 8 && !cfg.enviados[t]))];
+  const doDia = fila.slice(0, quantidade);
+  if (!doDia.length) return res.json({ ok: false, erro: "Ninguém pendente — todos desse grupo já receberam a Mensagem SOS." });
+
+  cfg.texto = texto;
+  gravarSos(cfg);
+
+  iniciarEnvioLote(doDia, texto, {
+    assumirManual: req.body.assumirManual === true,
+    templateFallback: req.body.templateFallback === true,
+    aoEnviar: (tel) => { cfg.enviados[tel] = Date.now(); gravarSos(cfg); }
+  });
+
+  res.json({ ok: true, total: doDia.length, restantes: fila.length - doDia.length, jaReceberam: Object.keys(cfg.enviados).length });
+});
+
+// Zera a memoria de quem ja recebeu (para uma campanha nova)
+app.post("/inbox/sos/zerar", (req, res) => {
+  const cfg = lerSos();
+  cfg.enviados = {};
+  res.json({ ok: gravarSos(cfg) });
+});
+
 // Função compartilhada: localiza o currículo (local, Sheets, ou busca automática no
 // Drive) e devolve OU um link pra abrir OU null. Não escreve na resposta — quem
 // chama decide o que fazer (redirecionar, servir o arquivo, ou responder JSON).
