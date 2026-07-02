@@ -811,6 +811,7 @@ font-family:'Montserrat',sans-serif
         <div class="sb-badges">
           <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()" title="Ativar seleção em lote [Shift+S]">☑ Selecionar</button>
           <button class="btn-selecionar-all" id="btn-todas-lidas" onclick="marcarTodasLidas()" title="Zerar o contador: marca todas as conversas como lidas">✓✓ Todas lidas</button>
+          <button class="btn-selecionar-all" id="btn-sos" onclick="abrirModalSos()" title="Mensagem SOS — texto salvo, envia um lote por dia; quem já recebeu não recebe de novo">🆘 SOS</button>
           <span class="badge badge-red" id="badge-novas" style="display:none">0</span>
           <span class="badge badge-blue" id="badge-total">0</span>
         </div>
@@ -858,6 +859,7 @@ font-family:'Montserrat',sans-serif
       <button class="bulk-btn bulk-btn-ghost" onclick="desselecionarTodas()">Nenhuma</button>
       <button class="bulk-btn bulk-btn-primary" onclick="bulkArquivar()" title="Arquivar selecionadas [E]">📦 Arquivar [E]</button>
       <button class="bulk-btn bulk-btn-ghost" onclick="bulkMarcarLidas()">✅ Lidas</button>
+      <button class="bulk-btn bulk-btn-ghost" onclick="bulkEnviarMensagem()" title="Enviar a mesma mensagem para todas as selecionadas">✉️ Mensagem</button>
       <button class="bulk-btn bulk-btn-cancel" onclick="cancelarSelecao()" title="Cancelar seleção">✕</button>
     </div>
     <div class="conv-list" id="conv-list"><div class="empty">Carregando...</div></div>
@@ -5818,6 +5820,98 @@ function marcarTodasLidas(){
   toast(`✅ ${tels.length} conversas marcadas como lidas`,'success');
 }
 
+// ── MENSAGEM SOS: texto salvo no servidor + fila com memoria (1 lote/dia) ──
+async function abrirModalSos(){
+  document.getElementById('modal-sos').style.display='flex';
+  try{
+    const d=await fetch(`${API}/inbox/sos`).then(r=>r.json());
+    if(d.ok){
+      const ta=document.getElementById('sos-texto');
+      if(!ta.value.trim())ta.value=d.texto||'';
+      const alvo=(modoSelecao&&selecionadas.size)?`as ${selecionadas.size} conversas selecionadas`:'todas as conversas';
+      document.getElementById('sos-info').textContent=`Já receberam: ${d.totalEnviados} pessoas (nunca recebem de novo). Alvo do próximo lote: ${alvo}.`;
+      if(d.loteRodando)document.getElementById('sos-info').textContent+=' ⏳ Há um envio em andamento agora.';
+    }
+  }catch(e){}
+  setTimeout(()=>document.getElementById('sos-texto').focus(),50);
+}
+function fecharModalSos(){document.getElementById('modal-sos').style.display='none';}
+async function salvarSosTexto(){
+  const texto=document.getElementById('sos-texto').value.trim();
+  if(!texto){toast('Escreva a mensagem antes de salvar','error');return;}
+  try{
+    const d=await fetch(`${API}/inbox/sos/salvar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto})}).then(r=>r.json());
+    toast(d.ok?'💾 Mensagem SOS salva no servidor':'Falha ao salvar',d.ok?'success':'error');
+  }catch(e){toast('Erro: '+e.message,'error');}
+}
+async function enviarLoteSos(){
+  const texto=document.getElementById('sos-texto').value.trim();
+  const qtd=Math.max(1,Number(document.getElementById('sos-qtd').value||50));
+  if(!texto){toast('Escreva a Mensagem SOS','error');return;}
+  if(!confirm(`Enviar a Mensagem SOS para até ${qtd} conversas agora?\n\nQuem já recebeu antes fica de fora automaticamente.`))return;
+  const body={texto,quantidade:qtd,templateFallback:document.getElementById('sos-template').checked,assumirManual:document.getElementById('sos-manual').checked};
+  if(modoSelecao&&selecionadas.size)body.telefones=[...selecionadas];
+  try{
+    const d=await fetch(`${API}/inbox/sos/enviar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(d.ok){
+      toast(`🆘 Lote de hoje iniciado: ${d.total} envios. Ficam ${d.restantes} para os próximos dias.`,'success');
+      fecharModalSos();
+      acompanharLote();
+    } else toast(d.erro||'Falha ao iniciar','error');
+  }catch(e){toast('Erro: '+e.message,'error');}
+}
+async function zerarFilaSos(){
+  if(!confirm('Zerar a memória de quem já recebeu?\n\nUse apenas para começar uma CAMPANHA NOVA — todos poderão receber de novo.'))return;
+  const d=await fetch(`${API}/inbox/sos/zerar`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>r.json());
+  toast(d.ok?'♻️ Fila zerada — campanha nova':'Falha ao zerar',d.ok?'success':'error');
+  abrirModalSos();
+}
+
+// ── ENVIO EM LOTE: mesma mensagem para todas as conversas selecionadas ──
+function bulkEnviarMensagem(){
+  if(!selecionadas.size){toast('Nenhuma conversa selecionada','error');return;}
+  document.getElementById('lote-sub').textContent=`Será enviada para ${selecionadas.size} conversas selecionadas, uma a uma (~1/seg), direto do servidor — pode fechar o navegador depois de iniciar.`;
+  document.getElementById('modal-envio-lote').style.display='flex';
+  setTimeout(()=>document.getElementById('lote-texto').focus(),50);
+}
+function fecharModalLote(){document.getElementById('modal-envio-lote').style.display='none';}
+async function confirmarEnvioLote(){
+  const msg=document.getElementById('lote-texto').value.trim();
+  if(!msg){toast('Escreva a mensagem','error');return;}
+  if(!confirm(`Confirmar envio para ${selecionadas.size} conversas?`))return;
+  const btn=document.getElementById('lote-enviar-btn');btn.disabled=true;btn.textContent='Iniciando...';
+  try{
+    const r=await fetch(`${API}/inbox/enviar-lote`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      telefones:[...selecionadas],
+      mensagem:msg,
+      assumirManual:document.getElementById('lote-manual').checked,
+      templateFallback:document.getElementById('lote-template').checked
+    })});
+    const d=await r.json();
+    if(d.ok){
+      fecharModalLote();
+      document.getElementById('lote-texto').value='';
+      toast(`📨 Envio iniciado para ${d.total} conversas — roda no servidor`,'success');
+      cancelarSelecao();
+      acompanharLote();
+    } else toast(d.erro||'Falha ao iniciar envio','error');
+  }catch(e){toast('Erro: '+e.message,'error');}
+  btn.disabled=false;btn.textContent='Enviar';
+}
+let loteTimer=null;
+function acompanharLote(){
+  clearInterval(loteTimer);
+  loteTimer=setInterval(async()=>{
+    try{
+      const d=await fetch(`${API}/inbox/enviar-lote/status`).then(r=>r.json());
+      if(d&&!d.rodando){
+        clearInterval(loteTimer);
+        toast(`📨 Lote concluído: ${d.enviadas} enviadas, ${d.falhas} falhas${d.foraJanela?` (${d.foraJanela} fora da janela de 24h)`:''}`,'success');
+      }
+    }catch(e){}
+  },10000);
+}
+
 function bulkMarcarLidas(){
   if(!selecionadas.size){ toast('Nenhuma conversa selecionada','error'); return; }
   const n = selecionadas.size;
@@ -6300,5 +6394,41 @@ async function recarregarDoSheets() {
 // Inicia ao carregar
 setTimeout(iniciarTimersLembretes, 2000);
 </script>
+<div id="modal-sos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:min(520px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 4px">🆘 Mensagem SOS</h3>
+    <div style="font-size:12px;color:#666;margin-bottom:6px">Texto fixo salvo no servidor. Envie um lote por dia — quem já recebeu <b>nunca recebe de novo</b>.</div>
+    <div id="sos-info" style="font-size:12px;color:#0369a1;background:#e0f2fe;border-radius:8px;padding:8px;margin-bottom:10px"></div>
+    <textarea id="sos-texto" rows="8" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit" placeholder="Escreva a Mensagem SOS..."></textarea>
+    <div style="display:flex;gap:10px;align-items:center;margin:10px 0 4px;flex-wrap:wrap">
+      <label style="font-size:13px;font-weight:600">Lote de hoje:
+        <input type="number" id="sos-qtd" value="50" min="1" max="500" style="width:70px;border:1px solid #ddd;border-radius:8px;padding:6px;margin-left:4px">
+      </label>
+      <button class="bulk-btn bulk-btn-ghost" onclick="salvarSosTexto()">💾 Salvar texto</button>
+      <button class="bulk-btn bulk-btn-ghost" onclick="zerarFilaSos()" title="Começar campanha nova — todos poderão receber de novo">♻️ Zerar fila</button>
+    </div>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:6px 0 2px"><input type="checkbox" id="sos-template" checked> Se o candidato estiver fora da janela de 24h, enviar o template de reengajamento aprovado</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="sos-manual"> Assumir conversas como Laura (desliga a Lia nelas)</label>
+    <div style="font-size:11px;color:#a16207;background:#fef9c3;border-radius:8px;padding:8px;margin-bottom:10px">⚠️ Mensagem livre só chega a quem falou com você nas últimas 24h — para o restante, use o template (marcado acima). Envie lotes pequenos por dia para proteger a nota do seu número na Meta.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bulk-btn bulk-btn-ghost" onclick="fecharModalSos()">Fechar</button>
+      <button class="bulk-btn bulk-btn-primary" onclick="enviarLoteSos()">🚀 Enviar lote de hoje</button>
+    </div>
+  </div>
+</div>
+<div id="modal-envio-lote" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:min(500px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 4px">✉️ Mensagem em lote</h3>
+    <div id="lote-sub" style="font-size:12px;color:#666;margin-bottom:10px"></div>
+    <textarea id="lote-texto" rows="7" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit" placeholder="Escreva a mensagem única..."></textarea>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:8px 0 2px"><input type="checkbox" id="lote-manual"> Assumir conversas como Laura (desliga a Lia nelas)</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="lote-template"> Se o candidato estiver fora da janela de 24h, enviar o template de reengajamento aprovado</label>
+    <div style="font-size:11px;color:#a16207;background:#fef9c3;border-radius:8px;padding:8px;margin-bottom:10px">⚠️ Regra do WhatsApp/Meta: mensagem livre só chega a quem falou com você nas <b>últimas 24h</b>. Para os demais, o envio falha (sem custo) — ou use o template acima.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bulk-btn bulk-btn-ghost" onclick="fecharModalLote()">Cancelar</button>
+      <button class="bulk-btn bulk-btn-primary" id="lote-enviar-btn" onclick="confirmarEnvioLote()">Enviar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
