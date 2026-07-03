@@ -3108,7 +3108,10 @@ function renderPainelEntrevista(s){
     <div class="rp-section-title">📋 Histórico de Entrevistas</div>
     ${ents.map(e=>`
       <div style="background:var(--bg);border-radius:7px;padding:8px;margin-bottom:6px;font-size:10px">
-        <div style="font-weight:700">${formatarDataBr(e.data)} às ${e.hora} — ${e.tipo}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+          <div style="font-weight:700">${formatarDataBr(e.data)} às ${e.hora} — ${e.tipo}</div>
+          <span onclick="editarEntrevista('${e.id}')" style="cursor:pointer;flex-shrink:0" title="Editar data/horário desta entrevista">✏️</span>
+        </div>
         <div style="color:var(--muted);margin-top:2px">Resp: ${e.responsavel} · <span style="font-weight:700">${e.status||'Pendente'}</span></div>
         ${e.obs?`<div style="color:var(--muted)">${e.obs}</div>`:''}
       </div>`).join('')}
@@ -4410,12 +4413,17 @@ async function salvarObsRapida(){
 
 // ─── ENTREVISTAS ───
 // _entModalTelefone: candidato escolhido no picker quando o modal é aberto
+// _entEditandoId: se preenchido, o modal está EDITANDO essa entrevista (em vez de criar uma nova)
+let _entEditandoId=null;
 // fora de uma conversa (ex: clicando num dia vazio da Agenda)
 let _entModalTelefone=null;
 function abrirModalEntrevista(dataPrefill){
+  _entEditandoId=null;
   const hoje=dataPrefill||new Date().toISOString().split('T')[0];
   document.getElementById('ent-data').value=hoje;
   document.getElementById('ent-hora').value='09:00';
+  document.getElementById('ent-tipo').value='Google Meet';
+  document.getElementById('ent-responsavel').value='Thiara';
   document.getElementById('ent-obs').value='';
   const chk=document.getElementById('ent-lembrete');if(chk)chk.checked=true;
   _entModalTelefone=sessaoAtual||null;
@@ -4429,8 +4437,35 @@ function abrirModalEntrevista(dataPrefill){
       pickerWrap.style.display='none';
     }
   }
+  const tit=document.querySelector('#modal-entrevista .modal-title');
+  if(tit)tit.textContent='📅 Agendar Entrevista';
+  const btn=document.querySelector('#modal-entrevista .modal-confirm');
+  if(btn)btn.textContent='Agendar';
   document.getElementById('modal-entrevista').classList.add('show');
   if(!sessaoAtual)setTimeout(()=>document.getElementById('ent-candidato-busca')?.focus(),100);
+}
+
+// Abre o mesmo modal, mas em modo EDIÇÃO de uma entrevista já existente
+// (usado pelos cards do Histórico de Entrevistas, para corrigir data/horário/tipo etc.)
+function editarEntrevista(id){
+  if(!sessaoAtual||!entrevistas[sessaoAtual])return;
+  const ent=entrevistas[sessaoAtual].find(e=>e.id===id);
+  if(!ent){toast('Entrevista não encontrada','error');return;}
+  _entEditandoId=id;
+  _entModalTelefone=sessaoAtual;
+  document.getElementById('ent-data').value=ent.data||'';
+  document.getElementById('ent-hora').value=ent.hora||'';
+  document.getElementById('ent-tipo').value=ent.tipo||'Google Meet';
+  document.getElementById('ent-responsavel').value=ent.responsavel||'Thiara';
+  document.getElementById('ent-obs').value=ent.obs||'';
+  const chk=document.getElementById('ent-lembrete');if(chk)chk.checked=false;
+  const pickerWrap=document.getElementById('ent-candidato-wrap');
+  if(pickerWrap)pickerWrap.style.display='none';
+  const tit=document.querySelector('#modal-entrevista .modal-title');
+  if(tit)tit.textContent='✏️ Editar Entrevista';
+  const btn=document.querySelector('#modal-entrevista .modal-confirm');
+  if(btn)btn.textContent='Salvar alterações';
+  document.getElementById('modal-entrevista').classList.add('show');
 }
 function renderEntCandidatoOpcoes(filtro){
   const box=document.getElementById('ent-candidato-lista');
@@ -4460,6 +4495,22 @@ function salvarEntrevista(){
   const obs=document.getElementById('ent-obs').value;
   const comLembrete=document.getElementById('ent-lembrete')?.checked;
   if(!data||!hora){toast('Preencha data e horário','error');return;}
+
+  // ── MODO EDIÇÃO: atualiza a entrevista existente em vez de criar uma nova ──
+  if(_entEditandoId){
+    const ent=(entrevistas[tel]||[]).find(e=>e.id===_entEditandoId);
+    if(!ent){toast('Entrevista não encontrada','error');_entEditandoId=null;return;}
+    ent.data=data;ent.hora=hora;ent.tipo=tipo;ent.responsavel=resp;ent.obs=obs;
+    salvarLocal();
+    registrarIntervencao('Thiara','Entrevista editada',`${formatarDataBr(data)} às ${hora} — ${tipo}`);
+    fecharModal('modal-entrevista');
+    toast('✏️ Entrevista atualizada','success');
+    renderPainelDireito();renderLista();
+    if(document.getElementById('view-agenda')&&document.getElementById('view-agenda').style.display==='flex')renderAgenda();
+    _entEditandoId=null;
+    return;
+  }
+
   if(!entrevistas[tel])entrevistas[tel]=[];
   const id='ent_'+Date.now();
   const s=todasSessoes[tel]||{};
