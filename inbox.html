@@ -5803,6 +5803,8 @@ function renderAgStats(){
         <div style="display:flex;gap:4px;align-items:center">
           <span class="ag2-ev-badge" style="background:${ag2Cor(e.status)}22;color:${ag2Cor(e.status)}">${e.status||'Pendente'}</span>
           <button class="rbtn" style="font-size:9px;padding:2px 6px;background:var(--navy);color:#fff" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬</button>
+          <span onclick="editarEntrevistaAgenda('${e.telefone}','${e.id}')" style="cursor:pointer" title="Editar data/horário/tipo desta entrevista">✏️</span>
+          <span onclick="excluirEntrevistaAgenda('${e.telefone}','${e.id}','${e.data}')" style="cursor:pointer" title="Excluir definitivamente (tira da lista, diferente de Cancelar)">🗑️</span>
         </div>
       </div>`).join('')+'</div>';
   }
