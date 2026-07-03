@@ -1186,6 +1186,22 @@ font-family:'Montserrat',sans-serif
   </div>
 </div>
 
+<!-- MODAL: CONFIRMAR ENVIO — MENSAGEM DE ENTREVISTA AGENDADA (Aba Entrevista) -->
+<div class="modal-overlay" id="modal-confirmar-entrevista" onclick="fecharModalOverlay(event,'modal-confirmar-entrevista')">
+  <div class="modal" style="width:520px" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="modal-title" style="margin-bottom:0">📤 Enviar confirmação ao candidato</div>
+      <button onclick="fecharModal('modal-confirmar-entrevista')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Revise ou edite a mensagem. Ela só é enviada quando você clicar em "Enviar ao candidato".</div>
+    <textarea id="modal-confirmar-entrevista-texto" class="modal-input" rows="8" style="width:100%;font-size:13px;line-height:1.6"></textarea>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-confirmar-entrevista')">Não enviar agora</button>
+      <button class="modal-btn modal-confirm" onclick="enviarConfirmacaoEntrevista()">📤 Enviar ao candidato</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: OBSERVAÇÃO RÁPIDA -->
 <div class="modal-overlay" id="modal-obs-rapida">
   <div class="modal">
@@ -3075,13 +3091,15 @@ function renderPainelEntrevista(s){
       </div>
       <div>
         <span class="ec-badge ${prox.status==='Confirmada'?'ec-confirmada':prox.status==='Realizada'?'ec-realizada':'ec-pendente'}">${prox.status||'Pendente'}</span>
+        ${prox.confirmacaoEnviada?`<span class="ec-badge" style="background:#e0f2fe;color:#0369a1;margin-left:4px">✅ Mensagem enviada</span>`:''}
       </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
       <button style="flex:1" class="ev-act-btn confirmar" onclick="atualizarStatusEntrevista('${prox.id}','Confirmada')">✓ Confirmar</button>
       <button style="flex:1" class="ev-act-btn realizar" onclick="atualizarStatusEntrevista('${prox.id}','Realizada')">✅ Realizada</button>
       <button style="flex:1" class="ev-act-btn cancelar" onclick="atualizarStatusEntrevista('${prox.id}','Cancelada')">✕ Cancelar</button>
     </div>
+    <button class="entrevista-btn" style="margin-bottom:10px" onclick="abrirConfirmacaoEntrevistaPorId('${prox.id}')">📤 ${prox.confirmacaoEnviada?'Reenviar mensagem ao candidato':'Enviar mensagem ao candidato'}</button>
   </div>
   `:`<div style="font-size:11px;color:var(--muted);margin-bottom:12px;text-align:center">Nenhuma entrevista agendada</div>`}
   <button class="entrevista-btn" onclick="abrirModalEntrevista()">📅 Agendar Nova Entrevista</button>
@@ -3348,6 +3366,15 @@ const TEMPLATES_ENTREVISTA = {
     return `Olá, ${nome}! 😊 Gostaríamos de dar continuidade ao seu processo e convidá-lo(a) a participar de uma entrevista ${tipoTxt} com o gestor da vaga. Podemos agendar para *${semana}* às *${horario}*?${localTxt} — Camila, Equipe Effect`;
   },
 };
+
+// Template da mensagem de confirmação disparada quando uma entrevista é agendada
+// (editável: mude o texto abaixo para ajustar tom/conteúdo em todos os envios)
+function montarMsgConfirmacaoEntrevista(nome, vaga, dataFormatada, hora, tipo, local, responsavel){
+  const primeiroNome = (nome||'').trim().split(' ')[0] || 'Candidato';
+  const vagaTxt = vaga || '—';
+  const localTxt = local ? `\n📍 ${tipo||'Modalidade'}: ${local}` : (tipo ? `\n📍 Modalidade: ${tipo}` : '');
+  return `Boa tarde, ${primeiroNome}! 😊\n\nSua entrevista para a vaga de ${vagaTxt} está confirmada:\n\n📅 Data: ${dataFormatada}\n🕐 Horário: ${hora}${localTxt}\n👤 Entrevistador(a): ${responsavel||'Equipe Effect'}\n\nQualquer dúvida ou se precisar remarcar, é só me chamar por aqui.\n\n— Lia, Equipe Effect`;
+}
 
 let _statusPendente = null;
 let _tipoEntrevista = 'Online'; // 'Online' ou 'Presencial'
@@ -4437,7 +4464,8 @@ function salvarEntrevista(){
   const id='ent_'+Date.now();
   const s=todasSessoes[tel]||{};
   const nomeCand=s.nome||s.ultimaAnalise?.nome||telDisplay(tel);
-  entrevistas[tel].push({id,data,hora,tipo,responsavel:resp,obs,status:'Pendente'});
+  const novaEnt={id,data,hora,tipo,responsavel:resp,obs,status:'Pendente'};
+  entrevistas[tel].push(novaEnt);
   salvarLocal();
   // Atualizar status
   statusMap[tel]='Entrevista agendada';
@@ -4447,6 +4475,10 @@ function salvarEntrevista(){
   renderPainelDireito();renderLista();
   if(rpTab==='entrevista'&&sessaoAtual===tel)renderPainelEntrevista(todasSessoes[tel]);
   if(document.getElementById('view-agenda')&&document.getElementById('view-agenda').style.display==='flex')renderAgenda();
+
+  // Abre a mensagem de confirmação pronta para revisão — só vai pro candidato quando
+  // ela clicar em "Enviar ao candidato" na modal (nada é disparado automaticamente sem essa confirmação)
+  abrirConfirmacaoEntrevista(tel, novaEnt, nomeCand, s.ultimaAnalise?.vagaInteresse||'');
 
   // Lembrete automático (30 min antes) — respeita o checkbox
   if(comLembrete){
@@ -4474,6 +4506,53 @@ function atualizarStatusEntrevista(id,novoStatus){
     renderPainelDireito();
     toast(`✅ Entrevista marcada como ${novoStatus}`,'success');
   }
+}
+
+// ─── ENVIO DE MENSAGEM DE CONFIRMAÇÃO DE ENTREVISTA (com revisão antes de enviar) ───
+let _entConfirmContext=null; // {tel,id} da entrevista cuja mensagem está em revisão na modal
+
+function abrirConfirmacaoEntrevista(tel,ent,nomeCand,vaga){
+  if(!tel||!ent){toast('Não foi possível montar a mensagem','error');return;}
+  _entConfirmContext={tel,id:ent.id};
+  const texto=montarMsgConfirmacaoEntrevista(nomeCand,vaga,formatarDataBr(ent.data),ent.hora,ent.tipo,ent.obs,ent.responsavel);
+  document.getElementById('modal-confirmar-entrevista-texto').value=texto;
+  document.getElementById('modal-confirmar-entrevista').classList.add('show');
+}
+
+// Variante usada pelos botões do painel (Entrevista tab), que só têm o id à mão —
+// segue o mesmo padrão de atualizarStatusEntrevista(id,...) acima
+function abrirConfirmacaoEntrevistaPorId(id){
+  if(!sessaoAtual||!entrevistas[sessaoAtual])return;
+  const ent=entrevistas[sessaoAtual].find(e=>e.id===id);
+  if(!ent){toast('Entrevista não encontrada','error');return;}
+  const s=todasSessoes[sessaoAtual]||{};
+  const nomeCand=s.nome||s.ultimaAnalise?.nome||telDisplay(sessaoAtual);
+  const vaga=s.ultimaAnalise?.vagaInteresse||'';
+  abrirConfirmacaoEntrevista(sessaoAtual,ent,nomeCand,vaga);
+}
+
+async function enviarConfirmacaoEntrevista(){
+  if(!_entConfirmContext){fecharModal('modal-confirmar-entrevista');return;}
+  const {tel,id}=_entConfirmContext;
+  const texto=document.getElementById('modal-confirmar-entrevista-texto').value.trim();
+  if(!texto){toast('Mensagem vazia','error');return;}
+  fecharModal('modal-confirmar-entrevista');
+  toast('📤 Enviando mensagem...','info');
+  try{
+    const r=await fetch(`${API}/inbox/enviar`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:tel,mensagem:texto,modo:'camila'})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(d&&d.ok===false){toast('❌ Falha ao enviar: '+(d.erro||'erro desconhecido'),'error');_entConfirmContext=null;return;}
+    const ent=(entrevistas[tel]||[]).find(e=>e.id===id);
+    if(ent){ent.confirmacaoEnviada=new Date().toISOString();salvarLocal();}
+    if(sessaoAtual===tel&&rpTab==='entrevista')renderPainelEntrevista(todasSessoes[tel]);
+    toast('✅ Mensagem enviada ao candidato','success');
+  }catch(e){
+    toast('❌ Erro ao enviar mensagem. Tente novamente.','error');
+  }
+  _entConfirmContext=null;
 }
 
 // ─── VIEW ENTREVISTAS ───
@@ -6367,75 +6446,4 @@ function renderProximosEventos() {
       } else {
         const l = item.dados;
         const rec = l.recorrencia || 'nenhuma';
-        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid #16a34a">' +
-          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + (l.hora || '—') + '</div>' +
-          '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔔 ' + l.titulo + recBadge(rec) + '</div>' +
-            (l.desc ? '<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + l.desc + '</div>' : '') +
-          '</div>' +
-        '</div>';
-      }
-    });
-    html += '</div>';
-  }
-
-  if (!temAlgo) html = '<div class="empty" style="padding:12px">Nenhum evento nos próximos 14 dias</div>';
-  html += '<button class="entrevista-btn" style="width:100%;margin-top:4px" onclick="abrirModalLembrete()">+ Novo evento pessoal</button>';
-  wrap.innerHTML = html;
-}
-
-// (O lembrete automático de 30min ao agendar entrevista já é criado dentro da
-// própria função salvarEntrevista() — ver seção de agendamento de entrevistas.)
-
-async function recarregarDoSheets() {
-  const btn = event?.target;
-  if (btn) { btn.textContent = '⏳ Recarregando...'; btn.disabled = true; }
-  try {
-    const r = await fetch('/inbox/recarregar');
-    const d = await r.json();
-    if (d.ok && d.depois > 0) {
-      showToast('✅ ' + d.msg);
-      await carregarSessoes();
-    } else {
-      showToast('⚠️ ' + (d.msg || d.erro || 'Falha ao recarregar'), 5000);
-    }
-  } catch(e) {
-    showToast('❌ Erro ao recarregar: ' + e.message, 5000);
-  } finally {
-    if (btn) { btn.textContent = '🔄 Recarregar do Sheets'; btn.disabled = false; }
-  }
-}
-
-
-// Inicia ao carregar
-setTimeout(iniciarTimersLembretes, 2000);
-</script>
-<div id="modal-sos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:20px;width:min(520px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <h3 style="margin:0 0 4px">🆘 Mensagem SOS</h3>
-    <div style="font-size:12px;color:#666;margin-bottom:6px">Texto fixo salvo no servidor. Envie um lote por dia — quem já recebeu <b>nunca recebe de novo</b>.</div>
-    <div id="sos-info" style="font-size:12px;color:#0369a1;background:#e0f2fe;border-radius:8px;padding:8px;margin-bottom:10px"></div>
-    <textarea id="sos-texto" rows="8" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit" placeholder="Escreva a Mensagem SOS..."></textarea>
-    <div style="display:flex;gap:10px;align-items:center;margin:10px 0 4px;flex-wrap:wrap">
-      <label style="font-size:13px;font-weight:600">Lote de hoje:
-        <input type="number" id="sos-qtd" value="50" min="1" max="500" style="width:70px;border:1px solid #ddd;border-radius:8px;padding:6px;margin-left:4px">
-      </label>
-      <button class="bulk-btn bulk-btn-ghost" onclick="salvarSosTexto()">💾 Salvar texto</button>
-      <button class="bulk-btn bulk-btn-ghost" onclick="zerarFilaSos()" title="Começar campanha nova — todos poderão receber de novo">♻️ Zerar fila</button>
-    </div>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:6px 0 2px"><input type="checkbox" id="sos-template" checked> Se o candidato estiver fora da janela de 24h, enviar o template de reengajamento aprovado</label>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="sos-manual"> Assumir conversas como Laura (desliga a Lia nelas)</label>
-    <div style="font-size:11px;color:#a16207;background:#fef9c3;border-radius:8px;padding:8px;margin-bottom:10px">⚠️ Mensagem livre só chega a quem falou com você nas últimas 24h — para o restante, use o template (marcado acima). Envie lotes pequenos por dia para proteger a nota do seu número na Meta.</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="bulk-btn bulk-btn-ghost" onclick="fecharModalSos()">Fechar</button>
-      <button class="bulk-btn bulk-btn-primary" onclick="enviarLoteSos()">🚀 Enviar lote de hoje</button>
-    </div>
-  </div>
-</div>
-<div id="modal-envio-lote" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:20px;width:min(500px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <h3 style="margin:0 0 4px">✉️ Mensagem em lote</h3>
-    <div id="lote-sub" style="font-size:12px;color:#666;margin-bottom:10px"></div>
-    <textarea id="lote-texto" rows="7" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit" placeholder="Escreva a mensagem única..."></textarea>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:8px 0 2px"><input type="checkbox" id="lote-manual"> Assumir conversas como Laura (desliga a Lia nelas)</label>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin:2px 0 8px"><input type="checkbox" id="lote-temp
+        html += '<div style="displ
