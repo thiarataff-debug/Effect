@@ -334,12 +334,6 @@ header{background:var(--navy);color:#fff;padding:13px 24px;display:flex;align-it
 <div class="toast" id="toast"></div>
 <script>
 const SENHA = "effect2026";
-(function autoLogin(){
-  try{
-    const saved=localStorage.getItem('effect_saved_pwd');
-    if(saved){const pwd=atob(saved);if(pwd===SENHA){document.getElementById('login').classList.add('hidden');carregarTudo();setInterval(carregarTudo,30000);return;}}
-  }catch(e){}
-})();
 const API = window.location.origin;
 let candidatos=[], vagas=[], sessoes={}, convRows=[], talentos=[];
 let fClass='', fInt=false, fVaga='todas', fConvTab='todas', fConvBusca='';
@@ -347,6 +341,13 @@ let fCandBusca='', fVagaBusca='', fConsBusca='', fConsTab='todos';
 let btBusca='', btDisc='';
 let modalTel=null, editMode=false;
 let relData={}, funilData={};
+
+(function autoLogin(){
+  try{
+    const saved=localStorage.getItem('effect_saved_pwd');
+    if(saved){const pwd=atob(saved);if(pwd===SENHA){document.getElementById('login').classList.add('hidden');carregarTudo();setInterval(carregarTudo,30000);return;}}
+  }catch(e){}
+})();
 
 function entrar(){
   if(document.getElementById('pwd').value===SENHA){
