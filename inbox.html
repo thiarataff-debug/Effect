@@ -3075,7 +3075,7 @@ function alternarAceiteCandidato(){
 function renderPainelEntrevista(s){
   const div=document.getElementById('rp-body');
   const ents=entrevistas[sessaoAtual]||[];
-  const prox=ents.filter(e=>e.status!=='Realizada').sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora))[0];
+  const prox=ents.filter(e=>e.status!=='Realizada'&&e.status!=='Cancelada').sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora))[0];
   div.innerHTML=`
   ${prox?`
   <div class="rp-section">
