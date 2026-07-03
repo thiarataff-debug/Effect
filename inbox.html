@@ -6517,4 +6517,123 @@ function agendarNotificacaoLembrete(l) {
   const [h, m] = l.hora.split(':').map(Number);
   const dataHora = new Date(`${l.data}T${l.hora}`);
   const aviso = new Date(dataHora.getTime() - 30 * 60 * 1000); // 30 min antes
-  const agora = Date.now(
+  const agora = Date.now();
+  const delay = aviso.getTime() - agora;
+  if (delay < 0) return; // já passou
+  _lembreteTimers[l.id] = setTimeout(() => {
+    if (Notification.permission === 'granted') {
+      new Notification('🔔 Lembrete Effect', {
+        body: `${l.titulo}${l.hora ? ' às ' + l.hora : ''}${l.desc ? '\n' + l.desc : ''}`,
+        icon: '/favicon.ico'
+      });
+    } else {
+      toast(`🔔 Lembrete: ${l.titulo}`, 'success');
+    }
+  }, delay);
+}
+
+// Ativa timers de lembretes com notificação ao carregar
+function iniciarTimersLembretes() {
+  pedirPermissaoNotificacao();
+  _lembretes.filter(l => l.notif && !l.feito).forEach(agendarNotificacaoLembrete);
+}
+
+// ─── HELPER: verifica se lembrete se aplica a uma data (inclui recorrência) ───
+function lembreteAplicaNoDia(l, ds) {
+  if (!l.data) return false;
+  if (ds < l.data) return false;
+  const rec = l.recorrencia || 'nenhuma';
+  if (rec === 'nenhuma') return l.data === ds;
+  if (rec === 'diaria') return true;
+  const [oy, om, od] = l.data.split('-').map(Number);
+  const [ty, tm, td] = ds.split('-').map(Number);
+  const orig = new Date(oy, om - 1, od);
+  const tgt  = new Date(ty, tm - 1, td);
+  if (rec === 'semanal') return orig.getDay() === tgt.getDay();
+  if (rec === 'mensal')  return od === td;
+  if (rec === 'anual')   return om === tm && od === td;
+  return false;
+}
+
+// ─── HELPER: badge de recorrência ───
+function recBadge(rec) {
+  const map = { diaria: '🔁 Diária', semanal: '🗓️ Semanal', mensal: '📅 Mensal', anual: '🎯 Anual' };
+  return map[rec] ? '<span style="font-size:8px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px">' + map[rec] + '</span>' : '';
+}
+
+// ─── PRÓXIMOS EVENTOS: entrevistas + lembretes pessoais (14 dias) ───
+function renderProximosEventos() {
+  const wrap = document.getElementById('proximos-wrap');
+  if (!wrap) return;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const mesesAbr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const semsAbr  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html = '';
+  let temAlgo = false;
+
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(hoje);
+    d.setDate(hoje.getDate() + i);
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+    const entsNoDia = [];
+    Object.entries(entrevistas).forEach(([tel, ents]) => {
+      ents.forEach(e => {
+        if (e.data === ds && e.status !== 'Cancelada') {
+          const s = todasSessoes[tel];
+          entsNoDia.push({...e, nome: s?.nome || telDisplay(tel)});
+        }
+      });
+    });
+    const lemsNoDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
+
+    if (!entsNoDia.length && !lemsNoDia.length) continue;
+    temAlgo = true;
+
+    const dLabel = i === 0 ? 'Hoje' : (i === 1 ? 'Amanhã' : semsAbr[d.getDay()]);
+    html += '<div style="margin-bottom:10px">';
+    html += '<div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + dLabel + ' · ' + d.getDate() + ' ' + mesesAbr[d.getMonth()] + '</div>';
+
+    const itens = [
+      ...entsNoDia.map(e => ({hora: e.hora || '00:00', tipo: 'entrevista', dados: e})),
+      ...lemsNoDia.map(l => ({hora: l.hora || '00:00', tipo: 'lembrete', dados: l}))
+    ].sort((a, b) => a.hora.localeCompare(b.hora));
+
+    itens.forEach(item => {
+      if (item.tipo === 'entrevista') {
+        const e = item.dados;
+        const cor = e.status === 'Realizada' ? '#059669' : e.status === 'Não Compareceu' ? '#dc2626' : e.status === 'Remarcou' ? '#d97706' : '#2563eb';
+        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid ' + cor + '">' +
+          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + e.hora + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">👤 ' + e.nome + '</div>' +
+            '<div style="font-size:9px;color:var(--muted)">' + (e.tipo || 'Entrevista') + (e.status ? ' · ' + e.status : '') + '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        const l = item.dados;
+        const rec = l.recorrencia || 'nenhuma';
+        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid #f59e0b;' + (l.feito ? 'opacity:.5' : '') + '">' +
+          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + (l.hora || '') + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔔 ' + l.titulo + recBadge(rec) + '</div>' +
+            (l.desc ? '<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + l.desc + '</div>' : '') +
+          '</div>' +
+          '<span onclick="marcarLembreteFeito(\'' + l.id + '\');renderProximosEventos()" style="cursor:pointer;font-size:13px" title="Marcar como feito">' + (l.feito ? '↩️' : '✅') + '</span>' +
+        '</div>';
+      }
+    });
+
+    html += '</div>';
+  }
+
+  if (!temAlgo) {
+    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">Nenhum evento nos próximos 14 dias</div>';
+  }
+
+  wrap.innerHTML = html;
+}
+</script>
+</body>
+</html>
