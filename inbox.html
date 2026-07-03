@@ -1815,6 +1815,8 @@ let statusMap = {}; // {telefone: string}
 let discPerfilVagas = {}; // {idVaga: perfil DISC ideal}
 let pipelineMap = {}; // {telefone: string} — etapa do pipeline (Triado, Em Vaga, etc.)
 let vagaMap = {}; // {telefone: idVaga} — vaga vinculada ao candidato
+let nomeOverrides = {}; // {telefone: 'Nome corrigido manualmente'} — sobrepõe s.nome em toda a UI
+let vagaExclusoes = {}; // {'telefone|chaveVaga': true} — candidato removido manualmente da lista de uma vaga (não apaga o candidato, só o vínculo com aquela vaga)
 let statusFiltro = null; // status selecionado no filtro "Por Status"
 let intervencoes = {}; // {telefone: [{quem,quando,acao,motivo}]}
 let marcadosRetorno = {}; // {telefone: true}
@@ -1883,7 +1885,9 @@ function carregarLocalData(){
     intervencoes=JSON.parse(localStorage.getItem('effect_intervencoes_v1')||'{}');
     marcadosRetorno=JSON.parse(localStorage.getItem('effect_retorno_v1')||'{}');
     arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
-  }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};}
+    nomeOverrides=JSON.parse(localStorage.getItem('effect_nome_overrides_v1')||'{}');
+    vagaExclusoes=JSON.parse(localStorage.getItem('effect_vaga_exclusoes_v1')||'{}');
+  }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};nomeOverrides={};vagaExclusoes={};}
   // Restaurar dados do servidor em background (merge com localStorage)
   restaurarDoServidor().then(() => {
     if(typeof renderLista === 'function') renderLista();
@@ -1914,6 +1918,8 @@ function salvarLocal(){
     localStorage.setItem('effect_intervencoes_v1',JSON.stringify(intervencoes));
     localStorage.setItem('effect_retorno_v1',JSON.stringify(marcadosRetorno));
     localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
+    localStorage.setItem('effect_nome_overrides_v1',JSON.stringify(nomeOverrides));
+    localStorage.setItem('effect_vaga_exclusoes_v1',JSON.stringify(vagaExclusoes));
   }catch(e){}
 }
 
@@ -1938,6 +1944,8 @@ function sincronizarComServidor() {
         marcadosRetorno,
         arquivadas,
         horariosConfig,
+        nomeOverrides,
+        vagaExclusoes,
         lembretes: (typeof _lembretes !== 'undefined') ? _lembretes : []
       };
       await fetch('/inbox/agenda-sync', {
@@ -1959,7 +1967,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -2001,6 +2009,9 @@ async function restaurarDoServidor() {
     if (dados.intervencoes)    Object.assign(intervencoes, dados.intervencoes);
     if (dados.marcadosRetorno) Object.assign(marcadosRetorno, dados.marcadosRetorno);
     if (dados.arquivadas)      Object.assign(arquivadas, dados.arquivadas);
+    if (dados.nomeOverrides)   Object.assign(nomeOverrides, dados.nomeOverrides);
+    if (dados.vagaExclusoes)   Object.assign(vagaExclusoes, dados.vagaExclusoes);
+    aplicarNomeOverrides();
     if (dados.horariosConfig && Array.isArray(dados.horariosConfig) && dados.horariosConfig.length > 0) {
       horariosConfig = dados.horariosConfig;
       try { localStorage.setItem('effect_horarios_v1', JSON.stringify(horariosConfig)); } catch(e) {}
@@ -2050,6 +2061,15 @@ function atualizarTitulo(){
   }catch(e){}
 }
 
+// Aplica nomes corrigidos manualmente (nomeOverrides) sobre todasSessoes.
+// Precisa rodar toda vez que todasSessoes é recarregada do servidor (polling),
+// senão o nome corrigido volta a mostrar o nome antigo (extraído do currículo).
+function aplicarNomeOverrides(){
+  Object.entries(nomeOverrides||{}).forEach(([tel,nome])=>{
+    if(!nome)return;
+    if(todasSessoes[tel]) todasSessoes[tel].nome=nome;
+  });
+}
 async function carregarSessoes(){
   try{
     const r=await fetch(`${API}/inbox/sessoes`);
@@ -2121,6 +2141,7 @@ async function carregarSessoes(){
       }
     });
     todasSessoes=novas;
+    aplicarNomeOverrides();
 
     // Timestamps estáveis já injetados pelo backend no carregarSessoesDoSheets.
     // Não fazemos mais injeção dinâmica aqui para evitar drift de horário.
@@ -3113,6 +3134,7 @@ function renderPainelEntrevista(s){
           <div style="display:flex;gap:8px;flex-shrink:0">
             <span onclick="editarEntrevista('${e.id}')" style="cursor:pointer" title="Editar data/horário desta entrevista">✏️</span>
             ${e.status!=='Cancelada'&&e.status!=='Realizada'?`<span onclick="confirmarCancelarEntrevista('${e.id}')" style="cursor:pointer" title="Cancelar esta entrevista">✕</span>`:''}
+            <span onclick="excluirEntrevistaAgenda('${sessaoAtual}','${e.id}','${e.data}')" style="cursor:pointer" title="Excluir definitivamente (apaga o registro, diferente de Cancelar)">🗑️</span>
           </div>
         </div>
         <div style="color:var(--muted);margin-top:2px">Resp: ${e.responsavel} · <span style="font-weight:700">${e.status||'Pendente'}</span></div>
@@ -4005,7 +4027,8 @@ function renderPainelVagas(busca){
               ||(vi&&idVaga&&vi===idVaga)
               ||(!vm&&vi&&vi===cargo&&pm==='Em Vaga');
           })
-          .map(([tel,s])=>({tel,nome:s.nome||s.ultimaAnalise?.nome||tel,etapa:pipelineMap[tel]||statusMap[tel]||'Em Vaga'}));
+          .filter(([tel])=>!vagaExclusoes[`${tel}|${chave}`])
+          .map(([tel,s])=>({tel,nome:nomeOverrides[tel]||s.nome||s.ultimaAnalise?.nome||tel,etapa:pipelineMap[tel]||statusMap[tel]||'Em Vaga'}));
         const cor=cands.length>0?'#0d9488':'#94a3b8';
         return `<div style="margin-top:10px;border-top:1px solid #f1f5f9;padding-top:8px">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
@@ -4014,15 +4037,48 @@ function renderPainelVagas(busca){
           </div>
           ${cands.length===0
             ?`<div style="font-size:11px;color:#94a3b8">Nenhum candidato vinculado.</div>`
-            :cands.map(c=>`<div onclick="abrirConversa('${c.tel}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;background:#f8fafc" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'">
-                <span style="font-weight:600;color:#1e3a5f">${c.nome}</span>
-                <span style="font-size:9px;color:#fff;background:${PIPELINE_CORES[c.etapa]||'#64748b'};padding:2px 6px;border-radius:4px">${c.etapa}</span>
+            :cands.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:6px;font-size:11px;margin-bottom:2px;background:#f8fafc" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'">
+                <span onclick="abrirConversa('${c.tel}')" style="font-weight:600;color:#1e3a5f;cursor:pointer;flex:1" title="Abrir conversa">${c.nome}</span>
+                <span style="font-size:9px;color:#fff;background:${PIPELINE_CORES[c.etapa]||'#64748b'};padding:2px 6px;border-radius:4px;margin-right:6px">${c.etapa}</span>
+                <span onclick="event.stopPropagation();renomearCandidatoVaga('${c.tel}')" style="cursor:pointer;margin-right:6px" title="Editar nome do candidato">✏️</span>
+                <span onclick="event.stopPropagation();excluirCandidatoDaVaga('${c.tel}','${chave.replace(/'/g,"\\'")}','${c.nome.replace(/'/g,"\\'")}')" style="cursor:pointer" title="Remover candidato desta vaga (não apaga o candidato)">🗑️</span>
               </div>`).join('')
           }
         </div>`;
       })()}
     </div>`;
   }).join('');
+}
+
+// ── EDITAR / REMOVER CANDIDATO DA LISTA DE UMA VAGA ──
+// Renomear: corrige o nome do candidato em TODO o app (não só nesta lista) — grava um
+// override que sobrescreve s.nome sempre que os dados são recarregados do servidor.
+// Isso não mexe no currículo nem na conversa, só no nome exibido.
+function renomearCandidatoVaga(tel){
+  const s=todasSessoes[tel]||{};
+  const nomeAtual=nomeOverrides[tel]||s.nome||s.ultimaAnalise?.nome||'';
+  const novoNome=prompt('Corrigir nome do candidato:',nomeAtual);
+  if(novoNome===null)return;
+  const limpo=novoNome.trim();
+  if(!limpo){toast('Nome não pode ficar vazio','error');return;}
+  nomeOverrides[tel]=limpo;
+  aplicarNomeOverrides();
+  salvarLocal();
+  toast('✏️ Nome atualizado: '+limpo,'success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+  if(typeof renderLista==='function')renderLista();
+}
+
+// Remove o candidato SÓ da lista desta vaga (desvincula). Não apaga o candidato,
+// o currículo nem o histórico de conversa — ele continua no sistema normalmente,
+// só some desta vaga específica. Reversível: dá pra reaparecer removendo a exclusão
+// manualmente no localStorage/servidor, se algum dia precisar.
+function excluirCandidatoDaVaga(tel,chave,nomeAtual){
+  if(!confirm(`Remover "${nomeAtual}" da lista desta vaga?\n\nO candidato NÃO será apagado do sistema — só some desta vaga.`))return;
+  vagaExclusoes[`${tel}|${chave}`]=true;
+  salvarLocal();
+  toast('🗑️ Candidato removido desta vaga','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
 }
 
 function usarVagaRef(idx){
@@ -5490,8 +5546,36 @@ function ag2CardEntrevista(e, ds){
       <button class="ev-act-btn cancelar" onclick="marcarEntrevista('${e.telefone}','${e.id}','Não Compareceu');agAbrirDia('${ds}')">✕ Faltou</button>
       <button class="ag2-mini-btn" style="background:#e0e7ff;color:#3730a3" onclick="marcarEntrevista('${e.telefone}','${e.id}','Remarcou');agAbrirDia('${ds}')">🔄 Remarcou</button>
       <button class="rbtn" style="font-size:10px;padding:3px 8px;background:var(--navy);color:#fff" onclick="mostrarView('inbox');setTimeout(()=>abrirConversa('${e.telefone}'),200)">💬 Conversa</button>
+      <button class="ag2-mini-btn" style="background:#fef3c7;color:#92400e" onclick="editarEntrevistaAgenda('${e.telefone}','${e.id}')" title="Editar data/horário/tipo desta entrevista">✏️ Editar</button>
+      <button class="ag2-mini-btn" style="background:#fee2e2;color:#dc2626" onclick="excluirEntrevistaAgenda('${e.telefone}','${e.id}','${ds}')" title="Excluir definitivamente (diferente de Cancelar — apaga o registro)">🗑️ Excluir</button>
     </div>
   </div>`;
+}
+
+// Abre o modal de edição da entrevista direto pela Agenda, sem precisar entrar na
+// conversa do candidato primeiro. Reaproveita o mesmo modal usado no painel do
+// candidato (editarEntrevista) — só troca a conversa "ativa" pro dono da entrevista.
+function editarEntrevistaAgenda(tel,id){
+  sessaoAtual=tel;
+  editarEntrevista(id);
+}
+
+// Exclusão DEFINITIVA de uma entrevista (diferente de "Cancelar", que só muda o status
+// e mantém o histórico). Usar para registros criados por engano ou duplicados.
+function excluirEntrevistaAgenda(tel,id,ds){
+  if(!entrevistas[tel])return;
+  const ent=entrevistas[tel].find(x=>x.id===id);
+  if(!ent){toast('Entrevista não encontrada','error');return;}
+  const s=todasSessoes[tel]||{};
+  const nome=nomeOverrides[tel]||s.nome||s.ultimaAnalise?.nome||telDisplay(tel);
+  if(!confirm(`Excluir definitivamente a entrevista de ${nome} (${formatarDataBr(ent.data)} às ${ent.hora})?\n\nEssa ação NÃO pode ser desfeita. Se você só quer cancelar mantendo o histórico, use "Faltou"/Cancelar em vez disso.`))return;
+  entrevistas[tel]=entrevistas[tel].filter(x=>x.id!==id);
+  salvarLocal();
+  registrarIntervencao('Thiara','Entrevista excluída',`${formatarDataBr(ent.data)} às ${ent.hora} — ${ent.tipo}`);
+  toast('🗑️ Entrevista excluída','success');
+  agAbrirDia(ds);
+  renderAgendaAtual();
+  if(sessaoAtual===tel&&rpTab==='entrevista'&&typeof renderPainelEntrevista==='function')renderPainelEntrevista(todasSessoes[tel]);
 }
 function ag2CardLembrete(l){
   const rec=l.recorrencia||'nenhuma';
@@ -6433,123 +6517,4 @@ function agendarNotificacaoLembrete(l) {
   const [h, m] = l.hora.split(':').map(Number);
   const dataHora = new Date(`${l.data}T${l.hora}`);
   const aviso = new Date(dataHora.getTime() - 30 * 60 * 1000); // 30 min antes
-  const agora = Date.now();
-  const delay = aviso.getTime() - agora;
-  if (delay < 0) return; // já passou
-  _lembreteTimers[l.id] = setTimeout(() => {
-    if (Notification.permission === 'granted') {
-      new Notification('🔔 Lembrete Effect', {
-        body: `${l.titulo}${l.hora ? ' às ' + l.hora : ''}${l.desc ? '\n' + l.desc : ''}`,
-        icon: '/favicon.ico'
-      });
-    } else {
-      toast(`🔔 Lembrete: ${l.titulo}`, 'success');
-    }
-  }, delay);
-}
-
-// Ativa timers de lembretes com notificação ao carregar
-function iniciarTimersLembretes() {
-  pedirPermissaoNotificacao();
-  _lembretes.filter(l => l.notif && !l.feito).forEach(agendarNotificacaoLembrete);
-}
-
-// ─── HELPER: verifica se lembrete se aplica a uma data (inclui recorrência) ───
-function lembreteAplicaNoDia(l, ds) {
-  if (!l.data) return false;
-  if (ds < l.data) return false;
-  const rec = l.recorrencia || 'nenhuma';
-  if (rec === 'nenhuma') return l.data === ds;
-  if (rec === 'diaria') return true;
-  const [oy, om, od] = l.data.split('-').map(Number);
-  const [ty, tm, td] = ds.split('-').map(Number);
-  const orig = new Date(oy, om - 1, od);
-  const tgt  = new Date(ty, tm - 1, td);
-  if (rec === 'semanal') return orig.getDay() === tgt.getDay();
-  if (rec === 'mensal')  return od === td;
-  if (rec === 'anual')   return om === tm && od === td;
-  return false;
-}
-
-// ─── HELPER: badge de recorrência ───
-function recBadge(rec) {
-  const map = { diaria: '🔁 Diária', semanal: '🗓️ Semanal', mensal: '📅 Mensal', anual: '🎯 Anual' };
-  return map[rec] ? '<span style="font-size:8px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px">' + map[rec] + '</span>' : '';
-}
-
-// ─── PRÓXIMOS EVENTOS: entrevistas + lembretes pessoais (14 dias) ───
-function renderProximosEventos() {
-  const wrap = document.getElementById('proximos-wrap');
-  if (!wrap) return;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const mesesAbr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const semsAbr  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  let html = '';
-  let temAlgo = false;
-
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(hoje);
-    d.setDate(hoje.getDate() + i);
-    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-
-    const entsNoDia = [];
-    Object.entries(entrevistas).forEach(([tel, ents]) => {
-      ents.forEach(e => {
-        if (e.data === ds && e.status !== 'Cancelada') {
-          const s = todasSessoes[tel];
-          entsNoDia.push({...e, nome: s?.nome || telDisplay(tel)});
-        }
-      });
-    });
-    const lemsNoDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
-
-    if (!entsNoDia.length && !lemsNoDia.length) continue;
-    temAlgo = true;
-
-    const dLabel = i === 0 ? 'Hoje' : (i === 1 ? 'Amanhã' : semsAbr[d.getDay()]);
-    html += '<div style="margin-bottom:10px">';
-    html += '<div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + dLabel + ' · ' + d.getDate() + ' ' + mesesAbr[d.getMonth()] + '</div>';
-
-    const itens = [
-      ...entsNoDia.map(e => ({hora: e.hora || '00:00', tipo: 'entrevista', dados: e})),
-      ...lemsNoDia.map(l => ({hora: l.hora || '00:00', tipo: 'lembrete', dados: l}))
-    ].sort((a, b) => a.hora.localeCompare(b.hora));
-
-    itens.forEach(item => {
-      if (item.tipo === 'entrevista') {
-        const e = item.dados;
-        const cor = e.status === 'Realizada' ? '#059669' : e.status === 'Não Compareceu' ? '#dc2626' : e.status === 'Remarcou' ? '#d97706' : '#2563eb';
-        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid ' + cor + '">' +
-          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + e.hora + '</div>' +
-          '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">👤 ' + e.nome + '</div>' +
-            '<div style="font-size:9px;color:var(--muted)">' + (e.tipo || 'Entrevista') + (e.status ? ' · ' + e.status : '') + '</div>' +
-          '</div>' +
-        '</div>';
-      } else {
-        const l = item.dados;
-        const rec = l.recorrencia || 'nenhuma';
-        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid #f59e0b;' + (l.feito ? 'opacity:.5' : '') + '">' +
-          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + (l.hora || '') + '</div>' +
-          '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔔 ' + l.titulo + recBadge(rec) + '</div>' +
-            (l.desc ? '<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + l.desc + '</div>' : '') +
-          '</div>' +
-          '<span onclick="marcarLembreteFeito(\'' + l.id + '\');renderProximosEventos()" style="cursor:pointer;font-size:13px" title="Marcar como feito">' + (l.feito ? '↩️' : '✅') + '</span>' +
-        '</div>';
-      }
-    });
-
-    html += '</div>';
-  }
-
-  if (!temAlgo) {
-    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">Nenhum evento nos próximos 14 dias</div>';
-  }
-
-  wrap.innerHTML = html;
-}
-</script>
-</body>
-</html>
+  const agora = Date.now(
