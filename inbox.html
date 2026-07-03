@@ -6446,4 +6446,26 @@ function renderProximosEventos() {
       } else {
         const l = item.dados;
         const rec = l.recorrencia || 'nenhuma';
-        html += '<div style="displ
+        html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid #f59e0b;' + (l.feito ? 'opacity:.5' : '') + '">' +
+          '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + (l.hora || '') + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔔 ' + l.titulo + recBadge(rec) + '</div>' +
+            (l.desc ? '<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + l.desc + '</div>' : '') +
+          '</div>' +
+          '<span onclick="marcarLembreteFeito(\'' + l.id + '\');renderProximosEventos()" style="cursor:pointer;font-size:13px" title="Marcar como feito">' + (l.feito ? '↩️' : '✅') + '</span>' +
+        '</div>';
+      }
+    });
+
+    html += '</div>';
+  }
+
+  if (!temAlgo) {
+    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">Nenhum evento nos próximos 14 dias</div>';
+  }
+
+  wrap.innerHTML = html;
+}
+</script>
+</body>
+</html>
