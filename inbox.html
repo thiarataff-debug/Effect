@@ -3110,7 +3110,10 @@ function renderPainelEntrevista(s){
       <div style="background:var(--bg);border-radius:7px;padding:8px;margin-bottom:6px;font-size:10px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
           <div style="font-weight:700">${formatarDataBr(e.data)} às ${e.hora} — ${e.tipo}</div>
-          <span onclick="editarEntrevista('${e.id}')" style="cursor:pointer;flex-shrink:0" title="Editar data/horário desta entrevista">✏️</span>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <span onclick="editarEntrevista('${e.id}')" style="cursor:pointer" title="Editar data/horário desta entrevista">✏️</span>
+            ${e.status!=='Cancelada'&&e.status!=='Realizada'?`<span onclick="confirmarCancelarEntrevista('${e.id}')" style="cursor:pointer" title="Cancelar esta entrevista">✕</span>`:''}
+          </div>
         </div>
         <div style="color:var(--muted);margin-top:2px">Resp: ${e.responsavel} · <span style="font-weight:700">${e.status||'Pendente'}</span></div>
         ${e.obs?`<div style="color:var(--muted)">${e.obs}</div>`:''}
@@ -3377,6 +3380,12 @@ function montarMsgConfirmacaoEntrevista(nome, vaga, dataFormatada, hora, tipo, l
   const vagaTxt = vaga || '—';
   const localTxt = local ? `\n📍 ${tipo||'Modalidade'}: ${local}` : (tipo ? `\n📍 Modalidade: ${tipo}` : '');
   return `Boa tarde, ${primeiroNome}! 😊\n\nSua entrevista para a vaga de ${vagaTxt} está confirmada:\n\n📅 Data: ${dataFormatada}\n🕐 Horário: ${hora}${localTxt}\n👤 Entrevistador(a): ${responsavel||'Equipe Effect'}\n\nQualquer dúvida ou se precisar remarcar, é só me chamar por aqui.\n\n— Lia, Equipe Effect`;
+}
+
+// Mensagem de aviso de cancelamento (mesmo padrão da de confirmação, texto diferente)
+function montarMsgCancelamentoEntrevista(nome, dataFormatada, hora){
+  const primeiroNome = (nome||'').trim().split(' ')[0] || 'Candidato';
+  return `Oi, ${primeiroNome}! 😊\n\nPrecisei cancelar a nossa entrevista que estava marcada para ${dataFormatada} às ${hora}.\n\nVou entrar em contato em breve para remarcarmos. Qualquer dúvida, é só me chamar por aqui.\n\n— Lia, Equipe Effect`;
 }
 
 let _statusPendente = null;
@@ -4545,6 +4554,30 @@ function salvarEntrevista(){
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({candidato:nomeCand,cargo:s.ultimaAnalise?.vagaInteresse||'',data,hora,tipo,local:obs,telefone:tel})
   }).catch(()=>{});
+}
+// Cancela uma entrevista direto pelo card do Histórico (com confirmação, pra evitar clique acidental).
+// Depois de cancelar, pergunta se quer avisar o candidato — se sim, abre a mensagem pronta
+// pra revisão (nada é enviado sem você clicar em "Enviar" na modal); se não, cancela só internamente.
+function confirmarCancelarEntrevista(id){
+  if(!confirm('Cancelar esta entrevista?'))return;
+  atualizarStatusEntrevista(id,'Cancelada');
+  if(confirm('Avisar o candidato sobre o cancelamento?\n\n(Vai abrir a mensagem pronta pra você revisar antes de enviar — nada sai automático)')){
+    abrirMsgCancelamentoEntrevista(id);
+  }
+}
+
+// Abre a modal de mensagem (a mesma usada na confirmação de agendamento) já preenchida
+// com o texto de aviso de cancelamento.
+function abrirMsgCancelamentoEntrevista(id){
+  if(!sessaoAtual||!entrevistas[sessaoAtual])return;
+  const ent=entrevistas[sessaoAtual].find(e=>e.id===id);
+  if(!ent){toast('Entrevista não encontrada','error');return;}
+  const s=todasSessoes[sessaoAtual]||{};
+  const nomeCand=s.nome||s.ultimaAnalise?.nome||telDisplay(sessaoAtual);
+  _entConfirmContext={tel:sessaoAtual,id:ent.id};
+  const texto=montarMsgCancelamentoEntrevista(nomeCand,formatarDataBr(ent.data),ent.hora);
+  document.getElementById('modal-confirmar-entrevista-texto').value=texto;
+  document.getElementById('modal-confirmar-entrevista').classList.add('show');
 }
 function atualizarStatusEntrevista(id,novoStatus){
   if(!sessaoAtual||!entrevistas[sessaoAtual])return;
