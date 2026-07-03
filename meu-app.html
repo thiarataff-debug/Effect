@@ -2808,8 +2808,10 @@ function psiCheckRestock(){
 
 
 // ── INIT ──
-document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-document.getElementById('lembrete-gentil').textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
+const hdateEl = document.getElementById('hdate');
+if(hdateEl) hdateEl.textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+const lembreteEl = document.getElementById('lembrete-gentil');
+if(lembreteEl) lembreteEl.textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
 renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedChecklist();
 cicloInit();
 
