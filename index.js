@@ -4386,4 +4386,27 @@ supervisor.iniciarSupervisor();
 // SYNC DE DADOS DO INBOX NO GOOGLE DRIVE
 // Persiste entrevistas, status, pipeline, notas — sobrevive a deploys e trocas de dispositivo
 // ══════════════════════════════════════════════════════════════════════════════
-// ── INBOX PERSISTENCE (R
+// ── INBOX PERSISTENCE (Railway Volume) ──────────────────────────────────────
+// Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
+// O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
+// e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
+const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+
+// ── RESTAURA geminiAtivo DO VOLUME AO LIGAR O SERVIDOR ──────────────────────
+// BUG CRÍTICO CORRIGIDO: geminiAtivo era sempre resetado para `true` a cada
+// deploy/restart do Railway, mesmo quando o estado salvo no Volume era `false`.
+// Isso fazia a Lia voltar a responder sozinha depois de qualquer redeploy,
+// mesmo com o botão "IA OFF" marcado (o botão mostrava o último estado salvo
+// no navegador, mas o servidor já tinha voltado a chamar o Gemini normalmente).
+try {
+  const dadosSalvos = lerDadosInbox();
+  if (dadosSalvos && typeof dadosSalvos.geminiAtivo === "boolean") {
+    geminiAtivo = dadosSalvos.geminiAtivo;
+    inboxDataCache = dadosSalvos;
+    console.log(`[IA] Estado restaurado do Volume ao iniciar: geminiAtivo = ${geminiAtivo}`);
+  }
+} catch (e) {
+  console.error("[IA] Erro ao restaurar geminiAtivo do Volume:", e.message);
+}
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
