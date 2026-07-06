@@ -21,6 +21,10 @@ const calendar   = require("./calendar");
 const supervisor = require("./supervisor");
 
 const app = express();
+// Desliga o ETag automático do Express — ele é o que fazia o navegador (e
+// qualquer proxy no meio do caminho) achar que a página "não mudou" e devolver
+// 304 (cópia antiga) mesmo depois de um deploy novo com conteúdo diferente.
+app.set("etag", false);
 // Compressão (gzip) das respostas — páginas grandes como inbox.html (~370KB) e
 // dashboard.html (~190KB) estavam chegando CORTADAS no meio no navegador (efeito
 // clássico de timeout de proxy/rede no meio do envio de uma resposta grande e
@@ -29,6 +33,20 @@ const app = express();
 app.use(compression());
 app.use(express.json({ limit: "20mb" }));
 app.use((req, res, next) => { res.header("Access-Control-Allow-Origin", "*"); res.header("Access-Control-Allow-Headers", "Content-Type, Authorization"); res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); if (req.method === "OPTIONS") return res.sendStatus(200); next(); });
+// Proíbe qualquer cache (navegador, proxy, CDN) nas páginas HTML servidas
+// dinamicamente (/inbox, /dashboard, /sheets, /financeiro, /meu-app etc.).
+// SEM isso, o navegador (ou um proxy no meio do caminho) reaproveita uma cópia
+// antiga da página com "304 Not Modified" mesmo depois de um deploy novo — foi
+// exatamente isso que causou as funções "não definidas" mesmo com o código
+// certo publicado: a página nem chegava a ser buscada de novo de verdade.
+app.use((req, res, next) => {
+  if (req.method === "GET" && !req.path.startsWith("/webhook")) {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+  }
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
