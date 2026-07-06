@@ -342,6 +342,14 @@ function calcularUnreadSessao(sessao) {
   return count;
 }
 
+// Throttle do aviso abaixo: essa função roda para CADA sessão a cada consulta
+// do painel (a cada 5s) — sem throttle, quando há várias sessões sem horário
+// real, isso gerava uma rajada de dezenas/centenas de linhas de log por
+// segundo, estourando o limite de logs/seg do Railway e derrubando junto
+// linhas de log legítimas (inclusive erros reais). Agora só loga no máximo
+// 1 vez a cada 10 minutos, não importa quantas sessões estejam sem horário.
+let _ultimoAvisoSemTimestampInbox = 0;
+
 function normalizarSessaoParaInbox(telefone, sessao) {
   const historicoNormalizado = Array.isArray(sessao?.historico) ? sessao.historico.map(normalizarEventoHistorico) : [];
 
@@ -356,7 +364,11 @@ function normalizarSessaoParaInbox(telefone, sessao) {
   // timestamp real simplesmente fica sem horário até chegar uma mensagem nova de
   // verdade.
   if (historicoNormalizado.length && historicoNormalizado.every(m => !(Number(m.timestampMs) > 0))) {
-    console.warn(`[timestamp] Sessão ${telefone}: nenhuma mensagem com timestamp real (${historicoNormalizado.length} msgs sem hora).`);
+    const agora = Date.now();
+    if (agora - _ultimoAvisoSemTimestampInbox > 10 * 60 * 1000) {
+      _ultimoAvisoSemTimestampInbox = agora;
+      console.warn(`[timestamp] Há sessões sem nenhuma mensagem com timestamp real (ex.: ${telefone}). Aviso agrupado — só aparece 1x a cada 10min mesmo com várias sessões afetadas.`);
+    }
   }
 
   // Ordena por timestamp real quando os DOIS lados têm; quando um dos dois (ou os
@@ -1249,6 +1261,14 @@ async function carregarSessoesDoSheets() {
     const data = r.data;
     if (!data.sucesso || !data.sessoes) return;
 
+    // Contador agregado (em vez de 1 console.warn por sessão sem horário — com
+    // muitas sessões isso gerava uma rajada de centenas de linhas de log de uma
+    // vez, estourando o limite de logs/segundo do Railway e derrubando linhas
+    // de log legítimas junto — inclusive erros reais que poderiam aparecer no
+    // mesmo instante).
+    let _semTimestampCount = 0;
+    let _semTimestampTotal = 0;
+
     Object.entries(data.sessoes).forEach(([telOriginal, sessao]) => {
       const tel = limparTelefone(telOriginal);
       const motivoOriginal = sessao.motivoPausa || "";
@@ -1290,7 +1310,8 @@ async function carregarSessoesDoSheets() {
       // até chegar uma mensagem nova de verdade — mostrar nada é melhor que mostrar
       // errado.
       if (historicoNorm.length && historicoNorm.every(m => !(Number(m.timestampMs) > 0))) {
-        console.warn(`[timestamp] Sessão ${tel}: nenhuma mensagem com timestamp real encontrada (${historicoNorm.length} msgs). Vão aparecer sem horário até que uma msg nova com timestamp real chegue.`);
+        _semTimestampCount++;
+        _semTimestampTotal += historicoNorm.length;
       }
 
       // FIX PRINCIPAL: MESCLA em vez de SUBSTITUIR. Antes, cada recarga do Sheets
@@ -1324,6 +1345,10 @@ async function carregarSessoesDoSheets() {
       if (pausado) atendimentosManuais.add(tel);
       else atendimentosManuais.delete(tel);
     });
+
+    if (_semTimestampCount > 0) {
+      console.warn(`[timestamp] ${_semTimestampCount} sessão(ões) sem nenhuma mensagem com timestamp real (${_semTimestampTotal} msgs no total). Vão aparecer sem horário até chegar msg nova com timestamp real.`);
+    }
 
     console.log(`Sessões carregadas do Sheets: ${Object.keys(data.sessoes).length}`);
   } catch (e) {
