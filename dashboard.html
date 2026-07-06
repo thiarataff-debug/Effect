@@ -517,6 +517,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
     <div class="nav-item" onclick="gotoView('banco-talentos',this)"><i class="fas fa-star"></i> Banco de Talentos <span class="badge" id="bt-badge"></span></div>
     <div class="nav-section">Ferramentas</div>
     <div class="nav-item" onclick="window.open('https://effect-production.up.railway.app/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
+    <div class="nav-item" onclick="window.open('/divulgacao','_blank')"><i class="fas fa-bullhorn"></i> Divulgar Vaga</div>
     <div class="nav-item" onclick="gotoView('relatorios',this)"><i class="fas fa-chart-bar"></i> Relatórios</div>
 
     <div class="nav-item" onclick="gotoView('financeiro',this)"><i class="fas fa-coins"></i> Financeiro</div>
@@ -1716,6 +1717,7 @@ function renderVagas(){
         <span class="vc-badge-status ${enc?'encerrada-badge':''}"><span class="dot" style="background:${enc?'#e53935':'#4caf50'}"></span>${enc?'Encerrada':'Aberta'}</span>
         <span class="vc-badge-num">${v.num}</span>
         ${v.urg?'<span style="font-size:9px;padding:3px 8px;border-radius:20px;font-weight:700;background:rgba(244,175,161,0.3);color:#c0392b">⚡ Urgente</span>':''}
+        ${!enc?`<button class="vc-btn-sm" style="background:var(--navy);color:#fff;border:none;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();window.open('/divulgacao?cargo='+encodeURIComponent(v.titulo||'')+'&cidade='+encodeURIComponent(v.local||'')+'&salario='+encodeURIComponent(v.salario||''),'_blank')">📢 Divulgar</button>`:''}
       </div>
       <div class="vc-timing"><span>📅 Prazo: ${v.prazo}</span>${v.etapa?`<span style="font-size:9px;color:var(--gray)">${v.etapa}</span>`:''}</div>
       <hr class="vc-sep">
@@ -2751,20 +2753,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <select class="bt-inp" id="bt-f-fonte">
             <option value="">Selecionar...</option>
             <option>WhatsApp</option><option>LinkedIn</option><option>Indicação</option>
-            <option>Portal de vagas</option><option>Evento</option><option>Candidatura espontânea</option><option>Outro</option>
-          </select>
-        </div>
-        <div class="bt-fg"><label class="bt-lbl">Observações</label>
-          <input class="bt-inp" id="bt-f-obs" placeholder="Anotações internas sobre o candidato">
-        </div>
-      </div>
-    </div>
-    <div class="bt-modal-foot">
-      <button class="btn btn-outline" onclick="btFecharModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="btSalvar()"><i class="fas fa-check"></i> Salvar</button>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+            <option>Portal de vagas</option><option>Evento</option><option>Candidatura espontânea</option><o

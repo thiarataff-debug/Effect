@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effect | Divulgação de Vagas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
+  --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
+  --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark)}
+.topbar{background:var(--navy);color:#fff;padding:16px 26px;display:flex;align-items:center;gap:12px}
+.topbar h1{font-size:16px;font-weight:700;letter-spacing:1px}
+.topbar .sub{font-size:11px;color:var(--teal);margin-left:auto}
+.wrap{max-width:920px;margin:0 auto;padding:22px 20px 60px}
+.card{background:var(--white);border-radius:14px;padding:20px;border:1px solid rgba(0,0,0,0.06);margin-bottom:16px}
+.card h2{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .n{background:var(--navy);color:#fff;width:20px;height:20px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;margin-top:8px}
+input,textarea,select{width:100%;padding:9px 10px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-family:inherit;font-size:12px;background:#fff}
+textarea{resize:vertical;min-height:70px}
+#texto-divulgacao{min-height:170px}
+.btn{padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;transition:.2s;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:var(--green);color:var(--navy)}
+.btn-primary:hover{background:#79c9a5}
+.btn-outline{background:transparent;border:1px solid rgba(0,0,0,0.15);color:var(--dark)}
+.btn-outline:hover{border-color:var(--navy)}
+.btn-send{background:var(--navy);color:#fff}
+.btn-send:hover{background:var(--navy2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.provider-row{display:flex;gap:16px;margin-top:8px}
+.provider-row label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;text-transform:none;color:var(--dark);margin:0}
+.provider-row input[type=radio]{width:auto}
+.banner{background:#fff7e6;border:1px solid #f0c96b;color:#7a5b00;border-radius:10px;padding:12px 14px;font-size:11.5px;line-height:1.5;margin-bottom:16px}
+.banner b{color:#5c4400}
+.check-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:600}
+.check-row input{width:auto}
+#candidatos-lista{max-height:220px;overflow-y:auto;border:1px solid rgba(0,0,0,0.08);border-radius:8px;margin-top:8px;display:none}
+.cand-item{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.05)}
+.cand-item:last-child{border-bottom:none}
+.cand-item input{width:auto}
+#status-msg{font-size:12px;margin-top:12px;padding:10px 12px;border-radius:8px;display:none}
+.status-ok{background:#e6f7f0;color:#146c43;display:block!important}
+.status-erro{background:#fdecea;color:#a83232;display:block!important}
+.badge-count{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.small{font-size:10.5px;color:var(--gray);margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <i class="fas fa-bullhorn"></i>
+  <h1>DIVULGAÇÃO DE VAGAS — LIA</h1>
+  <div class="sub">Effect Pessoas &amp; Performance</div>
+</div>
+
+<div class="wrap">
+
+  <div class="banner">
+    <b>⚠️ Antes de aprovar:</b> este disparo só sai quando você clicar em "Aprovar e Enviar" — nada é enviado automaticamente.
+    Candidatos que não falam com a Lia há mais de 24h só podem receber mensagem via <b>template aprovado na Meta</b>
+    (o sistema tenta o texto livre primeiro e cai automaticamente para o template de reengajamento quando bloqueado).
+  </div>
+
+  <div class="card">
+    <h2><span class="n">1</span> Dados da vaga</h2>
+    <div class="grid2">
+      <div>
+        <label>Cargo *</label>
+        <input id="v-cargo" placeholder="Ex: Auxiliar de Produção">
+      </div>
+      <div>
+        <label>Cidade</label>
+        <input id="v-cidade" placeholder="Ex: Serra/ES">
+      </div>
+      <div>
+        <label>Salário</label>
+        <input id="v-salario" placeholder="Ex: R$ 1.800 ou A combinar">
+      </div>
+      <div>
+        <label>Horário</label>
+        <input id="v-horario" placeholder="Ex: Seg-Sex 08h às 17h48">
+      </div>
+    </div>
+    <label>Benefícios</label>
+    <input id="v-beneficios" placeholder="Ex: VT, VA, Plano de saúde">
+    <label>Requisitos</label>
+    <textarea id="v-requisitos" placeholder="Ex: Ensino médio completo, disponibilidade de horário..."></textarea>
+    <label>Responsabilidades</label>
+    <textarea id="v-responsabilidades" placeholder="Principais atividades do cargo..."></textarea>
+    <div class="small">Dica: abra esta página a partir do card da vaga no Dashboard (botão 📢 Divulgar) que estes campos já vêm preenchidos.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span> Gerar texto de divulgação</h2>
+    <div class="provider-row">
+      <label><input type="radio" name="provider" value="gemini" checked> Gemini (já integrado à Lia)</label>
+      <label><input type="radio" name="provider" value="chatgpt"> ChatGPT / OpenAI</label>
+    </div>
+    <div class="row">
+      <button class="btn btn-outline" id="btn-gerar" onclick="gerarTexto()"><i class="fas fa-wand-magic-sparkles"></i> Gerar texto com IA</button>
+    </div>
+    <label style="margin-top:14px">Texto (edite à vontade antes de enviar)</label>
+    <textarea id="texto-divulgacao" placeholder="O texto gerado aparece aqui — ou escreva o seu diretamente."></textarea>
+    <div class="small" id="provider-usado"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span> Quem recebe</h2>
+    <div class="check-row"><input type="checkbox" id="chk-whatsapp" checked> Enviar por WhatsApp aos candidatos compatíveis do banco de talentos</div>
+    <div class="row">
+      <button class="btn btn-outline" id="btn-buscar-cands" onclick="buscarCandidatos()"><i class="fas fa-users"></i> Ver candidatos compatíveis</button>
+      <span id="cand-total"></span>
+    </div>
+    <div id="candidatos-lista"></div>
+    <div class="small">A lista é sugerida por área/cargo/cidade do banco de talentos. Desmarque quem não quiser incluir.</div>
+
+    <div class="check-row" style="margin-top:16px"><input type="checkbox" id="chk-email" checked> Enviar e-mail para o parceiro de divulgação nas redes sociais</div>
+    <div class="small">Requer e-mail do parceiro configurado no servidor (PARCEIRO_EMAIL).</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span> Aprovar e enviar</h2>
+    <div class="row">
+      <button class="btn btn-send" id="btn-aprovar" onclick="aprovarEEnviar()"><i class="fas fa-paper-plane"></i> Aprovar e Enviar</button>
+    </div>
+    <div id="status-msg"></div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = '';
+
+function paramsVaga(){
+  return {
+    cargo: document.getElementById('v-cargo').value.trim(),
+    cidade: document.getElementById('v-cidade').value.trim(),
+    salario: document.getElementById('v-salario').value.trim(),
+    horario: document.getElementById('v-horario').value.trim(),
+    beneficios: document.getElementById('v-beneficios').value.trim(),
+    requisitos: document.getElementById('v-requisitos').value.trim(),
+    responsabilidades: document.getElementById('v-responsabilidades').value.trim()
+  };
+}
+
+function providerSelecionado(){
+  return document.querySelector('input[name=provider]:checked').value;
+}
+
+function preencherDaURL(){
+  const p = new URLSearchParams(window.location.search);
+  const map = { cargo:'v-cargo', cidade:'v-cidade', salario:'v-salario', horario:'v-horario', beneficios:'v-beneficios', requisitos:'v-requisitos', responsabilidades:'v-responsabilidades' };
+  Object.entries(map).forEach(([key, id]) => {
+    if (p.get(key)) document.getElementById(id).value = p.get(key);
+  });
+}
+preencherDaURL();
+
+let candidatosEncontrados = [];
+
+async function gerarTexto(){
+  const vaga = paramsVaga();
+  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+  try {
+    const r = await fetch(`${API_BASE}/vagas/gerar-texto`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ vaga, provider: providerSelecionado() })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      document.getElementById('texto-divulgacao').value = data.texto;
+      document.getElementById('provider-usado').textContent = `Gerado com: ${data.providerUsado === 'chatgpt' ? 'ChatGPT' : data.providerUsado === 'gemini' ? 'Gemini' : 'texto fixo (IA indisponível)'}`;
+    } else {
+      alert('Erro ao gerar texto: ' + (data.erro || 'desconhecido'));
+    }
+  } catch(e) {
+    alert('Erro de conexão: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Gerar texto com IA';
+}
+
+async function buscarCandidatos(){
+  const vaga = paramsVaga();
+  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
+  const btn = document.getElementById('btn-buscar-cands');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+  try {
+    const r = await fetch(`${API_BASE}/vagas/candidatos-compativeis`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ vaga })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      candidatosEncontrados = data.candidatos;
+      document.getElementById('cand-total').innerHTML = `<span class="badge-count">${data.total} compatível(is)</span>`;
+      const div = document.getElementById('candidatos-lista');
+      div.style.display = data.total ? 'block' : 'none';
+      div.innerHTML = candidatosEncontrados.map((c,i) => `
+        <div class="cand-item">
+          <input type="checkbox" class="cand-check" data-tel="${c.telefone}" checked>
+          <span>${c.nome || 'Sem nome'} — ${c.telefone}</span>
+        </div>`).join('');
+    } else {
+      alert('Erro ao buscar candidatos: ' + (data.erro || 'desconhecido'));
+    }
+  } catch(e) {
+    alert('Erro de conexão: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-users"></i> Ver candidatos compatíveis';
+}
+
+async function aprovarEEnviar(){
+  const vaga = paramsVaga();
+  const texto = document.getElementById('texto-divulgacao').value.trim();
+  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
+  if (!texto) { alert('Gere ou escreva o texto de divulgação antes de enviar.'); return; }
+
+  const enviarWhatsapp = document.getElementById('chk-whatsapp').checked;
+  const enviarEmail = document.getElementById('chk-email').checked;
+
+  let telefones = null;
+  const checks = document.querySelectorAll('.cand-check');
+  if (checks.length) {
+    telefones = Array.from(checks).filter(c => c.checked).map(c => c.dataset.tel);
+  }
+
+  if (!confirm(`Confirma o disparo?\n\nWhatsApp: ${enviarWhatsapp ? (telefones ? telefones.length : 'candidatos compatíveis (buscados automaticamente)') : 'não'}\nE-mail parceiro: ${enviarEmail ? 'sim' : 'não'}`)) return;
+
+  const btn = document.getElementById('btn-aprovar');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+  const statusEl = document.getElementById('status-msg');
+  statusEl.className = ''; statusEl.style.display = 'none';
+
+  try {
+    const r = await fetch(`${API_BASE}/vagas/aprovar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ vaga, provider: providerSelecionado(), texto, telefones, enviarWhatsapp, enviarEmail })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      statusEl.className = 'status-ok';
+      statusEl.innerHTML = `✅ Disparo iniciado! WhatsApp: ${data.whatsappDisparado ? data.totalCandidatosWhatsapp + ' candidato(s) na fila (envio ~1/seg em segundo plano)' : 'não enviado'}.<br>E-mail parceiro: ${data.email?.ok ? 'enviado com sucesso' : (enviarEmail ? 'falhou — ' + (data.email?.erro || '') : 'não solicitado')}.`;
+    } else {
+      statusEl.className = 'status-erro';
+      statusEl.textContent = '❌ Erro: ' + (data.erro || 'desconhecido');
+    }
+  } catch(e) {
+    statusEl.className = 'status-erro';
+    statusEl.textContent = '❌ Erro de conexão: ' + e.message;
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Aprovar e Enviar';
+}
+</script>
+
+</body>
+</html>

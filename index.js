@@ -15,6 +15,7 @@ const pdfParse = require("pdf-parse");
 const path = require("path");
 const fs = require("fs");
 const { google } = require("googleapis");
+const nodemailer = require("nodemailer");
 const calendar   = require("./calendar");
 const supervisor = require("./supervisor");
 
@@ -41,7 +42,20 @@ const CONFIG = {
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,          // opcional: para monitorar créditos
   RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID, // opcional: ID do projeto Railway
-  SHEETS_ID: process.env.SHEETS_ID || "1Bqrwjjy0JwAVouppOg-LGCENrYrTsQCYrqntCBf9mSk"
+  SHEETS_ID: process.env.SHEETS_ID || "1Bqrwjjy0JwAVouppOg-LGCENrYrTsQCYrqntCBf9mSk",
+
+  // ── Divulgação de vagas (app LIA) ─────────────────────────────────────────
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,               // chave da OpenAI, só necessária se usar o provider "chatgpt"
+  OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
+  DIVULGACAO_AI_PADRAO: process.env.DIVULGACAO_AI_PADRAO || "gemini", // "gemini" ou "chatgpt"
+  EMAIL_HOST: process.env.EMAIL_HOST,                       // ex: smtp.gmail.com
+  EMAIL_PORT: process.env.EMAIL_PORT || 587,
+  EMAIL_SECURE: process.env.EMAIL_SECURE === "true",        // true se a porta for 465
+  EMAIL_USER: process.env.EMAIL_USER,                       // e-mail remetente
+  EMAIL_PASS: process.env.EMAIL_PASS,                       // senha de app (não a senha normal)
+  PARCEIRO_EMAIL: process.env.PARCEIRO_EMAIL,               // e-mail do parceiro que divulga nas redes
+  PARCEIRO_NOME: process.env.PARCEIRO_NOME || "Parceiro de Divulgação",
+  TEMPLATE_DIVULGACAO_VAGA: process.env.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos" // template aprovado na Meta p/ candidatos fora da janela de 24h
 };
 
 // ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
@@ -2574,11 +2588,25 @@ app.post("/inbox/status", async (req, res) => {
     const prioritario = req.body.prioritario === true;
     const enviar = req.body.enviarMensagem === true;
     const mensagem = String(req.body.mensagem || "").trim();
+    // areaBanco: vaga/área de disponibilidade informada no momento de mover o
+    // candidato para o Banco de Talentos (pergunta feita no Inbox). Quando vier
+    // preenchida, tem prioridade sobre o vagaInteresse antigo da sessão.
+    const areaBanco = String(req.body.areaBanco || "").trim();
+    // motivoReprovacao: motivo selecionado no Inbox ao reprovar um candidato
+    // (Reprovado Triagem / 1ª Etapa / Gestor) — vira dado consultável depois,
+    // por exemplo pra saber quantos candidatos caem por pretensão salarial etc.
+    const motivoReprovacao = String(req.body.motivoReprovacao || "").trim();
     if (!telefone) return res.json({ ok: false, erro: "Telefone não informado" });
 
     const sessao = garantirSessao(telefone);
     sessao.statusProcesso = status || sessao.statusProcesso || "Novo";
     if (prioritario) sessao.motivoPausa = "Prioritário";
+    if (areaBanco) {
+      sessao.ultimaAnalise = { ...(sessao.ultimaAnalise || {}), vagaInteresse: areaBanco };
+    }
+    if (motivoReprovacao) {
+      sessao.ultimaAnalise = { ...(sessao.ultimaAnalise || {}), motivoReprovacao };
+    }
 
     if (CONFIG.VAGAS_URL && status) {
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
@@ -2587,7 +2615,8 @@ app.post("/inbox/status", async (req, res) => {
         telefone,
         nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
         status,
-        observacoes: `${status}${prioritario ? " | Prioritário" : ""}`,
+        observacoes: `${status}${prioritario ? " | Prioritário" : ""}${motivoReprovacao ? ` | Motivo: ${motivoReprovacao}` : ""}`,
+        motivoReprovacao,
         vagaInteresse: sessao.ultimaAnalise?.vagaInteresse || "",
         idVaga: sessao.ultimaAnalise?.idVaga || "",
         curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
@@ -2618,7 +2647,7 @@ app.post("/inbox/status", async (req, res) => {
           acao: "bancoTalentos",
           telefone,
           nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-          cargo: sessao.ultimaAnalise?.vagaInteresse || sessao.vagaInteresse || "",
+          cargo: areaBanco || sessao.ultimaAnalise?.vagaInteresse || sessao.vagaInteresse || "",
           cidade: sessao.ultimaAnalise?.cidade || sessao.cidade || "",
           driveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || "",
           perfilResumido: sessao.ultimaAnalise?.perfilResumido || sessao.ultimaAnalise?.motivoMatch || "",
@@ -2647,14 +2676,21 @@ app.post("/inbox/encaminhar", async (req, res) => {
     const vagaInteresse = String(req.body.vagaInteresse || req.body.cargo || "").trim();
     const vaga = req.body.vaga || {};
     const agoraLocal = agora();
+    // BUG CORRIGIDO: este endpoint sempre gravava status "Interessado", mesmo quando
+    // o Inbox mandava "Em Vaga" (clique na etapa "EM VAGA" do funil). Resultado: o
+    // candidato aparecia como "Em Vaga" só no navegador (localStorage), mas a planilha
+    // e o Painel de Vagas do Dashboard recebiam "Interessado" — por isso o candidato
+    // não aparecia agrupado no card da vaga certa, mesmo a vaga já tendo ID.
+    const statusRecebido = String(req.body.status || "").trim();
+    const status = statusRecebido === "Em Vaga" ? "Em Vaga" : "Interessado";
 
-    sessao.statusProcesso = "Interessado";
+    sessao.statusProcesso = status;
     sessao.aguardandoConfirmacaoInteresse = false;
     sessao.ultimaAnalise = {
       ...(sessao.ultimaAnalise || {}),
       idVaga,
       vagaInteresse,
-      status: "Interessado",
+      status,
       curriculoDriveLink: sessao.curriculo?.driveLink || sessao.ultimaAnalise?.curriculoDriveLink || ""
     };
 
@@ -2663,7 +2699,7 @@ app.post("/inbox/encaminhar", async (req, res) => {
       const basePayload = {
         telefone,
         nome: sessao.nome || sessao.ultimaAnalise?.nome || "",
-        status: "Interessado",
+        status,
         vagaInteresse,
         idVaga,
         proximaAcao: "Encaminhado manualmente pelo Inbox",
@@ -2680,7 +2716,7 @@ app.post("/inbox/encaminhar", async (req, res) => {
     }
 
     await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || sessao.ultimaAnalise?.nome || "");
-    return res.json({ ok: true, telefone, idVaga, vagaInteresse, status: "Interessado" });
+    return res.json({ ok: true, telefone, idVaga, vagaInteresse, status });
   } catch (erro) {
     console.error("Erro /inbox/encaminhar:", erro.message);
     return res.json({ ok: false, erro: erro.message });
@@ -3666,6 +3702,245 @@ async function chamarClaude(prompt, tentativa = 1) {
   return respostaGemini;
 }
 
+// ============================================================
+// DIVULGAÇÃO DE VAGAS — geração de texto (Gemini ou ChatGPT),
+// matching de candidatos compatíveis e envio (WhatsApp + e-mail parceiro)
+// ============================================================
+
+// Chamada simples ao ChatGPT (OpenAI) — usada só para gerar texto de divulgação,
+// não participa do atendimento da Lia no WhatsApp.
+async function chamarChatGPT(prompt, tentativa = 1) {
+  if (!CONFIG.OPENAI_API_KEY) {
+    console.error("chamarChatGPT: OPENAI_API_KEY não configurada.");
+    return null;
+  }
+  try {
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: CONFIG.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.6
+      },
+      { headers: { Authorization: `Bearer ${CONFIG.OPENAI_API_KEY}`, "Content-Type": "application/json" }, timeout: 45000 }
+    );
+    return response.data?.choices?.[0]?.message?.content?.trim() || null;
+  } catch (erro) {
+    const status = erro.response?.status;
+    console.error(`Erro chamarChatGPT (tentativa ${tentativa}) — status: ${status || "sem status"} — msg: ${erro.message}`);
+    const ehRateLimitOuRede = status === 429 || !status || erro.code === "ECONNABORTED" || erro.code === "ETIMEDOUT";
+    if (ehRateLimitOuRede && tentativa < 3) {
+      await sleep(2000 * tentativa);
+      return chamarChatGPT(prompt, tentativa + 1);
+    }
+    return null;
+  }
+}
+
+// Texto fixo (sem IA) — usado quando nenhum provider de IA está disponível/configurado.
+function textoDivulgacaoFixo(vaga) {
+  const cargo = campo(vaga, ["cargo", "Cargo", "CARGO"], "Oportunidade");
+  const cidade = campo(vaga, ["cidade", "Cidade", "vaga_cidade"], "");
+  const salario = campo(vaga, ["salario", "Salário", "vaga_salario"], "A combinar");
+  const horario = campo(vaga, ["horario", "Horário", "vaga_horario"], "");
+  const beneficios = campo(vaga, ["beneficios", "Benefícios", "vaga_beneficios"], "");
+  const requisitos = campo(vaga, ["requisitos", "Requisitos", "vaga_requisitos"], "");
+  return `🟢 VAGA ABERTA — ${cargo}\n\n📍 Local: ${cidade}\n💰 Salário: ${salario}${horario ? `\n🕐 Horário: ${horario}` : ""}${beneficios ? `\n🎁 Benefícios: ${beneficios}` : ""}${requisitos ? `\n📋 Requisitos: ${requisitos}` : ""}\n\nTem interesse? Envie seu currículo atualizado por aqui que a gente dá continuidade! 💙\n\nEquipe Effect Pessoas`;
+}
+
+function promptDivulgacaoVaga(vaga) {
+  const cargo = campo(vaga, ["cargo", "Cargo", "CARGO"], "");
+  const cidade = campo(vaga, ["cidade", "Cidade", "vaga_cidade"], "");
+  const salario = campo(vaga, ["salario", "Salário", "vaga_salario"], "A combinar");
+  const horario = campo(vaga, ["horario", "Horário", "vaga_horario"], "");
+  const beneficios = campo(vaga, ["beneficios", "Benefícios", "vaga_beneficios"], "");
+  const requisitos = campo(vaga, ["requisitos", "Requisitos", "vaga_requisitos"], "");
+  const responsabilidades = campo(vaga, ["responsabilidades", "Responsabilidades", "vaga_responsabilidades"], "");
+  return `Escreva um texto curto (máximo 8 linhas) para divulgar esta vaga de emprego em grupos de WhatsApp e redes sociais. Tom acolhedor e profissional, com emojis moderados (sem exagero). Não invente nenhuma informação que não esteja listada abaixo. Termine pedindo para quem tiver interesse enviar currículo atualizado. Não use markdown (sem **, sem #).
+
+Cargo: ${cargo}
+Cidade: ${cidade}
+Salário: ${salario}
+Horário: ${horario}
+Benefícios: ${beneficios}
+Requisitos: ${requisitos}
+Responsabilidades: ${responsabilidades}`;
+}
+
+// Gera o texto de divulgação. provider: "gemini" (padrão) ou "chatgpt".
+// Sempre cai para o texto fixo se a IA escolhida falhar ou não estiver configurada.
+async function gerarTextoDivulgacao(vaga, provider) {
+  const escolhido = String(provider || CONFIG.DIVULGACAO_AI_PADRAO || "gemini").toLowerCase().trim();
+  const prompt = promptDivulgacaoVaga(vaga);
+
+  if (escolhido === "chatgpt") {
+    const texto = await chamarChatGPT(prompt);
+    if (texto) return { texto, providerUsado: "chatgpt" };
+    console.error("gerarTextoDivulgacao: ChatGPT falhou/não configurado, tentando Gemini.");
+  }
+
+  if (CONFIG.GEMINI_API_KEY && geminiAtivo) {
+    const textoGemini = await chamarGemini(prompt);
+    if (textoGemini && textoGemini !== FALLBACK_INSTABILIDADE && textoGemini !== FALLBACK_RATE_LIMIT) {
+      return { texto: textoGemini, providerUsado: "gemini" };
+    }
+  }
+
+  if (escolhido !== "chatgpt" && CONFIG.OPENAI_API_KEY) {
+    const texto = await chamarChatGPT(prompt);
+    if (texto) return { texto, providerUsado: "chatgpt" };
+  }
+
+  return { texto: textoDivulgacaoFixo(vaga), providerUsado: "fixo" };
+}
+
+// Candidato é compatível com a vaga se a área/cargo bater (reaproveita a mesma
+// lógica de sinônimos usada no atendimento da Lia) e, quando ambos informarem
+// cidade, ela também for compatível (comparação tolerante, por substring).
+function candidatoCompativelComVaga(candidato, vaga) {
+  const textoVaga = normalizarTexto(textoDaVagaParaArea(vaga));
+  const areaCandidato = normalizarTexto(campo(candidato, ["areaInteresse", "area", "Área de interesse", "cargo", "vagaInteresse", "Cargo"], ""));
+  const compativelPorArea = areaCandidato && textoVaga.includes(areaCandidato.split(" ")[0]);
+
+  const cidadeVaga = normalizarTexto(campo(vaga, ["cidade", "Cidade", "vaga_cidade"], ""));
+  const cidadeCandidato = normalizarTexto(campo(candidato, ["cidade", "Cidade"], ""));
+  const cidadeOk = !cidadeVaga || !cidadeCandidato || cidadeCandidato.includes(cidadeVaga) || cidadeVaga.includes(cidadeCandidato);
+
+  return Boolean(compativelPorArea) && cidadeOk;
+}
+
+async function buscarCandidatosCompativeis(vaga) {
+  if (!CONFIG.VAGAS_URL) return [];
+  try {
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    const r = await axios.get(`${urlBase}?acao=candidatos`, { timeout: 15000 });
+    const candidatos = r.data?.candidatos || [];
+    return candidatos.filter(c => candidatoCompativelComVaga(c, vaga));
+  } catch (e) {
+    console.error("buscarCandidatosCompativeis erro:", e.message);
+    return [];
+  }
+}
+
+// ── E-MAIL PARA O PARCEIRO DE DIVULGAÇÃO (redes sociais) ─────────────────────
+let transporterEmail = null;
+function getTransporterEmail() {
+  if (transporterEmail) return transporterEmail;
+  if (!CONFIG.EMAIL_HOST || !CONFIG.EMAIL_USER || !CONFIG.EMAIL_PASS) return null;
+  transporterEmail = nodemailer.createTransport({
+    host: CONFIG.EMAIL_HOST,
+    port: Number(CONFIG.EMAIL_PORT) || 587,
+    secure: CONFIG.EMAIL_SECURE || Number(CONFIG.EMAIL_PORT) === 465,
+    auth: { user: CONFIG.EMAIL_USER, pass: CONFIG.EMAIL_PASS }
+  });
+  return transporterEmail;
+}
+
+async function enviarEmailParceiro(vaga, texto) {
+  const transporter = getTransporterEmail();
+  if (!transporter || !CONFIG.PARCEIRO_EMAIL) {
+    return { ok: false, erro: "E-mail não configurado (EMAIL_HOST/EMAIL_USER/EMAIL_PASS/PARCEIRO_EMAIL)" };
+  }
+  const cargo = campo(vaga, ["cargo", "Cargo"], "Nova vaga");
+  const cidade = campo(vaga, ["cidade", "Cidade"], "");
+  try {
+    await transporter.sendMail({
+      from: `"Effect Pessoas e Performance" <${CONFIG.EMAIL_USER}>`,
+      to: CONFIG.PARCEIRO_EMAIL,
+      subject: `📢 Nova vaga para divulgar: ${cargo}${cidade ? " — " + cidade : ""}`,
+      text: texto,
+      html: `<div style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:14px;color:#111">${texto.replace(/\n/g, "<br>")}</div>`
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error("Erro enviarEmailParceiro:", e.message);
+    return { ok: false, erro: e.message };
+  }
+}
+
+// ── ENDPOINTS — DIVULGAÇÃO DE VAGAS ───────────────────────────────────────────
+
+app.get("/divulgacao", (req, res) => res.sendFile(path.join(__dirname, "divulgacao.html")));
+
+// Gera (ou regera) o texto de divulgação, sem enviar nada ainda.
+app.post("/vagas/gerar-texto", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const provider = req.body.provider;
+    const { texto, providerUsado } = await gerarTextoDivulgacao(vaga, provider);
+    res.json({ ok: true, texto, providerUsado });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Lista candidatos compatíveis com a vaga, para revisão antes do disparo.
+app.post("/vagas/candidatos-compativeis", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const candidatos = await buscarCandidatosCompativeis(vaga);
+    const lista = candidatos.map(c => ({
+      telefone: limparTelefone(campo(c, ["telefone", "Telefone", "whatsapp"], "")),
+      nome: campo(c, ["nome", "Nome"], "")
+    })).filter(c => c.telefone);
+    res.json({ ok: true, total: lista.length, candidatos: lista });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Aprova e dispara a divulgação: WhatsApp em lote para os candidatos compatíveis
+// (ou lista escolhida manualmente) + e-mail para o parceiro de redes sociais.
+// Este é o único gatilho de disparo — nada sai automaticamente sem essa chamada,
+// ou seja, o disparo só acontece depois que a vaga é aprovada no painel.
+app.post("/vagas/aprovar", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const provider = req.body.provider;
+    const enviarWhatsapp = req.body.enviarWhatsapp !== false;
+    const enviarEmail = req.body.enviarEmail !== false;
+    const telefonesManual = Array.isArray(req.body.telefones) ? req.body.telefones : null;
+
+    let texto = String(req.body.texto || "").trim();
+    let providerUsado = "manual";
+    if (!texto) {
+      const gerado = await gerarTextoDivulgacao(vaga, provider);
+      texto = gerado.texto;
+      providerUsado = gerado.providerUsado;
+    }
+
+    let telefones = [];
+    if (telefonesManual) {
+      telefones = [...new Set(telefonesManual.map(limparTelefone).filter(t => t && t.length >= 8))];
+    } else if (enviarWhatsapp) {
+      const candidatos = await buscarCandidatosCompativeis(vaga);
+      telefones = [...new Set(candidatos.map(c => limparTelefone(campo(c, ["telefone", "Telefone", "whatsapp"], ""))).filter(t => t && t.length >= 8))];
+    }
+
+    if (enviarWhatsapp && telefones.length) {
+      // Reaproveita o motor de envio em lote (1 msg/seg, cai para template
+      // aprovado quando o candidato está fora da janela de 24h da Meta).
+      iniciarEnvioLote(telefones, texto, { templateFallback: true });
+    }
+
+    let resultadoEmail = { ok: false, erro: "Não solicitado" };
+    if (enviarEmail) {
+      resultadoEmail = await enviarEmailParceiro(vaga, texto);
+    }
+
+    res.json({
+      ok: true,
+      texto,
+      providerUsado,
+      totalCandidatosWhatsapp: telefones.length,
+      whatsappDisparado: enviarWhatsapp && telefones.length > 0,
+      email: resultadoEmail
+    });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
 // ── ENDPOINTS DE CONTROLE (Gemini + Railway) ──────────────────────────────────
 
 // GET /admin/status → retorna estado atual da IA e créditos Railway
@@ -3917,7 +4192,7 @@ async function enviarAlertaThiara(analise, telefone) {
     const classificacao = String(analise.classificacao || "").toLowerCase();
     if (score < 80 && !classificacao.includes("excelente")) return;
     const destaque = score >= 90 || classificacao.includes("excelente") ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO" : "🚨 NOVO MATCH IDENTIFICADO";
-    const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
+      const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
   } catch (e) { console.error("Erro alerta Thiara:", e.message); }
 }
@@ -4111,27 +4386,4 @@ supervisor.iniciarSupervisor();
 // SYNC DE DADOS DO INBOX NO GOOGLE DRIVE
 // Persiste entrevistas, status, pipeline, notas — sobrevive a deploys e trocas de dispositivo
 // ══════════════════════════════════════════════════════════════════════════════
-// ── INBOX PERSISTENCE (Railway Volume) ──────────────────────────────────────
-// Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
-// O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
-// e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
-const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
-
-// ── RESTAURA geminiAtivo DO VOLUME AO LIGAR O SERVIDOR ──────────────────────
-// BUG CRÍTICO CORRIGIDO: geminiAtivo era sempre resetado para `true` a cada
-// deploy/restart do Railway, mesmo quando o estado salvo no Volume era `false`.
-// Isso fazia a Lia voltar a responder sozinha depois de qualquer redeploy,
-// mesmo com o botão "IA OFF" marcado (o botão mostrava o último estado salvo
-// no navegador, mas o servidor já tinha voltado a chamar o Gemini normalmente).
-try {
-  const dadosSalvos = lerDadosInbox();
-  if (dadosSalvos && typeof dadosSalvos.geminiAtivo === "boolean") {
-    geminiAtivo = dadosSalvos.geminiAtivo;
-    inboxDataCache = dadosSalvos;
-    console.log(`[IA] Estado restaurado do Volume ao iniciar: geminiAtivo = ${geminiAtivo}`);
-  }
-} catch (e) {
-  console.error("[IA] Erro ao restaurar geminiAtivo do Volume:", e.message);
-}
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+// ── INBOX PERSISTENCE (R

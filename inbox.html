@@ -1124,6 +1124,48 @@ font-family:'Montserrat',sans-serif
       <button onclick="fecharModal('modal-msg-status')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">✕</button>
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Revise o texto antes de enviar. Você pode editar antes de confirmar.</div>
+    <div id="modal-msg-status-area-wrap" style="display:none;margin-bottom:10px">
+      <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:4px">Para qual vaga ou área o candidato tem disponibilidade? *</label>
+      <select id="modal-msg-status-area" class="modal-input" style="width:100%;font-size:13px" onchange="document.getElementById('modal-msg-status-area-outro-wrap').style.display=(this.value==='Outro')?'block':'none'">
+        <option value="">Selecione...</option>
+        <option>Administrativo</option>
+        <option>Financeiro</option>
+        <option>Logística</option>
+        <option>Recursos Humanos</option>
+        <option>Comercial / Vendas</option>
+        <option>Atendimento</option>
+        <option>Operacional / Produção</option>
+        <option>Restaurantes / Alimentação</option>
+        <option>Varejo</option>
+        <option>Indústria</option>
+        <option>Liderança / Gestão</option>
+        <option>Tecnologia</option>
+        <option value="Outro">Outro (digitar)</option>
+      </select>
+      <div id="modal-msg-status-area-outro-wrap" style="display:none;margin-top:6px">
+        <input type="text" id="modal-msg-status-area-outro" class="modal-input" placeholder="Digite a vaga/área..." style="width:100%;font-size:13px">
+      </div>
+    </div>
+    <div id="modal-msg-status-motivo-wrap" style="display:none;margin-bottom:10px">
+      <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:4px">Motivo da reprovação *</label>
+      <select id="modal-msg-status-motivo" class="modal-input" style="width:100%;font-size:13px" onchange="document.getElementById('modal-msg-status-motivo-outro-wrap').style.display=(this.value==='Outro')?'block':'none'">
+        <option value="">Selecione...</option>
+        <option>Não atende requisito obrigatório da vaga</option>
+        <option>Pretensão salarial incompatível</option>
+        <option>Falta de experiência na área</option>
+        <option>Escolaridade incompatível</option>
+        <option>Disponibilidade de horário incompatível</option>
+        <option>Dificuldade de locomoção / localização</option>
+        <option>Postura/comportamento na entrevista</option>
+        <option>Referências profissionais</option>
+        <option>Vaga preenchida por outro candidato</option>
+        <option>Desistência do candidato</option>
+        <option value="Outro">Outro (digitar)</option>
+      </select>
+      <div id="modal-msg-status-motivo-outro-wrap" style="display:none;margin-top:6px">
+        <input type="text" id="modal-msg-status-motivo-outro" class="modal-input" placeholder="Digite o motivo..." style="width:100%;font-size:13px">
+      </div>
+    </div>
     <textarea id="modal-msg-status-texto" class="modal-input" rows="6" style="width:100%;font-size:13px;line-height:1.6"></textarea>
     <div id="modal-msg-status-erro" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#b91c1c;line-height:1.5"></div>
     <div class="modal-footer" style="margin-top:12px">
@@ -3489,6 +3531,48 @@ async function definirStatusPipeline(status){
   _statusPendente = status;
   document.getElementById('modal-msg-status-titulo').textContent = `📨 ${status}`;
   document.getElementById('modal-msg-status-texto').value = texto;
+
+  // Banco de Talentos: pergunta para qual vaga/área o candidato tem disponibilidade,
+  // já que esse dado é o que permite encontrá-lo depois quando surgir uma vaga compatível.
+  const areaWrap = document.getElementById('modal-msg-status-area-wrap');
+  if(status === 'Banco de Talentos'){
+    const meta = getMeta(sessaoAtual) || {};
+    const areaAtual = s.ultimaAnalise?.vagaInteresse || s.vagaInteresse || meta.cargo || '';
+    const selectEl = document.getElementById('modal-msg-status-area');
+    const outroWrap = document.getElementById('modal-msg-status-area-outro-wrap');
+    const outroInput = document.getElementById('modal-msg-status-area-outro');
+    const opcoes = Array.from(selectEl.options).map(o=>o.value);
+    if(areaAtual && opcoes.includes(areaAtual)){
+      selectEl.value = areaAtual;
+      outroWrap.style.display = 'none';
+      outroInput.value = '';
+    } else if(areaAtual){
+      selectEl.value = 'Outro';
+      outroWrap.style.display = 'block';
+      outroInput.value = areaAtual;
+    } else {
+      selectEl.value = '';
+      outroWrap.style.display = 'none';
+      outroInput.value = '';
+    }
+    areaWrap.style.display = 'block';
+  } else {
+    areaWrap.style.display = 'none';
+  }
+
+  // Reprovações: pergunta o motivo, pra virar dado consultável depois (ex: quantos
+  // candidatos caem por pretensão salarial, por requisito obrigatório, etc.)
+  const REPROVACOES = ['Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor'];
+  const motivoWrap = document.getElementById('modal-msg-status-motivo-wrap');
+  if(REPROVACOES.includes(status)){
+    document.getElementById('modal-msg-status-motivo').value = '';
+    document.getElementById('modal-msg-status-motivo-outro-wrap').style.display = 'none';
+    document.getElementById('modal-msg-status-motivo-outro').value = '';
+    motivoWrap.style.display = 'block';
+  } else {
+    motivoWrap.style.display = 'none';
+  }
+
   document.getElementById('modal-msg-status').classList.add('show');
 }
 
@@ -3532,8 +3616,48 @@ async function confirmarMsgStatus(enviar){
   const statusParaSalvar = _statusPendente;
   const telefoneAtual = sessaoAtual;
 
+  // Banco de Talentos: exige a vaga/área de disponibilidade antes de confirmar —
+  // sem isso o candidato entra no banco sem nenhuma referência pra ser encontrado depois.
+  let areaBanco = '';
+  if(statusParaSalvar === 'Banco de Talentos'){
+    const areaSelecionada = document.getElementById('modal-msg-status-area').value.trim();
+    areaBanco = areaSelecionada === 'Outro'
+      ? document.getElementById('modal-msg-status-area-outro').value.trim()
+      : areaSelecionada;
+    if(!areaBanco){
+      toast('Selecione (ou digite) a vaga ou área de disponibilidade antes de confirmar','error');
+      return;
+    }
+    const s = todasSessoes[telefoneAtual];
+    if(s){
+      if(!s.ultimaAnalise) s.ultimaAnalise = {};
+      s.ultimaAnalise.vagaInteresse = areaBanco;
+    }
+    setMeta(telefoneAtual, {cargo: areaBanco});
+    registrarIntervencao('Thiara','Área de disponibilidade (Banco de Talentos)', areaBanco);
+  }
+
+  // Reprovações: exige o motivo antes de confirmar — sem isso a reprovação não
+  // vira dado consultável depois (quantos caem por pretensão salarial, etc.)
+  let motivoReprovacao = '';
+  const REPROVACOES = ['Reprovado Triagem','Reprovado 1ª Etapa','Reprovado Gestor'];
+  if(REPROVACOES.includes(statusParaSalvar)){
+    const motivoSelecionado = document.getElementById('modal-msg-status-motivo').value.trim();
+    motivoReprovacao = motivoSelecionado === 'Outro'
+      ? document.getElementById('modal-msg-status-motivo-outro').value.trim()
+      : motivoSelecionado;
+    if(!motivoReprovacao){
+      toast('Selecione (ou digite) o motivo da reprovação antes de confirmar','error');
+      return;
+    }
+    registrarIntervencao('Thiara', `Motivo: ${statusParaSalvar}`, motivoReprovacao);
+  }
+
   // 1. Salva status localmente de imediato e fecha o modal — sem esperar o WhatsApp
-  _salvarStatus(statusParaSalvar, false, '');
+  _salvarStatus(statusParaSalvar, false, '', {
+    ...(areaBanco ? {areaBanco} : {}),
+    ...(motivoReprovacao ? {motivoReprovacao} : {})
+  });
   fecharModal('modal-msg-status');
   _statusPendente = null;
 
@@ -3688,7 +3812,7 @@ function _parseDateBR(txt){
   return txt;
 }
 
-async function _salvarStatus(status, enviar, mensagem){
+async function _salvarStatus(status, enviar, mensagem, extra){
   statusMap[sessaoAtual] = status;
   pipelineMap[sessaoAtual] = status;
   salvarLocal();
@@ -3701,7 +3825,7 @@ async function _salvarStatus(status, enviar, mensagem){
   }
   // toast movido para depois do fetch para não bloquear a requisição
   try{
-    const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||''})});
+    const r = await fetch(`${API}/inbox/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,status,enviarMensagem:enviar,mensagem:mensagem||'',...(extra||{})})});
     const d = await r.json();
     if(d.erroEnvio){
       // Não usa toast aqui — deixa o modal mostrar o erro
@@ -3935,10 +4059,24 @@ function usarQuick(t){const i=document.getElementById('msg-input');i.value=t;aut
 function toggleRetornar(){
   if(!sessaoAtual)return;
   marcadosRetorno[sessaoAtual]=!marcadosRetorno[sessaoAtual];
+  const marcado=marcadosRetorno[sessaoAtual];
   salvarLocal();
   atualizarBotaoRetornar();
   renderLista();
-  toast(marcadosRetorno[sessaoAtual]?'📌 Marcado para retornar':'Marcação removida','success');
+  toast(marcado?'📌 Marcado para retornar':'Marcação removida','success');
+
+  // Registra a marcação como nota visível dentro da própria conversa (bolha 📝),
+  // e também no histórico de Intervenções — antes isso só ficava numa tag da
+  // barra lateral e sumia se a marcação fosse removida ou o navegador trocasse.
+  const notaTexto = marcado ? '📌 Marcado para retornar depois' : '📌 Marcação de retorno removida';
+  registrarIntervencao('Thiara', marcado?'Marcou para retornar':'Removeu marcação de retorno', '');
+  const s = todasSessoes[sessaoAtual];
+  if(s){
+    if(!s.historico) s.historico=[];
+    s.historico.push({role:'observacao', content: notaTexto, timestampMs: Date.now()});
+    abrirConversa(sessaoAtual);
+  }
+  fetch(`${API}/inbox/observacao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,observacao:notaTexto})}).catch(()=>{});
 }
 function atualizarBotaoRetornar(){
   const btn=document.getElementById('btn-retornar');
@@ -5090,6 +5228,18 @@ const MODELOS_COMUNICACAO = [
   {
     titulo: '🔍 Identificação de perfil compatível',
     texto: `Olá!\n\nEsperamos que esteja bem.\n\nApós análise do seu perfil, identificamos que sua experiência está alinhada a uma de nossas oportunidades.\n\nGostaríamos de compartilhar mais detalhes sobre a posição.\n\nAtenciosamente,\nEquipe Effect Pessoas`
+  },
+  {
+    titulo: '🔒 Vaga encerrada',
+    texto: `Olá,\nEspero que esteja bem. \nInfelizmente esta vaga foi encerrada, mas fique tranquilo(a), pois temos outras oportunidades!\nCaso se interesse em conhecê-las, aguardamos o envio do seu currículo atualizado.`
+  },
+  {
+    titulo: '📞 Verificar interesse e disponibilidade',
+    texto: `Olá,\nEspero que esteja bem.\nGostaríamos de verificar o seu interesse e disponibilidade em participar do processo seletivo para a vaga de [Nome da Vaga].\nPodemos dar continuidade?`
+  },
+  {
+    titulo: '⚠️ Falha técnica — reenvio de dados',
+    texto: `Boa tarde,\nEspero que esteja bem.\nTivemos uma falha técnica em nosso sistema operacional e perdemos todas as informações (entrevistas, currículos recebidos e conversas anteriores).\nPode nos atualizar quanto à vaga de interesse e enviar seu currículo atualizado novamente?`
   }
 ];
 
@@ -6585,7 +6735,7 @@ function renderProximosEventos() {
         if (e.data === ds && e.status !== 'Cancelada') {
           const s = todasSessoes[tel];
           entsNoDia.push({...e, nome: s?.nome || telDisplay(tel)});
-        }
+          }
       });
     });
     const lemsNoDia = _lembretes.filter(l => lembreteAplicaNoDia(l, ds) && !l.feito);
@@ -6606,6 +6756,7 @@ function renderProximosEventos() {
       if (item.tipo === 'entrevista') {
         const e = item.dados;
         const cor = e.status === 'Realizada' ? '#059669' : e.status === 'Não Compareceu' ? '#dc2626' : e.status === 'Remarcou' ? '#d97706' : '#2563eb';
+
         html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:7px;padding:7px 9px;margin-bottom:4px;border-left:3px solid ' + cor + '">' +
           '<div style="min-width:36px;font-size:9px;color:var(--muted);font-weight:700">' + e.hora + '</div>' +
           '<div style="flex:1;min-width:0">' +
