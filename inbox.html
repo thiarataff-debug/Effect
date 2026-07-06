@@ -934,6 +934,7 @@ font-family:'Montserrat',sans-serif
       <div class="rp-tab active" onclick="setRpTab(this,'perfil')">👤 Perfil</div>
       <div class="rp-tab" onclick="setRpTab(this,'entrevista')">📅 Entrevista</div>
       <div class="rp-tab" onclick="setRpTab(this,'notas')">📝 Notas</div>
+      <div class="rp-tab" onclick="setRpTab(this,'historico')">🔄 Histórico</div>
     </div>
     <div class="rp-body" id="rp-body">
       <div class="empty">Selecione uma conversa</div>
@@ -3940,8 +3941,8 @@ function arquivarConversa(){
   const lista=Object.keys(todasSessoes).filter(t=>!arquivadas[t]&&t!==tel);
   toast('📦 Arquivada','success');
   if(lista.length){
-    // Pega a mais recente da lista principal
-    lista.sort((a,b)=>atividadeMsSessao(todasSessoes[b])-atividadeMsSessao(todasSessoes[a]));
+    // Pega a mais antiga (a que está esperando resposta há mais tempo)
+    lista.sort((a,b)=>atividadeMsSessao(todasSessoes[a])-atividadeMsSessao(todasSessoes[b]));
     abrirConversa(lista[0]);
   } else {
     sessaoAtual=null;
@@ -6782,11 +6783,4 @@ function renderProximosEventos() {
   }
 
   if (!temAlgo) {
-    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">Nenhum evento nos próximos 14 dias</div>';
-  }
-
-  wrap.innerHTML = html;
-}
-</script>
-</body>
-</html>
+    html = '<div style="font-size:11px;color:var(--muted);text-align:center;paddi
