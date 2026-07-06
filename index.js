@@ -16,10 +16,17 @@ const path = require("path");
 const fs = require("fs");
 const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
+const compression = require("compression");
 const calendar   = require("./calendar");
 const supervisor = require("./supervisor");
 
 const app = express();
+// Compressão (gzip) das respostas — páginas grandes como inbox.html (~370KB) e
+// dashboard.html (~190KB) estavam chegando CORTADAS no meio no navegador (efeito
+// clássico de timeout de proxy/rede no meio do envio de uma resposta grande e
+// não-comprimida). Comprimir reduz o tamanho real transmitido em ~70-80% para
+// HTML/JS, o que evita esse corte.
+app.use(compression());
 app.use(express.json({ limit: "20mb" }));
 app.use((req, res, next) => { res.header("Access-Control-Allow-Origin", "*"); res.header("Access-Control-Allow-Headers", "Content-Type, Authorization"); res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); if (req.method === "OPTIONS") return res.sendStatus(200); next(); });
 
