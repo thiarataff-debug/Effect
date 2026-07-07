@@ -8,11 +8,13 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root {
   --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
   --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
   --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
+  --pgreen:#189a4c; --pgreen-dark:#0e7a3a; --pblack:#161616;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark)}
@@ -54,29 +56,67 @@ textarea{resize:vertical;min-height:70px}
 .badge-count{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
 .small{font-size:10.5px;color:var(--gray);margin-top:6px}
 
-/* Card visual pra baixar (PNG/PDF) — formato quadrado, estilo post de Instagram */
+/* Card visual pra baixar (PNG/PDF) — formato cartaz/flyer completo (retrato),
+   reproduzindo o modelo de referência: faixa "vaga aberta", foto, linhas de
+   informação com ícone, caixa de salário, grade de benefícios e rodapé com
+   WhatsApp + QR Code. */
 #card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
 #card-preview{
-  width:1080px;height:1080px;transform-origin:top left;
-  background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 100%);
-  color:#fff;font-family:'Montserrat',sans-serif;position:relative;overflow:hidden;
-  padding:70px 70px 60px;display:flex;flex-direction:column;
+  width:1080px;height:1350px;transform-origin:top left;
+  background:#fff;color:var(--pblack);font-family:'Montserrat',sans-serif;
+  position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
 }
-#card-preview .cp-tag{
-  display:inline-flex;align-self:flex-start;background:var(--teal);color:var(--navy);
-  font-weight:800;font-size:26px;letter-spacing:1px;padding:10px 26px;border-radius:40px;margin-bottom:36px;
+#card-preview .cpv-topo{display:flex;gap:34px;margin-bottom:26px}
+#card-preview .cpv-esq{flex:1;min-width:0;display:flex;flex-direction:column}
+#card-preview .cpv-ribbon{
+  display:inline-flex;align-self:flex-start;align-items:center;gap:10px;
+  background:var(--pgreen);color:#fff;font-weight:800;font-size:24px;letter-spacing:.5px;
+  padding:12px 24px 12px 16px;border-radius:0 30px 30px 0;margin-bottom:22px;margin-left:-56px;
 }
-#card-preview .cp-cargo{font-size:64px;font-weight:800;line-height:1.15;margin-bottom:28px;word-break:break-word}
-#card-preview .cp-info{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:32px}
-#card-preview .cp-pill{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.35);border-radius:14px;padding:14px 22px;font-size:24px;font-weight:600;display:flex;align-items:center;gap:10px}
-#card-preview .cp-section-title{font-size:22px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:8px}
-#card-preview .cp-texto{font-size:24px;line-height:1.55;white-space:pre-wrap;flex:1;overflow:hidden}
-#card-preview .cp-footer{margin-top:auto;padding-top:30px;border-top:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:space-between}
-#card-preview .cp-logo{font-size:30px;font-weight:800}
-#card-preview .cp-logo span{color:var(--teal)}
-#card-preview .cp-cta{font-size:22px;font-weight:700;background:var(--teal);color:var(--navy);padding:12px 28px;border-radius:30px}
-#card-preview-scaled{width:340px;height:340px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
-#card-preview-scaled #card-preview{transform:scale(0.3148);}
+#card-preview .cpv-ribbon i{font-size:22px}
+#card-preview .cpv-titulo{font-size:58px;font-weight:800;line-height:1.08;text-transform:uppercase;word-break:break-word;color:var(--pblack)}
+#card-preview .cpv-titulo .destaque{color:var(--pgreen)}
+#card-preview .cpv-dir{width:380px;flex-shrink:0;position:relative;border-radius:18px;overflow:hidden;background:#eef1ee}
+#card-preview .cpv-dir img{width:100%;height:100%;object-fit:cover;display:block}
+#card-preview .cpv-foto-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#9aa79e;background:repeating-linear-gradient(135deg,#f1f4f1,#f1f4f1 18px,#e7ece7 18px,#e7ece7 36px)}
+#card-preview .cpv-foto-placeholder i{font-size:64px}
+#card-preview .cpv-foto-placeholder span{font-size:15px;font-weight:700;text-align:center;padding:0 20px}
+#card-preview .cpv-foto-badge{
+  position:absolute;top:16px;left:16px;right:16px;background:var(--pblack);color:#fff;
+  border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700;line-height:1.35;
+}
+#card-preview .cpv-foto-badge .cidade{color:var(--pgreen);font-size:22px;font-weight:800;display:block}
+#card-preview .cpv-foto-badge .pin{color:var(--pgreen);margin-right:4px}
+
+#card-preview .cpv-info-rows{display:flex;flex-direction:column;gap:16px;margin-top:6px}
+#card-preview .cpv-info-row{display:flex;align-items:flex-start;gap:14px;font-size:20px}
+#card-preview .cpv-info-row .cpv-ic{width:34px;height:34px;border-radius:50%;background:var(--pgreen);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:2px}
+#card-preview .cpv-info-row b{font-weight:800}
+#card-preview .cpv-info-row .val{font-weight:600}
+
+#card-preview .cpv-salario{display:flex;align-items:center;gap:16px;border:2px solid var(--pgreen);border-radius:16px;padding:16px 24px;margin:26px 0}
+#card-preview .cpv-salario .cpv-ic-lg{width:56px;height:56px;border-radius:50%;background:var(--pblack);color:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+#card-preview .cpv-salario .lbl{font-size:16px;font-weight:800;letter-spacing:.5px;color:#555}
+#card-preview .cpv-salario .val{font-size:34px;font-weight:800;color:var(--pgreen-dark)}
+
+#card-preview .cpv-beneficios-titulo{background:var(--pgreen);color:#fff;font-weight:800;font-size:20px;letter-spacing:.5px;padding:11px 22px;border-radius:30px;display:inline-flex;align-items:center;gap:10px;margin-bottom:16px}
+#card-preview .cpv-beneficios-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:10px}
+#card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
+#card-preview .cpv-beneficio-item i{color:var(--pgreen-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
+
+#card-preview .cpv-rodape{margin-top:auto;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
+#card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
+#card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+#card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
+#card-preview .cpv-rodape-esq .sub{font-size:14px;font-weight:600;color:#cfe8d8}
+#card-preview .cpv-rodape-dir{display:flex;align-items:center;gap:12px;text-align:right}
+#card-preview .cpv-rodape-dir .txt{font-size:12px;font-weight:700;line-height:1.4;max-width:150px}
+#card-preview .cpv-rodape-dir .txt .g{color:var(--pgreen)}
+#card-preview .cpv-qr{background:#fff;border-radius:10px;padding:6px;width:84px;height:84px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#card-preview .cpv-qr img,#card-preview .cpv-qr canvas{width:100%!important;height:100%!important}
+
+#card-preview-scaled{width:340px;height:425px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#card-preview-scaled #card-preview{transform:scale(0.31481);}
 </style>
 </head>
 <body>
@@ -125,6 +165,29 @@ textarea{resize:vertical;min-height:70px}
   </div>
 
   <div class="card">
+    <h2><span class="n">1.1</span> Dados extras para o cartaz (seção 5)</h2>
+    <div class="grid2">
+      <div>
+        <label>Escolaridade</label>
+        <input id="v-escolaridade" placeholder="Ex: Ensino Médio completo">
+      </div>
+      <div>
+        <label>Diferencial</label>
+        <input id="v-diferencial" placeholder="Ex: Experiência na área será um diferencial">
+      </div>
+      <div>
+        <label>WhatsApp de contato (com DDD)</label>
+        <input id="v-telefone" placeholder="Ex: 27992566126">
+      </div>
+      <div>
+        <label>Foto do cartaz</label>
+        <input type="file" id="v-foto" accept="image/*">
+      </div>
+    </div>
+    <div class="small">Esses campos alimentam só o cartaz da seção 5 (PNG/PDF) — não entram no texto de divulgação nem na mensagem de WhatsApp.</div>
+  </div>
+
+  <div class="card">
     <h2><span class="n">2</span> Gerar texto de divulgação</h2>
     <div class="provider-row">
       <label><input type="radio" name="provider" value="gemini" checked> Gemini (já integrado à Lia)</label>
@@ -161,25 +224,15 @@ textarea{resize:vertical;min-height:70px}
   </div>
 
   <div class="card">
-    <h2><span class="n">5</span> Baixar card para postar (PNG / PDF)</h2>
-    <div class="small">Gera uma imagem pronta pra postar direto no Instagram/Facebook/WhatsApp Status, com os dados da vaga preenchidos ao lado. Atualiza sozinha conforme você edita os campos acima.</div>
+    <h2><span class="n">5</span> Baixar cartaz para postar (PNG / PDF)</h2>
+    <div class="small">Gera um cartaz completo pronto pra postar (Instagram, Facebook, WhatsApp Status ou imprimir), com foto, ícones, benefícios e QR Code do WhatsApp. Atualiza sozinho conforme você edita os campos acima.</div>
     <div id="card-preview-wrap">
       <div id="card-preview-scaled">
-        <div id="card-preview">
-          <div class="cp-tag">📢 VAGA ABERTA</div>
-          <div class="cp-cargo" id="cp-cargo">Cargo da vaga</div>
-          <div class="cp-info" id="cp-info"></div>
-          <div class="cp-section-title">Sobre a vaga</div>
-          <div class="cp-texto" id="cp-texto">O texto da divulgação (seção 2) aparece aqui.</div>
-          <div class="cp-footer">
-            <div class="cp-logo">Effect <span>Pessoas</span></div>
-            <div class="cp-cta">Candidate-se!</div>
-          </div>
-        </div>
+        <div id="card-preview"><!-- montado via JS em renderCardPreview() --></div>
       </div>
     </div>
     <div class="row">
-      <button class="btn btn-outline" onclick="atualizarCardPreview()"><i class="fas fa-arrows-rotate"></i> Atualizar prévia</button>
+      <button class="btn btn-outline" onclick="renderCardPreview()"><i class="fas fa-arrows-rotate"></i> Atualizar prévia</button>
       <button class="btn btn-outline" id="btn-png" onclick="baixarCardPNG()"><i class="fas fa-image"></i> Baixar PNG</button>
       <button class="btn btn-outline" id="btn-pdf" onclick="baixarCardPDF()"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
     </div>
@@ -208,12 +261,21 @@ function providerSelecionado(){
 
 function preencherDaURL(){
   const p = new URLSearchParams(window.location.search);
-  const map = { cargo:'v-cargo', cidade:'v-cidade', salario:'v-salario', horario:'v-horario', beneficios:'v-beneficios', requisitos:'v-requisitos', responsabilidades:'v-responsabilidades' };
+  const map = { cargo:'v-cargo', cidade:'v-cidade', salario:'v-salario', horario:'v-horario', beneficios:'v-beneficios', requisitos:'v-requisitos', responsabilidades:'v-responsabilidades', escolaridade:'v-escolaridade', diferencial:'v-diferencial', telefone:'v-telefone' };
   Object.entries(map).forEach(([key, id]) => {
     if (p.get(key)) document.getElementById(id).value = p.get(key);
   });
 }
 preencherDaURL();
+
+// Lembra o WhatsApp de contato entre uma vaga e outra — é o campo mais repetitivo
+// (quase sempre o mesmo número), então evita ficar digitando de novo toda vez.
+(function preencherTelefoneSalvo(){
+  const campo = document.getElementById('v-telefone');
+  const salvo = localStorage.getItem('effect_divulgacao_telefone');
+  if (salvo && !campo.value) campo.value = salvo;
+  campo.addEventListener('input', () => localStorage.setItem('effect_divulgacao_telefone', campo.value.trim()));
+})();
 
 let candidatosEncontrados = [];
 
@@ -312,31 +374,146 @@ async function aprovarEEnviar(){
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Aprovar e Enviar';
 }
 
-// ─── CARD PARA POSTAR (PNG / PDF) ───
-function atualizarCardPreview(){
+// ─── CARTAZ PARA POSTAR (PNG / PDF) ───
+// Reproduz um layout de cartaz completo: faixa "vaga aberta", foto, linhas de
+// info com ícone, caixa de salário, grade de benefícios e rodapé com
+// WhatsApp + QR Code — tudo gerado em HTML/CSS (sem depender de geração de
+// imagem por IA, que erra texto/logotipo). O QR Code é gerado localmente
+// (biblioteca qrcodejs), sem chamada externa a cada atualização.
+
+let _fotoCartazDataUrl = '';
+document.getElementById('v-foto').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) { _fotoCartazDataUrl = ''; renderCardPreview(); return; }
+  const reader = new FileReader();
+  reader.onload = () => { _fotoCartazDataUrl = reader.result; renderCardPreview(); };
+  reader.readAsDataURL(file);
+});
+
+// Ícone por palavra-chave do benefício — cobre os termos mais comuns usados
+// pela Effect; cai num ícone genérico de "check" quando não reconhece.
+function _iconeBeneficio(txtOriginal){
+  const txt = (txtOriginal || '').toLowerCase();
+  const mapa = [
+    [/odont/, 'fa-tooth'],
+    [/m[eé]dic|sa[uú]de/, 'fa-heart-pulse'],
+    [/seguro de vida/, 'fa-shield-heart'],
+    [/vale.?transporte|\bvt\b/, 'fa-bus'],
+    [/alimenta|\bva\b|restaurante|refei/, 'fa-utensils'],
+    [/anivers/, 'fa-gift'],
+    [/desconto|parceir|faculdade|ipog/, 'fa-graduation-cap'],
+    [/sesc/, 'fa-ticket'],
+    [/banco de horas/, 'fa-clock'],
+    [/adiantamento/, 'fa-sack-dollar'],
+    [/totalpass|academia|gym/, 'fa-dumbbell'],
+    [/premia[cç][aã]o|meta/, 'fa-trophy'],
+  ];
+  for (const [re, icone] of mapa) if (re.test(txt)) return icone;
+  return 'fa-circle-check';
+}
+
+function _splitBeneficios(txt){
+  return (txt || '').split(/[,\n;•]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function _telefoneLimpo(){
+  const bruto = (document.getElementById('v-telefone').value || '').replace(/\D/g, '');
+  if (!bruto) return '';
+  return bruto.startsWith('55') ? bruto : '55' + bruto;
+}
+
+function _telefoneFormatado(){
+  const bruto = (document.getElementById('v-telefone').value || '').replace(/\D/g, '');
+  if (bruto.length < 10) return document.getElementById('v-telefone').value || '';
+  const ddd = bruto.slice(-11, -9);
+  const resto = bruto.slice(-9);
+  return `(${ddd}) ${resto.slice(0,5)}-${resto.slice(5)}`;
+}
+
+function renderCardPreview(){
   const vaga = paramsVaga();
-  const texto = document.getElementById('texto-divulgacao').value.trim();
+  const escolaridade = document.getElementById('v-escolaridade').value.trim();
+  const diferencial = document.getElementById('v-diferencial').value.trim();
+  const telExibicao = _telefoneFormatado();
 
-  document.getElementById('cp-cargo').textContent = vaga.cargo || 'Cargo da vaga';
+  const infoRows = [];
+  if (vaga.cidade) infoRows.push({icone:'fa-location-dot', label:'Local de trabalho:', val:vaga.cidade});
+  if (vaga.horario) infoRows.push({icone:'fa-clock', label:'Horário:', val:vaga.horario});
+  if (escolaridade) infoRows.push({icone:'fa-graduation-cap', label:'Escolaridade:', val:escolaridade});
+  if (diferencial) infoRows.push({icone:'fa-award', label:'Diferencial:', val:diferencial});
 
-  const pills = [];
-  if (vaga.cidade) pills.push(`<div class="cp-pill">📍 ${vaga.cidade}</div>`);
-  if (vaga.salario) pills.push(`<div class="cp-pill">💰 ${vaga.salario}</div>`);
-  if (vaga.horario) pills.push(`<div class="cp-pill">🕐 ${vaga.horario}</div>`);
-  if (vaga.beneficios) pills.push(`<div class="cp-pill">🎁 ${vaga.beneficios}</div>`);
-  document.getElementById('cp-info').innerHTML = pills.join('');
+  const beneficios = _splitBeneficios(vaga.beneficios);
 
-  document.getElementById('cp-texto').textContent = texto || 'Gere ou escreva o texto de divulgação na seção 2 — ele aparece aqui.';
+  const fotoHtml = _fotoCartazDataUrl
+    ? `<img src="${_fotoCartazDataUrl}" alt="Foto da vaga">`
+    : `<div class="cpv-foto-placeholder"><i class="fas fa-image"></i><span>Adicione uma foto em "Dados extras para o cartaz"</span></div>`;
+
+  document.getElementById('card-preview').innerHTML = `
+    <div class="cpv-topo">
+      <div class="cpv-esq">
+        <div class="cpv-ribbon"><i class="fas fa-bullhorn"></i> VAGA ABERTA</div>
+        <div class="cpv-titulo">${vaga.cargo || 'Cargo da vaga'}</div>
+      </div>
+      <div class="cpv-dir">
+        ${fotoHtml}
+        ${vaga.cidade ? `<div class="cpv-foto-badge">VENHA FAZER PARTE DO TIME EM<span class="cidade"><i class="fas fa-location-dot pin"></i>${vaga.cidade.toUpperCase()}!</span></div>` : ''}
+      </div>
+    </div>
+
+    ${infoRows.length ? `
+    <div class="cpv-info-rows">
+      ${infoRows.map(r => `
+        <div class="cpv-info-row">
+          <div class="cpv-ic"><i class="fas ${r.icone}"></i></div>
+          <div><b>${r.label}</b> <span class="val">${r.val}</span></div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${vaga.salario ? `
+    <div class="cpv-salario">
+      <div class="cpv-ic-lg"><i class="fas fa-sack-dollar"></i></div>
+      <div><div class="lbl">SALÁRIO</div><div class="val">${vaga.salario}</div></div>
+    </div>` : ''}
+
+    ${beneficios.length ? `
+    <div class="cpv-beneficios">
+      <div class="cpv-beneficios-titulo"><i class="fas fa-gift"></i> BENEFÍCIOS</div>
+      <div class="cpv-beneficios-grid">
+        ${beneficios.map(b => `<div class="cpv-beneficio-item"><i class="fas ${_iconeBeneficio(b)}"></i>${b}</div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="cpv-rodape">
+      <div class="cpv-rodape-esq">
+        <div class="cpv-wa-icone"><i class="fab fa-whatsapp"></i></div>
+        <div>
+          <div class="tel">${telExibicao || 'Adicione o WhatsApp de contato'}</div>
+          <div class="sub">Fale conosco pelo WhatsApp!</div>
+        </div>
+      </div>
+      ${_telefoneLimpo() ? `
+      <div class="cpv-rodape-dir">
+        <div class="txt">ESCANEIE O <span class="g">QR CODE</span><br>E FALE COM A EFFECT PELO WHATSAPP!</div>
+        <div class="cpv-qr" id="cpv-qr"></div>
+      </div>` : ''}
+    </div>
+  `;
+
+  const telLimpo = _telefoneLimpo();
+  if (telLimpo && typeof QRCode !== 'undefined') {
+    const qrEl = document.getElementById('cpv-qr');
+    if (qrEl) new QRCode(qrEl, { text: `https://wa.me/${telLimpo}`, width: 84, height: 84, correctLevel: QRCode.CorrectLevel.M });
+  }
 }
 // Atualiza a prévia sozinha sempre que os campos relevantes mudam
-['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','texto-divulgacao'].forEach(id => {
+['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','v-escolaridade','v-diferencial','v-telefone','texto-divulgacao'].forEach(id => {
   const el = document.getElementById(id);
-  if (el) el.addEventListener('input', atualizarCardPreview);
+  if (el) el.addEventListener('input', renderCardPreview);
 });
-atualizarCardPreview();
+renderCardPreview();
 
 function _prepararCardParaCaptura(){
-  // html2canvas precisa do elemento no tamanho real (1080x1080) pra capturar
+  // html2canvas precisa do elemento no tamanho real (1080x1350) pra capturar
   // com nitidez — tiramos a escala reduzida usada só pra prévia na tela.
   const card = document.getElementById('card-preview');
   const scaleAntes = card.style.transform;
@@ -349,10 +526,12 @@ async function _gerarCanvasDoCard(){
     alert('Não foi possível carregar a ferramenta de geração de imagem (html2canvas). Verifique sua conexão com a internet e recarregue a página.');
     return null;
   }
-  atualizarCardPreview();
+  renderCardPreview();
+  // Dá um instante pro QR Code (gerado de forma assíncrona) desenhar antes da captura.
+  await new Promise(res => setTimeout(res, 150));
   const restaurar = _prepararCardParaCaptura();
   try {
-    const canvas = await html2canvas(document.getElementById('card-preview'), { width: 1080, height: 1080, scale: 1, backgroundColor: null });
+    const canvas = await html2canvas(document.getElementById('card-preview'), { width: 1080, height: 1350, scale: 1, backgroundColor: '#ffffff', useCORS: true });
     return canvas;
   } finally {
     restaurar();
@@ -395,8 +574,8 @@ async function baixarCardPDF(){
     if (!canvas) return;
     const img = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[1080,1080] });
-    pdf.addImage(img, 'PNG', 0, 0, 1080, 1080);
+    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[1080,1350] });
+    pdf.addImage(img, 'PNG', 0, 0, 1080, 1350);
     pdf.save(_nomeArquivoVaga('pdf'));
   } catch(e) {
     alert('Erro ao gerar PDF: ' + e.message);
