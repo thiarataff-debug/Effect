@@ -68,6 +68,10 @@ textarea{resize:vertical;min-height:70px}
   width:1080px;height:1345px;transform-origin:top left;
   background:#fff;color:var(--pdark);font-family:'Montserrat',sans-serif;
   position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
+  /* Quando há pouco conteúdo (poucos benefícios/specs), distribui o espaço
+     sobrando ENTRE as seções em vez de deixar tudo concentrado como um vão
+     vazio só antes do rodapé. */
+  justify-content:space-between;
 }
 #card-aviso-overflow{display:none;background:#fdecea;color:#a83232;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:600;margin-top:10px}
 /* Cabeçalho: coluna de texto à esquerda + foto grande e "sangrando" na borda
@@ -132,7 +136,7 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
 #card-preview .cpv-beneficio-item i{color:var(--paccent-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
 
-#card-preview .cpv-rodape{margin-top:auto;background:var(--pdark);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
+#card-preview .cpv-rodape{background:var(--pdark);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
 #card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
 #card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--paccent);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
 #card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
