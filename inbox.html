@@ -3652,6 +3652,15 @@ async function confirmarMsgStatus(enviar){
       return;
     }
     registrarIntervencao('Thiara', `Motivo: ${statusParaSalvar}`, motivoReprovacao);
+    // Também salva como Nota interna (aba Notas) — é ali que o motivo precisa
+    // aparecer pra consulta rápida, e não só no Histórico/Intervenções.
+    if(!notas[telefoneAtual]) notas[telefoneAtual] = [];
+    notas[telefoneAtual].push({
+      texto: `❌ Motivo da reprovação (${statusParaSalvar}): ${motivoReprovacao}`,
+      ts: new Date().toLocaleString('pt-BR')
+    });
+    salvarLocal();
+    if(sessaoAtual === telefoneAtual) renderPainelDireito();
   }
 
   // 1. Salva status localmente de imediato e fecha o modal — sem esperar o WhatsApp
@@ -3820,9 +3829,11 @@ async function _salvarStatus(status, enviar, mensagem, extra){
   registrarIntervencao('Thiara','Status (pipeline)', status);
   atualizarPipelineAtivo(status);
   renderLista();
-  // Auto-arquivar após Reprovado (aqui, antes do fetch, para garantir execução)
+  // Auto-arquivar após Reprovado (aqui, antes do fetch, para garantir execução).
+  // Passa "true" pra arquivar em segundo plano SEM pular pra outra conversa —
+  // você continua vendo a conversa que acabou de reprovar.
   if(status && status.toLowerCase().startsWith('reprovado')){
-    setTimeout(()=>arquivarConversa(), 900);
+    setTimeout(()=>arquivarConversa(true), 900);
   }
   // toast movido para depois do fetch para não bloquear a requisição
   try{
@@ -3928,7 +3939,7 @@ function marcarLida(){
   const s=todasSessoes[sessaoAtual];const hist=s?.historico||[];
   setMeta(sessaoAtual,{ultimaMsgVista:hist.length});renderLista();toast('✓✓ Lida','success');
 }
-function arquivarConversa(){
+function arquivarConversa(manterAberta){
   if(!sessaoAtual)return;
   const tel=sessaoAtual;
   // Marcar como lida também
@@ -3937,9 +3948,15 @@ function arquivarConversa(){
   // Arquivar
   arquivadas[tel]=true;
   salvarLocal();
-  // Ir para próxima conversa ou fechar
-  const lista=Object.keys(todasSessoes).filter(t=>!arquivadas[t]&&t!==tel);
   toast('📦 Arquivada','success');
+  // Arquivamento automático (ex: após reprovação): mantém a conversa atual aberta na
+  // tela, só atualiza a lista — não pula pra outra conversa sozinho.
+  if(manterAberta){
+    renderLista();
+    return;
+  }
+  // Arquivamento manual (botão Arquivar): vai para próxima conversa ou fecha
+  const lista=Object.keys(todasSessoes).filter(t=>!arquivadas[t]&&t!==tel);
   if(lista.length){
     // Pega a mais antiga (a que está esperando resposta há mais tempo)
     lista.sort((a,b)=>atividadeMsSessao(todasSessoes[a])-atividadeMsSessao(todasSessoes[b]));
