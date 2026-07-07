@@ -88,16 +88,16 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-foto-badge .cidade{color:var(--pgreen);font-size:22px;font-weight:800;display:block}
 #card-preview .cpv-foto-badge .pin{color:var(--pgreen);margin-right:4px}
 
-#card-preview .cpv-info-rows{display:flex;flex-direction:column;gap:16px;margin-top:6px}
-#card-preview .cpv-info-row{display:flex;align-items:flex-start;gap:14px;font-size:20px}
-#card-preview .cpv-info-row .cpv-ic{width:34px;height:34px;border-radius:50%;background:var(--pgreen);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:2px}
-#card-preview .cpv-info-row b{font-weight:800}
-#card-preview .cpv-info-row .val{font-weight:600}
+#card-preview .cpv-linhas{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+#card-preview .cpv-linha-simples{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:var(--pblack)}
+#card-preview .cpv-linha-simples i{color:var(--pgreen);font-size:20px;width:22px;text-align:center;flex-shrink:0}
 
-#card-preview .cpv-salario{display:flex;align-items:center;gap:16px;border:2px solid var(--pgreen);border-radius:16px;padding:16px 24px;margin:26px 0}
-#card-preview .cpv-salario .cpv-ic-lg{width:56px;height:56px;border-radius:50%;background:var(--pblack);color:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
-#card-preview .cpv-salario .lbl{font-size:16px;font-weight:800;letter-spacing:.5px;color:#555}
-#card-preview .cpv-salario .val{font-size:34px;font-weight:800;color:var(--pgreen-dark)}
+#card-preview .cpv-especs-wrap{display:flex;flex-direction:column;gap:14px;margin:22px 0}
+#card-preview .cpv-espec{display:flex;align-items:center;gap:16px;border:2px solid var(--pgreen);border-radius:16px;padding:14px 22px}
+#card-preview .cpv-espec .cpv-ic-lg{width:52px;height:52px;border-radius:50%;background:var(--pblack);color:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+#card-preview .cpv-espec .lbl{font-size:15px;font-weight:800;letter-spacing:.5px;color:#666;text-transform:uppercase}
+#card-preview .cpv-espec .val{font-size:26px;font-weight:800;color:var(--pblack)}
+#card-preview .cpv-espec .val.destaque{color:var(--pgreen-dark)}
 
 #card-preview .cpv-beneficios-titulo{background:var(--pgreen);color:#fff;font-weight:800;font-size:20px;letter-spacing:.5px;padding:11px 22px;border-radius:30px;display:inline-flex;align-items:center;gap:10px;margin-bottom:16px}
 #card-preview .cpv-beneficios-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:10px}
@@ -491,11 +491,18 @@ function renderCardPreview(){
   const diferencial = document.getElementById('v-diferencial').value.trim();
   const telExibicao = _telefoneFormatado();
 
-  const infoRows = [];
-  if (vaga.cidade) infoRows.push({icone:'fa-location-dot', label:'Local de trabalho:', val:vaga.cidade});
-  if (vaga.horario) infoRows.push({icone:'fa-clock', label:'Horário:', val:vaga.horario});
-  if (escolaridade) infoRows.push({icone:'fa-graduation-cap', label:'Escolaridade:', val:escolaridade});
-  if (diferencial) infoRows.push({icone:'fa-award', label:'Diferencial:', val:diferencial});
+  // Linhas simples (só ícone + valor em negrito) pra dados de contexto rápido —
+  // igual ao "📍 cidade" do modelo de referência.
+  const linhasSimples = [];
+  if (vaga.cidade) linhasSimples.push({icone:'fa-location-dot', val:vaga.cidade});
+  if (vaga.horario) linhasSimples.push({icone:'fa-clock', val:vaga.horario});
+
+  // Specs em caixa (ícone em círculo escuro + rótulo + valor) — Salário sempre
+  // primeiro e em destaque verde; Escolaridade/Diferencial no mesmo estilo.
+  const especs = [];
+  if (vaga.salario) especs.push({icone:'fa-sack-dollar', label:'Salário', val:vaga.salario, destaque:true});
+  if (escolaridade) especs.push({icone:'fa-graduation-cap', label:'Escolaridade', val:escolaridade});
+  if (diferencial) especs.push({icone:'fa-award', label:'Diferencial', val:diferencial});
 
   const beneficios = _splitBeneficios(vaga.beneficios);
 
@@ -515,19 +522,18 @@ function renderCardPreview(){
       </div>
     </div>
 
-    ${infoRows.length ? `
-    <div class="cpv-info-rows">
-      ${infoRows.map(r => `
-        <div class="cpv-info-row">
-          <div class="cpv-ic"><i class="fas ${r.icone}"></i></div>
-          <div><b>${r.label}</b> <span class="val">${r.val}</span></div>
-        </div>`).join('')}
+    ${linhasSimples.length ? `
+    <div class="cpv-linhas">
+      ${linhasSimples.map(l => `<div class="cpv-linha-simples"><i class="fas ${l.icone}"></i>${l.val}</div>`).join('')}
     </div>` : ''}
 
-    ${vaga.salario ? `
-    <div class="cpv-salario">
-      <div class="cpv-ic-lg"><i class="fas fa-sack-dollar"></i></div>
-      <div><div class="lbl">SALÁRIO</div><div class="val">${vaga.salario}</div></div>
+    ${especs.length ? `
+    <div class="cpv-especs-wrap">
+      ${especs.map(e => `
+        <div class="cpv-espec">
+          <div class="cpv-ic-lg"><i class="fas ${e.icone}"></i></div>
+          <div><div class="lbl">${e.label}</div><div class="val${e.destaque ? ' destaque' : ''}">${e.val}</div></div>
+        </div>`).join('')}
     </div>` : ''}
 
     ${beneficios.length ? `
