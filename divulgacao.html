@@ -6,6 +6,8 @@
 <title>Effect | Divulgação de Vagas</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
@@ -51,6 +53,30 @@ textarea{resize:vertical;min-height:70px}
 .status-erro{background:#fdecea;color:#a83232;display:block!important}
 .badge-count{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
 .small{font-size:10.5px;color:var(--gray);margin-top:6px}
+
+/* Card visual pra baixar (PNG/PDF) — formato quadrado, estilo post de Instagram */
+#card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
+#card-preview{
+  width:1080px;height:1080px;transform-origin:top left;
+  background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 100%);
+  color:#fff;font-family:'Montserrat',sans-serif;position:relative;overflow:hidden;
+  padding:70px 70px 60px;display:flex;flex-direction:column;
+}
+#card-preview .cp-tag{
+  display:inline-flex;align-self:flex-start;background:var(--teal);color:var(--navy);
+  font-weight:800;font-size:26px;letter-spacing:1px;padding:10px 26px;border-radius:40px;margin-bottom:36px;
+}
+#card-preview .cp-cargo{font-size:64px;font-weight:800;line-height:1.15;margin-bottom:28px;word-break:break-word}
+#card-preview .cp-info{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:32px}
+#card-preview .cp-pill{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.35);border-radius:14px;padding:14px 22px;font-size:24px;font-weight:600;display:flex;align-items:center;gap:10px}
+#card-preview .cp-section-title{font-size:22px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:8px}
+#card-preview .cp-texto{font-size:24px;line-height:1.55;white-space:pre-wrap;flex:1;overflow:hidden}
+#card-preview .cp-footer{margin-top:auto;padding-top:30px;border-top:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:space-between}
+#card-preview .cp-logo{font-size:30px;font-weight:800}
+#card-preview .cp-logo span{color:var(--teal)}
+#card-preview .cp-cta{font-size:22px;font-weight:700;background:var(--teal);color:var(--navy);padding:12px 28px;border-radius:30px}
+#card-preview-scaled{width:340px;height:340px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#card-preview-scaled #card-preview{transform:scale(0.3148);}
 </style>
 </head>
 <body>
@@ -132,6 +158,31 @@ textarea{resize:vertical;min-height:70px}
       <button class="btn btn-send" id="btn-aprovar" onclick="aprovarEEnviar()"><i class="fas fa-paper-plane"></i> Aprovar e Enviar</button>
     </div>
     <div id="status-msg"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">5</span> Baixar card para postar (PNG / PDF)</h2>
+    <div class="small">Gera uma imagem pronta pra postar direto no Instagram/Facebook/WhatsApp Status, com os dados da vaga preenchidos ao lado. Atualiza sozinha conforme você edita os campos acima.</div>
+    <div id="card-preview-wrap">
+      <div id="card-preview-scaled">
+        <div id="card-preview">
+          <div class="cp-tag">📢 VAGA ABERTA</div>
+          <div class="cp-cargo" id="cp-cargo">Cargo da vaga</div>
+          <div class="cp-info" id="cp-info"></div>
+          <div class="cp-section-title">Sobre a vaga</div>
+          <div class="cp-texto" id="cp-texto">O texto da divulgação (seção 2) aparece aqui.</div>
+          <div class="cp-footer">
+            <div class="cp-logo">Effect <span>Pessoas</span></div>
+            <div class="cp-cta">Candidate-se!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn btn-outline" onclick="atualizarCardPreview()"><i class="fas fa-arrows-rotate"></i> Atualizar prévia</button>
+      <button class="btn btn-outline" id="btn-png" onclick="baixarCardPNG()"><i class="fas fa-image"></i> Baixar PNG</button>
+      <button class="btn btn-outline" id="btn-pdf" onclick="baixarCardPDF()"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
+    </div>
   </div>
 
 </div>
@@ -259,6 +310,98 @@ async function aprovarEEnviar(){
     statusEl.textContent = '❌ Erro de conexão: ' + e.message;
   }
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Aprovar e Enviar';
+}
+
+// ─── CARD PARA POSTAR (PNG / PDF) ───
+function atualizarCardPreview(){
+  const vaga = paramsVaga();
+  const texto = document.getElementById('texto-divulgacao').value.trim();
+
+  document.getElementById('cp-cargo').textContent = vaga.cargo || 'Cargo da vaga';
+
+  const pills = [];
+  if (vaga.cidade) pills.push(`<div class="cp-pill">📍 ${vaga.cidade}</div>`);
+  if (vaga.salario) pills.push(`<div class="cp-pill">💰 ${vaga.salario}</div>`);
+  if (vaga.horario) pills.push(`<div class="cp-pill">🕐 ${vaga.horario}</div>`);
+  if (vaga.beneficios) pills.push(`<div class="cp-pill">🎁 ${vaga.beneficios}</div>`);
+  document.getElementById('cp-info').innerHTML = pills.join('');
+
+  document.getElementById('cp-texto').textContent = texto || 'Gere ou escreva o texto de divulgação na seção 2 — ele aparece aqui.';
+}
+// Atualiza a prévia sozinha sempre que os campos relevantes mudam
+['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','texto-divulgacao'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', atualizarCardPreview);
+});
+atualizarCardPreview();
+
+function _prepararCardParaCaptura(){
+  // html2canvas precisa do elemento no tamanho real (1080x1080) pra capturar
+  // com nitidez — tiramos a escala reduzida usada só pra prévia na tela.
+  const card = document.getElementById('card-preview');
+  const scaleAntes = card.style.transform;
+  card.style.transform = 'none';
+  return () => { card.style.transform = scaleAntes; };
+}
+
+async function _gerarCanvasDoCard(){
+  if (typeof html2canvas === 'undefined') {
+    alert('Não foi possível carregar a ferramenta de geração de imagem (html2canvas). Verifique sua conexão com a internet e recarregue a página.');
+    return null;
+  }
+  atualizarCardPreview();
+  const restaurar = _prepararCardParaCaptura();
+  try {
+    const canvas = await html2canvas(document.getElementById('card-preview'), { width: 1080, height: 1080, scale: 1, backgroundColor: null });
+    return canvas;
+  } finally {
+    restaurar();
+  }
+}
+
+function _nomeArquivoVaga(ext){
+  const mapa = {'á':'a','à':'a','ã':'a','â':'a','é':'e','ê':'e','í':'i','ó':'o','ô':'o','õ':'o','ú':'u','ç':'c'};
+  const bruto = (document.getElementById('v-cargo').value.trim() || 'vaga').toLowerCase();
+  const semAcento = bruto.split('').map(ch => mapa[ch] || ch).join('');
+  const cargo = semAcento.replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'');
+  return `divulgacao-${cargo || 'vaga'}.${ext}`;
+}
+
+async function baixarCardPNG(){
+  const btn = document.getElementById('btn-png');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+  try {
+    const canvas = await _gerarCanvasDoCard();
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = _nomeArquivoVaga('png');
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch(e) {
+    alert('Erro ao gerar PNG: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-image"></i> Baixar PNG';
+}
+
+async function baixarCardPDF(){
+  const btn = document.getElementById('btn-pdf');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+  try {
+    if (typeof window.jspdf === 'undefined') {
+      alert('Não foi possível carregar a ferramenta de geração de PDF (jsPDF). Verifique sua conexão com a internet e recarregue a página.');
+      return;
+    }
+    const canvas = await _gerarCanvasDoCard();
+    if (!canvas) return;
+    const img = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[1080,1080] });
+    pdf.addImage(img, 'PNG', 0, 0, 1080, 1080);
+    pdf.save(_nomeArquivoVaga('pdf'));
+  } catch(e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> Baixar PDF';
 }
 </script>
 
