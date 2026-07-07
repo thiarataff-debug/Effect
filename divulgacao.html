@@ -14,7 +14,10 @@
   --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
   --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
   --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
-  --pgreen:#189a4c; --pgreen-dark:#0e7a3a; --pblack:#161616;
+  /* Paleta do cartaz alinhada à marca real da Effect (a mesma usada no
+     dashboard/sidebar do sistema): navy como cor de autoridade/estrutura,
+     teal como destaque. Nada de verde genérico do modelo de referência. */
+  --paccent:#4ecdc4; --paccent-dark:#162440; --pdark:#162440;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark)}
@@ -63,7 +66,7 @@ textarea{resize:vertical;min-height:70px}
 #card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
 #card-preview{
   width:1080px;height:1345px;transform-origin:top left;
-  background:#fff;color:var(--pblack);font-family:'Montserrat',sans-serif;
+  background:#fff;color:var(--pdark);font-family:'Montserrat',sans-serif;
   position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
 }
 #card-aviso-overflow{display:none;background:#fdecea;color:#a83232;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:600;margin-top:10px}
@@ -74,12 +77,12 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-esq{flex:1;min-width:0;display:flex;flex-direction:column}
 #card-preview .cpv-ribbon{
   display:inline-flex;align-self:flex-start;align-items:center;gap:10px;
-  background:var(--pgreen);color:#fff;font-weight:800;font-size:24px;letter-spacing:.5px;
+  background:var(--paccent);color:#fff;font-weight:800;font-size:24px;letter-spacing:.5px;
   padding:12px 24px 12px 16px;border-radius:0 30px 30px 0;margin-bottom:22px;margin-left:-56px;
 }
 #card-preview .cpv-ribbon i{font-size:22px}
-#card-preview .cpv-titulo{font-size:58px;font-weight:800;line-height:1.08;text-transform:uppercase;word-break:break-word;color:var(--pblack)}
-#card-preview .cpv-titulo .destaque{color:var(--pgreen)}
+#card-preview .cpv-titulo{font-size:58px;font-weight:800;line-height:1.08;text-transform:uppercase;word-break:break-word;color:var(--pdark)}
+#card-preview .cpv-titulo .destaque{color:var(--paccent)}
 #card-preview .cpv-esq .cpv-linhas{margin-top:auto;padding-top:24px}
 #card-preview .cpv-dir{
   width:420px;flex-shrink:0;position:relative;overflow:hidden;background:#eef1ee;
@@ -89,52 +92,54 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-foto-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#8fa398;background:linear-gradient(155deg,#eef4f0 0%,#dfe9e3 100%)}
 #card-preview .cpv-foto-placeholder i{font-size:56px;color:#b9cabf}
 #card-preview .cpv-foto-placeholder span{font-size:15px;font-weight:700;text-align:center;padding:0 84px 0 34px;line-height:1.4}
-/* Borda curvilínea de verdade na foto: um SVG (curva branca cobrindo parte da
-   foto + linha verde translúcida acompanhando a curva) usado como
-   background-image. Não é clip-path/mask — é só uma imagem de fundo, que o
-   html2canvas (gera o PNG/PDF) reproduz de forma 100% confiável. */
+/* Borda curvilínea na foto: um SVG (curva branca cobrindo parte da foto +
+   linha teal translúcida acompanhando a curva) usado como background-image.
+   Curva única e ampla (não várias ondulações pequenas) — transmite mais
+   sobriedade/competência do que um rabisco cheio de picos. Não é
+   clip-path/mask — é só imagem de fundo, que o html2canvas (gera o PNG/PDF)
+   reproduz de forma 100% confiável. */
 #card-preview .cpv-onda{
   position:absolute;top:0;left:0;width:90px;height:100%;z-index:2;
   background-repeat:no-repeat;background-size:100% 100%;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 600' preserveAspectRatio='none'%3E%3Cpath d='M0,0 C50,35 15,75 50,110 C85,145 25,185 50,220 C75,255 20,295 50,330 C80,365 20,405 50,440 C80,475 20,515 50,550 C75,580 30,595 50,600 L0,600 Z' fill='white'/%3E%3Cpath d='M0,0 C50,35 15,75 50,110 C85,145 25,185 50,220 C75,255 20,295 50,330 C80,365 20,405 50,440 C80,475 20,515 50,550 C75,580 30,595 50,600' fill='none' stroke='%23189a4c' stroke-width='7' stroke-opacity='0.55'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 600' preserveAspectRatio='none'%3E%3Cpath d='M0,0 C60,60 20,140 55,220 C90,300 15,380 55,460 C85,520 30,580 45,600 L0,600 Z' fill='white'/%3E%3Cpath d='M0,0 C60,60 20,140 55,220 C90,300 15,380 55,460 C85,520 30,580 45,600' fill='none' stroke='%234ecdc4' stroke-width='7' stroke-opacity='0.65'/%3E%3C/svg%3E");
 }
 #card-preview .cpv-foto-badge{
-  position:absolute;top:20px;left:20px;right:20px;background:var(--pblack);color:#fff;
+  position:absolute;top:20px;left:20px;right:20px;background:var(--pdark);color:#fff;
   border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700;line-height:1.35;z-index:3;
 }
-#card-preview .cpv-foto-badge .cidade{color:var(--pgreen);font-size:22px;font-weight:800;display:block}
-#card-preview .cpv-foto-badge .pin{color:var(--pgreen);margin-right:4px}
+#card-preview .cpv-foto-badge .cidade{color:var(--paccent);font-size:22px;font-weight:800;display:block}
+#card-preview .cpv-foto-badge .pin{color:var(--paccent);margin-right:4px}
 
 #card-preview .cpv-linhas{display:flex;flex-direction:column;gap:12px}
-#card-preview .cpv-linha-simples{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:var(--pblack)}
-#card-preview .cpv-linha-simples i{color:var(--pgreen);font-size:20px;width:22px;text-align:center;flex-shrink:0}
+#card-preview .cpv-linha-simples{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:var(--pdark)}
+#card-preview .cpv-linha-simples i{color:var(--paccent);font-size:20px;width:22px;text-align:center;flex-shrink:0}
 
 #card-preview .cpv-especs-wrap{display:flex;flex-direction:column;gap:14px;margin:22px 0}
-#card-preview .cpv-espec{display:flex;align-items:center;gap:16px;border:2px solid var(--pgreen);border-radius:16px;padding:14px 22px}
-#card-preview .cpv-espec .cpv-ic-lg{width:52px;height:52px;border-radius:50%;background:var(--pblack);color:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+#card-preview .cpv-espec{display:flex;align-items:center;gap:16px;border:2px solid var(--paccent);border-radius:16px;padding:14px 22px}
+#card-preview .cpv-espec .cpv-ic-lg{width:52px;height:52px;border-radius:50%;background:var(--pdark);color:var(--paccent);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
 #card-preview .cpv-espec .lbl{font-size:15px;font-weight:800;letter-spacing:.5px;color:#666;text-transform:uppercase}
-#card-preview .cpv-espec .val{font-size:26px;font-weight:800;color:var(--pblack)}
-#card-preview .cpv-espec .val.destaque{color:var(--pgreen-dark)}
+#card-preview .cpv-espec .val{font-size:26px;font-weight:800;color:var(--pdark)}
+#card-preview .cpv-espec .val.destaque{color:var(--paccent-dark)}
 
-#card-preview .cpv-infoadd{border:2px solid var(--pgreen);border-radius:16px;padding:16px 22px;margin-bottom:22px}
-#card-preview .cpv-infoadd-titulo{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--pgreen-dark);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+#card-preview .cpv-infoadd{border:2px solid var(--paccent);border-radius:16px;padding:16px 22px;margin-bottom:22px}
+#card-preview .cpv-infoadd-titulo{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--paccent-dark);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
 #card-preview .cpv-infoadd-item{display:flex;align-items:flex-start;gap:10px;font-size:18px;font-weight:600;padding:8px 0;border-top:1px solid rgba(0,0,0,0.08)}
 #card-preview .cpv-infoadd-item:first-child{border-top:none;padding-top:0}
-#card-preview .cpv-infoadd-item i{color:var(--pgreen-dark);font-size:16px;margin-top:3px;flex-shrink:0}
+#card-preview .cpv-infoadd-item i{color:var(--paccent-dark);font-size:16px;margin-top:3px;flex-shrink:0}
 
-#card-preview .cpv-beneficios-titulo{background:var(--pgreen);color:#fff;font-weight:800;font-size:20px;letter-spacing:.5px;padding:11px 22px;border-radius:30px;display:inline-flex;align-items:center;gap:10px;margin-bottom:16px}
+#card-preview .cpv-beneficios-titulo{background:var(--paccent);color:#fff;font-weight:800;font-size:20px;letter-spacing:.5px;padding:11px 22px;border-radius:30px;display:inline-flex;align-items:center;gap:10px;margin-bottom:16px}
 #card-preview .cpv-beneficios-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:10px}
 #card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
-#card-preview .cpv-beneficio-item i{color:var(--pgreen-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
+#card-preview .cpv-beneficio-item i{color:var(--paccent-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
 
-#card-preview .cpv-rodape{margin-top:auto;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
+#card-preview .cpv-rodape{margin-top:auto;background:var(--pdark);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
 #card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
-#card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+#card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--paccent);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
 #card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
-#card-preview .cpv-rodape-esq .sub{font-size:14px;font-weight:600;color:#cfe8d8}
+#card-preview .cpv-rodape-esq .sub{font-size:14px;font-weight:600;color:#a9e4df}
 #card-preview .cpv-rodape-dir{display:flex;align-items:center;gap:12px;text-align:right}
 #card-preview .cpv-rodape-dir .txt{font-size:12px;font-weight:700;line-height:1.4;max-width:150px}
-#card-preview .cpv-rodape-dir .txt .g{color:var(--pgreen)}
+#card-preview .cpv-rodape-dir .txt .g{color:var(--paccent)}
 #card-preview .cpv-qr{background:#fff;border-radius:10px;padding:6px;width:84px;height:84px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #card-preview .cpv-qr img,#card-preview .cpv-qr canvas{width:100%!important;height:100%!important}
 
@@ -526,8 +531,8 @@ function renderCardPreview(){
   if (vaga.cidade) linhasSimples.push({icone:'fa-location-dot', val:vaga.cidade});
   if (vaga.horario) linhasSimples.push({icone:'fa-clock', val:vaga.horario});
 
-  // Specs em caixa (ícone em círculo escuro + rótulo + valor) — Salário sempre
-  // primeiro e em destaque verde; Escolaridade/Diferencial no mesmo estilo.
+  // Specs em caixa (ícone em círculo navy + rótulo + valor) — Salário sempre
+  // primeiro e em destaque (navy); Escolaridade/Diferencial no mesmo estilo.
   const especs = [];
   if (vaga.salario) especs.push({icone:'fa-sack-dollar', label:'Salário', val:vaga.salario, destaque:true});
   if (escolaridade) especs.push({icone:'fa-graduation-cap', label:'Escolaridade', val:escolaridade});
