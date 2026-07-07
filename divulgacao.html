@@ -184,6 +184,10 @@ textarea{resize:vertical;min-height:70px}
         <input type="file" id="v-foto" accept="image/*">
       </div>
     </div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn btn-outline" id="btn-gerar-foto" onclick="gerarFotoIA()"><i class="fas fa-wand-magic-sparkles"></i> Gerar foto com IA (a partir do cargo)</button>
+    </div>
+    <div class="small">A foto gerada por IA substitui o upload acima. Cada geração tem custo (DALL-E 3) — por isso não é automático, só quando você clicar.</div>
     <div class="small">Esses campos alimentam só o cartaz da seção 5 (PNG/PDF) — não entram no texto de divulgação nem na mensagem de WhatsApp.</div>
   </div>
 
@@ -389,6 +393,30 @@ document.getElementById('v-foto').addEventListener('change', (e) => {
   reader.onload = () => { _fotoCartazDataUrl = reader.result; renderCardPreview(); };
   reader.readAsDataURL(file);
 });
+
+async function gerarFotoIA(){
+  const cargo = document.getElementById('v-cargo').value.trim();
+  if (!cargo) { alert('Preencha o cargo antes de gerar a foto.'); return; }
+  const btn = document.getElementById('btn-gerar-foto');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando foto (10-20s)...';
+  try {
+    const r = await fetch(`${API_BASE}/vagas/gerar-foto`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cargo })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      _fotoCartazDataUrl = `data:image/png;base64,${data.imagemBase64}`;
+      document.getElementById('v-foto').value = '';
+      renderCardPreview();
+    } else {
+      alert('Não foi possível gerar a foto: ' + (data.erro || 'erro desconhecido'));
+    }
+  } catch(e) {
+    alert('Erro de conexão ao gerar foto: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Gerar foto com IA (a partir do cargo)';
+}
 
 // Ícone por palavra-chave do benefício — cobre os termos mais comuns usados
 // pela Effect; cai num ícone genérico de "check" quando não reconhece.
