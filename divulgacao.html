@@ -62,10 +62,11 @@ textarea{resize:vertical;min-height:70px}
    WhatsApp + QR Code. */
 #card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
 #card-preview{
-  width:1080px;min-height:1080px;transform-origin:top left;
+  width:1080px;height:1345px;transform-origin:top left;
   background:#fff;color:var(--pblack);font-family:'Montserrat',sans-serif;
   position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
 }
+#card-aviso-overflow{display:none;background:#fdecea;color:#a83232;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:600;margin-top:10px}
 /* Cabeçalho: coluna de texto à esquerda + foto grande e "sangrando" na borda
    direita (sem moldura de caixa pequena) — dá a sensação fluida/editorial em
    vez de retângulo estático flutuando no meio do espaço em branco. */
@@ -122,7 +123,7 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
 #card-preview .cpv-beneficio-item i{color:var(--pgreen-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
 
-#card-preview .cpv-rodape{margin-top:36px;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
+#card-preview .cpv-rodape{margin-top:auto;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
 #card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
 #card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
 #card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
@@ -133,7 +134,7 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-qr{background:#fff;border-radius:10px;padding:6px;width:84px;height:84px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #card-preview .cpv-qr img,#card-preview .cpv-qr canvas{width:100%!important;height:100%!important}
 
-#card-preview-scaled{width:340px;height:472px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#card-preview-scaled{width:340px;height:423px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
 #card-preview-scaled #card-preview{transform:scale(0.31481);}
 </style>
 </head>
@@ -259,6 +260,7 @@ textarea{resize:vertical;min-height:70px}
         <div id="card-preview"><!-- montado via JS em renderCardPreview() --></div>
       </div>
     </div>
+    <div id="card-aviso-overflow">⚠️ O conteúdo está passando do tamanho do cartaz (1080x1345, formato Instagram) e pode sair cortado no PNG/PDF. Reduza o texto de Benefícios, Informações adicionais ou Diferencial.</div>
     <div class="row">
       <button class="btn btn-outline" onclick="renderCardPreview()"><i class="fas fa-arrows-rotate"></i> Atualizar prévia</button>
       <button class="btn btn-outline" id="btn-png" onclick="baixarCardPNG()"><i class="fas fa-image"></i> Baixar PNG</button>
@@ -594,14 +596,13 @@ function renderCardPreview(){
     if (qrEl) new QRCode(qrEl, { text: `https://wa.me/${telLimpo}`, width: 84, height: 84, correctLevel: QRCode.CorrectLevel.M });
   }
 
-  // Altura do cartaz varia com a quantidade de conteúdo (specs, informações
-  // adicionais, benefícios) — em vez de um tamanho fixo que sobra vazio
-  // quando há pouco conteúdo, medimos a altura real e ajustamos a miniatura
-  // da prévia na tela pra acompanhar.
+  // O cartaz é fixo em 1080x1345 (formato aceito pelo Instagram) — se o
+  // conteúdo digitado (benefícios, informações adicionais, diferencial etc.)
+  // for maior do que isso, avisa em vez de deixar cortar em silêncio no
+  // PNG/PDF baixado.
   const card = document.getElementById('card-preview');
-  const alturaReal = card.scrollHeight;
-  const scaledWrap = document.getElementById('card-preview-scaled');
-  if (scaledWrap) scaledWrap.style.height = Math.round(alturaReal * (340 / 1080)) + 'px';
+  const avisoEl = document.getElementById('card-aviso-overflow');
+  if (avisoEl) avisoEl.style.display = card.scrollHeight > card.clientHeight ? 'block' : 'none';
 }
 // Atualiza a prévia sozinha sempre que os campos relevantes mudam
 ['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','v-escolaridade','v-diferencial','v-telefone','v-info-adicional','texto-divulgacao'].forEach(id => {
@@ -630,10 +631,9 @@ async function _gerarCanvasDoCard(){
   const restaurar = _prepararCardParaCaptura();
   try {
     const card = document.getElementById('card-preview');
-    // Altura real do conteúdo (varia conforme quantos benefícios/specs/informações
-    // foram preenchidos) — evita tanto corte de conteúdo quanto sobra de área em branco.
-    const alturaReal = card.scrollHeight;
-    const canvas = await html2canvas(card, { width: 1080, height: alturaReal, scale: 1, backgroundColor: '#ffffff', useCORS: true });
+    // Tamanho fixo 1080x1345 (Instagram) — se o conteúdo for maior que isso,
+    // o aviso na tela (renderCardPreview) já avisou antes de chegar aqui.
+    const canvas = await html2canvas(card, { width: 1080, height: 1345, scale: 1, backgroundColor: '#ffffff', useCORS: true });
     return canvas;
   } finally {
     restaurar();
@@ -676,8 +676,7 @@ async function baixarCardPDF(){
     if (!canvas) return;
     const img = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    // Usa as dimensões reais do canvas gerado (altura varia com o conteúdo),
-    // em vez de um tamanho fixo — página do PDF sempre do tamanho exato do cartaz.
+    // Usa as dimensões reais do canvas gerado (1080x1345, formato Instagram).
     const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[canvas.width, canvas.height] });
     pdf.addImage(img, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(_nomeArquivoVaga('pdf'));
