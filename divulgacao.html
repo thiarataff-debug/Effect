@@ -179,15 +179,17 @@ textarea{resize:vertical;min-height:70px}
         <label>WhatsApp de contato (com DDD)</label>
         <input id="v-telefone" placeholder="Ex: 27992566126">
       </div>
-      <div>
-        <label>Foto do cartaz</label>
-        <input type="file" id="v-foto" accept="image/*">
-      </div>
     </div>
-    <div class="row" style="margin-top:6px">
+
+    <label style="margin-top:16px">Foto do cartaz</label>
+    <input type="file" id="v-foto" accept="image/*" style="display:none">
+    <div class="row" style="margin-top:2px">
+      <label for="v-foto" class="btn btn-outline" style="margin:0"><i class="fas fa-upload"></i> Enviar imagem</label>
       <button class="btn btn-outline" id="btn-gerar-foto" onclick="gerarFotoIA()"><i class="fas fa-wand-magic-sparkles"></i> Gerar foto com IA (a partir do cargo)</button>
+      <button class="btn btn-outline" id="btn-remover-foto" onclick="removerFotoCartaz()" style="display:none"><i class="fas fa-trash"></i> Remover foto</button>
     </div>
-    <div class="small">A foto gerada por IA substitui o upload acima. Cada geração tem custo (DALL-E 3) — por isso não é automático, só quando você clicar.</div>
+    <div id="foto-status" style="display:flex;align-items:center;gap:10px;margin-top:10px"></div>
+    <div class="small">Enviar imagem = a foto que você escolher no computador. Gerar foto com IA = cria uma foto do zero com base no cargo digitado (tem custo, DALL-E 3 — por isso não é automático). Uma opção sempre substitui a outra no cartaz.</div>
     <div class="small">Esses campos alimentam só o cartaz da seção 5 (PNG/PDF) — não entram no texto de divulgação nem na mensagem de WhatsApp.</div>
   </div>
 
@@ -386,13 +388,37 @@ async function aprovarEEnviar(){
 // (biblioteca qrcodejs), sem chamada externa a cada atualização.
 
 let _fotoCartazDataUrl = '';
+
+function _mostrarFotoStatus(origem){
+  const el = document.getElementById('foto-status');
+  const btnRemover = document.getElementById('btn-remover-foto');
+  if (!_fotoCartazDataUrl) {
+    el.innerHTML = '<span class="small" style="margin:0">Nenhuma imagem selecionada — o cartaz mostra um espaço reservado no lugar da foto.</span>';
+    btnRemover.style.display = 'none';
+    return;
+  }
+  el.innerHTML = `
+    <img src="${_fotoCartazDataUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,0.1)">
+    <span class="small" style="margin:0">${origem === 'ia' ? '✨ Foto gerada por IA' : '📁 Imagem enviada por você'}</span>
+  `;
+  btnRemover.style.display = 'inline-flex';
+}
+
+function removerFotoCartaz(){
+  _fotoCartazDataUrl = '';
+  document.getElementById('v-foto').value = '';
+  _mostrarFotoStatus();
+  renderCardPreview();
+}
+
 document.getElementById('v-foto').addEventListener('change', (e) => {
   const file = e.target.files[0];
-  if (!file) { _fotoCartazDataUrl = ''; renderCardPreview(); return; }
+  if (!file) { _fotoCartazDataUrl = ''; _mostrarFotoStatus(); renderCardPreview(); return; }
   const reader = new FileReader();
-  reader.onload = () => { _fotoCartazDataUrl = reader.result; renderCardPreview(); };
+  reader.onload = () => { _fotoCartazDataUrl = reader.result; _mostrarFotoStatus('upload'); renderCardPreview(); };
   reader.readAsDataURL(file);
 });
+_mostrarFotoStatus();
 
 async function gerarFotoIA(){
   const cargo = document.getElementById('v-cargo').value.trim();
@@ -408,6 +434,7 @@ async function gerarFotoIA(){
     if (data.ok) {
       _fotoCartazDataUrl = `data:image/png;base64,${data.imagemBase64}`;
       document.getElementById('v-foto').value = '';
+      _mostrarFotoStatus('ia');
       renderCardPreview();
     } else {
       alert('Não foi possível gerar a foto: ' + (data.erro || 'erro desconhecido'));
