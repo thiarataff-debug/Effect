@@ -62,7 +62,7 @@ textarea{resize:vertical;min-height:70px}
    WhatsApp + QR Code. */
 #card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
 #card-preview{
-  width:1080px;height:1500px;transform-origin:top left;
+  width:1080px;min-height:1080px;transform-origin:top left;
   background:#fff;color:var(--pblack);font-family:'Montserrat',sans-serif;
   position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
 }
@@ -122,7 +122,7 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
 #card-preview .cpv-beneficio-item i{color:var(--pgreen-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
 
-#card-preview .cpv-rodape{margin-top:auto;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
+#card-preview .cpv-rodape{margin-top:36px;background:var(--pblack);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
 #card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
 #card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--pgreen);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
 #card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
@@ -593,6 +593,15 @@ function renderCardPreview(){
     const qrEl = document.getElementById('cpv-qr');
     if (qrEl) new QRCode(qrEl, { text: `https://wa.me/${telLimpo}`, width: 84, height: 84, correctLevel: QRCode.CorrectLevel.M });
   }
+
+  // Altura do cartaz varia com a quantidade de conteúdo (specs, informações
+  // adicionais, benefícios) — em vez de um tamanho fixo que sobra vazio
+  // quando há pouco conteúdo, medimos a altura real e ajustamos a miniatura
+  // da prévia na tela pra acompanhar.
+  const card = document.getElementById('card-preview');
+  const alturaReal = card.scrollHeight;
+  const scaledWrap = document.getElementById('card-preview-scaled');
+  if (scaledWrap) scaledWrap.style.height = Math.round(alturaReal * (340 / 1080)) + 'px';
 }
 // Atualiza a prévia sozinha sempre que os campos relevantes mudam
 ['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','v-escolaridade','v-diferencial','v-telefone','v-info-adicional','texto-divulgacao'].forEach(id => {
@@ -602,8 +611,8 @@ function renderCardPreview(){
 renderCardPreview();
 
 function _prepararCardParaCaptura(){
-  // html2canvas precisa do elemento no tamanho real (1080x1500) pra capturar
-  // com nitidez — tiramos a escala reduzida usada só pra prévia na tela.
+  // html2canvas precisa do elemento no tamanho real (sem a escala reduzida
+  // usada só pra prévia na tela) pra capturar com nitidez.
   const card = document.getElementById('card-preview');
   const scaleAntes = card.style.transform;
   card.style.transform = 'none';
@@ -620,7 +629,11 @@ async function _gerarCanvasDoCard(){
   await new Promise(res => setTimeout(res, 150));
   const restaurar = _prepararCardParaCaptura();
   try {
-    const canvas = await html2canvas(document.getElementById('card-preview'), { width: 1080, height: 1500, scale: 1, backgroundColor: '#ffffff', useCORS: true });
+    const card = document.getElementById('card-preview');
+    // Altura real do conteúdo (varia conforme quantos benefícios/specs/informações
+    // foram preenchidos) — evita tanto corte de conteúdo quanto sobra de área em branco.
+    const alturaReal = card.scrollHeight;
+    const canvas = await html2canvas(card, { width: 1080, height: alturaReal, scale: 1, backgroundColor: '#ffffff', useCORS: true });
     return canvas;
   } finally {
     restaurar();
@@ -663,8 +676,10 @@ async function baixarCardPDF(){
     if (!canvas) return;
     const img = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[1080,1500] });
-    pdf.addImage(img, 'PNG', 0, 0, 1080, 1500);
+    // Usa as dimensões reais do canvas gerado (altura varia com o conteúdo),
+    // em vez de um tamanho fixo — página do PDF sempre do tamanho exato do cartaz.
+    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[canvas.width, canvas.height] });
+    pdf.addImage(img, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(_nomeArquivoVaga('pdf'));
   } catch(e) {
     alert('Erro ao gerar PDF: ' + e.message);
