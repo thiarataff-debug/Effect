@@ -3788,6 +3788,7 @@ async function chamarChatGPT(prompt, tentativa = 1) {
 }
 
 // Texto fixo (sem IA) — usado quando nenhum provider de IA está disponível/configurado.
+// Segue o template padrão: Título / Atribuições / Requisitos / Remuneração e Benefícios.
 function textoDivulgacaoFixo(vaga) {
   const cargo = campo(vaga, ["cargo", "Cargo", "CARGO"], "Oportunidade");
   const cidade = campo(vaga, ["cidade", "Cidade", "vaga_cidade"], "");
@@ -3795,7 +3796,17 @@ function textoDivulgacaoFixo(vaga) {
   const horario = campo(vaga, ["horario", "Horário", "vaga_horario"], "");
   const beneficios = campo(vaga, ["beneficios", "Benefícios", "vaga_beneficios"], "");
   const requisitos = campo(vaga, ["requisitos", "Requisitos", "vaga_requisitos"], "");
-  return `🟢 VAGA ABERTA — ${cargo}\n\n📍 Local: ${cidade}\n💰 Salário: ${salario}${horario ? `\n🕐 Horário: ${horario}` : ""}${beneficios ? `\n🎁 Benefícios: ${beneficios}` : ""}${requisitos ? `\n📋 Requisitos: ${requisitos}` : ""}\n\nTem interesse? Envie seu currículo atualizado por aqui que a gente dá continuidade! 💙\n\nEquipe Effect Pessoas`;
+  const responsabilidades = campo(vaga, ["responsabilidades", "Responsabilidades", "vaga_responsabilidades"], "");
+
+  let txt = `📢 VAGA ABERTA\n\n🔹 Título: ${cargo}`;
+  if (cidade) txt += `\n📍 Local: ${cidade}`;
+  if (responsabilidades) txt += `\n\n🔹 Atribuições:\n${responsabilidades}`;
+  if (requisitos) txt += `\n\n🔹 Requisitos:\n${requisitos}`;
+  txt += `\n\n🔹 Remuneração e Benefícios:\n💰 Salário: ${salario}`;
+  if (horario) txt += `\n🕐 Horário: ${horario}`;
+  if (beneficios) txt += `\n🎁 Benefícios: ${beneficios}`;
+  txt += `\n\nTem interesse? Envie seu currículo atualizado por aqui que a gente dá continuidade! 💙\n\nEquipe Effect Pessoas`;
+  return txt;
 }
 
 function promptDivulgacaoVaga(vaga) {
@@ -3806,7 +3817,30 @@ function promptDivulgacaoVaga(vaga) {
   const beneficios = campo(vaga, ["beneficios", "Benefícios", "vaga_beneficios"], "");
   const requisitos = campo(vaga, ["requisitos", "Requisitos", "vaga_requisitos"], "");
   const responsabilidades = campo(vaga, ["responsabilidades", "Responsabilidades", "vaga_responsabilidades"], "");
-  return `Escreva um texto curto (máximo 8 linhas) para divulgar esta vaga de emprego em grupos de WhatsApp e redes sociais. Tom acolhedor e profissional, com emojis moderados (sem exagero). Não invente nenhuma informação que não esteja listada abaixo. Termine pedindo para quem tiver interesse enviar currículo atualizado. Não use markdown (sem **, sem #).
+  return `Escreva um anúncio de vaga de emprego pronto para divulgar em grupos de WhatsApp e redes sociais, seguindo EXATAMENTE esta estrutura e nesta ordem (omita uma seção inteira se não houver nenhuma informação pra ela):
+
+📢 VAGA ABERTA
+
+🔹 Título: [cargo]
+📍 Local: [cidade, se houver]
+
+🔹 Atribuições:
+[principais atividades — use o que foi informado em "Responsabilidades" abaixo; se estiver vazio, pode descrever de forma genérica e razoável as atividades típicas do cargo]
+
+🔹 Requisitos:
+[copie/organize o que foi informado em "Requisitos" abaixo — NUNCA invente um requisito que não esteja listado]
+
+🔹 Remuneração e Benefícios:
+💰 Salário: [salário informado]
+🕐 Horário: [horário, se houver]
+🎁 Benefícios: [benefícios informados — NUNCA invente um benefício que não esteja listado]
+
+Termine com uma chamada calorosa pedindo para quem tiver interesse enviar currículo atualizado, seguida de "Equipe Effect Pessoas".
+
+Regras importantes:
+- Nunca invente salário, benefícios ou requisitos que não estejam nos dados abaixo.
+- Tom acolhedor e profissional, emojis moderados (sem exagero).
+- Não use markdown (sem **, sem #, sem listas com traço).
 
 Cargo: ${cargo}
 Cidade: ${cidade}
@@ -3815,6 +3849,34 @@ Horário: ${horario}
 Benefícios: ${beneficios}
 Requisitos: ${requisitos}
 Responsabilidades: ${responsabilidades}`;
+}
+
+// ── FOTO DO PROFISSIONAL (IA) — usada no cartaz de divulgação (seção 5) ──────
+// Gera uma foto realista via DALL-E 3 (OpenAI) a partir do cargo digitado.
+// É sempre disparada manualmente (botão "Gerar foto com IA"), nunca automática
+// a cada tecla digitada — evita gastar gerações à toa enquanto o cargo ainda
+// está sendo ajustado.
+async function gerarFotoProfissional(cargo) {
+  if (!CONFIG.OPENAI_API_KEY) {
+    return { ok: false, erro: "OPENAI_API_KEY não configurada no servidor." };
+  }
+  const prompt = `Fotografia profissional realista de um(a) ${cargo} trabalhando em ambiente corporativo condizente com a função. Estilo fotografia de RH/institucional, iluminação natural, foco nítido, pessoa real e diversa, sem texto, sem logotipos, sem marca d'água, sem elementos gráficos sobrepostos.`;
+  try {
+    const response = await axios.post(
+      "https://api.openai.com/v1/images/generations",
+      { model: "dall-e-3", prompt, n: 1, size: "1024x1024", quality: "standard", response_format: "b64_json" },
+      { headers: { Authorization: `Bearer ${CONFIG.OPENAI_API_KEY}`, "Content-Type": "application/json" }, timeout: 60000 }
+    );
+    const b64 = response.data?.data?.[0]?.b64_json;
+    if (!b64) return { ok: false, erro: "IA não retornou imagem." };
+    return { ok: true, imagemBase64: b64 };
+  } catch (erro) {
+    const status = erro.response?.status;
+    const corpo = erro.response?.data;
+    console.error(`Erro gerarFotoProfissional — status: ${status || "sem status"} — msg: ${erro.message} — corpo: ${JSON.stringify(corpo)}`);
+    const msg = corpo?.error?.message || erro.message || "Erro desconhecido ao gerar imagem.";
+    return { ok: false, erro: msg };
+  }
 }
 
 // Gera o texto de divulgação. provider: "gemini" (padrão) ou "chatgpt".
@@ -3919,6 +3981,19 @@ app.post("/vagas/gerar-texto", async (req, res) => {
     const provider = req.body.provider;
     const { texto, providerUsado } = await gerarTextoDivulgacao(vaga, provider);
     res.json({ ok: true, texto, providerUsado });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Gera uma foto de profissional via IA (DALL-E 3) a partir do cargo — usada no
+// cartaz de divulgação (seção 5). Disparo sempre manual (botão), nunca automático.
+app.post("/vagas/gerar-foto", async (req, res) => {
+  try {
+    const cargo = String(req.body.cargo || "").trim();
+    if (!cargo) return res.json({ ok: false, erro: "Informe o cargo antes de gerar a foto." });
+    const resultado = await gerarFotoProfissional(cargo);
+    res.json(resultado);
   } catch (e) {
     res.json({ ok: false, erro: e.message });
   }
