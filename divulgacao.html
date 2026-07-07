@@ -66,7 +66,10 @@ textarea{resize:vertical;min-height:70px}
   background:#fff;color:var(--pblack);font-family:'Montserrat',sans-serif;
   position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
 }
-#card-preview .cpv-topo{display:flex;gap:34px;margin-bottom:26px}
+/* Cabeçalho: coluna de texto à esquerda + foto grande e "sangrando" na borda
+   direita (sem moldura de caixa pequena) — dá a sensação fluida/editorial em
+   vez de retângulo estático flutuando no meio do espaço em branco. */
+#card-preview .cpv-topo{display:flex;gap:34px;margin-bottom:26px;align-items:stretch;min-height:560px}
 #card-preview .cpv-esq{flex:1;min-width:0;display:flex;flex-direction:column}
 #card-preview .cpv-ribbon{
   display:inline-flex;align-self:flex-start;align-items:center;gap:10px;
@@ -76,19 +79,23 @@ textarea{resize:vertical;min-height:70px}
 #card-preview .cpv-ribbon i{font-size:22px}
 #card-preview .cpv-titulo{font-size:58px;font-weight:800;line-height:1.08;text-transform:uppercase;word-break:break-word;color:var(--pblack)}
 #card-preview .cpv-titulo .destaque{color:var(--pgreen)}
-#card-preview .cpv-dir{width:380px;flex-shrink:0;position:relative;border-radius:18px;overflow:hidden;background:#eef1ee}
+#card-preview .cpv-esq .cpv-linhas{margin-top:auto;padding-top:24px}
+#card-preview .cpv-dir{
+  width:420px;flex-shrink:0;position:relative;overflow:hidden;background:#eef1ee;
+  margin-right:-56px;border-radius:26px 0 0 26px;
+}
 #card-preview .cpv-dir img{width:100%;height:100%;object-fit:cover;display:block}
-#card-preview .cpv-foto-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#9aa79e;background:repeating-linear-gradient(135deg,#f1f4f1,#f1f4f1 18px,#e7ece7 18px,#e7ece7 36px)}
-#card-preview .cpv-foto-placeholder i{font-size:64px}
-#card-preview .cpv-foto-placeholder span{font-size:15px;font-weight:700;text-align:center;padding:0 20px}
+#card-preview .cpv-foto-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#8fa398;background:linear-gradient(155deg,#eef4f0 0%,#dfe9e3 100%)}
+#card-preview .cpv-foto-placeholder i{font-size:56px;color:#b9cabf}
+#card-preview .cpv-foto-placeholder span{font-size:15px;font-weight:700;text-align:center;padding:0 34px;line-height:1.4}
 #card-preview .cpv-foto-badge{
-  position:absolute;top:16px;left:16px;right:16px;background:var(--pblack);color:#fff;
+  position:absolute;top:20px;left:20px;right:20px;background:var(--pblack);color:#fff;
   border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700;line-height:1.35;
 }
 #card-preview .cpv-foto-badge .cidade{color:var(--pgreen);font-size:22px;font-weight:800;display:block}
 #card-preview .cpv-foto-badge .pin{color:var(--pgreen);margin-right:4px}
 
-#card-preview .cpv-linhas{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+#card-preview .cpv-linhas{display:flex;flex-direction:column;gap:12px}
 #card-preview .cpv-linha-simples{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:var(--pblack)}
 #card-preview .cpv-linha-simples i{color:var(--pgreen);font-size:20px;width:22px;text-align:center;flex-shrink:0}
 
@@ -515,17 +522,16 @@ function renderCardPreview(){
       <div class="cpv-esq">
         <div class="cpv-ribbon"><i class="fas fa-bullhorn"></i> VAGA ABERTA</div>
         <div class="cpv-titulo">${vaga.cargo || 'Cargo da vaga'}</div>
+        ${linhasSimples.length ? `
+        <div class="cpv-linhas">
+          ${linhasSimples.map(l => `<div class="cpv-linha-simples"><i class="fas ${l.icone}"></i>${l.val}</div>`).join('')}
+        </div>` : ''}
       </div>
       <div class="cpv-dir">
         ${fotoHtml}
         ${vaga.cidade ? `<div class="cpv-foto-badge">VENHA FAZER PARTE DO TIME EM<span class="cidade"><i class="fas fa-location-dot pin"></i>${vaga.cidade.toUpperCase()}!</span></div>` : ''}
       </div>
     </div>
-
-    ${linhasSimples.length ? `
-    <div class="cpv-linhas">
-      ${linhasSimples.map(l => `<div class="cpv-linha-simples"><i class="fas ${l.icone}"></i>${l.val}</div>`).join('')}
-    </div>` : ''}
 
     ${especs.length ? `
     <div class="cpv-especs-wrap">
