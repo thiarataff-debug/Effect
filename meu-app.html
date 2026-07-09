@@ -283,6 +283,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .psi-stock-input:focus{border-color:var(--blue)}
 .psi-stock-buy-date{margin-top:4px;font-size:9px;color:var(--muted);font-weight:600}
 .psi-stock-buy-date.urgent{color:#dc2626;font-weight:800}
+.psi-stock-enddate{font-size:10px;color:var(--muted);font-weight:700;white-space:nowrap}
 .psi-stock-alert{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;margin-bottom:8px;font-size:11px}
 .psi-stock-days.crit{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
 .psi-stock-alert{padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:11px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
@@ -2852,14 +2853,17 @@ function psiRenderMedStock(){
     const days=m.doseDay>0?Math.floor(m.stock/m.doseDay):999;
     const cls=days<=3?'crit':days<=m.alertDays?'warn':'ok';
     const daysLabel=days>=999?'∞':days+' dias';
+    const endDate=days<999?psiBuyDate(days):'';
     const buyDate=days<999&&days<=m.alertDays?`<div class="psi-stock-buy-date${days<=3?' urgent':''}">🛒 Comprar até: ${psiBuyDate(Math.max(0,days-5))}</div>`:'';
-    const nextBox=days<999?`<div class="psi-stock-buy-date" style="margin-top:2px">📦 Próxima caixa: ${psiBuyDate(days)}</div>`:'';
     html+=`<div class="psi-stock-row">
       <div class="psi-stock-row-header">
         <div class="psi-stock-name">${m.name}</div>
-        <div class="psi-stock-days ${cls}" title="Dias restantes de estoque">${daysLabel}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${endDate?`<span class="psi-stock-enddate" title="Data em que o estoque termina">até ${endDate}</span>`:''}
+          <div class="psi-stock-days ${cls}" title="Dias restantes de estoque">${daysLabel}</div>
+        </div>
       </div>
-      ${buyDate}${nextBox}
+      ${buyDate}
       <div class="psi-stock-meta" style="margin-top:8px">
         <div class="psi-stock-field">
           <label>Comprimidos restantes</label>
