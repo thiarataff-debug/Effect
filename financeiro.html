@@ -186,6 +186,7 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
   <button class="tab" onclick="go('gastos',this)"><i class="ti ti-list"></i> Gastos do m&#234;s</button>
   <button class="tab" onclick="go('alertas',this)"><i class="ti ti-bell"></i> Alertas</button>
   <button class="tab" onclick="go('fixas',this)"><i class="ti ti-repeat"></i> Contas Fixas</button>
+  <button class="tab" onclick="go('variaveis',this)"><i class="ti ti-receipt-2"></i> Contas Vari&#225;veis</button>
   <button class="tab" onclick="go('nf',this)"><i class="ti ti-file-invoice"></i> NF Tracker</button>
   <button class="tab" onclick="go('clientes',this)"><i class="ti ti-users"></i> Clientes</button>
   <button class="tab" onclick="go('analise',this)"><i class="ti ti-chart-dots"></i> An&#225;lise</button>
@@ -338,6 +339,50 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
     </div>
     <div class="grid3" id="fx-kpis" style="margin-bottom:12px"></div>
     <div id="fx-tbl"></div>
+  </div>
+</div>
+<!-- CONTAS VARIAVEIS -->
+<div id="p-variaveis" class="pg">
+  <div class="card">
+    <div class="ct">Contas vari&#225;veis
+      <select id="var-mes" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="setVarMes(this.value)">
+        <option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+      </select>
+    </div>
+    <div class="help" style="margin-bottom:10px">Lance rapidamente os gastos do dia a dia, separados por tipo. Em "Extra", diga do que se trata.</div>
+    <div class="grid4" style="margin-bottom:14px;align-items:start">
+      <div class="fg">
+        <label><i class="ti ti-shopping-cart" style="margin-right:4px"></i>Mercado R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-merc" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('merc')">
+          <button class="btn btn-p btn-sm" onclick="addVar('merc')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+      </div>
+      <div class="fg">
+        <label><i class="ti ti-pill" style="margin-right:4px"></i>Farm&#225;cia R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-farm" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('farm')">
+          <button class="btn btn-p btn-sm" onclick="addVar('farm')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+      </div>
+      <div class="fg">
+        <label><i class="ti ti-gas-station" style="margin-right:4px"></i>Combust&#237;vel R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-comb" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('comb')">
+          <button class="btn btn-p btn-sm" onclick="addVar('comb')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+      </div>
+      <div class="fg">
+        <label><i class="ti ti-receipt" style="margin-right:4px"></i>Extra R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-extra" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')document.getElementById('var-desc-extra').focus()">
+          <button class="btn btn-p btn-sm" onclick="addVar('extra')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+        <input type="text" id="var-desc-extra" placeholder="O que é?" style="margin-top:4px" onkeydown="if(event.key==='Enter')addVar('extra')">
+      </div>
+    </div>
+    <div class="grid4" id="var-kpis" style="margin-bottom:12px"></div>
+    <div id="var-tbl"></div>
   </div>
 </div>
 <!-- NF TRACKER -->
@@ -807,6 +852,17 @@ function lancTodasFixas(){
   });
   if(any){save('entries',entries);refresh();rFixas();rVencStrip();}
 }
+// Desfazer o lançamento de uma conta fixa naquele mês (remove a entrada correspondente em Lançamentos)
+function undoFixa(id){
+  var v=vencimentos.find(function(x){return x.id===id});if(!v)return;
+  var mes=_fixasMes,idx=-1;
+  for(var i=entries.length-1;i>=0;i--){
+    if(entries[i].tipo==='cus'&&entries[i].mes===mes&&entries[i].cat===v.nome){idx=i;break}
+  }
+  if(idx===-1)return;
+  entries.splice(idx,1);
+  save('entries',entries);refresh();rFixas();rVencStrip();
+}
 function rFixas(){
   var sel=document.getElementById('fx-mes');if(sel)sel.value=_fixasMes;
   var mes=_fixasMes;
@@ -818,14 +874,16 @@ function rFixas(){
     var lanc=isLancFixa(v,mes);
     if(lanc)totLanc+=val;else pend++;
     var statusHtml=lanc?'<span class="pill p-ok">Lan&#231;ado</span>':'<span class="pill p-pend">Pendente</span>';
-    var actionHtml=lanc?'':'<button class="btn btn-sm btn-p" onclick="lancFixa('+v.id+')" title="Lançar em '+mes+'"><i class="ti ti-check"></i></button>';
+    var actionHtml=lanc?
+      '<button class="btn btn-sm" onclick="undoFixa('+v.id+')" title="Desfazer lançamento em '+mes+'"><i class="ti ti-arrow-back-up"></i></button>':
+      '<button class="btn btn-sm btn-p" onclick="lancFixa('+v.id+')" title="Lançar em '+mes+'"><i class="ti ti-check"></i></button>';
     return'<tr>'+
       '<td>'+v.nome+'</td>'+
       '<td style="color:var(--tx2)">'+v.cat+'</td>'+
       '<td style="text-align:center;color:var(--tx2);white-space:nowrap">Dia '+v.dia+'</td>'+
       '<td><input type="number" step="0.01" value="'+val.toFixed(2)+'" style="width:100px;text-align:right" onchange="updValorFixa('+v.id+',\''+mes+'\',this)"></td>'+
       '<td style="text-align:center">'+statusHtml+'</td>'+
-      '<td style="text-align:center;white-space:nowrap">'+actionHtml+' <button class="btn btn-sm btn-d" onclick="delFixaConta('+v.id+')"><i class="ti ti-trash"></i></button></td>'+
+      '<td style="text-align:center;white-space:nowrap">'+actionHtml+' <button class="btn btn-sm btn-d" onclick="delFixaConta('+v.id+')" title="Excluir esta conta fixa"><i class="ti ti-trash"></i></button></td>'+
     '</tr>';
   }).join('');
   document.getElementById('fx-tbl').innerHTML=sorted.length?
@@ -835,6 +893,56 @@ function rFixas(){
     '<div class="kpi"><div class="kpi-l">Total previsto &#8212; '+mes+'</div><div class="kpi-v">'+fmtF(totMes)+'</div></div>'+
     '<div class="kpi"><div class="kpi-l">J&#225; lan&#231;ado</div><div class="kpi-v" style="color:var(--grn)">'+fmtF(totLanc)+'</div></div>'+
     '<div class="kpi"><div class="kpi-l">Pendentes</div><div class="kpi-v" style="color:'+(pend>0?'var(--red)':'var(--grn)')+'">'+pend+(pend>0?' <button class="btn btn-sm" style="margin-left:6px" onclick="lancTodasFixas()">Lan&#231;ar todas</button>':'')+'</div></div>';
+}
+// ─── CONTAS VARIÁVEIS (mercado, farmácia, combustível, extras) ───
+var _varMes=MESES[new Date().getMonth()];
+var VAR_CATS=[
+  {key:'merc',cat:'Supermercado',label:'Mercado',needsDesc:false},
+  {key:'farm',cat:'Farmácia',label:'Farmácia',needsDesc:false},
+  {key:'comb',cat:'Combustível',label:'Combustível',needsDesc:false},
+  {key:'extra',cat:'Outros',label:'Extra',needsDesc:true}
+];
+function setVarMes(mes){_varMes=mes;rVariaveis()}
+function addVar(key){
+  var vc=VAR_CATS.find(function(c){return c.key===key});if(!vc)return;
+  var valEl=document.getElementById('var-val-'+key);
+  var val=parseFloat(valEl.value)||0;
+  var desc='';
+  if(vc.needsDesc){
+    var descEl=document.getElementById('var-desc-'+key);
+    desc=descEl.value.trim();
+    if(!desc){descEl.focus();return}
+  }
+  if(!val||val<=0){valEl.focus();return}
+  entries.push({id:nxtId++,tipo:'cus',cat:vc.cat,mes:_varMes,valor:val,desc:desc});
+  save('entries',entries);
+  valEl.value='';
+  if(vc.needsDesc)document.getElementById('var-desc-'+key).value='';
+  document.getElementById('upd').textContent='Salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  refresh();rVariaveis();
+}
+function delVarEntry(id){
+  entries=entries.filter(function(e){return e.id!==id});
+  save('entries',entries);refresh();rVariaveis();
+}
+function rVariaveis(){
+  var sel=document.getElementById('var-mes');if(sel)sel.value=_varMes;
+  var mes=_varMes;
+  var varCatNames=VAR_CATS.map(function(c){return c.cat});
+  var f=entries.filter(function(e){return e.mes===mes&&e.tipo==='cus'&&varCatNames.indexOf(e.cat)>=0});
+  document.getElementById('var-kpis').innerHTML=VAR_CATS.map(function(c){
+    var tot=f.filter(function(e){return e.cat===c.cat}).reduce(function(s,e){return s+e.valor},0);
+    return'<div class="kpi"><div class="kpi-l">'+c.label+'</div><div class="kpi-v" style="color:var(--red)">'+fmtF(tot)+'</div></div>';
+  }).join('');
+  var sorted=f.slice().sort(function(a,b){return b.id-a.id});
+  document.getElementById('var-tbl').innerHTML=sorted.length?
+    '<table class="tbl"><thead><tr><th>Categoria</th><th>Descri&#231;&#227;o</th><th>Valor</th><th></th></tr></thead><tbody>'+
+    sorted.map(function(e){
+      return'<tr><td>'+e.cat+'</td><td style="color:var(--tx2)">'+(e.desc||'&#8212;')+'</td>'+
+      '<td style="font-weight:500;color:var(--red)">'+fmtF(e.valor)+'</td>'+
+      '<td><button class="btn btn-sm btn-d" onclick="delVarEntry('+e.id+')"><i class="ti ti-trash"></i></button></td></tr>';
+    }).join('')+'</tbody></table>':
+    '<div class="empty">Nenhum gasto vari&#225;vel lan&#231;ado em '+mes+'.</div>';
 }
 function rTbl(){
   var fm=_lfM,ft=_lfT;
@@ -1457,6 +1565,7 @@ function go(id,btn){
   try{if(id==='gastos')rGastos();}catch(e){}
   try{if(id==='alertas')rAlertas();}catch(e){}
   try{if(id==='fixas')rFixas();}catch(e){}
+  try{if(id==='variaveis')rVariaveis();}catch(e){}
   try{if(id==='nf')rNF();}catch(e){}
   try{if(id==='clientes'){rPipe();rRent();}}catch(e){}
   try{if(id==='analise'){rComp();rSim();}}catch(e){}
@@ -1468,6 +1577,7 @@ function refresh(){
   if(document.getElementById('p-gastos').classList.contains('on'))tryRun(rGastos);
   if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
   if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
+  if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
 }
 function tryRun(fn){try{fn()}catch(e){console.warn('init:',e)}}
 tryRun(updCats);
@@ -1475,6 +1585,7 @@ tryRun(buildVencFields);
 tryRun(rDash);
 tryRun(rAlertas);
 tryRun(rFixas);
+tryRun(rVariaveis);
 tryRun(rNF);
 tryRun(rPipe);
 tryRun(rRent);
