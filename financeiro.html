@@ -827,6 +827,24 @@ function setValorMes(id,mes,val){
   vencValores[id][mes]=val;
   save('vencValores',vencValores);
 }
+const FIXA_CATS=['Casa','Saúde','Educação','Empresa','Lazer','Outro'];
+function updNomeFixa(id,val){
+  var v=vencimentos.find(function(x){return x.id===id});if(!v)return;
+  var nome=(val||'').trim();if(!nome)return;
+  v.nome=nome;save('venc',vencimentos);
+  rFixas();tryRun(rAlertas);rVencStrip();
+}
+function updDiaFixa(id,val){
+  var v=vencimentos.find(function(x){return x.id===id});if(!v)return;
+  var dia=parseInt(val)||v.dia;
+  v.dia=Math.min(Math.max(dia,1),31);save('venc',vencimentos);
+  rFixas();tryRun(rAlertas);
+}
+function updCatFixa(id,val){
+  var v=vencimentos.find(function(x){return x.id===id});if(!v)return;
+  v.cat=val;save('venc',vencimentos);
+  rFixas();tryRun(rAlertas);
+}
 function updValorFixa(id,mes,el){
   var val=parseFloat((el.value||'0').replace(',','.'))||0;
   setValorMes(id,mes,val);
@@ -877,10 +895,11 @@ function rFixas(){
     var actionHtml=lanc?
       '<button class="btn btn-sm" onclick="undoFixa('+v.id+')" title="Desfazer lançamento em '+mes+'"><i class="ti ti-arrow-back-up"></i></button>':
       '<button class="btn btn-sm btn-p" onclick="lancFixa('+v.id+')" title="Lançar em '+mes+'"><i class="ti ti-check"></i></button>';
+    var catOpts=FIXA_CATS.map(function(c){return'<option'+(c===v.cat?' selected':'')+'>'+c+'</option>'}).join('');
     return'<tr>'+
-      '<td>'+v.nome+'</td>'+
-      '<td style="color:var(--tx2)">'+v.cat+'</td>'+
-      '<td style="text-align:center;color:var(--tx2);white-space:nowrap">Dia '+v.dia+'</td>'+
+      '<td><input type="text" value="'+v.nome+'" style="width:130px" onchange="updNomeFixa('+v.id+',this.value)"></td>'+
+      '<td><select style="width:110px;height:28px;font-size:11px" onchange="updCatFixa('+v.id+',this.value)">'+catOpts+'</select></td>'+
+      '<td style="text-align:center;white-space:nowrap">Dia <input type="number" min="1" max="31" value="'+v.dia+'" style="width:48px;text-align:center;padding:0 4px" onchange="updDiaFixa('+v.id+',this.value)"></td>'+
       '<td><input type="number" step="0.01" value="'+val.toFixed(2)+'" style="width:100px;text-align:right" onchange="updValorFixa('+v.id+',\''+mes+'\',this)"></td>'+
       '<td style="text-align:center">'+statusHtml+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+actionHtml+' <button class="btn btn-sm btn-d" onclick="delFixaConta('+v.id+')" title="Excluir esta conta fixa"><i class="ti ti-trash"></i></button></td>'+
