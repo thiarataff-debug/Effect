@@ -2758,11 +2758,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── PSI MEDICATION STOCK TRACKER ──
 const PSI_MEDS_DEFAULT = [
-  {id:'desvenla',name:'Desvenlafaxina',doseDay:1,stock:0,receita:0,boxSize:30,alertDays:10,horarios:['08:00']},
-  {id:'lamotrigina',name:'Lamotrigina',doseDay:1,stock:0,receita:0,boxSize:60,alertDays:10,horarios:['08:00']},
-  {id:'quetiapina',name:'Quetiapina',doseDay:1,stock:0,receita:0,boxSize:30,alertDays:7,horarios:['22:00']},
-  {id:'uninaltrex',name:'Uninaltrex (Naltrexona)',doseDay:1,stock:0,receita:0,boxSize:30,alertDays:7,horarios:['08:00']},
-  {id:'citoneurin',name:'Citoneurin',doseDay:1,stock:0,receita:0,boxSize:30,alertDays:10,horarios:['08:00']},
+  {id:'desvenla',name:'Desvenlafaxina',doseDay:1,stock:0,receita:0,obs:'',boxSize:30,alertDays:10,horarios:['08:00']},
+  {id:'lamotrigina',name:'Lamotrigina',doseDay:1,stock:0,receita:0,obs:'',boxSize:60,alertDays:10,horarios:['08:00']},
+  {id:'quetiapina',name:'Quetiapina',doseDay:1,stock:0,receita:0,obs:'',boxSize:30,alertDays:7,horarios:['22:00']},
+  {id:'uninaltrex',name:'Uninaltrex (Naltrexona)',doseDay:1,stock:0,receita:0,obs:'',boxSize:30,alertDays:7,horarios:['08:00']},
+  {id:'citoneurin',name:'Citoneurin',doseDay:1,stock:0,receita:0,obs:'',boxSize:30,alertDays:10,horarios:['08:00']},
 ];
 
 function psiGetMedStock(){
@@ -2782,6 +2782,7 @@ function psiGetMedStock(){
   saved.forEach(m=>{
     if(!Array.isArray(m.horarios)||!m.horarios.length){ m.horarios=['08:00']; changed=true; }
     if(typeof m.receita!=='number'){ m.receita=0; changed=true; }
+    if(typeof m.obs!=='string'){ m.obs=''; changed=true; }
   });
   if(changed) psiSaveMedStock(saved);
   return saved;
@@ -2837,6 +2838,9 @@ function psiBuyDate(days){
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
 }
 
+function psiEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 function psiRenderMedStock(){
   const el=document.getElementById('psi-stock-section');if(!el)return;
   const meds=psiGetMedStock();
@@ -2894,6 +2898,10 @@ function psiRenderMedStock(){
         <label>Horário(s) — separados por vírgula</label>
         <input type="text" class="psi-stock-input" style="width:100%" value="${(m.horarios||[]).join(', ')}" placeholder="Ex: 08:00, 20:00" onchange="psiUpdateHorarios(${i},this.value)">
       </div>
+      <div class="psi-stock-field" style="margin-top:8px">
+        <label>Observa&#231;&#245;es</label>
+        <textarea class="psi-stock-input" style="width:100%;min-height:44px;resize:vertical;font-family:inherit" placeholder="Ex: tomar com alimento, efeito colateral, ajuste do m&#233;dico..." onchange="psiUpdateStock(${i},'obs',this.value)">${psiEsc(m.obs)}</textarea>
+      </div>
     </div>`;
   });
   html+='<button onclick="psiAddMed()" style="margin-top:12px;width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">+ Adicionar medicamento</button>';
@@ -2924,7 +2932,7 @@ function psiAddMed(){
   const horario=prompt('Horário (ex: 08:00) — se tiver mais de um, separe por vírgula:','08:00');
   const horarios=String(horario||'08:00').split(',').map(h=>h.trim()).filter(Boolean);
   const meds=psiGetMedStock();
-  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:horarios.length||1,stock:0,receita:0,boxSize:30,alertDays:7,horarios:horarios.length?horarios:['08:00']});
+  meds.push({id:'med_'+Date.now(),name:name.trim(),doseDay:horarios.length||1,stock:0,receita:0,obs:'',boxSize:30,alertDays:7,horarios:horarios.length?horarios:['08:00']});
   psiSaveMedStock(meds);
   psiRenderMedStock();
 }
