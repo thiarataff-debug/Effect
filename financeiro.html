@@ -358,11 +358,12 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
 <div id="p-variaveis" class="pg">
   <div class="card">
     <div class="ct">Contas vari&#225;veis
+      <input type="date" id="var-data" style="height:26px;font-size:11px;padding:0 6px;width:auto;margin-right:6px" title="Data do lan&#231;amento">
       <select id="var-mes" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="setVarMes(this.value)">
         <option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option>
       </select>
     </div>
-    <div class="help" style="margin-bottom:10px">Lance rapidamente os gastos do dia a dia, separados por tipo. Em "Extra", diga do que se trata.</div>
+    <div class="help" style="margin-bottom:10px">Lance rapidamente os gastos do dia a dia, separados por tipo. Em "Extra", diga do que se trata. A data ao lado do m&#234;s define o dia do lan&#231;amento (j&#225; vem preenchida com hoje).</div>
     <div class="grid4" style="margin-bottom:14px;align-items:start">
       <div class="fg">
         <label><i class="ti ti-shopping-cart" style="margin-right:4px"></i>Mercado R$</label>
@@ -1058,7 +1059,9 @@ function addVar(key){
     if(!desc){descEl.focus();return}
   }
   if(!val||val<=0){valEl.focus();return}
-  entries.push({id:nxtId++,tipo:'cus',cat:vc.cat,mes:_varMes,valor:val,desc:desc});
+  var dataEl=document.getElementById('var-data');
+  var dataVal=(dataEl&&dataEl.value)||new Date().toISOString().slice(0,10);
+  entries.push({id:nxtId++,tipo:'cus',cat:vc.cat,mes:_varMes,valor:val,desc:desc,data:dataVal});
   save('entries',entries);
   valEl.value='';
   if(vc.needsDesc)document.getElementById('var-desc-'+key).value='';
@@ -1069,8 +1072,15 @@ function delVarEntry(id){
   entries=entries.filter(function(e){return e.id!==id});
   save('entries',entries);refresh();rVariaveis();
 }
+function updVarEntryData(id,val){
+  var e=entries.find(function(x){return x.id===id});if(!e)return;
+  if(val)e.data=val;
+  save('entries',entries);refresh();rVariaveis();
+}
 function rVariaveis(){
   var sel=document.getElementById('var-mes');if(sel)sel.value=_varMes;
+  var dEl=document.getElementById('var-data');
+  if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
   var mes=_varMes;
   var varCatNames=VAR_CATS.map(function(c){return c.cat});
   var f=entries.filter(function(e){return e.mes===mes&&e.tipo==='cus'&&varCatNames.indexOf(e.cat)>=0});
@@ -1078,11 +1088,17 @@ function rVariaveis(){
     var tot=f.filter(function(e){return e.cat===c.cat}).reduce(function(s,e){return s+e.valor},0);
     return'<div class="kpi"><div class="kpi-l">'+c.label+'</div><div class="kpi-v" style="color:var(--red)">'+fmtF(tot)+'</div></div>';
   }).join('');
-  var sorted=f.slice().sort(function(a,b){return b.id-a.id});
+  var sorted=f.slice().sort(function(a,b){
+    var da=a.data||'',db=b.data||'';
+    if(da>db)return-1;
+    if(da<db)return 1;
+    return b.id-a.id;
+  });
   document.getElementById('var-tbl').innerHTML=sorted.length?
-    '<table class="tbl"><thead><tr><th>Categoria</th><th>Descri&#231;&#227;o</th><th>Valor</th><th></th></tr></thead><tbody>'+
+    '<table class="tbl"><thead><tr><th>Data</th><th>Categoria</th><th>Descri&#231;&#227;o</th><th>Valor</th><th></th></tr></thead><tbody>'+
     sorted.map(function(e){
-      return'<tr><td>'+e.cat+'</td><td style="color:var(--tx2)">'+(e.desc||'&#8212;')+'</td>'+
+      return'<tr><td style="white-space:nowrap"><input type="date" value="'+(e.data||'')+'" style="width:130px;height:26px;font-size:11px;padding:0 4px" onchange="updVarEntryData('+e.id+',this.value)"></td>'+
+      '<td>'+e.cat+'</td><td style="color:var(--tx2)">'+(e.desc||'&#8212;')+'</td>'+
       '<td style="font-weight:500;color:var(--red)">'+fmtF(e.valor)+'</td>'+
       '<td><button class="btn btn-sm btn-d" onclick="delVarEntry('+e.id+')"><i class="ti ti-trash"></i></button></td></tr>';
     }).join('')+'</tbody></table>':
@@ -1118,7 +1134,7 @@ function updPrevisaoField(id,field,val){
 }
 function lancarPrevisao(id){
   var p=previsoes.find(function(x){return x.id===id});if(!p||p.paga)return;
-  entries.push({id:nxtId++,tipo:'cus',cat:p.cat,mes:p.mes,valor:p.valor,desc:p.desc});
+  entries.push({id:nxtId++,tipo:'cus',cat:p.cat,mes:p.mes,valor:p.valor,desc:p.desc,data:new Date().toISOString().slice(0,10)});
   p.paga=true;
   save('entries',entries);save('previsoes',previsoes);
   refresh();rPrevisoes();rVencStrip();tryRun(rFixas);
@@ -2024,35 +2040,4 @@ function go(id,btn){
 function refresh(){
   tryRun(rDash);
   if(document.getElementById('p-lanc').classList.contains('on')){tryRun(rTbl);tryRun(rSaldoAnterior);}
-  if(document.getElementById('p-gastos').classList.contains('on'))tryRun(rGastos);
-  if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
-  if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
-  if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
-  if(document.getElementById('p-vagas').classList.contains('on'))tryRun(rVagasTab);
-}
-function tryRun(fn){try{fn()}catch(e){console.warn('init:',e)}}
-tryRun(updCats);
-tryRun(buildVencFields);
-tryRun(rDash);
-tryRun(rAlertas);
-tryRun(rFixas);
-tryRun(rVariaveis);
-tryRun(rNF);
-tryRun(rPipe);
-tryRun(rRent);
-tryRun(rVagasTab);
-tryRun(rMetas);
-tryRun(rComp);
-tryRun(rSim);
-tryRun(rVencStrip);
-tryRun(rSaldoAnterior);
-document.getElementById('upd').textContent=new Date().toLocaleDateString('pt-BR');
-// Re-renderiza gráficos após CDN carregar completamente
-window.addEventListener('load', function(){
-  tryRun(rDash);
-  tryRun(rAlertas);
-  tryRun(rScore);
-});
-</script>
-</body>
-</html>
+  if
