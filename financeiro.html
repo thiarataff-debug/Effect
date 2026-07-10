@@ -2040,4 +2040,34 @@ function go(id,btn){
 function refresh(){
   tryRun(rDash);
   if(document.getElementById('p-lanc').classList.contains('on')){tryRun(rTbl);tryRun(rSaldoAnterior);}
-  if
+  if(document.getElementById('p-gastos').classList.contains('on'))tryRun(rGastos);
+  if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
+  if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
+  if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
+  if(document.getElementById('p-vagas').classList.contains('on'))tryRun(rVagasTab);
+}
+function tryRun(fn){try{fn()}catch(e){console.warn('init:',e)}}
+tryRun(updCats);
+tryRun(buildVencFields);
+tryRun(rDash);
+tryRun(rAlertas);
+tryRun(rFixas);
+tryRun(rVariaveis);
+tryRun(rNF);
+tryRun(rPipe);
+tryRun(rRent);
+tryRun(rVagasTab);
+tryRun(rMetas);
+tryRun(rComp);
+tryRun(rSim);
+tryRun(rVencStrip);
+tryRun(rSaldoAnterior);
+document.getElementById('upd').textContent=new Date().toLocaleDateString('pt-BR');
+window.addEventListener('load', function(){
+  tryRun(rDash);
+  tryRun(rAlertas);
+  tryRun(rScore);
+});
+</script>
+</body>
+</html>
