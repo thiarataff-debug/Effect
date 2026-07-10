@@ -357,13 +357,12 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
 <!-- CONTAS VARIAVEIS -->
 <div id="p-variaveis" class="pg">
   <div class="card">
-    <div class="ct">Contas vari&#225;veis
-      <input type="date" id="var-data" style="height:26px;font-size:11px;padding:0 6px;width:auto;margin-right:6px" title="Data do lan&#231;amento">
+ <div class="ct">Contas vari&#225;veis
       <select id="var-mes" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="setVarMes(this.value)">
         <option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option>
       </select>
     </div>
-    <div class="help" style="margin-bottom:10px">Lance rapidamente os gastos do dia a dia, separados por tipo. Em "Extra", diga do que se trata. A data ao lado do m&#234;s define o dia do lan&#231;amento (j&#225; vem preenchida com hoje).</div>
+    <div class="help" style="margin-bottom:10px">Lance rapidamente os gastos do dia a dia, separados por tipo. Em "Extra", diga do que se trata. Cada campo tem sua pr&#243;pria data (j&#225; vem preenchida com hoje, mas d&#225; pra mudar antes de lan&#231;ar).</div>
     <div class="grid4" style="margin-bottom:14px;align-items:start">
       <div class="fg">
         <label><i class="ti ti-shopping-cart" style="margin-right:4px"></i>Mercado R$</label>
@@ -371,7 +370,34 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
           <input type="number" id="var-val-merc" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('merc')">
           <button class="btn btn-p btn-sm" onclick="addVar('merc')" title="Lançar"><i class="ti ti-plus"></i></button>
         </div>
+        <input type="date" id="var-data-merc" style="margin-top:4px;height:26px;font-size:11px;padding:0 4px;width:100%">
       </div>
+      <div class="fg">
+        <label><i class="ti ti-pill" style="margin-right:4px"></i>Farm&#225;cia R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-farm" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('farm')">
+          <button class="btn btn-p btn-sm" onclick="addVar('farm')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+        <input type="date" id="var-data-farm" style="margin-top:4px;height:26px;font-size:11px;padding:0 4px;width:100%">
+      </div>
+      <div class="fg">
+        <label><i class="ti ti-gas-station" style="margin-right:4px"></i>Combust&#237;vel R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-comb" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('comb')">
+          <button class="btn btn-p btn-sm" onclick="addVar('comb')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+        <input type="date" id="var-data-comb" style="margin-top:4px;height:26px;font-size:11px;padding:0 4px;width:100%">
+      </div>
+      <div class="fg">
+        <label><i class="ti ti-receipt" style="margin-right:4px"></i>Extra R$</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="var-val-extra" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')document.getElementById('var-desc-extra').focus()">
+          <button class="btn btn-p btn-sm" onclick="addVar('extra')" title="Lançar"><i class="ti ti-plus"></i></button>
+        </div>
+        <input type="text" id="var-desc-extra" placeholder="O que é?" style="margin-top:4px" onkeydown="if(event.key==='Enter')addVar('extra')">
+        <input type="date" id="var-data-extra" style="margin-top:4px;height:26px;font-size:11px;padding:0 4px;width:100%">
+      </div>
+    </div>
       <div class="fg">
         <label><i class="ti ti-pill" style="margin-right:4px"></i>Farm&#225;cia R$</label>
         <div style="display:flex;gap:4px">
@@ -1059,11 +1085,12 @@ function addVar(key){
     if(!desc){descEl.focus();return}
   }
   if(!val||val<=0){valEl.focus();return}
-  var dataEl=document.getElementById('var-data');
+  var dataEl=document.getElementById('var-data-'+key);
   var dataVal=(dataEl&&dataEl.value)||new Date().toISOString().slice(0,10);
   entries.push({id:nxtId++,tipo:'cus',cat:vc.cat,mes:_varMes,valor:val,desc:desc,data:dataVal});
   save('entries',entries);
   valEl.value='';
+  if(dataEl)dataEl.value='';
   if(vc.needsDesc)document.getElementById('var-desc-'+key).value='';
   document.getElementById('upd').textContent='Salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   refresh();rVariaveis();
@@ -1079,8 +1106,10 @@ function updVarEntryData(id,val){
 }
 function rVariaveis(){
   var sel=document.getElementById('var-mes');if(sel)sel.value=_varMes;
-  var dEl=document.getElementById('var-data');
-  if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
+  VAR_CATS.forEach(function(c){
+    var dEl=document.getElementById('var-data-'+c.key);
+    if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
+  });
   var mes=_varMes;
   var varCatNames=VAR_CATS.map(function(c){return c.cat});
   var f=entries.filter(function(e){return e.mes===mes&&e.tipo==='cus'&&varCatNames.indexOf(e.cat)>=0});
