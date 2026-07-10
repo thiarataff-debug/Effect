@@ -398,29 +398,7 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
         <input type="date" id="var-data-extra" style="margin-top:4px;height:26px;font-size:11px;padding:0 4px;width:100%">
       </div>
     </div>
-      <div class="fg">
-        <label><i class="ti ti-pill" style="margin-right:4px"></i>Farm&#225;cia R$</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="var-val-farm" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('farm')">
-          <button class="btn btn-p btn-sm" onclick="addVar('farm')" title="Lançar"><i class="ti ti-plus"></i></button>
-        </div>
-      </div>
-      <div class="fg">
-        <label><i class="ti ti-gas-station" style="margin-right:4px"></i>Combust&#237;vel R$</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="var-val-comb" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')addVar('comb')">
-          <button class="btn btn-p btn-sm" onclick="addVar('comb')" title="Lançar"><i class="ti ti-plus"></i></button>
-        </div>
-      </div>
-      <div class="fg">
-        <label><i class="ti ti-receipt" style="margin-right:4px"></i>Extra R$</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="var-val-extra" placeholder="0,00" step="0.01" onkeydown="if(event.key==='Enter')document.getElementById('var-desc-extra').focus()">
-          <button class="btn btn-p btn-sm" onclick="addVar('extra')" title="Lançar"><i class="ti ti-plus"></i></button>
-        </div>
-        <input type="text" id="var-desc-extra" placeholder="O que é?" style="margin-top:4px" onkeydown="if(event.key==='Enter')addVar('extra')">
-      </div>
-    </div>
+     
     <div class="grid4" id="var-kpis" style="margin-bottom:12px"></div>
     <div id="var-tbl"></div>
   </div>
