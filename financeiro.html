@@ -90,6 +90,9 @@ select:focus,input:focus{outline:2px solid var(--blu);outline-offset:-1px}
 .pipe-card .pc-name{font-size:12px;font-weight:500;margin-bottom:3px}
 .pipe-card .pc-val{font-size:11px;color:var(--tx2)}
 .pipe-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.recrut-board{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.recrut-board::-webkit-scrollbar{height:6px}.recrut-board::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+.recrut-col{background:var(--bg2);border-radius:var(--rl);padding:10px;min-height:120px;flex:0 0 158px}
 .sim-out{background:var(--bg2);border-radius:var(--rm);padding:14px;text-align:center;margin-top:14px}
 .sim-val{font-size:28px;font-weight:500;color:var(--grn)}
 .sim-label{font-size:12px;color:var(--tx2);margin-top:4px}
@@ -189,6 +192,7 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
   <button class="tab" onclick="go('variaveis',this)"><i class="ti ti-receipt-2"></i> Contas Vari&#225;veis</button>
   <button class="tab" onclick="go('nf',this)"><i class="ti ti-file-invoice"></i> NF Tracker</button>
   <button class="tab" onclick="go('clientes',this)"><i class="ti ti-users"></i> Clientes</button>
+  <button class="tab" onclick="go('vagas',this)"><i class="ti ti-briefcase"></i> Vagas Effect</button>
   <button class="tab" onclick="go('analise',this)"><i class="ti ti-chart-dots"></i> An&#225;lise</button>
   <button class="tab" onclick="go('metas',this)"><i class="ti ti-target"></i> Metas</button>
 </div>
@@ -393,6 +397,20 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
     <div class="grid4" id="var-kpis" style="margin-bottom:12px"></div>
     <div id="var-tbl"></div>
   </div>
+  <div class="card">
+    <div class="ct">Previs&#245;es do m&#234;s
+      <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">gastos pontuais que voc&#234; j&#225; sabe que v&#227;o acontecer (ex: IPVA, conserto, presente)</span>
+    </div>
+    <div class="row r4" style="margin-bottom:8px">
+      <div class="fg"><label>Descri&#231;&#227;o</label><input type="text" id="pv-desc" placeholder="Ex: IPVA parcela 3"></div>
+      <div class="fg"><label>Categoria</label><select id="pv-cat"></select></div>
+      <div class="fg"><label>Dia previsto</label><input type="number" id="pv-dia" min="1" max="31" placeholder="15"></div>
+      <div class="fg"><label>Valor previsto R$</label><input type="number" id="pv-val" step="0.01" placeholder="0,00"></div>
+    </div>
+    <button class="btn btn-p btn-sm" onclick="addPrevisao()"><i class="ti ti-plus"></i> Adicionar previs&#227;o</button>
+    <div class="grid3" id="pv-kpis" style="margin:12px 0"></div>
+    <div id="pv-tbl"></div>
+  </div>
 </div>
 <!-- NF TRACKER -->
 <div id="p-nf" class="pg">
@@ -466,6 +484,62 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
     </div>
     <div id="rent-tbl"></div>
     <div class="cw" style="height:180px;margin-top:12px"><canvas id="c-rent"></canvas></div>
+  </div>
+</div>
+<!-- VAGAS EFFECT -->
+<div id="p-vagas" class="pg">
+  <div class="card">
+    <div class="ct">Vagas <button class="btn btn-sm" onclick="showAddVaga()"><i class="ti ti-plus"></i> Nova vaga</button></div>
+    <div id="add-vaga" style="display:none;margin-bottom:12px">
+      <div class="row r3" style="margin-bottom:6px">
+        <div class="fg"><label>Cargo / T&#237;tulo da vaga</label><input type="text" id="vg-titulo" placeholder="Ex: Auxiliar de Cozinha"></div>
+        <div class="fg"><label>Cliente</label><input type="text" id="vg-cliente" placeholder="Ex: Frangol&#226;ndia"></div>
+        <button class="btn btn-p" onclick="addVaga()"><i class="ti ti-plus"></i> Adicionar</button>
+      </div>
+    </div>
+    <div id="vaga-list"></div>
+  </div>
+  <div class="card">
+    <div class="ct">Pipeline da vaga
+      <select id="vg-sel" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="setVagaSel(this.value)"></select>
+    </div>
+    <div id="add-cand" style="margin-bottom:12px">
+      <div class="row r3" style="margin-bottom:6px">
+        <div class="fg"><label>Candidato</label><input type="text" id="cd-nome" placeholder="Nome do candidato"></div>
+        <div class="fg"><label>Telefone</label><input type="text" id="cd-tel" placeholder="(27) 99999-9999"></div>
+        <button class="btn btn-p" onclick="addCandidato()"><i class="ti ti-plus"></i> Adicionar candidato</button>
+      </div>
+    </div>
+    <div class="recrut-board" id="recrut-board"></div>
+  </div>
+  <div class="card">
+    <div class="ct">Notas fiscais Effect
+      <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">emitida na admiss&#227;o do candidato &#8212; prazo de pagamento: 7 dias</span>
+    </div>
+    <div class="grid3" id="nfe-kpis" style="margin-bottom:12px"></div>
+    <div id="nfe-tbl"></div>
+  </div>
+  <div class="card">
+    <div class="ct">Admitidos &#8212; garantia de 45 dias</div>
+    <div id="admitidos-tbl"></div>
+  </div>
+  <div class="card">
+    <div class="ct">Dados da empresa <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">usado na hora de emitir NFs</span></div>
+    <div class="row r3" style="margin-bottom:8px">
+      <div class="fg"><label>Nome empresarial</label><input type="text" id="emp-nome" onchange="updEmpresa('nomeEmpresarial',this.value)"></div>
+      <div class="fg"><label>CNPJ</label><input type="text" id="emp-cnpj" onchange="updEmpresa('cnpj',this.value)"></div>
+      <div class="fg"><label>Inscri&#231;&#227;o Municipal</label><input type="text" id="emp-insc" onchange="updEmpresa('inscMunicipal',this.value)"></div>
+    </div>
+    <div class="row r3" style="margin-bottom:8px">
+      <div class="fg"><label>Telefone</label><input type="text" id="emp-tel" onchange="updEmpresa('telefone',this.value)"></div>
+      <div class="fg"><label>E-mail</label><input type="text" id="emp-email" onchange="updEmpresa('email',this.value)"></div>
+      <div class="fg"><label>Regime tribut&#225;rio</label><input type="text" id="emp-regime" onchange="updEmpresa('regime',this.value)"></div>
+    </div>
+    <div class="row r3">
+      <div class="fg"><label>Endere&#231;o</label><input type="text" id="emp-end" onchange="updEmpresa('endereco',this.value)"></div>
+      <div class="fg"><label>Munic&#237;pio</label><input type="text" id="emp-mun" onchange="updEmpresa('municipio',this.value)"></div>
+      <div class="fg"><label>CEP</label><input type="text" id="emp-cep" onchange="updEmpresa('cep',this.value)"></div>
+    </div>
   </div>
 </div>
 <!-- ANALISE -->
@@ -1013,6 +1087,89 @@ function rVariaveis(){
       '<td><button class="btn btn-sm btn-d" onclick="delVarEntry('+e.id+')"><i class="ti ti-trash"></i></button></td></tr>';
     }).join('')+'</tbody></table>':
     '<div class="empty">Nenhum gasto vari&#225;vel lan&#231;ado em '+mes+'.</div>';
+  rPrevisoes();
+}
+// ─── PREVISÕES (gastos variáveis pontuais, previstos para um mês específico — não recorrentes) ───
+const SEED_PREV=[];
+let previsoes=load('previsoes',JSON.parse(JSON.stringify(SEED_PREV)));
+let nxtPrevId=Math.max.apply(null,[0].concat(previsoes.map(function(p){return p.id})))+1;
+function addPrevisao(){
+  var desc=document.getElementById('pv-desc').value.trim();
+  var cat=document.getElementById('pv-cat').value;
+  var dia=parseInt(document.getElementById('pv-dia').value)||1;
+  var val=parseFloat(document.getElementById('pv-val').value)||0;
+  if(!desc||!val){if(!desc)document.getElementById('pv-desc').focus();else document.getElementById('pv-val').focus();return}
+  previsoes.push({id:nxtPrevId++,desc:desc,cat:cat,dia:Math.min(Math.max(dia,1),31),valor:val,mes:_varMes,paga:false});
+  save('previsoes',previsoes);
+  document.getElementById('pv-desc').value='';document.getElementById('pv-dia').value='';document.getElementById('pv-val').value='';
+  rPrevisoes();
+}
+function delPrevisao(id){
+  previsoes=previsoes.filter(function(p){return p.id!==id});
+  save('previsoes',previsoes);rPrevisoes();
+}
+function updPrevisaoField(id,field,val){
+  var p=previsoes.find(function(x){return x.id===id});if(!p)return;
+  if(field==='dia')p.dia=Math.min(Math.max(parseInt(val)||p.dia,1),31);
+  else if(field==='valor')p.valor=parseFloat(val)||p.valor;
+  else if(field==='desc')p.desc=(val||'').trim()||p.desc;
+  else if(field==='cat')p.cat=val;
+  save('previsoes',previsoes);rPrevisoes();
+}
+function lancarPrevisao(id){
+  var p=previsoes.find(function(x){return x.id===id});if(!p||p.paga)return;
+  entries.push({id:nxtId++,tipo:'cus',cat:p.cat,mes:p.mes,valor:p.valor,desc:p.desc});
+  p.paga=true;
+  save('entries',entries);save('previsoes',previsoes);
+  refresh();rPrevisoes();rVencStrip();tryRun(rFixas);
+}
+function undoPrevisao(id){
+  var p=previsoes.find(function(x){return x.id===id});if(!p||!p.paga)return;
+  var idx=-1;
+  for(var i=entries.length-1;i>=0;i--){
+    if(entries[i].tipo==='cus'&&entries[i].mes===p.mes&&entries[i].cat===p.cat&&entries[i].desc===p.desc&&Math.abs(entries[i].valor-p.valor)<0.005){idx=i;break}
+  }
+  if(idx>=0)entries.splice(idx,1);
+  p.paga=false;
+  save('entries',entries);save('previsoes',previsoes);
+  refresh();rPrevisoes();rVencStrip();tryRun(rFixas);
+}
+function rPrevisoes(){
+  var mes=_varMes;
+  var pvCatSel=document.getElementById('pv-cat');
+  if(pvCatSel&&!pvCatSel.dataset.filled){
+    pvCatSel.innerHTML=CATS.cus.map(function(c){return'<option>'+c+'</option>'}).join('');
+    pvCatSel.dataset.filled='1';
+  }
+  var prevMes=previsoes.filter(function(p){return p.mes===mes}).sort(function(a,b){return a.dia-b.dia});
+  var totPrev=prevMes.reduce(function(s,p){return s+p.valor},0);
+  var totPaga=prevMes.filter(function(p){return p.paga}).reduce(function(s,p){return s+p.valor},0);
+  var totPend=totPrev-totPaga;
+  var kpiEl=document.getElementById('pv-kpis');
+  if(kpiEl)kpiEl.innerHTML=
+    '<div class="kpi"><div class="kpi-l">Total previsto</div><div class="kpi-v">'+fmtF(totPrev)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-l">J&#225; paga</div><div class="kpi-v" style="color:var(--grn)">'+fmtF(totPaga)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-l">Pendente</div><div class="kpi-v" style="color:'+(totPend>0?'var(--red)':'var(--grn)')+'">'+fmtF(totPend)+'</div></div>';
+  var tblEl=document.getElementById('pv-tbl');
+  if(!tblEl)return;
+  tblEl.innerHTML=prevMes.length?
+    '<table class="tbl"><thead><tr><th>Descri&#231;&#227;o</th><th>Categoria</th><th>Dia</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+
+    prevMes.map(function(p){
+      var statusHtml=p.paga?'<span class="pill p-ok">Paga</span>':'<span class="pill p-pend">Pendente</span>';
+      var actionHtml=p.paga?
+        '<button class="btn btn-sm" onclick="undoPrevisao('+p.id+')" title="Desfazer"><i class="ti ti-arrow-back-up"></i></button>':
+        '<button class="btn btn-sm btn-p" onclick="lancarPrevisao('+p.id+')" title="Marcar como paga e lançar"><i class="ti ti-check"></i></button>';
+      var catOptsP=CATS.cus.map(function(c){return'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>'}).join('');
+      return'<tr>'+
+        '<td><input type="text" value="'+p.desc+'" style="width:140px" onchange="updPrevisaoField('+p.id+',\'desc\',this.value)"></td>'+
+        '<td><select style="width:120px;height:28px;font-size:11px" onchange="updPrevisaoField('+p.id+',\'cat\',this.value)">'+catOptsP+'</select></td>'+
+        '<td style="text-align:center;white-space:nowrap">Dia <input type="number" min="1" max="31" value="'+p.dia+'" style="width:44px;text-align:center;padding:0 4px" onchange="updPrevisaoField('+p.id+',\'dia\',this.value)"></td>'+
+        '<td><input type="number" step="0.01" value="'+p.valor.toFixed(2)+'" style="width:90px;text-align:right" onchange="updPrevisaoField('+p.id+',\'valor\',this.value)"></td>'+
+        '<td style="text-align:center">'+statusHtml+'</td>'+
+        '<td style="text-align:center;white-space:nowrap">'+actionHtml+' <button class="btn btn-sm btn-d" onclick="delPrevisao('+p.id+')"><i class="ti ti-trash"></i></button></td>'+
+      '</tr>';
+    }).join('')+'</tbody></table>':
+    '<div class="empty">Nenhuma previs&#227;o para '+mes+'.</div>';
 }
 function rTbl(){
   var fm=_lfM,ft=_lfT;
@@ -1565,6 +1722,211 @@ function rRent(){
     {label:'Margem',data:rows.map(function(r){return r[1].fat-r[1].cus}),backgroundColor:'#378add',borderRadius:3,barPercentage:.35}
   ]},options:bOpts()});
 }
+// ─── VAGAS EFFECT: pipeline de recrutamento, NF Effect, admitidos/garantia, dados da empresa ───
+const ETAPAS_RECRUT=[
+  {k:'divulgacao',l:'Divulgação'},
+  {k:'triagem',l:'Triagem'},
+  {k:'entr_effect',l:'Entr. Effect'},
+  {k:'ldb',l:'LDB'},
+  {k:'entr_gestor',l:'Entr. Gestor'},
+  {k:'teste',l:'Teste Prático'},
+  {k:'docs',l:'Documentos'},
+  {k:'admissao',l:'Admissão'},
+  {k:'garantia',l:'Garantia 45d'},
+  {k:'final',l:'Reposição/Conclusão'}
+];
+const SEED_VAGAS=[];
+let vagas=load('vagas',JSON.parse(JSON.stringify(SEED_VAGAS)));
+let nxtVagaId=Math.max.apply(null,[0].concat(vagas.map(function(v){return v.id})))+1;
+const SEED_CAND=[];
+let candidatos=load('candidatos',JSON.parse(JSON.stringify(SEED_CAND)));
+let nxtCandId=Math.max.apply(null,[0].concat(candidatos.map(function(c){return c.id})))+1;
+const SEED_NFE=[];
+let nfsEffect=load('nfsEffect',JSON.parse(JSON.stringify(SEED_NFE)));
+let nxtNfeId=Math.max.apply(null,[0].concat(nfsEffect.map(function(n){return n.id})))+1;
+const EMPRESA_DEFAULT={
+  nomeEmpresarial:'52.745.316 THIARA AVELINO FREIRE FERREIRA',
+  cnpj:'52.745.316/0001-06',
+  inscMunicipal:'',
+  telefone:'(27) 9792-5288',
+  email:'effect.recrutamento@gmail.com',
+  regime:'Optante - Microempreendedor Individual (MEI)',
+  endereco:'RUA PINHO, 95, COLINA DE LARANJEIRAS',
+  municipio:'Serra - ES',
+  cep:'29167-142'
+};
+let empresaInfo=load('empresaInfo',EMPRESA_DEFAULT);
+var _vagaSel=null;
+function fmtDataBR(iso){
+  if(!iso)return'&#8212;';
+  var p=iso.split('-');return p[2]+'/'+p[1]+'/'+p[0];
+}
+function showAddVaga(){var d=document.getElementById('add-vaga');d.style.display=d.style.display==='none'?'block':'none'}
+function addVaga(){
+  var titulo=document.getElementById('vg-titulo').value.trim(),cliente=document.getElementById('vg-cliente').value.trim();
+  if(!titulo)return;
+  var v={id:nxtVagaId++,titulo:titulo,cliente:cliente,status:'aberta',dataAbertura:new Date().toISOString().slice(0,10)};
+  vagas.push(v);save('vagas',vagas);
+  document.getElementById('vg-titulo').value='';document.getElementById('vg-cliente').value='';
+  _vagaSel=v.id;
+  rVagas();
+}
+function delVaga(id){
+  vagas=vagas.filter(function(v){return v.id!==id});
+  candidatos=candidatos.filter(function(c){return c.vagaId!==id});
+  save('vagas',vagas);save('candidatos',candidatos);
+  if(_vagaSel===id)_vagaSel=vagas.length?vagas[0].id:null;
+  rVagas();
+}
+function toggleVagaStatus(id){
+  var v=vagas.find(function(x){return x.id===id});if(!v)return;
+  v.status=v.status==='aberta'?'fechada':'aberta';
+  save('vagas',vagas);rVagas();
+}
+function setVagaSel(id){_vagaSel=parseInt(id)||null;rPipelineRecrut()}
+function rVagas(){
+  var sel=document.getElementById('vg-sel');
+  if(_vagaSel===null&&vagas.length)_vagaSel=vagas[0].id;
+  if(sel){
+    sel.innerHTML=vagas.length?vagas.map(function(v){return'<option value="'+v.id+'"'+(v.id===_vagaSel?' selected':'')+'>'+v.titulo+(v.cliente?' — '+v.cliente:'')+(v.status==='fechada'?' (fechada)':'')+'</option>'}).join(''):'<option value="">Nenhuma vaga cadastrada</option>';
+  }
+  document.getElementById('vaga-list').innerHTML=vagas.length?vagas.map(function(v){
+    var qtd=candidatos.filter(function(c){return c.vagaId===v.id}).length;
+    return'<div class="alert-item">'+
+      '<div class="alert-left"><div class="alert-icon" style="background:'+(v.status==='aberta'?'var(--grn)':'var(--tx3)')+'22;color:'+(v.status==='aberta'?'var(--grn)':'var(--tx3)')+'"><i class="ti ti-briefcase"></i></div>'+
+      '<div><div style="font-size:12px;font-weight:500">'+v.titulo+'</div><div style="font-size:10px;color:var(--tx2)">'+(v.cliente||'sem cliente')+' &middot; '+qtd+' candidato(s)</div></div></div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+      '<span class="pill '+(v.status==='aberta'?'p-ok':'p-pend')+'">'+(v.status==='aberta'?'Aberta':'Fechada')+'</span>'+
+      '<button class="btn btn-sm" onclick="toggleVagaStatus('+v.id+')">'+(v.status==='aberta'?'Fechar':'Reabrir')+'</button>'+
+      '<button class="btn btn-sm btn-d" onclick="delVaga('+v.id+')"><i class="ti ti-trash"></i></button></div></div>';
+  }).join(''):'<div class="empty">Nenhuma vaga cadastrada.</div>';
+  rPipelineRecrut();
+}
+function addCandidato(){
+  if(!_vagaSel){alert('Cadastre e selecione uma vaga primeiro.');return}
+  var nome=document.getElementById('cd-nome').value.trim(),tel=document.getElementById('cd-tel').value.trim();
+  if(!nome)return;
+  candidatos.push({id:nxtCandId++,vagaId:_vagaSel,nome:nome,tel:tel,etapa:'divulgacao',dataAdmissao:null});
+  save('candidatos',candidatos);
+  document.getElementById('cd-nome').value='';document.getElementById('cd-tel').value='';
+  rPipelineRecrut();rVagas();
+}
+function delCandidato(id){
+  candidatos=candidatos.filter(function(c){return c.id!==id});
+  save('candidatos',candidatos);rPipelineRecrut();rVagas();rAdmitidos();
+}
+function moveCandidato(id,novaEtapa){
+  var c=candidatos.find(function(x){return x.id===id});if(!c)return;
+  if(novaEtapa==='admissao'&&!c.dataAdmissao){
+    var vaga=vagas.find(function(v){return v.id===c.vagaId});
+    var valorStr=prompt('Candidato admitido! Qual o valor da NF a emitir para '+(vaga?vaga.cliente:'o cliente')+'?');
+    var valor=parseFloat((valorStr||'').replace(',','.'))||0;
+    c.dataAdmissao=new Date().toISOString().slice(0,10);
+    if(valor>0){
+      var venc=new Date();venc.setDate(venc.getDate()+7);
+      nfsEffect.push({id:nxtNfeId++,candId:c.id,candNome:c.nome,vagaId:c.vagaId,cliente:vaga?vaga.cliente:'',valor:valor,dataAdmissao:c.dataAdmissao,vencimento:venc.toISOString().slice(0,10),status:'pendente'});
+      save('nfsEffect',nfsEffect);
+    }
+  }
+  c.etapa=novaEtapa;
+  save('candidatos',candidatos);
+  rPipelineRecrut();rNfsEffect();rAdmitidos();
+}
+function rPipelineRecrut(){
+  var board=document.getElementById('recrut-board');if(!board)return;
+  if(!_vagaSel){board.innerHTML='<div class="empty">Cadastre uma vaga para come&#231;ar.</div>';return}
+  var candsVaga=candidatos.filter(function(c){return c.vagaId===_vagaSel});
+  board.innerHTML=ETAPAS_RECRUT.map(function(et,idx){
+    var items=candsVaga.filter(function(c){return c.etapa===et.k});
+    var cards=items.map(function(c){
+      var btns='';
+      if(idx>0)btns+='<button class="btn btn-sm" style="font-size:9px;height:18px;padding:0 5px" onclick="moveCandidato('+c.id+',\''+ETAPAS_RECRUT[idx-1].k+'\')" title="Voltar">&#8592;</button>';
+      if(idx<ETAPAS_RECRUT.length-1)btns+='<button class="btn btn-sm btn-p" style="font-size:9px;height:18px;padding:0 5px" onclick="moveCandidato('+c.id+',\''+ETAPAS_RECRUT[idx+1].k+'\')" title="Avan&#231;ar">&#8594;</button>';
+      return'<div class="pipe-card"><div class="pc-name">'+c.nome+'</div>'+(c.tel?'<div class="pc-val">'+c.tel+'</div>':'')+
+        '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+btns+
+        '<button class="btn btn-sm btn-d" style="height:18px;padding:0 5px" onclick="delCandidato('+c.id+')"><i class="ti ti-x"></i></button></div></div>';
+    }).join('');
+    return'<div class="recrut-col"><div class="pipe-col-title"><span>'+et.l+'</span><span style="font-size:10px">'+items.length+'</span></div>'+cards+'</div>';
+  }).join('');
+}
+function setNfeStatus(id,status){
+  var n=nfsEffect.find(function(n){return n.id===id});if(n){n.status=status;save('nfsEffect',nfsEffect);rNfsEffect()}
+}
+function delNfe(id){nfsEffect=nfsEffect.filter(function(n){return n.id!==id});save('nfsEffect',nfsEffect);rNfsEffect()}
+function rNfsEffect(){
+  var tbl=document.getElementById('nfe-tbl');if(!tbl)return;
+  var hoje=new Date().toISOString().slice(0,10);
+  var totV=nfsEffect.reduce(function(s,n){return s+n.valor},0);
+  var totPend=nfsEffect.filter(function(n){return n.status==='pendente'}).reduce(function(s,n){return s+n.valor},0);
+  var totAtraso=nfsEffect.filter(function(n){return n.status==='pendente'&&n.vencimento<hoje}).length;
+  var kpiEl=document.getElementById('nfe-kpis');
+  if(kpiEl)kpiEl.innerHTML=
+    '<div class="kpi"><div class="kpi-l">Total emitido</div><div class="kpi-v">'+fmtF(totV)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-l">A receber</div><div class="kpi-v" style="color:var(--amb)">'+fmtF(totPend)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-l">Atrasadas</div><div class="kpi-v" style="color:'+(totAtraso>0?'var(--red)':'var(--grn)')+'">'+totAtraso+'</div></div>';
+  if(!nfsEffect.length){tbl.innerHTML='<div class="empty">Nenhuma NF emitida ainda.</div>';return}
+  var sorted=nfsEffect.slice().sort(function(a,b){return b.id-a.id});
+  tbl.innerHTML='<table class="tbl"><thead><tr><th>Candidato</th><th>Cliente</th><th>Admiss&#227;o</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+
+    sorted.map(function(n){
+      var atrasada=n.status==='pendente'&&n.vencimento<hoje;
+      var statusPill=n.status==='pago'?'<span class="pill p-ok">Pago</span>':atrasada?'<span class="pill p-venc">Atrasada</span>':'<span class="pill p-pend">Pendente</span>';
+      return'<tr><td style="font-weight:500">'+n.candNome+'</td><td>'+(n.cliente||'&#8212;')+'</td>'+
+      '<td style="color:var(--tx2)">'+fmtDataBR(n.dataAdmissao)+'</td><td style="color:var(--tx2)">'+fmtDataBR(n.vencimento)+'</td>'+
+      '<td style="font-weight:500">'+fmtF(n.valor)+'</td><td>'+statusPill+'</td>'+
+      '<td style="display:flex;gap:4px">'+(n.status==='pendente'?'<button class="btn btn-sm btn-p" onclick="setNfeStatus('+n.id+',\'pago\')" title="Marcar como paga"><i class="ti ti-check"></i></button>':'<button class="btn btn-sm" onclick="setNfeStatus('+n.id+',\'pendente\')" title="Reabrir"><i class="ti ti-arrow-back-up"></i></button>')+
+      '<button class="btn btn-sm btn-d" onclick="delNfe('+n.id+')"><i class="ti ti-trash"></i></button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function rAdmitidos(){
+  var tbl=document.getElementById('admitidos-tbl');if(!tbl)return;
+  var admitidos=candidatos.filter(function(c){return c.dataAdmissao});
+  if(!admitidos.length){tbl.innerHTML='<div class="empty">Nenhum candidato admitido ainda.</div>';return}
+  var hoje=new Date();
+  var sorted=admitidos.slice().sort(function(a,b){return b.dataAdmissao.localeCompare(a.dataAdmissao)});
+  tbl.innerHTML='<table class="tbl"><thead><tr><th>Candidato</th><th>Vaga</th><th>Admiss&#227;o</th><th>Garantia</th><th>Status</th><th></th></tr></thead><tbody>'+
+    sorted.map(function(c){
+      var vaga=vagas.find(function(v){return v.id===c.vagaId});
+      var dAdm=new Date(c.dataAdmissao+'T00:00:00');
+      var diasPassados=Math.floor((hoje-dAdm)/86400000);
+      var diasRestantes=45-diasPassados;
+      var garantiaLabel,garantiaCor;
+      if(c.etapa==='final'){garantiaLabel=c.subStatus==='reposicao'?'Reposi&#231;&#227;o':'Finalizado';garantiaCor='var(--tx2)';}
+      else if(diasRestantes>0){garantiaLabel=diasRestantes+' dia(s) restantes';garantiaCor=diasRestantes<=7?'var(--amb)':'var(--grn)';}
+      else{garantiaLabel='Garantia cumprida';garantiaCor='var(--grn)';}
+      var acoes=c.etapa==='final'?'':
+        '<button class="btn btn-sm" onclick="finalizarAdmitido('+c.id+',\'reposicao\')" title="Marcar reposi&#231;&#227;o necess&#225;ria">Reposi&#231;&#227;o</button> '+
+        '<button class="btn btn-sm btn-p" onclick="finalizarAdmitido('+c.id+',\'concluido\')" title="Concluir garantia">Concluir</button>';
+      return'<tr><td style="font-weight:500">'+c.nome+'</td><td style="color:var(--tx2)">'+(vaga?vaga.titulo:'&#8212;')+'</td>'+
+      '<td style="color:var(--tx2)">'+fmtDataBR(c.dataAdmissao)+'</td>'+
+      '<td style="color:'+garantiaCor+';font-weight:500">'+garantiaLabel+'</td>'+
+      '<td>'+(c.subStatus==='reposicao'?'<span class="pill p-venc">Reposi&#231;&#227;o</span>':c.subStatus==='concluido'?'<span class="pill p-ok">Conclu&#237;do</span>':'<span class="pill p-pend">Em garantia</span>')+'</td>'+
+      '<td style="white-space:nowrap">'+acoes+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function finalizarAdmitido(id,subStatus){
+  var c=candidatos.find(function(x){return x.id===id});if(!c)return;
+  c.subStatus=subStatus;c.etapa='final';
+  save('candidatos',candidatos);
+  rAdmitidos();rPipelineRecrut();
+}
+function updEmpresa(field,val){
+  empresaInfo[field]=val;save('empresaInfo',empresaInfo);
+}
+function rEmpresa(){
+  var pairs=[['emp-nome','nomeEmpresarial'],['emp-cnpj','cnpj'],['emp-insc','inscMunicipal'],
+    ['emp-tel','telefone'],['emp-email','email'],['emp-regime','regime'],
+    ['emp-end','endereco'],['emp-mun','municipio'],['emp-cep','cep']];
+  pairs.forEach(function(p){
+    var el=document.getElementById(p[0]);
+    if(el)el.value=empresaInfo[p[1]]||'';
+  });
+}
+function rVagasTab(){
+  rVagas();
+  rNfsEffect();
+  rAdmitidos();
+  rEmpresa();
+}
 var chComp=null;
 function rComp(){
   var bm=calcBM();
@@ -1655,6 +2017,7 @@ function go(id,btn){
   try{if(id==='variaveis')rVariaveis();}catch(e){}
   try{if(id==='nf')rNF();}catch(e){}
   try{if(id==='clientes'){rPipe();rRent();}}catch(e){}
+  try{if(id==='vagas')rVagasTab();}catch(e){}
   try{if(id==='analise'){rComp();rSim();}}catch(e){}
   try{if(id==='metas')rMetas();}catch(e){}
 }
@@ -1665,6 +2028,7 @@ function refresh(){
   if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
   if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
   if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
+  if(document.getElementById('p-vagas').classList.contains('on'))tryRun(rVagasTab);
 }
 function tryRun(fn){try{fn()}catch(e){console.warn('init:',e)}}
 tryRun(updCats);
@@ -1676,6 +2040,7 @@ tryRun(rVariaveis);
 tryRun(rNF);
 tryRun(rPipe);
 tryRun(rRent);
+tryRun(rVagasTab);
 tryRun(rMetas);
 tryRun(rComp);
 tryRun(rSim);
