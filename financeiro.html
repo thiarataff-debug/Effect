@@ -456,7 +456,7 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
   </div>
   <div class="card">
     <div class="ct">Notas registradas
-      <select id="nf-fil" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="rNF()"><option value="all">Todos os status</option><option value="pendente">Pendentes</option><option value="pago">Pagas</option><option value="vencido">Vencidas</option></select>
+      <select id="nf-fil" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="rNF()"><option value="all">Todos os status</option><option value="pendente">Pendentes</option><option value="pago">Pagas</option><option value="atrasado">Atrasadas</option></select>
     </div>
     <div id="nf-tbl"></div>
   </div>
@@ -1629,22 +1629,32 @@ function rNF(){
   function keyComissao(vencStr) {
     var d=new Date(vencStr+'T00:00:00');
     var dia=d.getDate(), mes=d.getMonth(), ano=d.getFullYear(); // mes 0-indexed
-    var offset=dia<=15?0:1; // +1 mês ou +2 meses
+    var offset=dia<=15?0:1; // regra Thiara: venc 1-15 = comissão no mesmo mês; venc 16-31 = comissão no mês seguinte
     var comMes=mes+offset;
     var comAno=ano;
     if(comMes>11){comMes-=12;comAno++;}
     return comAno+'-'+String(comMes+1).padStart(2,'0');
   }
 
-  var semVenc=0;
+  // Todas as notas entram na previsão do mês (pendente, pago ou atrasado).
+  // "previsto" = ainda não confirmado (pendente/atrasado) · "confirmado" = já marcado como pago.
+  var semVencPrev=0, semVencConf=0;
   var mesMapa={};
-  notas.filter(function(n){return n.status!=='pago'}).forEach(function(n){
+  notas.forEach(function(n){
     var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
-    if(!n.parcelas.length){semVenc+=n.valor*0.03;return;}
+    var isPago=n.status==='pago';
+    if(!n.parcelas.length){
+      if(isPago) semVencConf+=n.valor*0.03; else semVencPrev+=n.valor*0.03;
+      return;
+    }
     n.parcelas.forEach(function(p){
-      if(!p.venc){semVenc+=comParc;return;}
+      if(!p.venc){
+        if(isPago) semVencConf+=comParc; else semVencPrev+=comParc;
+        return;
+      }
       var key=keyComissao(p.venc);
-      mesMapa[key]=(mesMapa[key]||0)+comParc;
+      if(!mesMapa[key]) mesMapa[key]={previsto:0,confirmado:0};
+      if(isPago) mesMapa[key].confirmado+=comParc; else mesMapa[key].previsto+=comParc;
     });
   });
 
@@ -1658,21 +1668,25 @@ function rNF(){
       var label='15 de '+MESES[m-1]+(y!==hoje.getFullYear()?' '+y:'');
       var isAtual=k===mesAtualKey;
       var isPast=k<mesAtualKey;
-      var com=mesMapa[k];
+      var v=mesMapa[k];
       var tagCor=isAtual?'var(--grn)':isPast?'var(--red)':'var(--tx)';
-      var badge=isAtual?'<span class="pill p-ok" style="margin-right:6px">Este mês</span>':isPast?'<span class="pill p-venc" style="margin-right:6px">Atrasado</span>':'';
+      var badge=isAtual?'<span class="pill p-ok" style="margin-right:6px">Este mês</span>':isPast?'<span class="pill p-venc" style="margin-right:6px">Mês passado</span>':'';
+      var valCell='';
+      if(v.confirmado>0) valCell+='<span style="color:var(--grn);font-weight:600">'+fmtF(v.confirmado)+' confirmado</span>';
+      if(v.previsto>0) valCell+=(valCell?' + ':'')+'<span style="color:'+tagCor+'">'+fmtF(v.previsto)+' previsto</span>';
       mesHtml+='<tr style="border-bottom:.5px solid var(--bd)">'+
         '<td style="padding:8px 4px;font-weight:'+(isPast||isAtual?'600':'400')+';color:'+tagCor+'">'+badge+label+'</td>'+
-        '<td style="padding:8px 4px;text-align:right;font-weight:500;color:'+tagCor+'">'+fmtF(com)+'</td>'+
+        '<td style="padding:8px 4px;text-align:right;font-weight:500">'+valCell+'</td>'+
         '</tr>';
     });
-    if(semVenc>0){
+    if(semVencPrev>0||semVencConf>0){
+      var semCell='';
+      if(semVencConf>0) semCell+='<span style="color:var(--grn);font-weight:600">'+fmtF(semVencConf)+' confirmado</span>';
+      if(semVencPrev>0) semCell+=(semCell?' + ':'')+'<span style="color:var(--amb)">'+fmtF(semVencPrev)+' previsto</span>';
       mesHtml+='<tr><td style="padding:8px 4px;color:var(--amb)"><i class="ti ti-clock" style="margin-right:4px"></i>Vencimento a definir</td>'+
-        '<td style="padding:8px 4px;text-align:right;color:var(--amb)">'+fmtF(semVenc)+'</td></tr>';
+        '<td style="padding:8px 4px;text-align:right">'+semCell+'</td></tr>';
     }
     mesHtml+='</table>';
-  } else if(semVenc>0){
-    mesHtml='<div style="padding:8px 4px;font-size:12px;color:var(--amb)"><i class="ti ti-clock" style="margin-right:4px"></i>'+fmtF(semVenc)+' — vencimentos pendentes de preenchimento</div>';
   } else {
     mesHtml='<div class="empty">Nenhuma comissão agendada.</div>';
   }
@@ -1682,11 +1696,11 @@ function rNF(){
     return'<tr><td style="font-weight:500">'+n.num+'</td><td>'+n.cli+'</td><td style="color:var(--tx2)">'+(n.emis||'&#8212;')+'</td>'+
     '<td style="font-weight:500">'+fmtF(n.valor)+'</td><td style="font-weight:500;color:var(--grn)">'+fmtF(n.valor*0.03)+'</td>'+
     '<td style="color:var(--tx2)">'+n.parcelas.length+'x '+fmtF(n.valor*0.03/n.parcelas.length)+'</td>'+
-    '<td><span class="pill p-'+(n.status==='pago'?'ok':n.status==='vencido'?'venc':'pend')+'">'+n.status+'</span></td>'+
+    '<td><span class="pill p-'+(n.status==='pago'?'ok':n.status==='atrasado'?'venc':'pend')+'">'+n.status+'</span></td>'+
     '<td style="display:flex;gap:4px"><select style="height:24px;font-size:11px;padding:0 5px;width:auto" onchange="setNFStatus('+n.id+',this.value)">'+
     '<option value="pendente"'+(n.status==='pendente'?' selected':'')+'>pendente</option>'+
     '<option value="pago"'+(n.status==='pago'?' selected':'')+'>pago</option>'+
-    '<option value="vencido"'+(n.status==='vencido'?' selected':'')+'>vencido</option></select>'+
+    '<option value="atrasado"'+(n.status==='atrasado'?' selected':'')+'>atrasado</option></select>'+
     '<button class="btn btn-sm btn-d" onclick="delNF('+n.id+')"><i class="ti ti-trash"></i></button></td></tr>';
   }).join('');
   document.getElementById('nf-tbl').innerHTML='<div style="max-height:300px;overflow-y:auto"><table class="tbl"><thead><tr><th>Nº NF</th><th>Cliente</th><th>Emissão</th><th>Valor NF</th><th>Comissão 3%</th><th>Parcelas</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
@@ -2048,33 +2062,4 @@ function refresh(){
   tryRun(rDash);
   if(document.getElementById('p-lanc').classList.contains('on')){tryRun(rTbl);tryRun(rSaldoAnterior);}
   if(document.getElementById('p-gastos').classList.contains('on'))tryRun(rGastos);
-  if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
-  if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
-  if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
-  if(document.getElementById('p-vagas').classList.contains('on'))tryRun(rVagasTab);
-}
-function tryRun(fn){try{fn()}catch(e){console.warn('init:',e)}}
-tryRun(updCats);
-tryRun(buildVencFields);
-tryRun(rDash);
-tryRun(rAlertas);
-tryRun(rFixas);
-tryRun(rVariaveis);
-tryRun(rNF);
-tryRun(rPipe);
-tryRun(rRent);
-tryRun(rVagasTab);
-tryRun(rMetas);
-tryRun(rComp);
-tryRun(rSim);
-tryRun(rVencStrip);
-tryRun(rSaldoAnterior);
-document.getElementById('upd').textContent=new Date().toLocaleDateString('pt-BR');
-window.addEventListener('load', function(){
-  tryRun(rDash);
-  tryRun(rAlertas);
-  tryRun(rScore);
-});
-</script>
-</body>
-</html>
+  if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAler
