@@ -1601,23 +1601,37 @@ function addNF(){
   var val=parseFloat(document.getElementById('nf-val').value)||0,emis=document.getElementById('nf-emis').value;
   var n=parseInt(document.getElementById('nf-parc').value);
   if(!num||!cli||!val){alert('Preencha: nº NF, cliente e valor.');return}
-  var parcelas=[];for(var i=0;i<n;i++){var d=document.getElementById('nv-'+i);parcelas.push({n:i+1,venc:d?d.value:'',val:val/n})}
-  notas.push({id:nxtNId++,num:num,cli:cli,valor:val,emis:emis,status:'pendente',parcelas:parcelas});save('notas',notas);
+  var parcelas=[];for(var i=0;i<n;i++){var d=document.getElementById('nv-'+i);parcelas.push({n:i+1,venc:d?d.value:'',val:val/n,status:'pendente'})}
+  notas.push({id:nxtNId++,num:num,cli:cli,valor:val,emis:emis,parcelas:parcelas});save('notas',notas);
   document.getElementById('nf-num').value='';document.getElementById('nf-cli').value='';document.getElementById('nf-val').value='';
   rNF();
 }
-function setNFStatus(id,st){var n=notas.find(function(n){return n.id===id});if(n){n.status=st;save('notas',notas);rNF()}}
+function setNFStatus(id,st){var n=notas.find(function(n){return n.id===id});if(n){n.status=st;n.parcelas.forEach(function(p){p.status=st});save('notas',notas);rNF()}}
+function setParcelaStatus(nid,idx,st){
+  var n=notas.find(function(n){return n.id===nid});if(!n)return;
+  var p=n.parcelas[idx];if(!p)return;
+  p.status=st;save('notas',notas);rNF();
+}
 function delNF(id){notas=notas.filter(function(n){return n.id!==id});save('notas',notas);rNF()}
 function rNF(){
+  // Migração: parcelas antigas sem status próprio herdam o status da NF (ou 'pendente').
+  notas.forEach(function(n){
+    n.parcelas.forEach(function(p){ if(!p.status) p.status = n.status || 'pendente'; });
+  });
   var fil=document.getElementById('nf-fil').value;
-  var f=fil==='all'?notas:notas.filter(function(n){return n.status===fil});
   var totV=notas.reduce(function(s,n){return s+n.valor},0);
   var totC=notas.reduce(function(s,n){return s+n.valor*0.03},0);
-  var totP=notas.filter(function(n){return n.status==='pendente'}).reduce(function(s,n){return s+n.valor*0.03},0);
+  var totP=0,parcelasAbertas=0;
+  notas.forEach(function(n){
+    var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
+    n.parcelas.forEach(function(p){
+      if(p.status!=='pago'){totP+=comParc;parcelasAbertas++;}
+    });
+  });
   document.getElementById('nf-kpis').innerHTML=
     '<div class="kpi"><div class="kpi-l">Total NFs</div><div class="kpi-v">'+notas.length+'</div><div class="kpi-s">'+fmtF(totV)+'</div></div>'+
     '<div class="kpi"><div class="kpi-l">Comissão total</div><div class="kpi-v" style="color:var(--grn)">'+fmtF(totC)+'</div><div class="kpi-s">3% de '+fmtF(totV)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb)">'+fmtF(totP)+'</div><div class="kpi-s">'+notas.filter(function(n){return n.status==='pendente'}).length+' NFs abertas</div></div>';
+    '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb)">'+fmtF(totP)+'</div><div class="kpi-s">'+parcelasAbertas+' parcela(s) em aberto</div></div>';
   // ── Comissão por mês ──────────────────────────────
   // Regra: venc dia 1-15 → comissão no mês seguinte (M+1)
   //        venc dia 16-31 → comissão em dois meses (M+2)
@@ -1642,12 +1656,13 @@ function rNF(){
   var mesMapa={};
   notas.forEach(function(n){
     var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
-    var isPago=n.status==='pago';
     if(!n.parcelas.length){
-      if(isPago) semVencConf+=n.valor*0.03; else semVencPrev+=n.valor*0.03;
+      var isPagoNF=n.status==='pago';
+      if(isPagoNF) semVencConf+=n.valor*0.03; else semVencPrev+=n.valor*0.03;
       return;
     }
     n.parcelas.forEach(function(p){
+      var isPago=p.status==='pago';
       if(!p.venc){
         if(isPago) semVencConf+=comParc; else semVencPrev+=comParc;
         return;
@@ -1691,19 +1706,36 @@ function rNF(){
     mesHtml='<div class="empty">Nenhuma comissão agendada.</div>';
   }
   document.getElementById('nf-com-meses').innerHTML=mesHtml;
-  if(!f.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
-  var rows=f.map(function(n){
-    return'<tr><td style="font-weight:500">'+n.num+'</td><td>'+n.cli+'</td><td style="color:var(--tx2)">'+(n.emis||'&#8212;')+'</td>'+
-    '<td style="font-weight:500">'+fmtF(n.valor)+'</td><td style="font-weight:500;color:var(--grn)">'+fmtF(n.valor*0.03)+'</td>'+
-    '<td style="color:var(--tx2)">'+n.parcelas.length+'x '+fmtF(n.valor*0.03/n.parcelas.length)+'</td>'+
-    '<td><span class="pill p-'+(n.status==='pago'?'ok':n.status==='atrasado'?'venc':'pend')+'">'+n.status+'</span></td>'+
-    '<td style="display:flex;gap:4px"><select style="height:24px;font-size:11px;padding:0 5px;width:auto" onchange="setNFStatus('+n.id+',this.value)">'+
-    '<option value="pendente"'+(n.status==='pendente'?' selected':'')+'>pendente</option>'+
-    '<option value="pago"'+(n.status==='pago'?' selected':'')+'>pago</option>'+
-    '<option value="atrasado"'+(n.status==='atrasado'?' selected':'')+'>atrasado</option></select>'+
-    '<button class="btn btn-sm btn-d" onclick="delNF('+n.id+')"><i class="ti ti-trash"></i></button></td></tr>';
-  }).join('');
-  document.getElementById('nf-tbl').innerHTML='<div style="max-height:300px;overflow-y:auto"><table class="tbl"><thead><tr><th>Nº NF</th><th>Cliente</th><th>Emissão</th><th>Valor NF</th><th>Comissão 3%</th><th>Parcelas</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  if(!notas.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
+  var rowsHtml='',any=false;
+  notas.forEach(function(n){
+    var comTotal=n.valor*0.03;
+    var comParc=comTotal/Math.max(n.parcelas.length,1);
+    var idxsFiltrados=[];
+    n.parcelas.forEach(function(p,idx){ if(fil==='all'||p.status===fil) idxsFiltrados.push(idx); });
+    if(!idxsFiltrados.length) return;
+    any=true;
+    rowsHtml+='<tr style="background:var(--bg2)"><td colspan="6" style="padding:8px 9px;font-weight:600">'+
+      'NF '+n.num+' &middot; '+n.cli+' &middot; Emiss&#227;o '+(n.emis||'&#8212;')+
+      ' &middot; Valor '+fmtF(n.valor)+' &middot; Comiss&#227;o total '+fmtF(comTotal)+
+      '</td><td style="text-align:right"><button class="btn btn-sm btn-d" onclick="delNF('+n.id+')" title="Excluir NF inteira"><i class="ti ti-trash"></i></button></td></tr>';
+    idxsFiltrados.forEach(function(idx){
+      var p=n.parcelas[idx];
+      rowsHtml+='<tr>'+
+        '<td colspan="2" style="color:var(--tx2);padding-left:20px">Parcela '+p.n+'/'+n.parcelas.length+'</td>'+
+        '<td style="color:var(--tx2)">'+(p.venc?fmtDataBR(p.venc):'&#8212;')+'</td>'+
+        '<td style="font-weight:500">'+fmtF(p.val)+'</td>'+
+        '<td style="font-weight:500;color:var(--grn)">'+fmtF(comParc)+'</td>'+
+        '<td><span class="pill p-'+(p.status==='pago'?'ok':p.status==='atrasado'?'venc':'pend')+'">'+p.status+'</span></td>'+
+        '<td><select style="height:24px;font-size:11px;padding:0 5px;width:auto" onchange="setParcelaStatus('+n.id+','+idx+',this.value)">'+
+        '<option value="pendente"'+(p.status==='pendente'?' selected':'')+'>pendente</option>'+
+        '<option value="pago"'+(p.status==='pago'?' selected':'')+'>pago</option>'+
+        '<option value="atrasado"'+(p.status==='atrasado'?' selected':'')+'>atrasado</option></select></td>'+
+        '</tr>';
+    });
+  });
+  if(!any){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma parcela para este filtro.</div>';return}
+  document.getElementById('nf-tbl').innerHTML='<div style="max-height:340px;overflow-y:auto"><table class="tbl"><thead><tr><th colspan="2">Parcela</th><th>Vencimento</th><th>Valor</th><th>Comissão</th><th>Status</th><th>Alterar</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
 }
 function showAddPipe(){var d=document.getElementById('add-pipe');d.style.display=d.style.display==='none'?'block':'none'}
 function addPipe(){
