@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meu App — Thiara</title>
+<title>PSI — Thiara</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -490,14 +490,13 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </head>
 <body>
 <header>
-  <div class="hlogo">🧠 <span>Meu</span> App</div>
+  <div class="hlogo">🧠 <span>PSI</span></div>
   <a href="/inbox" class="hback">← Lia</a>
   <div class="hdate" id="hdate"></div>
 </header>
 
 <div class="tabs-bar">
   <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
-  <button class="tab" onclick="irAba('notas',this)">🗒️ Notas</button>
 </div>
 
 <!-- AGENDA PESSOAL (agora fora da barra do Meu App — acessada direto pelo Inbox,
@@ -3134,7 +3133,7 @@ function agCicloIcone(tipo){
 function agVoltar(){ irAba('agenda', null); }
 function agAbrirPagina(aba){
   const tabs=document.querySelectorAll('.tab');
-  const map={psi:0,notas:1};
+  const map={psi:0};
   irAba(aba, map[aba]!==undefined ? tabs[map[aba]] : null);
 }
 
@@ -3858,7 +3857,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const viewParam = params.get('view');
   if (viewParam) {
     const tabs = document.querySelectorAll('.tab');
-    const map = {psi:0, notas:1};
+    const map = {psi:0};
     setTimeout(() => irAba(viewParam, map[viewParam]!==undefined ? tabs[map[viewParam]] : null), 50);
   }
   if (params.get('embed') === '1') {
