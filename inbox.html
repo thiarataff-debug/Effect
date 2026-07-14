@@ -640,8 +640,6 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
     <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda</button>
-    <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🖥️ Meu App</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <!-- STATUS GEMINI — clicável para toggle -->
@@ -5416,6 +5414,20 @@ async function toggleGemini() {
 
 // Carregar status da IA ao abrir o inbox
 document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusIA, 2000); });
+
+// ── DEEP LINK: /inbox?view=agenda abre direto na Agenda (usado pelo iframe do Meu App) ──
+// Também aceita ?embed=1 para esconder o cabeçalho e a barra lateral de navegação,
+// deixando só a Agenda visível quando embutida dentro da Agenda Pessoal.
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const viewParam = params.get('view');
+  if (viewParam) setTimeout(() => mostrarView(viewParam), 900);
+  if (params.get('embed') === '1') {
+    const style = document.createElement('style');
+    style.textContent = 'header{display:none!important} .agenda-view{padding-top:0!important}';
+    document.head.appendChild(style);
+  }
+});
 
 // ── BACKUP / RESTAURAÇÃO MANUAL ───────────────────────────────────────────────
 function exportarDados() {
