@@ -496,17 +496,38 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </header>
 
 <div class="tabs-bar">
-  <button class="tab" onclick="irAba('psi',this)">🧠 Psicológico</button>
-  <button class="tab active" onclick="irAba('agenda',this)">📅 Agenda Pessoal</button>
+  <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab" onclick="irAba('notas',this)">🗒️ Notas</button>
 </div>
 
-<!-- AGENDA PESSOAL (fundida com a Agenda de Entrevistas do Inbox — uma agenda só) -->
-<div class="page active" id="page-agenda">
+<!-- AGENDA PESSOAL (agora fora da barra do Meu App — acessada direto pelo Inbox,
+     em /meu-app?view=agenda&embed=1. A agenda de entrevistas voltou a ser só no chat,
+     via o botão "Agendar Nova Entrevista" de cada candidato. -->
+<div class="page" id="page-agenda">
   <div class="ag-header">
     <div class="ag-header-title">📅 Agenda Pessoal</div>
-    <div class="ag-header-sub">Uma agenda só: Nova Entrevista, Novo Lembrete, Horários, Faltosos &amp; Comparecimentos e seus compromissos pessoais — tudo aqui embaixo. <a href="/inbox?view=agenda" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">Abrir em tela cheia ↗</a></div>
+    <div class="ag-header-sub">Todos os seus compromissos num só lugar — inclui as entrevistas marcadas pela Lia (🤝) + seus compromissos pessoais.</div>
   </div>
+  <div class="card" style="padding:10px 14px">
+    <div class="ag-toolbar">
+      <div class="ag-tb-left">
+        <button class="ag-nav-btn" onclick="agNav(-1)" title="Anterior">‹</button>
+        <button class="ag-hoje-btn" onclick="agHoje()">Hoje</button>
+        <button class="ag-nav-btn" onclick="agNav(1)" title="Próximo">›</button>
+        <div class="ag-periodo" id="ag-periodo">—</div>
+      </div>
+      <div class="ag-tb-right">
+        <div class="ag-switch" id="ag-switch">
+          <button class="ag-switch-btn" data-v="dia" onclick="agSetView('dia')">Dia</button>
+          <button class="ag-switch-btn" data-v="semana" onclick="agSetView('semana')">Semana</button>
+          <button class="ag-switch-btn" data-v="mes" onclick="agSetView('mes')">Mês</button>
+          <button class="ag-switch-btn" data-v="ano" onclick="agSetView('ano')">Ano</button>
+        </div>
+        <button class="task-add-btn" style="background:var(--green);color:var(--navy)" onclick="agAbrirModal()">+ Compromisso</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="ag-status-card" style="display:none"></div>
 
   <div class="card" id="ag-hub-card">
     <div class="card-title">🧭 Atalhos rápidos</div>
@@ -521,8 +542,8 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
   </div>
 
-  <div class="card" id="ag-iframe-card" style="padding:0;overflow:hidden">
-    <iframe src="/inbox?view=agenda&embed=1" id="ag-iframe" style="width:100%;height:900px;border:none;display:block;background:#f5f7fa"></iframe>
+  <div class="card" id="ag-main-card">
+    <div id="ag-main">Carregando agenda…</div>
   </div>
 </div>
 
@@ -933,7 +954,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 </div><!-- /page-ciclo -->
 
-<div class="page" id="page-psi">
+<div class="page active" id="page-psi">
   <div class="psi-nav">
     <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
@@ -3110,10 +3131,10 @@ function agCicloIcone(tipo){
   return '';
 }
 
-function agVoltar(){ irAba('agenda', document.querySelectorAll('.tab')[1]); }
+function agVoltar(){ irAba('agenda', null); }
 function agAbrirPagina(aba){
   const tabs=document.querySelectorAll('.tab');
-  const map={psi:0,agenda:1,notas:2};
+  const map={psi:0,notas:1};
   irAba(aba, map[aba]!==undefined ? tabs[map[aba]] : null);
 }
 
@@ -3166,11 +3187,9 @@ function agToggleHubTask(id){
 }
 
 async function agInit(){
-  // A grade Dia/Semana/Mês/Ano agora vive dentro do iframe (Agenda fundida com o Inbox).
-  // Aqui só precisamos manter o hub de atalhos (Ciclo/Registro/Saúde/Tarefas) atualizado.
   agRenderHub();
-  const ifr=document.getElementById('ag-iframe');
-  if(ifr && !ifr.dataset.loaded){ ifr.dataset.loaded='1'; }
+  agBindSwitch();
+  await agRender();
 }
 function agBindSwitch(){ document.querySelectorAll('.ag-switch-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===agView)); }
 function agSetView(v){ agView=v; localStorage.setItem('ag-view',v); agBindSwitch(); agRender(); }
@@ -3832,6 +3851,22 @@ cicloInit();
 seiRender();
 if(typeof agInit==='function') agInit();
 if(typeof notasRender==='function'){ notasRender(); notasCheckLembretes(); }
+
+// ── Deep-link: /meu-app?view=agenda&embed=1 (usado pelo Inbox para embutir a Agenda Pessoal) ──
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const viewParam = params.get('view');
+  if (viewParam) {
+    const tabs = document.querySelectorAll('.tab');
+    const map = {psi:0, notas:1};
+    setTimeout(() => irAba(viewParam, map[viewParam]!==undefined ? tabs[map[viewParam]] : null), 50);
+  }
+  if (params.get('embed') === '1') {
+    const style = document.createElement('style');
+    style.textContent = '.tabs-bar{display:none!important} header{display:none!important} body{padding-top:0!important}';
+    document.head.appendChild(style);
+  }
+});
 // PSI: activate "hoje" section by default
 document.addEventListener('DOMContentLoaded', ()=>{
   const psiHoje = document.getElementById('sec-hoje');
