@@ -3844,21 +3844,24 @@ const hdateEl = document.getElementById('hdate');
 if(hdateEl) hdateEl.textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 const lembreteEl = document.getElementById('lembrete-gentil');
 if(lembreteEl) lembreteEl.textContent = '"'+ lembretes[Math.floor(Math.random()*lembretes.length)]+'"';
-renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedChecklist();
-cicloInit();
+function _initSeguro(nome, fn){ try{ fn(); }catch(e){ console.error('Erro no init de '+nome+':', e); } }
+_initSeguro('tarefas/matriz/rem/agua', ()=>{ renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiRenderMedStock(); psiRenderMedChecklist(); });
+_initSeguro('ciclo', ()=>{ cicloInit(); });
+_initSeguro('sei', ()=>{ seiRender(); });
+_initSeguro('agenda', ()=>{ if(typeof agInit==='function') agInit(); });
+_initSeguro('notas', ()=>{ if(typeof notasRender==='function'){ notasRender(); notasCheckLembretes(); } });
 
-seiRender();
-if(typeof agInit==='function') agInit();
-if(typeof notasRender==='function'){ notasRender(); notasCheckLembretes(); }
-
-// ── Deep-link: /meu-app?view=agenda&embed=1 (usado pelo Inbox para embutir a Agenda Pessoal) ──
-document.addEventListener('DOMContentLoaded', () => {
+// ── Deep-link: /meu-app?view=agenda&embed=1 ou ?view=notas&embed=1 (usado pelo Inbox
+//    para embutir a Agenda Pessoal e as Notas como páginas próprias). Roda de forma
+//    síncrona (sem depender de DOMContentLoaded/setTimeout) pois o DOM já está pronto
+//    aqui — o <script> fica no fim do body. Cada etapa tem try/catch pra nunca travar
+//    o resto da inicialização caso uma falhe. ──
+_initSeguro('deep-link view/embed', () => {
   const params = new URLSearchParams(window.location.search);
   const viewParam = params.get('view');
-  if (viewParam) {
-    const tabs = document.querySelectorAll('.tab');
-    const map = {psi:0};
-    setTimeout(() => irAba(viewParam, map[viewParam]!==undefined ? tabs[map[viewParam]] : null), 50);
+  if (viewParam && document.getElementById('page-'+viewParam)) {
+    const onlyTab = document.querySelector('.tab');
+    irAba(viewParam, viewParam==='psi' ? onlyTab : null);
   }
   if (params.get('embed') === '1') {
     const style = document.createElement('style');
