@@ -639,9 +639,10 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
   <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
     <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
-    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda</button>
+    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda Pessoal</button>
+    <button class="rbtn" onclick="mostrarView('notas')" id="nav-notas">🗒️ Notas</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🖥️ Meu App</button>
+    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🧠 PSI</button>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <!-- STATUS GEMINI — clicável para toggle -->
@@ -718,7 +719,7 @@ header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;align-it
         <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
         <button class="hmais-btn" style="color:#6366f1" onclick="mostrarView('ats');fecharHmais()">📑 ATS Viewer</button>
         <button class="hmais-btn" style="color:#b45309" onclick="mostrarView('financeiro');fecharHmais()">💰 Financeiro</button>
-        <button class="hmais-btn" style="color:#0f766e" onclick="mostrarView('meu-app');fecharHmais()">🖥️ Meu App</button>
+        <button class="hmais-btn" style="color:#0f766e" onclick="mostrarView('meu-app');fecharHmais()">🧠 PSI</button>
       </div>
     </div>
   </div>
@@ -1275,6 +1276,9 @@ font-family:'Montserrat',sans-serif
 </div>
 <div id="view-agenda" style="display:none;flex:1;flex-direction:column;overflow:hidden">
   <iframe src="/meu-app?view=agenda&embed=1" style="width:100%;height:100%;border:none;flex:1" id="iframe-agenda-pessoal"></iframe>
+</div>
+<div id="view-notas" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+  <iframe src="/meu-app?view=notas&embed=1" style="width:100%;height:100%;border:none;flex:1" id="iframe-notas"></iframe>
 </div>
 
 <!-- VIEW: AGENDA (antiga — Agenda de Entrevistas operacional, aposentada da navegação principal.
@@ -2209,6 +2213,8 @@ function mostrarView(v){
   document.getElementById('view-entrevistas').style.display=v==='entrevistas'?'flex':'none';
   const agendaEl=document.getElementById('view-agenda');
   if(agendaEl)agendaEl.style.display=v==='agenda'?'flex':'none';
+  const notasEl=document.getElementById('view-notas');
+  if(notasEl)notasEl.style.display=v==='notas'?'flex':'none';
   const meuAppEl=document.getElementById('view-meu-app');
   if(meuAppEl)meuAppEl.style.display=v==='meu-app'?'flex':'none';
   // BUG CORRIGIDO: Financeiro, Dashboard e ATS Viewer nunca eram exibidos aqui —
@@ -2224,6 +2230,8 @@ function mostrarView(v){
   const ne=document.getElementById('nav-entrevistas');if(ne)ne.style.background=v==='entrevistas'?'rgba(255,255,255,.22)':'';
   const navAg=document.getElementById('nav-agenda');
   if(navAg)navAg.style.background=v==='agenda'?'rgba(255,255,255,.22)':'';
+  const navNotas=document.getElementById('nav-notas');
+  if(navNotas)navNotas.style.background=v==='notas'?'rgba(255,255,255,.22)':'';
   const navConv=document.getElementById('nav-conversas');
   if(navConv)navConv.style.background=v==='inbox'?'rgba(255,255,255,.22)':'';
   const navMeuApp=document.getElementById('nav-meuapp');
