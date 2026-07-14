@@ -322,6 +322,80 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .chip-green{background:#dcfce7;color:#15803d;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;}
 .chip-yellow{background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;}
 .chip-red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;}
+
+/* ══ AGENDA PESSOAL ══ */
+.ag-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.ag-tb-left{display:flex;align-items:center;gap:8px}
+.ag-tb-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ag-nav-btn{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-size:15px;font-weight:700;cursor:pointer;color:var(--navy)}
+.ag-nav-btn:hover{background:var(--bg)}
+.ag-hoje-btn{padding:6px 12px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--navy)}
+.ag-hoje-btn:hover{background:var(--bg)}
+.ag-periodo{font-size:13px;font-weight:800;color:var(--navy);margin-left:6px;text-transform:capitalize}
+.ag-switch{display:flex;background:var(--bg);border-radius:8px;padding:3px;gap:2px}
+.ag-switch-btn{padding:6px 12px;border:none;background:none;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)}
+.ag-switch-btn.active{background:var(--navy);color:#fff}
+#ag-status-card{font-size:12px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5}
+
+/* Dia */
+.ag-dia-list{display:flex;flex-direction:column;gap:6px}
+.ag-dia-slot{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:8px}
+.ag-dia-hora{width:48px;flex-shrink:0;font-size:11px;font-weight:700;color:var(--muted);padding-top:6px}
+.ag-dia-eventos{flex:1;display:flex;flex-direction:column;gap:4px}
+.ag-dia-vazio{font-size:12px;color:var(--muted);text-align:center;padding:30px 0}
+
+/* Evento chip (usado em dia/semana/mes) */
+.ag-evt{border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;border-left:4px solid;transition:filter .1s;line-height:1.35}
+.ag-evt:hover{filter:brightness(.96)}
+.ag-evt .ag-evt-hora{font-weight:800;opacity:.8;font-size:10px}
+.ag-evt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;flex-shrink:0}
+
+/* Semana */
+.ag-semana-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.ag-semana-col{min-height:220px;background:var(--bg);border-radius:9px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.ag-semana-col.hoje{background:#e8f5ee;border:1.5px solid var(--green)}
+.ag-semana-head{font-size:10px;font-weight:800;color:var(--muted);text-align:center;padding-bottom:4px;text-transform:uppercase}
+.ag-semana-head b{display:block;font-size:14px;color:var(--navy)}
+.ag-semana-col.hoje .ag-semana-head b{color:#16a34a}
+
+/* Mês */
+.ag-mes-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.ag-mes-dow{font-size:9px;font-weight:800;color:var(--muted);text-align:center;text-transform:uppercase;padding-bottom:4px}
+.ag-mes-cell{min-height:76px;background:var(--bg);border-radius:8px;padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:all .1s}
+.ag-mes-cell:hover{background:#eef1f5}
+.ag-mes-cell.outro-mes{opacity:.35}
+.ag-mes-cell.hoje{background:#e8f5ee;border:1.5px solid var(--green)}
+.ag-mes-num{font-size:11px;font-weight:800;color:var(--navy)}
+.ag-mes-dots{display:flex;flex-wrap:wrap;gap:2px}
+.ag-mes-mais{font-size:9px;color:var(--muted);font-weight:700}
+
+/* Ano */
+.ag-ano-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ag-ano-mes{background:var(--bg);border-radius:10px;padding:8px;cursor:pointer;transition:all .1s}
+.ag-ano-mes:hover{background:#eef1f5}
+.ag-ano-mes-title{font-size:11px;font-weight:800;color:var(--navy);text-align:center;margin-bottom:6px;text-transform:capitalize}
+.ag-ano-mini{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.ag-ano-mini div{font-size:8px;text-align:center;padding:2px 0;color:var(--muted)}
+.ag-ano-mini div.tem-evento{background:var(--green);color:var(--navy);border-radius:3px;font-weight:800}
+.ag-ano-mini div.hoje-ano{border:1px solid var(--navy);border-radius:3px;font-weight:800}
+.ag-ano-mini div.outro-mes{opacity:0}
+@media (max-width:640px){
+  .ag-ano-grid{grid-template-columns:repeat(2,1fr)}
+  .ag-semana-grid{grid-template-columns:repeat(7,minmax(64px,1fr));overflow-x:auto;padding-bottom:4px}
+}
+
+/* Modal */
+.ag-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
+.ag-modal-overlay.show{display:flex}
+.ag-modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
+.ag-modal-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px}
+.ag-modal-row{display:flex;gap:8px}
+.ag-modal-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
+.ag-btn-cancel{padding:9px 16px;background:#f3f4f6;color:var(--muted);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
+.ag-btn-save{padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
+.ag-btn-del{padding:9px 14px;background:#fee2e2;color:#991b1b;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
+.modal-field{margin-bottom:10px}
+.modal-label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -334,9 +408,94 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <div class="tabs-bar">
   <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
+  <button class="tab" onclick="irAba('agenda',this)">📅 Agenda</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
   <button class="tab" onclick="irAba('ciclo',this)">🌸 Ciclo</button>
   <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
+</div>
+
+<!-- AGENDA PESSOAL -->
+<div class="page" id="page-agenda">
+  <div class="card" style="padding:10px 14px">
+    <div class="ag-toolbar">
+      <div class="ag-tb-left">
+        <button class="ag-nav-btn" onclick="agNav(-1)" title="Anterior">‹</button>
+        <button class="ag-hoje-btn" onclick="agHoje()">Hoje</button>
+        <button class="ag-nav-btn" onclick="agNav(1)" title="Próximo">›</button>
+        <div class="ag-periodo" id="ag-periodo">—</div>
+      </div>
+      <div class="ag-tb-right">
+        <div class="ag-switch" id="ag-switch">
+          <button class="ag-switch-btn" data-v="dia" onclick="agSetView('dia')">Dia</button>
+          <button class="ag-switch-btn" data-v="semana" onclick="agSetView('semana')">Semana</button>
+          <button class="ag-switch-btn" data-v="mes" onclick="agSetView('mes')">Mês</button>
+          <button class="ag-switch-btn" data-v="ano" onclick="agSetView('ano')">Ano</button>
+        </div>
+        <button class="task-add-btn" style="background:var(--green);color:var(--navy)" onclick="agAbrirModal()">+ Compromisso</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="ag-status-card" style="display:none"></div>
+  <div class="card" id="ag-main-card">
+    <div id="ag-main">Carregando agenda…</div>
+  </div>
+</div>
+
+<!-- MODAL: COMPROMISSO PESSOAL -->
+<div class="ag-modal-overlay" id="ag-modal-overlay" onclick="if(event.target===this)agFecharModal()">
+  <div class="ag-modal">
+    <div class="ag-modal-title" id="ag-modal-title">📅 Novo compromisso</div>
+    <input type="hidden" id="ag-f-id">
+    <div class="modal-field">
+      <label class="modal-label">Título</label>
+      <input class="task-input" id="ag-f-titulo" placeholder="Ex: Consulta médica, Reunião, Aniversário...">
+    </div>
+    <div class="ag-modal-row">
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label">Data</label>
+        <input class="task-input" type="date" id="ag-f-data">
+      </div>
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label">Categoria</label>
+        <select class="task-input" id="ag-f-categoria">
+          <option value="pessoal">🟣 Pessoal</option>
+          <option value="saude">🔴 Saúde</option>
+          <option value="trabalho">🔵 Trabalho</option>
+          <option value="financeiro">🟢 Financeiro</option>
+          <option value="familia">🌸 Família</option>
+          <option value="lembrete">🟡 Lembrete</option>
+        </select>
+      </div>
+    </div>
+    <div class="ag-modal-row" id="ag-f-horas-wrap">
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label">Hora início</label>
+        <input class="task-input" type="time" id="ag-f-hora-inicio">
+      </div>
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label">Hora fim (opcional)</label>
+        <input class="task-input" type="time" id="ag-f-hora-fim">
+      </div>
+    </div>
+    <div class="modal-field" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <input type="checkbox" id="ag-f-dia-todo" onchange="document.getElementById('ag-f-horas-wrap').style.display=this.checked?'none':'flex'" style="width:16px;height:16px">
+      <label for="ag-f-dia-todo" style="font-size:12px;font-weight:600">O dia todo</label>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Local (opcional)</label>
+      <input class="task-input" id="ag-f-local" placeholder="Endereço ou link">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Notas (opcional)</label>
+      <textarea class="task-input" id="ag-f-notas" rows="2" style="resize:vertical"></textarea>
+    </div>
+    <div class="ag-modal-actions">
+      <button class="ag-btn-del" id="ag-f-del-btn" onclick="agExcluirAtual()" style="display:none">🗑️ Excluir</button>
+      <div style="flex:1"></div>
+      <button class="ag-btn-cancel" onclick="agFecharModal()">Cancelar</button>
+      <button class="ag-btn-save" onclick="agSalvar()">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- FOCO -->
@@ -1132,7 +1291,7 @@ function salvarEx(){
   document.getElementById('ex-tipo-academia').value='';
   document.getElementById('ex-obs').value='';
 }
-function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}if(aba==='agenda'&&typeof agInit==='function')agInit();}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 
@@ -2740,6 +2899,268 @@ function downloadFile(filename, mimeType, content) {
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
+
+// ═══════════════════════ AGENDA PESSOAL ═══════════════════════
+// Lê e escreve direto no Google Calendar real (via /api/agenda-pessoal/*),
+// o mesmo calendário que a Lia usa para marcar entrevistas — tudo num só lugar.
+let agView = localStorage.getItem('ag-view') || 'semana';
+let agData = new Date();
+let agEventos = [];
+let agRangeCache = { inicio: null, fim: null };
+
+const AG_DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
+const AG_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const AG_CATEGORIA_COR = { pessoal:'#8b5cf6', saude:'#ef4444', trabalho:'#0891b2', financeiro:'#16a34a', familia:'#f472b6', lembrete:'#eab308', entrevista:'#2563eb', outro:'#64748b' };
+const AG_COR_TO_CAT = { '9':'pessoal', '11':'saude', '7':'trabalho', '10':'financeiro', '5':'lembrete', '4':'familia' };
+
+function agISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function agParseISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
+function agEsc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function agCategoriaDoEvento(e){
+  if(e.tituloOriginal && e.tituloOriginal.startsWith('🤝')) return 'entrevista';
+  if(e.cor && AG_COR_TO_CAT[e.cor]) return AG_COR_TO_CAT[e.cor];
+  if(e.origem==='pessoal') return 'pessoal';
+  return 'outro';
+}
+function agEventoNoDia(e, iso){
+  if(e.diaTodo) return e.inicio<=iso && iso<e.fim;
+  return (e.inicio||'').slice(0,10)===iso;
+}
+
+async function agInit(){ agBindSwitch(); await agRender(); }
+function agBindSwitch(){ document.querySelectorAll('.ag-switch-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===agView)); }
+function agSetView(v){ agView=v; localStorage.setItem('ag-view',v); agBindSwitch(); agRender(); }
+function agNav(dir){
+  const d=new Date(agData);
+  if(agView==='dia') d.setDate(d.getDate()+dir);
+  else if(agView==='semana') d.setDate(d.getDate()+dir*7);
+  else if(agView==='mes') d.setMonth(d.getMonth()+dir);
+  else if(agView==='ano') d.setFullYear(d.getFullYear()+dir);
+  agData=d; agRender();
+}
+function agHoje(){ agData=new Date(); agRender(); }
+
+async function agFetchRange(inicioISO, fimISO){
+  if(agRangeCache.inicio===inicioISO && agRangeCache.fim===fimISO) return agEventos;
+  const statusEl=document.getElementById('ag-status-card');
+  try{
+    const r=await fetch(`/api/agenda-pessoal/eventos?inicio=${inicioISO}&fim=${fimISO}`);
+    const j=await r.json();
+    if(!j.ok){
+      statusEl.style.display='block';
+      statusEl.innerHTML=`⚠️ Não foi possível carregar a agenda do Google Calendar: ${agEsc(j.erro||'erro desconhecido')}. Verifique se o servidor tem GOOGLE_SERVICE_ACCOUNT_JSON configurado.`;
+      agEventos=[];
+    } else {
+      statusEl.style.display='none';
+      agEventos=j.eventos||[];
+      agRangeCache={inicio:inicioISO,fim:fimISO};
+    }
+  }catch(e){
+    statusEl.style.display='block';
+    statusEl.innerHTML='⚠️ Erro de conexão ao carregar a agenda: '+agEsc(e.message);
+    agEventos=[];
+  }
+  return agEventos;
+}
+
+function agEvtChip(e, diaTodo){
+  const cor = AG_CATEGORIA_COR[agCategoriaDoEvento(e)] || AG_CATEGORIA_COR.outro;
+  const hora = diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor}" onclick="agAbrirDetalhe('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+}
+
+async function agRenderDia(main){
+  const iso=agISO(agData);
+  document.getElementById('ag-periodo').textContent = agData.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  await agFetchRange(iso, iso);
+  const evsDia = agEventos.filter(e=>agEventoNoDia(e, iso));
+  const diaTodo = evsDia.filter(e=>e.diaTodo);
+  const comHora = evsDia.filter(e=>!e.diaTodo).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
+  let html='';
+  if(diaTodo.length) html += `<div style="margin-bottom:10px;display:flex;flex-direction:column;gap:4px">${diaTodo.map(e=>agEvtChip(e,true)).join('')}</div>`;
+  html += '<div class="ag-dia-list">';
+  for(let h=6; h<=23; h++){
+    const evsHora = comHora.filter(e=>new Date(e.inicio).getHours()===h);
+    html += `<div class="ag-dia-slot"><div class="ag-dia-hora">${String(h).padStart(2,'0')}:00</div><div class="ag-dia-eventos">${evsHora.map(e=>agEvtChip(e,false)).join('')}</div></div>`;
+  }
+  html += '</div>';
+  if(!evsDia.length) html = '<div class="ag-dia-vazio">Nenhum compromisso neste dia. 🎉</div>' + html;
+  main.innerHTML = html;
+}
+
+function agInicioSemana(d){ const r=new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
+async function agRenderSemana(main){
+  const ini=agInicioSemana(agData);
+  const fim=new Date(ini); fim.setDate(fim.getDate()+6);
+  document.getElementById('ag-periodo').textContent = `${ini.getDate()} ${ini.toLocaleDateString('pt-BR',{month:'short'})} – ${fim.getDate()} ${fim.toLocaleDateString('pt-BR',{month:'short'})} ${fim.getFullYear()}`;
+  await agFetchRange(agISO(ini), agISO(fim));
+  const hojeISO=agISO(new Date());
+  let html='<div class="ag-semana-grid">';
+  for(let i=0;i<7;i++){
+    const d=new Date(ini); d.setDate(d.getDate()+i);
+    const iso=agISO(d);
+    const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
+    html += `<div class="ag-semana-col ${iso===hojeISO?'hoje':''}"><div class="ag-semana-head">${AG_DOW[i]}<b>${d.getDate()}</b></div>`;
+    evs.forEach(e=>{ html += agEvtChip(e, e.diaTodo); });
+    html += `</div>`;
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+async function agRenderMes(main){
+  const y=agData.getFullYear(), m=agData.getMonth();
+  const primeiroDia=new Date(y,m,1);
+  const inicioGrid=new Date(primeiroDia); inicioGrid.setDate(inicioGrid.getDate()-inicioGrid.getDay());
+  const ultimoDia=new Date(y,m+1,0);
+  const fimGrid=new Date(ultimoDia); fimGrid.setDate(fimGrid.getDate()+(6-fimGrid.getDay()));
+  document.getElementById('ag-periodo').textContent = `${AG_MESES[m]} ${y}`;
+  await agFetchRange(agISO(inicioGrid), agISO(fimGrid));
+  const hojeISO=agISO(new Date());
+  let html='<div class="ag-mes-grid">' + AG_DOW.map(d=>`<div class="ag-mes-dow">${d}</div>`).join('');
+  let cursor=new Date(inicioGrid);
+  while(cursor<=fimGrid){
+    const iso=agISO(cursor);
+    const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
+    const outroMes=cursor.getMonth()!==m;
+    html += `<div class="ag-mes-cell ${outroMes?'outro-mes':''} ${iso===hojeISO?'hoje':''}" onclick="agIrParaDia('${iso}')"><div class="ag-mes-num">${cursor.getDate()}</div><div class="ag-mes-dots">`;
+    evs.slice(0,3).forEach(e=>{ const cor=AG_CATEGORIA_COR[agCategoriaDoEvento(e)]||AG_CATEGORIA_COR.outro; html+=`<span class="ag-evt-dot" style="background:${cor}"></span>`; });
+    html += `</div>`;
+    if(evs.length>3) html += `<div class="ag-mes-mais">+${evs.length-3}</div>`;
+    else if(evs.length) html += `<div class="ag-mes-mais">${agEsc(evs[0].titulo.slice(0,14))}${evs[0].titulo.length>14?'…':''}</div>`;
+    html += `</div>`;
+    cursor.setDate(cursor.getDate()+1);
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+function agIrParaDia(iso){ agData=agParseISO(iso); agView='dia'; localStorage.setItem('ag-view','dia'); agBindSwitch(); agRender(); }
+function agIrParaMes(y,m){ agData=new Date(y,m,1); agView='mes'; localStorage.setItem('ag-view','mes'); agBindSwitch(); agRender(); }
+
+async function agRenderAno(main){
+  const y=agData.getFullYear();
+  document.getElementById('ag-periodo').textContent = `${y}`;
+  await agFetchRange(`${y}-01-01`, `${y}-12-31`);
+  const hojeISO=agISO(new Date());
+  const diasComEvento=new Set();
+  agEventos.forEach(e=>{
+    if(!e.diaTodo){ diasComEvento.add((e.inicio||'').slice(0,10)); return; }
+    let c=agParseISO(e.inicio); const f=agParseISO(e.fim);
+    while(c<f){ diasComEvento.add(agISO(c)); c.setDate(c.getDate()+1); }
+  });
+  let html='<div class="ag-ano-grid">';
+  for(let m=0;m<12;m++){
+    const primeiroDia=new Date(y,m,1);
+    const inicioGrid=new Date(primeiroDia); inicioGrid.setDate(inicioGrid.getDate()-inicioGrid.getDay());
+    html += `<div class="ag-ano-mes" onclick="agIrParaMes(${y},${m})"><div class="ag-ano-mes-title">${AG_MESES[m]}</div><div class="ag-ano-mini">`;
+    let cursor=new Date(inicioGrid);
+    for(let i=0;i<42;i++){
+      const outroMes=cursor.getMonth()!==m;
+      const iso=agISO(cursor);
+      const cls=[outroMes?'outro-mes':'', (diasComEvento.has(iso)&&!outroMes)?'tem-evento':'', iso===hojeISO?'hoje-ano':''].filter(Boolean).join(' ');
+      html += `<div class="${cls}">${outroMes?'':cursor.getDate()}</div>`;
+      cursor.setDate(cursor.getDate()+1);
+    }
+    html += `</div></div>`;
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+async function agRender(){
+  agBindSwitch();
+  const main=document.getElementById('ag-main');
+  main.innerHTML='<div class="ag-dia-vazio">Carregando…</div>';
+  if(agView==='dia') await agRenderDia(main);
+  else if(agView==='semana') await agRenderSemana(main);
+  else if(agView==='mes') await agRenderMes(main);
+  else if(agView==='ano') await agRenderAno(main);
+}
+
+// ── Modal: criar/editar/ver compromisso ──
+function agAbrirModal(presetISO){
+  document.getElementById('ag-modal-title').textContent='📅 Novo compromisso';
+  document.getElementById('ag-f-id').value='';
+  document.getElementById('ag-f-titulo').value='';
+  document.getElementById('ag-f-titulo').readOnly=false;
+  document.getElementById('ag-f-data').value = presetISO || agISO(agData);
+  document.getElementById('ag-f-categoria').value='pessoal';
+  document.getElementById('ag-f-hora-inicio').value='09:00';
+  document.getElementById('ag-f-hora-fim').value='';
+  document.getElementById('ag-f-dia-todo').checked=false;
+  document.getElementById('ag-f-horas-wrap').style.display='flex';
+  document.getElementById('ag-f-local').value='';
+  document.getElementById('ag-f-notas').value='';
+  document.getElementById('ag-f-del-btn').style.display='none';
+  ['ag-f-data','ag-f-categoria','ag-f-hora-inicio','ag-f-hora-fim','ag-f-dia-todo','ag-f-local','ag-f-notas'].forEach(id=>{ document.getElementById(id).disabled=false; });
+  const lw=document.getElementById('ag-f-link-wrap'); if(lw) lw.innerHTML='';
+  document.getElementById('ag-modal-overlay').classList.add('show');
+}
+function agFecharModal(){ document.getElementById('ag-modal-overlay').classList.remove('show'); }
+
+function agAbrirDetalhe(id){
+  const e=agEventos.find(x=>x.id===id);
+  if(!e) return;
+  const editavel = e.origem==='pessoal';
+  document.getElementById('ag-modal-title').textContent = editavel ? '✏️ Editar compromisso' : '👁️ Detalhes do evento';
+  document.getElementById('ag-f-id').value=e.id;
+  document.getElementById('ag-f-titulo').value=e.titulo;
+  document.getElementById('ag-f-titulo').readOnly=!editavel;
+  document.getElementById('ag-f-data').value=(e.inicio||'').slice(0,10);
+  const cat=agCategoriaDoEvento(e);
+  document.getElementById('ag-f-categoria').value = (cat==='outro'||cat==='entrevista') ? 'pessoal' : cat;
+  document.getElementById('ag-f-dia-todo').checked=!!e.diaTodo;
+  document.getElementById('ag-f-horas-wrap').style.display=e.diaTodo?'none':'flex';
+  document.getElementById('ag-f-hora-inicio').value = e.diaTodo ? '' : new Date(e.inicio).toTimeString().slice(0,5);
+  document.getElementById('ag-f-hora-fim').value = e.diaTodo ? '' : new Date(e.fim).toTimeString().slice(0,5);
+  document.getElementById('ag-f-local').value=e.local||'';
+  document.getElementById('ag-f-notas').value=e.descricao||'';
+  document.getElementById('ag-f-del-btn').style.display = editavel ? 'inline-block' : 'none';
+  ['ag-f-data','ag-f-categoria','ag-f-hora-inicio','ag-f-hora-fim','ag-f-dia-todo','ag-f-local','ag-f-notas'].forEach(id2=>{ document.getElementById(id2).disabled=!editavel; });
+  let lw=document.getElementById('ag-f-link-wrap');
+  if(!lw){ lw=document.createElement('div'); lw.id='ag-f-link-wrap'; lw.style.margin='2px 0 10px'; document.querySelector('.ag-modal').insertBefore(lw, document.querySelector('.ag-modal-actions')); }
+  lw.innerHTML = e.link ? `<a href="${e.link}" target="_blank" style="font-size:11px;color:var(--blue);font-weight:700">Abrir no Google Calendar ↗</a>` : '';
+  document.getElementById('ag-modal-overlay').classList.add('show');
+}
+
+function agSalvar(){
+  if(document.getElementById('ag-f-titulo').readOnly){ agFecharModal(); return; }
+  const titulo=document.getElementById('ag-f-titulo').value.trim();
+  const data=document.getElementById('ag-f-data').value;
+  if(!titulo || !data){ toast('Preencha título e data','error'); return; }
+  const diaTodo=document.getElementById('ag-f-dia-todo').checked;
+  const payload={
+    titulo, data, diaTodo,
+    horaInicio: diaTodo ? null : document.getElementById('ag-f-hora-inicio').value,
+    horaFim: diaTodo ? null : document.getElementById('ag-f-hora-fim').value,
+    categoria: document.getElementById('ag-f-categoria').value,
+    local: document.getElementById('ag-f-local').value.trim(),
+    notas: document.getElementById('ag-f-notas').value.trim(),
+  };
+  const id=document.getElementById('ag-f-id').value;
+  const btn=document.querySelector('.ag-btn-save');
+  btn.disabled=true; btn.textContent='Salvando…';
+  const req = id
+    ? fetch(`/api/agenda-pessoal/eventos/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
+    : fetch('/api/agenda-pessoal/eventos', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+  req.then(r=>r.json()).then(j=>{
+    btn.disabled=false; btn.textContent='Salvar';
+    if(j.ok){ toast('✓ Compromisso salvo','success'); agFecharModal(); agRangeCache={inicio:null,fim:null}; agRender(); }
+    else { toast('Erro: '+(j.erro||'desconhecido'),'error'); }
+  }).catch(e=>{ btn.disabled=false; btn.textContent='Salvar'; toast('Erro de conexão: '+e.message,'error'); });
+}
+
+function agExcluirAtual(){
+  const id=document.getElementById('ag-f-id').value;
+  if(!id) return;
+  if(!confirm('Excluir este compromisso? Isso também remove do Google Calendar.')) return;
+  fetch(`/api/agenda-pessoal/eventos/${id}`, {method:'DELETE'}).then(r=>r.json()).then(j=>{
+    if(j.ok){ toast('Compromisso excluído','success'); agFecharModal(); agRangeCache={inicio:null,fim:null}; agRender(); }
+    else toast('Erro: '+(j.erro||'desconhecido'),'error');
+  }).catch(e=>toast('Erro de conexão: '+e.message,'error'));
+}
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') agFecharModal(); });
 
 // ═══════════════════════ INIT ═══════════════════════
 document.addEventListener('DOMContentLoaded', () => {
