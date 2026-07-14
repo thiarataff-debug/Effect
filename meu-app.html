@@ -420,6 +420,72 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-btn-del{padding:9px 14px;background:#fee2e2;color:#991b1b;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
 .modal-field{margin-bottom:10px}
 .modal-label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+
+/* ══ NOTAS (estilo Google Keep) ══ */
+.notas-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.notas-search-wrap{flex:1;min-width:180px}
+.notas-search{width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none}
+.notas-search:focus{border-color:var(--blue)}
+.notas-view-toggle{display:flex;background:#fff;border-radius:8px;padding:3px;gap:2px;border:1px solid var(--border)}
+.notas-vt-btn{padding:6px 12px;border:none;background:none;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);white-space:nowrap}
+.notas-vt-btn.active{background:var(--navy);color:#fff}
+
+.notas-quick-add{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.notas-qa-titulo{width:100%;border:none;outline:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px}
+.notas-qa-texto{width:100%;border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:12.5px;resize:none;overflow:hidden;min-height:22px}
+.notas-qa-actions{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.notas-qa-tools{display:flex;align-items:center;gap:6px}
+.notas-qa-tool{background:none;border:none;font-size:15px;cursor:pointer;padding:4px 6px;border-radius:6px}
+.notas-qa-tool:hover{background:var(--bg)}
+.notas-qa-cores{display:flex;gap:4px}
+.notas-qa-cor{width:18px;height:18px;border-radius:50%;cursor:pointer;border:1.5px solid rgba(0,0,0,.1);flex-shrink:0}
+.notas-qa-cor.sel{outline:2px solid var(--navy);outline-offset:1px}
+.notas-qa-fechar{padding:6px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer}
+.notas-qa-checklist{margin-bottom:6px}
+
+.notas-secao{margin-bottom:18px}
+.notas-secao-titulo{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.notas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.notas-empty{text-align:center;color:var(--muted);font-size:12px;padding:40px 0}
+
+.notas-card{border-radius:12px;border:1.5px solid rgba(0,0,0,.08);padding:12px 14px;cursor:pointer;position:relative;transition:box-shadow .15s;display:flex;flex-direction:column;gap:6px;min-height:60px}
+.notas-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.1)}
+.notas-card-titulo{font-weight:800;font-size:12.5px;color:var(--navy);padding-right:20px}
+.notas-card-texto{font-size:11.5px;color:#3f3f46;white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:hidden}
+.notas-card-pin{position:absolute;top:8px;right:8px;background:none;border:none;font-size:13px;cursor:pointer;opacity:.55}
+.notas-card-pin.ativo{opacity:1}
+.notas-card-check{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.notas-card-check-box{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px}
+.notas-card-check-box.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.notas-card-check.done{opacity:.5;text-decoration:line-through}
+.notas-card-mais{font-size:10px;color:var(--muted);font-style:italic}
+.notas-card-lembrete{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.1);padding:2px 7px;border-radius:8px;align-self:flex-start}
+.notas-card-actions{display:none;gap:6px;margin-top:2px}
+.notas-card:hover .notas-card-actions{display:flex}
+.notas-card-act{background:rgba(255,255,255,.7);border:none;border-radius:6px;font-size:12px;cursor:pointer;padding:3px 6px}
+.notas-card-act:hover{background:#fff}
+
+.notas-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center;padding:16px}
+.notas-modal-overlay.show{display:flex}
+.notas-modal{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.notas-m-titulo{border:none;outline:none;font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px}
+.notas-m-texto{border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:13px;resize:vertical;min-height:100px}
+.notas-m-lembrete{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.1);padding:5px 10px;border-radius:8px;align-self:flex-start}
+.notas-m-lembrete button{background:none;border:none;color:#7c3aed;font-size:13px;cursor:pointer;margin-left:4px}
+.notas-m-toolbar{display:flex;align-items:center;gap:4px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap}
+.notas-m-btn{background:none;border:none;font-size:16px;cursor:pointer;padding:6px 8px;border-radius:7px}
+.notas-m-btn:hover{background:var(--bg)}
+.notas-m-btn.ativo{background:var(--bg)}
+.notas-m-footer{display:flex;justify-content:flex-end;margin-top:4px}
+.notas-m-add-item{align-self:flex-start;background:none;border:none;color:var(--blue);font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;cursor:pointer;padding:4px 0}
+
+.notas-check-item{display:flex;align-items:center;gap:8px;padding:3px 0}
+.notas-check-item input[type=text]{border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:12.5px;flex:1;background:none}
+.notas-check-item.done input[type=text]{text-decoration:line-through;color:var(--muted)}
+.notas-check-box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;background:#fff}
+.notas-check-box.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.notas-check-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;opacity:.6}
+.notas-check-del:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -432,45 +498,22 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <div class="tabs-bar">
   <button class="tab" onclick="irAba('psi',this)">🧠 Psicológico</button>
   <button class="tab active" onclick="irAba('agenda',this)">📅 Agenda Pessoal</button>
-  <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
+  <button class="tab" onclick="irAba('notas',this)">🗒️ Notas</button>
 </div>
 
-<!-- AGENDA PESSOAL -->
+<!-- AGENDA PESSOAL (fundida com a Agenda de Entrevistas do Inbox — uma agenda só) -->
 <div class="page active" id="page-agenda">
   <div class="ag-header">
     <div class="ag-header-title">📅 Agenda Pessoal</div>
-    <div class="ag-header-sub">Todos os seus compromissos num só lugar — inclui as entrevistas marcadas pela Lia (🤝) + seus compromissos pessoais. <em>Diferente da Agenda de Entrevistas do Inbox, que é só operacional (faltas/comparecimentos de candidatos).</em></div>
+    <div class="ag-header-sub">Uma agenda só: Nova Entrevista, Novo Lembrete, Horários, Faltosos &amp; Comparecimentos e seus compromissos pessoais — tudo aqui embaixo. <a href="/inbox?view=agenda" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">Abrir em tela cheia ↗</a></div>
   </div>
-  <div class="card" style="padding:10px 14px">
-    <div class="ag-toolbar">
-      <div class="ag-tb-left">
-        <button class="ag-nav-btn" onclick="agNav(-1)" title="Anterior">‹</button>
-        <button class="ag-hoje-btn" onclick="agHoje()">Hoje</button>
-        <button class="ag-nav-btn" onclick="agNav(1)" title="Próximo">›</button>
-        <div class="ag-periodo" id="ag-periodo">—</div>
-      </div>
-      <div class="ag-tb-right">
-        <div class="ag-switch" id="ag-switch">
-          <button class="ag-switch-btn" data-v="dia" onclick="agSetView('dia')">Dia</button>
-          <button class="ag-switch-btn" data-v="semana" onclick="agSetView('semana')">Semana</button>
-          <button class="ag-switch-btn" data-v="mes" onclick="agSetView('mes')">Mês</button>
-          <button class="ag-switch-btn" data-v="ano" onclick="agSetView('ano')">Ano</button>
-        </div>
-        <button class="task-add-btn" style="background:var(--green);color:var(--navy)" onclick="agAbrirModal()">+ Compromisso</button>
-      </div>
-    </div>
-  </div>
-  <div class="card" id="ag-status-card" style="display:none"></div>
 
   <div class="card" id="ag-hub-card">
     <div class="card-title">🧭 Atalhos rápidos</div>
     <div class="ag-hub-grid">
       <div class="ag-hub-item" id="ag-hub-ciclo" onclick="agAbrirPagina('ciclo')"></div>
       <div class="ag-hub-item" id="ag-hub-registro" onclick="agAbrirPagina('psi')"></div>
-      <div class="ag-hub-item" id="ag-hub-sei" onclick="agAbrirPagina('sei')">
-        <div class="ag-hub-emoji">💼</div>
-        <div class="ag-hub-text"><b>Clientes (SEI)</b><span>Vagas, cards e relatórios →</span></div>
-      </div>
+      <div class="ag-hub-item" id="ag-hub-saude" onclick="agAbrirPagina('saude')"></div>
     </div>
     <div class="ag-hub-tarefas">
       <div class="ag-hub-tarefas-head">✅ Tarefas pendentes <a onclick="agAbrirPagina('tarefas')">Ver todas / Matriz →</a></div>
@@ -478,8 +521,8 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
   </div>
 
-  <div class="card" id="ag-main-card">
-    <div id="ag-main">Carregando agenda…</div>
+  <div class="card" id="ag-iframe-card" style="padding:0;overflow:hidden">
+    <iframe src="/inbox?view=agenda&embed=1" id="ag-iframe" style="width:100%;height:900px;border:none;display:block;background:#f5f7fa"></iframe>
   </div>
 </div>
 
@@ -540,6 +583,90 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   </div>
 </div>
 
+<!-- NOTAS (estilo Google Keep) -->
+<div class="page" id="page-notas">
+  <div class="notas-toolbar">
+    <div class="notas-search-wrap">
+      <input class="notas-search" id="notas-busca" placeholder="🔍 Buscar notas..." oninput="notasRender()">
+    </div>
+    <div class="notas-view-toggle" id="notas-view-toggle">
+      <button class="notas-vt-btn active" data-v="ativas" onclick="notasSetView('ativas')">🗒️ Notas</button>
+      <button class="notas-vt-btn" data-v="arquivo" onclick="notasSetView('arquivo')">🗄️ Arquivo</button>
+      <button class="notas-vt-btn" data-v="lixeira" onclick="notasSetView('lixeira')">🗑️ Lixeira</button>
+    </div>
+  </div>
+
+  <div class="notas-quick-add" id="notas-quick-add">
+    <input class="notas-qa-titulo" id="notas-qa-titulo" placeholder="Título" style="display:none">
+    <div class="notas-qa-checklist" id="notas-qa-checklist" style="display:none"></div>
+    <textarea class="notas-qa-texto" id="notas-qa-texto" placeholder="Criar uma nota..." rows="1" onfocus="notasExpandirQuickAdd()" oninput="notasAutoGrow(this)"></textarea>
+    <div class="notas-qa-actions" id="notas-qa-actions" style="display:none">
+      <div class="notas-qa-tools">
+        <button class="notas-qa-tool" onclick="notasQuickAddToggleChecklist()" title="Nova lista">☑️</button>
+        <div class="notas-qa-cores" id="notas-qa-cores"></div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="notas-qa-fechar" onclick="notasFecharQuickAdd()">Fechar</button>
+    </div>
+  </div>
+
+  <div class="notas-secao" id="notas-fixadas-wrap" style="display:none">
+    <div class="notas-secao-titulo">📌 Fixadas</div>
+    <div class="notas-grid" id="notas-grid-fixadas"></div>
+  </div>
+  <div class="notas-secao">
+    <div class="notas-secao-titulo" id="notas-outras-titulo" style="display:none">Outras</div>
+    <div class="notas-grid" id="notas-grid-outras"></div>
+  </div>
+  <div class="notas-empty" id="notas-empty" style="display:none">Nenhuma nota por aqui. 🎉</div>
+</div>
+
+<!-- MODAL: NOTA EXPANDIDA -->
+<div class="notas-modal-overlay" id="notas-modal-overlay" onclick="if(event.target===this)notasFecharModal()">
+  <div class="notas-modal" id="notas-modal">
+    <input type="hidden" id="notas-m-id">
+    <input class="notas-m-titulo" id="notas-m-titulo" placeholder="Título" oninput="notasSalvarAuto()">
+    <div class="notas-m-checklist" id="notas-m-checklist" style="display:none"></div>
+    <button class="notas-m-add-item" id="notas-m-add-item" onclick="notasAdicionarItemChecklist()" style="display:none">+ Item</button>
+    <textarea class="notas-m-texto" id="notas-m-texto" placeholder="Nota..." oninput="notasSalvarAuto()"></textarea>
+    <div class="notas-m-lembrete" id="notas-m-lembrete-wrap" style="display:none">
+      <span>⏰</span><span id="notas-m-lembrete-txt"></span>
+      <button onclick="notasRemoverLembrete()" title="Remover lembrete">×</button>
+    </div>
+    <div class="notas-m-toolbar">
+      <button class="notas-m-btn" onclick="notasToggleChecklistModal()" title="Lista de tarefas">☑️</button>
+      <button class="notas-m-btn" onclick="notasAbrirLembrete()" title="Lembrete">⏰</button>
+      <button class="notas-m-btn" id="notas-m-pin-btn" onclick="notasTogglePinModal()" title="Fixar">📌</button>
+      <div class="notas-qa-cores" id="notas-m-cores"></div>
+      <div style="flex:1"></div>
+      <button class="notas-m-btn" onclick="notasArquivarModal()" title="Arquivar">🗄️</button>
+      <button class="notas-m-btn" onclick="notasExcluirModal()" title="Excluir">🗑️</button>
+    </div>
+    <div class="notas-m-footer">
+      <button class="ag-btn-cancel" onclick="notasFecharModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: LEMBRETE DA NOTA -->
+<div class="notas-modal-overlay" id="notas-lembrete-overlay">
+  <div class="notas-modal" style="max-width:320px">
+    <div class="ag-modal-title">⏰ Lembrete</div>
+    <div class="modal-field">
+      <label class="modal-label">Data</label>
+      <input class="task-input" type="date" id="notas-lem-data">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Hora</label>
+      <input class="task-input" type="time" id="notas-lem-hora" value="09:00">
+    </div>
+    <div class="ag-modal-actions">
+      <button class="ag-btn-cancel" onclick="document.getElementById('notas-lembrete-overlay').classList.remove('show')">Cancelar</button>
+      <button class="ag-btn-save" onclick="notasSalvarLembrete()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- FOCO -->
 <!-- TAREFAS -->
 <div class="page" id="page-tarefas">
@@ -585,6 +712,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 <!-- SAÚDE -->
 <div class="page" id="page-saude">
+  <div class="ag-back-bar"><button class="ag-back-btn" onclick="agVoltar()">← Voltar à Agenda</button><span class="ag-back-title">💧 Saúde</span></div>
 
   <div class="card"><div class="card-title">💧 Água</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Meta: 4 garrafas. Clique para marcar.</div>
@@ -1336,7 +1464,7 @@ function salvarEx(){
   document.getElementById('ex-tipo-academia').value='';
   document.getElementById('ex-obs').value='';
 }
-function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');if(el)el.classList.add('active');if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}if(aba==='agenda'&&typeof agInit==='function')agInit();if(aba==='ciclo'&&typeof cicloRender==='function')cicloRender();window.scrollTo(0,0);}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');if(el)el.classList.add('active');if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}if(aba==='agenda'&&typeof agInit==='function')agInit();if(aba==='ciclo'&&typeof cicloRender==='function')cicloRender();if(aba==='notas'&&typeof notasRender==='function')notasRender();window.scrollTo(0,0);}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 
@@ -2985,15 +3113,23 @@ function agCicloIcone(tipo){
 function agVoltar(){ irAba('agenda', document.querySelectorAll('.tab')[1]); }
 function agAbrirPagina(aba){
   const tabs=document.querySelectorAll('.tab');
-  const map={psi:0,agenda:1,saude:2};
+  const map={psi:0,agenda:1,notas:2};
   irAba(aba, map[aba]!==undefined ? tabs[map[aba]] : null);
 }
 
-// ── Hub de atalhos (Ciclo, Registro do Dia, Tarefas, Clientes) ──
+// ── Hub de atalhos (Ciclo, Registro do Dia, Tarefas, Saúde) ──
 function agRenderHub(){
   agRenderHubCiclo();
   agRenderHubRegistro();
   agRenderHubTarefas();
+  agRenderHubSaude();
+}
+
+function agRenderHubSaude(){
+  const el=document.getElementById('ag-hub-saude');
+  if(!el) return;
+  const copos = (typeof dados!=='undefined' && typeof dados.agua==='number') ? dados.agua : 0;
+  el.innerHTML = `<div class="ag-hub-emoji">💧</div><div class="ag-hub-text"><b>Saúde</b><span>${copos} de 4 garrafas · água/exercício →</span></div>`;
 }
 
 function agRenderHubCiclo(){
@@ -3029,7 +3165,13 @@ function agToggleHubTask(id){
   agRenderHubTarefas();
 }
 
-async function agInit(){ agBindSwitch(); agRenderHub(); await agRender(); }
+async function agInit(){
+  // A grade Dia/Semana/Mês/Ano agora vive dentro do iframe (Agenda fundida com o Inbox).
+  // Aqui só precisamos manter o hub de atalhos (Ciclo/Registro/Saúde/Tarefas) atualizado.
+  agRenderHub();
+  const ifr=document.getElementById('ag-iframe');
+  if(ifr && !ifr.dataset.loaded){ ifr.dataset.loaded='1'; }
+}
 function agBindSwitch(){ document.querySelectorAll('.ag-switch-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===agView)); }
 function agSetView(v){ agView=v; localStorage.setItem('ag-view',v); agBindSwitch(); agRender(); }
 function agNav(dir){
@@ -3273,6 +3415,343 @@ function agExcluirAtual(){
 
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') agFecharModal(); });
 
+// ═══════════════════════ NOTAS (estilo Google Keep) ═══════════════════════
+const NOTAS_KEY = 'effect_notas_v1';
+const NOTAS_CORES = [
+  {id:'default', bg:'#ffffff'},
+  {id:'vermelho', bg:'#fecaca'},
+  {id:'laranja', bg:'#fed7aa'},
+  {id:'amarelo', bg:'#fef08a'},
+  {id:'verde', bg:'#bbf7d0'},
+  {id:'azul', bg:'#bfdbfe'},
+  {id:'roxo', bg:'#ddd6fe'},
+  {id:'rosa', bg:'#fbcfe8'},
+  {id:'cinza', bg:'#e5e7eb'},
+];
+let notasView='ativas';
+let notasQaChecklist=null;
+let notasQaCor='default';
+let notasEditandoId=null;
+let notasLembreteAlvoId=null;
+
+function notasGetAll(){ try{ return JSON.parse(localStorage.getItem(NOTAS_KEY)||'[]'); }catch(e){ return []; } }
+function notasSaveAll(arr){ localStorage.setItem(NOTAS_KEY, JSON.stringify(arr)); }
+function notasNovoId(){ return 'n'+Date.now()+Math.floor(Math.random()*1000); }
+function notasCorBg(corId){ return (NOTAS_CORES.find(c=>c.id===corId)||NOTAS_CORES[0]).bg; }
+
+function notasSetView(v){
+  notasView=v;
+  document.querySelectorAll('.notas-vt-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  document.getElementById('notas-quick-add').style.display = v==='ativas' ? '' : 'none';
+  notasRender();
+}
+
+function notasRenderCoresPicker(containerId, corAtual, onSelectFnName){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = NOTAS_CORES.map(c=>`<div class="notas-qa-cor${c.id===corAtual?' sel':''}" style="background:${c.bg}" title="${c.id}" onclick="${onSelectFnName}('${c.id}')"></div>`).join('');
+}
+
+// ── Quick add (criar nota rápida) ──
+function notasExpandirQuickAdd(){
+  document.getElementById('notas-qa-titulo').style.display='block';
+  document.getElementById('notas-qa-actions').style.display='flex';
+  notasRenderCoresPicker('notas-qa-cores', notasQaCor, 'notasQaSelecionarCor');
+}
+function notasAutoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; }
+function notasQaSelecionarCor(corId){ notasQaCor=corId; notasRenderCoresPicker('notas-qa-cores', notasQaCor, 'notasQaSelecionarCor'); }
+function notasQuickAddToggleChecklist(){
+  if(notasQaChecklist===null){
+    notasQaChecklist=[{id:notasNovoId(),texto:'',feito:false}];
+    document.getElementById('notas-qa-checklist').style.display='block';
+    document.getElementById('notas-qa-texto').style.display='none';
+  } else {
+    notasQaChecklist=null;
+    document.getElementById('notas-qa-checklist').style.display='none';
+    document.getElementById('notas-qa-texto').style.display='block';
+  }
+  notasQaRenderChecklist();
+}
+function notasQaRenderChecklist(){
+  const el=document.getElementById('notas-qa-checklist');
+  if(!el||!notasQaChecklist) return;
+  el.innerHTML = notasQaChecklist.map((it,i)=>`
+    <div class="notas-check-item">
+      <div class="notas-check-box ${it.feito?'on':''}" onclick="notasQaToggleItem('${it.id}')">${it.feito?'✓':''}</div>
+      <input type="text" value="${agEsc(it.texto)}" placeholder="Item da lista" oninput="notasQaEditarItem('${it.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();notasQaAddItemAfter('${it.id}')}">
+      <button class="notas-check-del" onclick="notasQaRemoverItem('${it.id}')">×</button>
+    </div>`).join('');
+}
+function notasQaToggleItem(id){ const it=notasQaChecklist.find(x=>x.id===id); if(it){it.feito=!it.feito; notasQaRenderChecklist();} }
+function notasQaEditarItem(id,val){ const it=notasQaChecklist.find(x=>x.id===id); if(it) it.texto=val; }
+function notasQaRemoverItem(id){ notasQaChecklist=notasQaChecklist.filter(x=>x.id!==id); if(!notasQaChecklist.length) notasQaChecklist=[{id:notasNovoId(),texto:'',feito:false}]; notasQaRenderChecklist(); }
+function notasQaAddItemAfter(id){
+  const idx=notasQaChecklist.findIndex(x=>x.id===id);
+  const novo={id:notasNovoId(),texto:'',feito:false};
+  notasQaChecklist.splice(idx+1,0,novo);
+  notasQaRenderChecklist();
+  setTimeout(()=>{ const inputs=document.querySelectorAll('#notas-qa-checklist input'); if(inputs[idx+1]) inputs[idx+1].focus(); },0);
+}
+
+function notasFecharQuickAdd(){
+  const titulo=document.getElementById('notas-qa-titulo').value.trim();
+  const texto=document.getElementById('notas-qa-texto').value.trim();
+  const temChecklist = notasQaChecklist && notasQaChecklist.some(i=>i.texto.trim());
+  if(titulo || texto || temChecklist){
+    const notas=notasGetAll();
+    const agora=new Date().toISOString();
+    notas.unshift({
+      id: notasNovoId(),
+      titulo, texto,
+      tipo: temChecklist ? 'checklist' : 'texto',
+      itens: temChecklist ? notasQaChecklist.filter(i=>i.texto.trim()) : [],
+      cor: notasQaCor,
+      fixado:false, arquivado:false, excluido:false, lembrete:null,
+      criadoEm:agora, atualizadoEm:agora,
+    });
+    notasSaveAll(notas);
+    toast('✓ Nota criada','success');
+  }
+  document.getElementById('notas-qa-titulo').value='';
+  document.getElementById('notas-qa-titulo').style.display='none';
+  document.getElementById('notas-qa-texto').value='';
+  document.getElementById('notas-qa-texto').style.display='block';
+  document.getElementById('notas-qa-texto').style.height='auto';
+  document.getElementById('notas-qa-actions').style.display='none';
+  document.getElementById('notas-qa-checklist').style.display='none';
+  notasQaChecklist=null;
+  notasQaCor='default';
+  notasRender();
+}
+
+// ── Render principal (grade de cartões) ──
+function notasFiltrados(){
+  const busca=(document.getElementById('notas-busca')?.value||'').trim().toLowerCase();
+  let lista=notasGetAll();
+  if(notasView==='ativas') lista=lista.filter(n=>!n.arquivado&&!n.excluido);
+  else if(notasView==='arquivo') lista=lista.filter(n=>n.arquivado&&!n.excluido);
+  else if(notasView==='lixeira') lista=lista.filter(n=>n.excluido);
+  if(busca){
+    lista=lista.filter(n=>
+      (n.titulo||'').toLowerCase().includes(busca) ||
+      (n.texto||'').toLowerCase().includes(busca) ||
+      (n.itens||[]).some(i=>(i.texto||'').toLowerCase().includes(busca))
+    );
+  }
+  return lista.sort((a,b)=>new Date(b.atualizadoEm)-new Date(a.atualizadoEm));
+}
+
+function notasRender(){
+  const lista=notasFiltrados();
+  const fixadas = notasView==='ativas' ? lista.filter(n=>n.fixado) : [];
+  const outras = notasView==='ativas' ? lista.filter(n=>!n.fixado) : lista;
+
+  const fixWrap=document.getElementById('notas-fixadas-wrap');
+  const outrasTit=document.getElementById('notas-outras-titulo');
+  fixWrap.style.display = fixadas.length ? '' : 'none';
+  outrasTit.style.display = fixadas.length ? '' : 'none';
+
+  document.getElementById('notas-grid-fixadas').innerHTML = fixadas.map(notasCardHTML).join('');
+  document.getElementById('notas-grid-outras').innerHTML = outras.map(notasCardHTML).join('');
+  document.getElementById('notas-empty').style.display = lista.length ? 'none' : 'block';
+  document.getElementById('notas-empty').textContent =
+    notasView==='lixeira' ? 'Lixeira vazia.' : notasView==='arquivo' ? 'Nenhuma nota arquivada.' : 'Nenhuma nota por aqui. Crie uma acima! 🎉';
+}
+
+function notasCardHTML(n){
+  const bg=notasCorBg(n.cor);
+  let corpo='';
+  if(n.tipo==='checklist'){
+    const itensShow=n.itens.slice(0,6);
+    corpo = itensShow.map(it=>`<div class="notas-card-check ${it.feito?'done':''}"><div class="notas-card-check-box ${it.feito?'on':''}" onclick="event.stopPropagation();notasToggleItemCard('${n.id}','${it.id}')">${it.feito?'✓':''}</div><span>${agEsc(it.texto)}</span></div>`).join('');
+    if(n.itens.length>6) corpo += `<div class="notas-card-mais">+${n.itens.length-6} item(ns)</div>`;
+  } else if(n.texto){
+    corpo = `<div class="notas-card-texto">${agEsc(n.texto)}</div>`;
+  }
+  const lembreteHTML = n.lembrete ? `<div class="notas-card-lembrete">⏰ ${notasFmtLembrete(n.lembrete)}</div>` : '';
+  const acoes = notasView==='lixeira'
+    ? `<button class="notas-card-act" title="Restaurar" onclick="event.stopPropagation();notasRestaurar('${n.id}')">↩️</button><button class="notas-card-act" title="Excluir para sempre" onclick="event.stopPropagation();notasExcluirDefinitivo('${n.id}')">🗑️❌</button>`
+    : notasView==='arquivo'
+    ? `<button class="notas-card-act" title="Desarquivar" onclick="event.stopPropagation();notasDesarquivar('${n.id}')">📤</button><button class="notas-card-act" title="Excluir" onclick="event.stopPropagation();notasExcluir('${n.id}')">🗑️</button>`
+    : `<button class="notas-card-act" title="Arquivar" onclick="event.stopPropagation();notasArquivar('${n.id}')">🗄️</button><button class="notas-card-act" title="Excluir" onclick="event.stopPropagation();notasExcluir('${n.id}')">🗑️</button>`;
+  return `<div class="notas-card" style="background:${bg}" onclick="notasAbrirModal('${n.id}')">
+    ${notasView==='ativas'?`<button class="notas-card-pin ${n.fixado?'ativo':''}" onclick="event.stopPropagation();notasTogglePin('${n.id}')" title="Fixar">📌</button>`:''}
+    ${n.titulo?`<div class="notas-card-titulo">${agEsc(n.titulo)}</div>`:''}
+    ${corpo}
+    ${lembreteHTML}
+    <div class="notas-card-actions">${acoes}</div>
+  </div>`;
+}
+function notasFmtLembrete(iso){
+  try{ const d=new Date(iso); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
+}
+
+function notasAtualizar(id, patch){
+  const notas=notasGetAll();
+  const n=notas.find(x=>x.id===id);
+  if(!n) return;
+  Object.assign(n, patch, {atualizadoEm:new Date().toISOString()});
+  notasSaveAll(notas);
+}
+function notasToggleItemCard(id,itemId){
+  const notas=notasGetAll();
+  const n=notas.find(x=>x.id===id);
+  if(!n) return;
+  const it=n.itens.find(i=>i.id===itemId);
+  if(it){ it.feito=!it.feito; n.atualizadoEm=new Date().toISOString(); notasSaveAll(notas); notasRender(); }
+}
+function notasTogglePin(id){ const n=notasGetAll().find(x=>x.id===id); notasAtualizar(id,{fixado:!(n&&n.fixado)}); notasRender(); }
+function notasArquivar(id){ notasAtualizar(id,{arquivado:true}); notasRender(); toast('Nota arquivada','success'); }
+function notasDesarquivar(id){ notasAtualizar(id,{arquivado:false}); notasRender(); }
+function notasExcluir(id){ notasAtualizar(id,{excluido:true, fixado:false}); notasRender(); toast('Nota movida para a lixeira','success'); }
+function notasRestaurar(id){ notasAtualizar(id,{excluido:false}); notasRender(); }
+function notasExcluirDefinitivo(id){
+  if(!confirm('Excluir esta nota para sempre? Não tem como desfazer.')) return;
+  const notas=notasGetAll().filter(x=>x.id!==id);
+  notasSaveAll(notas);
+  notasRender();
+}
+
+// ── Modal (edição expandida) ──
+function notasAbrirModal(id){
+  const n=notasGetAll().find(x=>x.id===id);
+  if(!n) return;
+  notasEditandoId=id;
+  document.getElementById('notas-m-id').value=id;
+  document.getElementById('notas-m-titulo').value=n.titulo||'';
+  document.getElementById('notas-m-texto').value=n.texto||'';
+  document.getElementById('notas-m-texto').style.display = n.tipo==='checklist' ? 'none' : 'block';
+  document.getElementById('notas-m-checklist').style.display = n.tipo==='checklist' ? 'block' : 'none';
+  document.getElementById('notas-m-add-item').style.display = n.tipo==='checklist' ? 'inline-block' : 'none';
+  document.getElementById('notas-modal').style.background = notasCorBg(n.cor);
+  document.getElementById('notas-m-pin-btn').classList.toggle('ativo', !!n.fixado);
+  const lw=document.getElementById('notas-m-lembrete-wrap');
+  if(n.lembrete){ lw.style.display='flex'; document.getElementById('notas-m-lembrete-txt').textContent=notasFmtLembrete(n.lembrete); }
+  else lw.style.display='none';
+  notasRenderCoresPicker('notas-m-cores', n.cor, 'notasModalSelecionarCor');
+  if(n.tipo==='checklist') notasModalRenderChecklist();
+  document.getElementById('notas-modal-overlay').classList.add('show');
+}
+function notasFecharModal(){
+  document.getElementById('notas-modal-overlay').classList.remove('show');
+  notasEditandoId=null;
+  notasRender();
+}
+function notasSalvarAuto(){
+  if(!notasEditandoId) return;
+  const titulo=document.getElementById('notas-m-titulo').value;
+  const texto=document.getElementById('notas-m-texto').value;
+  notasAtualizar(notasEditandoId, {titulo, texto});
+}
+function notasModalSelecionarCor(corId){
+  notasAtualizar(notasEditandoId, {cor:corId});
+  document.getElementById('notas-modal').style.background=notasCorBg(corId);
+  notasRenderCoresPicker('notas-m-cores', corId, 'notasModalSelecionarCor');
+}
+function notasTogglePinModal(){
+  const n=notasGetAll().find(x=>x.id===notasEditandoId);
+  const novo=!(n&&n.fixado);
+  notasAtualizar(notasEditandoId,{fixado:novo});
+  document.getElementById('notas-m-pin-btn').classList.toggle('ativo', novo);
+}
+function notasArquivarModal(){ notasAtualizar(notasEditandoId,{arquivado:true}); notasFecharModal(); toast('Nota arquivada','success'); }
+function notasExcluirModal(){ notasAtualizar(notasEditandoId,{excluido:true,fixado:false}); notasFecharModal(); toast('Nota movida para a lixeira','success'); }
+
+function notasToggleChecklistModal(){
+  const n=notasGetAll().find(x=>x.id===notasEditandoId);
+  if(!n) return;
+  if(n.tipo==='checklist'){
+    // volta para texto simples (junta os itens não concluídos como texto solto)
+    const textoJunto=n.itens.map(i=>i.texto).filter(Boolean).join('\n');
+    notasAtualizar(notasEditandoId,{tipo:'texto', texto:(n.texto?n.texto+'\n':'')+textoJunto, itens:[]});
+    document.getElementById('notas-m-texto').value=(n.texto?n.texto+'\n':'')+textoJunto;
+    document.getElementById('notas-m-texto').style.display='block';
+    document.getElementById('notas-m-checklist').style.display='none';
+    document.getElementById('notas-m-add-item').style.display='none';
+  } else {
+    const itens = n.texto ? n.texto.split('\n').filter(Boolean).map(t=>({id:notasNovoId(),texto:t,feito:false})) : [{id:notasNovoId(),texto:'',feito:false}];
+    notasAtualizar(notasEditandoId,{tipo:'checklist', itens, texto:''});
+    document.getElementById('notas-m-texto').value='';
+    document.getElementById('notas-m-texto').style.display='none';
+    document.getElementById('notas-m-checklist').style.display='block';
+    document.getElementById('notas-m-add-item').style.display='inline-block';
+    notasModalRenderChecklist();
+  }
+}
+function notasModalRenderChecklist(){
+  const n=notasGetAll().find(x=>x.id===notasEditandoId);
+  const el=document.getElementById('notas-m-checklist');
+  if(!n||!el) return;
+  el.innerHTML = n.itens.map(it=>`
+    <div class="notas-check-item ${it.feito?'done':''}">
+      <div class="notas-check-box ${it.feito?'on':''}" onclick="notasModalToggleItem('${it.id}')">${it.feito?'✓':''}</div>
+      <input type="text" value="${agEsc(it.texto)}" oninput="notasModalEditarItem('${it.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();notasModalAddItemAfter('${it.id}')}">
+      <button class="notas-check-del" onclick="notasModalRemoverItem('${it.id}')">×</button>
+    </div>`).join('');
+}
+function notasModalToggleItem(itemId){
+  const notas=notasGetAll(); const n=notas.find(x=>x.id===notasEditandoId);
+  const it=n.itens.find(i=>i.id===itemId); if(it){ it.feito=!it.feito; n.atualizadoEm=new Date().toISOString(); notasSaveAll(notas); notasModalRenderChecklist(); }
+}
+function notasModalEditarItem(itemId,val){
+  const notas=notasGetAll(); const n=notas.find(x=>x.id===notasEditandoId);
+  const it=n.itens.find(i=>i.id===itemId); if(it){ it.texto=val; n.atualizadoEm=new Date().toISOString(); notasSaveAll(notas); }
+}
+function notasModalRemoverItem(itemId){
+  const notas=notasGetAll(); const n=notas.find(x=>x.id===notasEditandoId);
+  n.itens=n.itens.filter(i=>i.id!==itemId);
+  if(!n.itens.length) n.itens=[{id:notasNovoId(),texto:'',feito:false}];
+  n.atualizadoEm=new Date().toISOString();
+  notasSaveAll(notas);
+  notasModalRenderChecklist();
+}
+function notasModalAddItemAfter(itemId){
+  const notas=notasGetAll(); const n=notas.find(x=>x.id===notasEditandoId);
+  const idx=n.itens.findIndex(i=>i.id===itemId);
+  const novo={id:notasNovoId(),texto:'',feito:false};
+  n.itens.splice(idx+1,0,novo);
+  n.atualizadoEm=new Date().toISOString();
+  notasSaveAll(notas);
+  notasModalRenderChecklist();
+  setTimeout(()=>{ const inputs=document.querySelectorAll('#notas-m-checklist input'); if(inputs[idx+1]) inputs[idx+1].focus(); },0);
+}
+function notasAdicionarItemChecklist(){ notasModalAddItemAfter(notasGetAll().find(x=>x.id===notasEditandoId).itens.slice(-1)[0].id); }
+
+// ── Lembrete da nota ──
+function notasAbrirLembrete(){
+  notasLembreteAlvoId=notasEditandoId;
+  const n=notasGetAll().find(x=>x.id===notasLembreteAlvoId);
+  const agora=new Date();
+  document.getElementById('notas-lem-data').value = n&&n.lembrete ? n.lembrete.slice(0,10) : agISO(agora);
+  document.getElementById('notas-lem-hora').value = n&&n.lembrete ? n.lembrete.slice(11,16) : '09:00';
+  document.getElementById('notas-lembrete-overlay').classList.add('show');
+}
+function notasSalvarLembrete(){
+  const data=document.getElementById('notas-lem-data').value;
+  const hora=document.getElementById('notas-lem-hora').value;
+  if(!data||!hora){ toast('Preencha data e hora','error'); return; }
+  notasAtualizar(notasLembreteAlvoId, {lembrete: `${data}T${hora}`});
+  document.getElementById('notas-lembrete-overlay').classList.remove('show');
+  const n=notasGetAll().find(x=>x.id===notasLembreteAlvoId);
+  document.getElementById('notas-m-lembrete-wrap').style.display='flex';
+  document.getElementById('notas-m-lembrete-txt').textContent=notasFmtLembrete(n.lembrete);
+  toast('⏰ Lembrete definido','success');
+}
+function notasRemoverLembrete(){
+  notasAtualizar(notasEditandoId, {lembrete:null});
+  document.getElementById('notas-m-lembrete-wrap').style.display='none';
+}
+
+// ── Avisa lembretes vencidos/de hoje ao abrir o app ──
+function notasCheckLembretes(){
+  const agora=new Date();
+  const notas=notasGetAll().filter(n=>!n.excluido&&n.lembrete);
+  const vencidos=notas.filter(n=>new Date(n.lembrete)<=agora);
+  if(vencidos.length && typeof toast==='function'){
+    toast(`⏰ Você tem ${vencidos.length} lembrete(s) de nota pendente(s)`,'success');
+  }
+}
+
 // ═══════════════════════ INIT ═══════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   initSliders();
@@ -3352,6 +3831,7 @@ cicloInit();
 
 seiRender();
 if(typeof agInit==='function') agInit();
+if(typeof notasRender==='function'){ notasRender(); notasCheckLembretes(); }
 // PSI: activate "hoje" section by default
 document.addEventListener('DOMContentLoaded', ()=>{
   const psiHoje = document.getElementById('sec-hoje');
