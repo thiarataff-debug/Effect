@@ -1273,9 +1273,15 @@ font-family:'Montserrat',sans-serif
 <div id="view-meu-app" style="display:none;flex:1;flex-direction:column;overflow:hidden">
   <iframe src="/meu-app" style="width:100%;height:100%;border:none;flex:1" id="iframe-meu-app"></iframe>
 </div>
+<div id="view-agenda" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+  <iframe src="/meu-app?view=agenda&embed=1" style="width:100%;height:100%;border:none;flex:1" id="iframe-agenda-pessoal"></iframe>
+</div>
 
-<!-- VIEW: AGENDA -->
-<div class="agenda-view" id="view-agenda">
+<!-- VIEW: AGENDA (antiga — Agenda de Entrevistas operacional, aposentada da navegação principal.
+     A agenda de entrevistas agora fica só no chat, via "📅 Agendar Nova Entrevista" no perfil do
+     candidato (abrirModalEntrevista, inalterado). Este bloco fica inerte/sem uso — o id foi trocado
+     para não ser mais exibido por mostrarView(), mas o código permanece intacto caso precise voltar. -->
+<div class="agenda-view" id="view-agenda-antiga">
   <div class="ag2-toolbar">
     <div class="ag2-tb-left">
       <div class="ag2-title">📅 Agenda</div>
@@ -2225,7 +2231,8 @@ function mostrarView(v){
   const navFin=document.getElementById('nav-financeiro');
   if(navFin)navFin.style.background=v==='financeiro'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
-  if(v==='agenda') renderAgenda();
+  // Agenda agora é a Agenda Pessoal embutida (iframe de /meu-app?view=agenda&embed=1).
+  // A antiga renderAgenda() operava na Agenda de Entrevistas operacional, aposentada.
 }
 
 // ─── DISPLAY ───
