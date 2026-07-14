@@ -324,6 +324,28 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .chip-red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;}
 
 /* ══ AGENDA PESSOAL ══ */
+.ag-hub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.ag-hub-item{display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg);border-radius:10px;cursor:pointer;transition:all .15s}
+.ag-hub-item:hover{background:#eef1f5}
+.ag-hub-emoji{font-size:20px;flex-shrink:0}
+.ag-hub-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ag-hub-text b{font-size:12px;color:var(--navy)}
+.ag-hub-text span{font-size:10px;color:var(--muted)}
+@media (max-width:640px){ .ag-hub-grid{grid-template-columns:1fr} }
+.ag-hub-tarefas{border-top:1px solid var(--border);padding-top:10px}
+.ag-hub-tarefas-head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.ag-hub-tarefas-head a{font-size:10.5px;font-weight:700;color:var(--blue);cursor:pointer;text-decoration:none}
+.ag-hub-task{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border-radius:7px;margin-bottom:5px;font-size:11.5px}
+.ag-hub-task-check{width:16px;height:16px;border-radius:5px;border:2px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;background:#fff}
+.ag-hub-task-empty{font-size:11px;color:var(--muted);text-align:center;padding:8px}
+.ag-back-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ag-back-btn{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0}
+.ag-back-btn:hover{opacity:.85}
+.ag-back-title{font-size:13px;font-weight:800;color:var(--navy)}
+.ag-header{margin-bottom:10px}
+.ag-header-title{font-weight:800;font-size:15px;color:var(--navy)}
+.ag-header-sub{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.ag-header-sub em{font-style:normal;color:#9a3412}
 .ag-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .ag-tb-left{display:flex;align-items:center;gap:8px}
 .ag-tb-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -377,8 +399,10 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-ano-mini{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
 .ag-ano-mini div{font-size:8px;text-align:center;padding:2px 0;color:var(--muted)}
 .ag-ano-mini div.tem-evento{background:var(--green);color:var(--navy);border-radius:3px;font-weight:800}
+.ag-ano-mini div.periodo-ano{background:#fecdd3;color:#9f1239;border-radius:3px;font-weight:800}
 .ag-ano-mini div.hoje-ano{border:1px solid var(--navy);border-radius:3px;font-weight:800}
 .ag-ano-mini div.outro-mes{opacity:0}
+.ag-ciclo-banner{font-size:12px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px}
 @media (max-width:640px){
   .ag-ano-grid{grid-template-columns:repeat(2,1fr)}
   .ag-semana-grid{grid-template-columns:repeat(7,minmax(64px,1fr));overflow-x:auto;padding-bottom:4px}
@@ -406,16 +430,17 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </header>
 
 <div class="tabs-bar">
-  <button class="tab active" onclick="irAba('psi',this)">🧠 Psicológico</button>
-  <button class="tab" onclick="irAba('tarefas',this)">✅ Tarefas</button>
-  <button class="tab" onclick="irAba('agenda',this)">📅 Agenda</button>
+  <button class="tab" onclick="irAba('psi',this)">🧠 Psicológico</button>
+  <button class="tab active" onclick="irAba('agenda',this)">📅 Agenda Pessoal</button>
   <button class="tab" onclick="irAba('saude',this)">💧 Saúde</button>
-  <button class="tab" onclick="irAba('ciclo',this)">🌸 Ciclo</button>
-  <button class="tab" onclick="irAba('sei',this)">💼 SEI</button>
 </div>
 
 <!-- AGENDA PESSOAL -->
-<div class="page" id="page-agenda">
+<div class="page active" id="page-agenda">
+  <div class="ag-header">
+    <div class="ag-header-title">📅 Agenda Pessoal</div>
+    <div class="ag-header-sub">Todos os seus compromissos num só lugar — inclui as entrevistas marcadas pela Lia (🤝) + seus compromissos pessoais. <em>Diferente da Agenda de Entrevistas do Inbox, que é só operacional (faltas/comparecimentos de candidatos).</em></div>
+  </div>
   <div class="card" style="padding:10px 14px">
     <div class="ag-toolbar">
       <div class="ag-tb-left">
@@ -436,6 +461,23 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
   </div>
   <div class="card" id="ag-status-card" style="display:none"></div>
+
+  <div class="card" id="ag-hub-card">
+    <div class="card-title">🧭 Atalhos rápidos</div>
+    <div class="ag-hub-grid">
+      <div class="ag-hub-item" id="ag-hub-ciclo" onclick="agAbrirPagina('ciclo')"></div>
+      <div class="ag-hub-item" id="ag-hub-registro" onclick="agAbrirPagina('psi')"></div>
+      <div class="ag-hub-item" id="ag-hub-sei" onclick="agAbrirPagina('sei')">
+        <div class="ag-hub-emoji">💼</div>
+        <div class="ag-hub-text"><b>Clientes (SEI)</b><span>Vagas, cards e relatórios →</span></div>
+      </div>
+    </div>
+    <div class="ag-hub-tarefas">
+      <div class="ag-hub-tarefas-head">✅ Tarefas pendentes <a onclick="agAbrirPagina('tarefas')">Ver todas / Matriz →</a></div>
+      <div id="ag-hub-tarefas-list"></div>
+    </div>
+  </div>
+
   <div class="card" id="ag-main-card">
     <div id="ag-main">Carregando agenda…</div>
   </div>
@@ -501,6 +543,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <!-- FOCO -->
 <!-- TAREFAS -->
 <div class="page" id="page-tarefas">
+  <div class="ag-back-bar"><button class="ag-back-btn" onclick="agVoltar()">← Voltar à Agenda</button><span class="ag-back-title">✅ Tarefas</span></div>
   <div class="card"><div class="card-title">⚡ O que fazer agora?</div>
     <div id="sugestao-tarefa" style="font-size:13px;color:var(--muted);margin-bottom:10px">Nenhuma tarefa urgente cadastrada.</div>
     <button onclick="sugerirTarefa()" style="padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer">🎲 Sugerir tarefa</button>
@@ -586,6 +629,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 
 <div class="page" id="page-ciclo">
+  <div class="ag-back-bar"><button class="ag-back-btn" onclick="agVoltar()">← Voltar à Agenda</button><span class="ag-back-title">🌸 Ciclo</span></div>
 
   <!-- Banner fase atual -->
   <div id="ciclo-phase-banner" class="ciclo-phase-banner" style="background:#fff0f6;border:1px solid #fda4af"></div>
@@ -761,7 +805,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 </div><!-- /page-ciclo -->
 
-<div class="page active" id="page-psi">
+<div class="page" id="page-psi">
   <div class="psi-nav">
     <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
@@ -1051,6 +1095,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 
 <div class="page" id="page-sei">
+  <div class="ag-back-bar"><button class="ag-back-btn" onclick="agVoltar()">← Voltar à Agenda</button><span class="ag-back-title">💼 Clientes (SEI)</span></div>
 
 <!-- SEI EXPORT BAR (edit mode only) -->
 <div class="sei-export-bar" id="seiExportBar" style="display:none">
@@ -1291,7 +1336,7 @@ function salvarEx(){
   document.getElementById('ex-tipo-academia').value='';
   document.getElementById('ex-obs').value='';
 }
-function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');el.classList.add('active');if(aba==='sos')if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}if(aba==='agenda'&&typeof agInit==='function')agInit();}
+function irAba(aba,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+aba).classList.add('active');if(el)el.classList.add('active');if(aba==='sei')seiRender();if(aba==='psi'){psiCheckRestock();psiRenderMedStock();}if(aba==='agenda'&&typeof agInit==='function')agInit();if(aba==='ciclo'&&typeof cicloRender==='function')cicloRender();window.scrollTo(0,0);}
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${tipo||''}`;setTimeout(()=>t.className='toast',2500);}
 
 
@@ -2907,6 +2952,7 @@ let agView = localStorage.getItem('ag-view') || 'semana';
 let agData = new Date();
 let agEventos = [];
 let agRangeCache = { inicio: null, fim: null };
+let agCicloCalcCache = null; // cache do cicloCalc() para marcar dias de menstruação/ovulação na Agenda
 
 const AG_DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
 const AG_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -2926,8 +2972,64 @@ function agEventoNoDia(e, iso){
   if(e.diaTodo) return e.inicio<=iso && iso<e.fim;
   return (e.inicio||'').slice(0,10)===iso;
 }
+function agCicloTipo(d){
+  if(!agCicloCalcCache || typeof cicloGetDayType!=='function') return null;
+  return cicloGetDayType(d, agCicloCalcCache);
+}
+function agCicloIcone(tipo){
+  if(tipo==='period') return '🩸';
+  if(tipo==='ovulation') return '🌟';
+  return '';
+}
 
-async function agInit(){ agBindSwitch(); await agRender(); }
+function agVoltar(){ irAba('agenda', document.querySelectorAll('.tab')[1]); }
+function agAbrirPagina(aba){
+  const tabs=document.querySelectorAll('.tab');
+  const map={psi:0,agenda:1,saude:2};
+  irAba(aba, map[aba]!==undefined ? tabs[map[aba]] : null);
+}
+
+// ── Hub de atalhos (Ciclo, Registro do Dia, Tarefas, Clientes) ──
+function agRenderHub(){
+  agRenderHubCiclo();
+  agRenderHubRegistro();
+  agRenderHubTarefas();
+}
+
+function agRenderHubCiclo(){
+  const el=document.getElementById('ag-hub-ciclo');
+  if(!el) return;
+  const calc = (typeof cicloCalc==='function') ? cicloCalc() : null;
+  if(!calc){
+    el.innerHTML = `<div class="ag-hub-emoji">🌸</div><div class="ag-hub-text"><b>Ciclo</b><span>Configure sua última menstruação →</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="ag-hub-emoji">${calc.phaseEmoji}</div><div class="ag-hub-text"><b>${calc.phase} · dia ${calc.cycleDay}</b><span>Próxima: ${calc.fmtDate(calc.nextPeriod)} →</span></div>`;
+}
+
+function agRenderHubRegistro(){
+  const el=document.getElementById('ag-hub-registro');
+  if(!el) return;
+  const feito = typeof getDB==='function' && typeof todayKey==='function' && !!getDB()[todayKey()];
+  el.innerHTML = feito
+    ? `<div class="ag-hub-emoji">✅</div><div class="ag-hub-text"><b>Registro de hoje</b><span>Já preenchido — ver/editar →</span></div>`
+    : `<div class="ag-hub-emoji">📝</div><div class="ag-hub-text"><b>Registro de hoje</b><span>Ainda não preenchido →</span></div>`;
+}
+
+function agRenderHubTarefas(){
+  const wrap=document.getElementById('ag-hub-tarefas-list');
+  if(!wrap) return;
+  const prioLabel={u:'🔴',i:'🟡',n:'⚪'};
+  const pendentes=(typeof dados!=='undefined'?dados.tarefas:[]).filter(t=>!t.done).sort((a,b)=>{const o={u:0,i:1,n:2};return o[a.prio]-o[b.prio];}).slice(0,4);
+  if(!pendentes.length){ wrap.innerHTML='<div class="ag-hub-task-empty">Nenhuma tarefa pendente 🎉</div>'; return; }
+  wrap.innerHTML = pendentes.map(t=>`<div class="ag-hub-task"><div class="ag-hub-task-check" onclick="agToggleHubTask(${t.id})">${t.done?'✓':''}</div><span>${prioLabel[t.prio]} ${agEsc(t.texto)}</span></div>`).join('');
+}
+function agToggleHubTask(id){
+  if(typeof toggleTask==='function') toggleTask(id);
+  agRenderHubTarefas();
+}
+
+async function agInit(){ agBindSwitch(); agRenderHub(); await agRender(); }
 function agBindSwitch(){ document.querySelectorAll('.ag-switch-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===agView)); }
 function agSetView(v){ agView=v; localStorage.setItem('ag-view',v); agBindSwitch(); agRender(); }
 function agNav(dir){
@@ -2977,6 +3079,10 @@ async function agRenderDia(main){
   const diaTodo = evsDia.filter(e=>e.diaTodo);
   const comHora = evsDia.filter(e=>!e.diaTodo).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
   let html='';
+  const cicloTipo = agCicloTipo(agData);
+  if(cicloTipo==='period') html += `<div class="ag-ciclo-banner" style="background:#fff0f6;color:#9f1239">🩸 Dia de menstruação (estimado/registrado)</div>`;
+  else if(cicloTipo==='ovulation') html += `<div class="ag-ciclo-banner" style="background:#f0fdf4;color:#166534">🌟 Dia estimado de ovulação</div>`;
+  else if(cicloTipo==='fertile') html += `<div class="ag-ciclo-banner" style="background:#eff6ff;color:#1e40af">💧 Janela fértil (estimada)</div>`;
   if(diaTodo.length) html += `<div style="margin-bottom:10px;display:flex;flex-direction:column;gap:4px">${diaTodo.map(e=>agEvtChip(e,true)).join('')}</div>`;
   html += '<div class="ag-dia-list">';
   for(let h=6; h<=23; h++){
@@ -3000,7 +3106,8 @@ async function agRenderSemana(main){
     const d=new Date(ini); d.setDate(d.getDate()+i);
     const iso=agISO(d);
     const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
-    html += `<div class="ag-semana-col ${iso===hojeISO?'hoje':''}"><div class="ag-semana-head">${AG_DOW[i]}<b>${d.getDate()}</b></div>`;
+    const cTipo=agCicloTipo(d);
+    html += `<div class="ag-semana-col ${iso===hojeISO?'hoje':''}"><div class="ag-semana-head">${AG_DOW[i]}<b>${d.getDate()} ${agCicloIcone(cTipo)}</b></div>`;
     evs.forEach(e=>{ html += agEvtChip(e, e.diaTodo); });
     html += `</div>`;
   }
@@ -3023,7 +3130,8 @@ async function agRenderMes(main){
     const iso=agISO(cursor);
     const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
     const outroMes=cursor.getMonth()!==m;
-    html += `<div class="ag-mes-cell ${outroMes?'outro-mes':''} ${iso===hojeISO?'hoje':''}" onclick="agIrParaDia('${iso}')"><div class="ag-mes-num">${cursor.getDate()}</div><div class="ag-mes-dots">`;
+    const cTipo=agCicloTipo(cursor);
+    html += `<div class="ag-mes-cell ${outroMes?'outro-mes':''} ${iso===hojeISO?'hoje':''}" onclick="agIrParaDia('${iso}')"><div class="ag-mes-num">${cursor.getDate()} ${agCicloIcone(cTipo)}</div><div class="ag-mes-dots">`;
     evs.slice(0,3).forEach(e=>{ const cor=AG_CATEGORIA_COR[agCategoriaDoEvento(e)]||AG_CATEGORIA_COR.outro; html+=`<span class="ag-evt-dot" style="background:${cor}"></span>`; });
     html += `</div>`;
     if(evs.length>3) html += `<div class="ag-mes-mais">+${evs.length-3}</div>`;
@@ -3057,7 +3165,8 @@ async function agRenderAno(main){
     for(let i=0;i<42;i++){
       const outroMes=cursor.getMonth()!==m;
       const iso=agISO(cursor);
-      const cls=[outroMes?'outro-mes':'', (diasComEvento.has(iso)&&!outroMes)?'tem-evento':'', iso===hojeISO?'hoje-ano':''].filter(Boolean).join(' ');
+      const cTipo=!outroMes?agCicloTipo(cursor):null;
+      const cls=[outroMes?'outro-mes':'', (diasComEvento.has(iso)&&!outroMes)?'tem-evento':'', cTipo==='period'?'periodo-ano':'', iso===hojeISO?'hoje-ano':''].filter(Boolean).join(' ');
       html += `<div class="${cls}">${outroMes?'':cursor.getDate()}</div>`;
       cursor.setDate(cursor.getDate()+1);
     }
@@ -3069,6 +3178,8 @@ async function agRenderAno(main){
 
 async function agRender(){
   agBindSwitch();
+  agCicloCalcCache = (typeof cicloCalc==='function') ? cicloCalc() : null;
+  if(typeof agRenderHub==='function') agRenderHub();
   const main=document.getElementById('ag-main');
   main.innerHTML='<div class="ag-dia-vazio">Carregando…</div>';
   if(agView==='dia') await agRenderDia(main);
@@ -3240,6 +3351,7 @@ renderTarefas();renderMatriz(); renderRem(); renderAgua(); sugerirTarefa(); psiR
 cicloInit();
 
 seiRender();
+if(typeof agInit==='function') agInit();
 // PSI: activate "hoje" section by default
 document.addEventListener('DOMContentLoaded', ()=>{
   const psiHoje = document.getElementById('sec-hoje');
