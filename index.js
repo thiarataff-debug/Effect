@@ -4454,6 +4454,41 @@ app.get("/agenda/disponibilidade", async (req, res) => {
   } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// ── AGENDA PESSOAL (Meu App) — lê/escreve direto no Google Calendar real ────
+// Mesmo calendário usado pelas entrevistas (calendar.js), então tudo aparece
+// junto: entrevistas marcadas pela Lia + compromissos pessoais da Thiara.
+app.get("/api/agenda-pessoal/eventos", async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) return res.status(400).json({ ok: false, erro: "Parâmetros 'inicio' e 'fim' obrigatórios (YYYY-MM-DD)" });
+    const result = await calendar.listarEventos(inicio, fim);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message, eventos: [] }); }
+});
+
+app.post("/api/agenda-pessoal/eventos", async (req, res) => {
+  try {
+    const { titulo, data } = req.body || {};
+    if (!titulo || !data) return res.status(400).json({ ok: false, erro: "Campos obrigatórios: titulo, data" });
+    const result = await calendar.criarEventoPessoal(req.body);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
+app.put("/api/agenda-pessoal/eventos/:id", async (req, res) => {
+  try {
+    const result = await calendar.editarEvento(req.params.id, req.body || {});
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
+app.delete("/api/agenda-pessoal/eventos/:id", async (req, res) => {
+  try {
+    const result = await calendar.excluirEvento(req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
 // ── AGENDA SYNC: persiste entrevistas, lembretes, status e config no Volume ──
 // (o inbox.html chama essas rotas para sincronizar dados entre dispositivos e
 // sobreviver a deploys — antes essa rota não existia e o sync falhava em silêncio)
