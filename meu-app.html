@@ -469,7 +469,12 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .notas-modal-overlay.show{display:flex}
 .notas-modal{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
 .notas-m-titulo{border:none;outline:none;font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px}
-.notas-m-texto{border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:13px;resize:vertical;min-height:100px}
+.notas-m-texto{border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:13px;min-height:100px;white-space:pre-wrap;word-break:break-word}
+.notas-m-texto:empty:before{content:attr(data-placeholder);color:#9ca3af}
+.notas-m-fmtbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-bottom:6px;margin-bottom:2px;border-bottom:1px solid var(--border)}
+.notas-m-fmt-btn{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.12);background:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:12px;display:flex;align-items:center;justify-content:center;color:#1e293b}
+.notas-m-fmt-btn:hover{background:var(--bg)}
+.notas-m-fmt-cor{width:18px;height:18px;border-radius:50%;cursor:pointer;border:1.5px solid rgba(0,0,0,.15);flex-shrink:0}
 .notas-m-lembrete{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.1);padding:5px 10px;border-radius:8px;align-self:flex-start}
 .notas-m-lembrete button{background:none;border:none;color:#7c3aed;font-size:13px;cursor:pointer;margin-left:4px}
 .notas-m-toolbar{display:flex;align-items:center;gap:4px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap}
@@ -647,7 +652,18 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <input class="notas-m-titulo" id="notas-m-titulo" placeholder="Título" oninput="notasSalvarAuto()">
     <div class="notas-m-checklist" id="notas-m-checklist" style="display:none"></div>
     <button class="notas-m-add-item" id="notas-m-add-item" onclick="notasAdicionarItemChecklist()" style="display:none">+ Item</button>
-    <textarea class="notas-m-texto" id="notas-m-texto" placeholder="Nota..." oninput="notasSalvarAuto()"></textarea>
+    <div class="notas-m-fmtbar" id="notas-m-fmtbar">
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasFormatar('bold')" title="Negrito"><b>B</b></button>
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasFormatar('italic')" title="Itálico"><i>I</i></button>
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasFormatarCor('')" title="Cor padrão">A</button>
+      <div class="notas-m-fmt-cor" style="background:#dc2626" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#dc2626')" title="Vermelho"></div>
+      <div class="notas-m-fmt-cor" style="background:#ea580c" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#ea580c')" title="Laranja"></div>
+      <div class="notas-m-fmt-cor" style="background:#ca8a04" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#ca8a04')" title="Amarelo"></div>
+      <div class="notas-m-fmt-cor" style="background:#16a34a" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#16a34a')" title="Verde"></div>
+      <div class="notas-m-fmt-cor" style="background:#2563eb" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#2563eb')" title="Azul"></div>
+      <div class="notas-m-fmt-cor" style="background:#9333ea" onmousedown="event.preventDefault()" onclick="notasFormatarCor('#9333ea')" title="Roxo"></div>
+    </div>
+    <div class="notas-m-texto" id="notas-m-texto" contenteditable="true" data-placeholder="Nota..." oninput="notasSalvarAuto()"></div>
     <div class="notas-m-lembrete" id="notas-m-lembrete-wrap" style="display:none">
       <span>⏰</span><span id="notas-m-lembrete-txt"></span>
       <button onclick="notasRemoverLembrete()" title="Remover lembrete">×</button>
@@ -3455,6 +3471,32 @@ function notasSaveAll(arr){ localStorage.setItem(NOTAS_KEY, JSON.stringify(arr))
 function notasNovoId(){ return 'n'+Date.now()+Math.floor(Math.random()*1000); }
 function notasCorBg(corId){ return (NOTAS_CORES.find(c=>c.id===corId)||NOTAS_CORES[0]).bg; }
 
+// Prepara o texto da nota pra exibição em HTML. Notas formatadas (negrito/cor, criadas
+// pelo editor rico) já vêm como HTML seguro — usa direto. Notas antigas/texto puro (ex:
+// criadas pelo quick-add) não têm tag nenhuma — escapa por segurança e troca \n por <br>
+// pra manter as quebras de linha.
+function notasTextoParaHTML(texto){
+  if(!texto) return '';
+  if(/<\/?[a-z][\s\S]*>/i.test(texto)) return texto;
+  return agEsc(texto).replace(/\n/g,'<br>');
+}
+// Aplica negrito/itálico no texto selecionado dentro da nota (execCommand clássico —
+// funciona bem no Chrome, que é o navegador usado aqui).
+function notasFormatar(cmd){
+  const el=document.getElementById('notas-m-texto');
+  el.focus();
+  document.execCommand(cmd, false, null);
+  notasSalvarAuto();
+}
+// Aplica cor no texto selecionado (ou define a cor pra próxima digitação, se nada
+// estiver selecionado). cor='' volta pra cor padrão (preto/cinza escuro).
+function notasFormatarCor(cor){
+  const el=document.getElementById('notas-m-texto');
+  el.focus();
+  document.execCommand('foreColor', false, cor || '#1e293b');
+  notasSalvarAuto();
+}
+
 function notasSetView(v){
   notasView=v;
   document.querySelectorAll('.notas-vt-btn').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
@@ -3582,7 +3624,7 @@ function notasCardHTML(n){
     corpo = itensShow.map(it=>`<div class="notas-card-check ${it.feito?'done':''}"><div class="notas-card-check-box ${it.feito?'on':''}" onclick="event.stopPropagation();notasToggleItemCard('${n.id}','${it.id}')">${it.feito?'✓':''}</div><span>${agEsc(it.texto)}</span></div>`).join('');
     if(n.itens.length>6) corpo += `<div class="notas-card-mais">+${n.itens.length-6} item(ns)</div>`;
   } else if(n.texto){
-    corpo = `<div class="notas-card-texto">${agEsc(n.texto)}</div>`;
+    corpo = `<div class="notas-card-texto">${notasTextoParaHTML(n.texto)}</div>`;
   }
   const lembreteHTML = n.lembrete ? `<div class="notas-card-lembrete">⏰ ${notasFmtLembrete(n.lembrete)}</div>` : '';
   const acoes = notasView==='lixeira'
@@ -3635,8 +3677,9 @@ function notasAbrirModal(id){
   notasEditandoId=id;
   document.getElementById('notas-m-id').value=id;
   document.getElementById('notas-m-titulo').value=n.titulo||'';
-  document.getElementById('notas-m-texto').value=n.texto||'';
+  document.getElementById('notas-m-texto').innerHTML=notasTextoParaHTML(n.texto);
   document.getElementById('notas-m-texto').style.display = n.tipo==='checklist' ? 'none' : 'block';
+  document.getElementById('notas-m-fmtbar').style.display = n.tipo==='checklist' ? 'none' : 'flex';
   document.getElementById('notas-m-checklist').style.display = n.tipo==='checklist' ? 'block' : 'none';
   document.getElementById('notas-m-add-item').style.display = n.tipo==='checklist' ? 'inline-block' : 'none';
   document.getElementById('notas-modal').style.background = notasCorBg(n.cor);
@@ -3656,7 +3699,7 @@ function notasFecharModal(){
 function notasSalvarAuto(){
   if(!notasEditandoId) return;
   const titulo=document.getElementById('notas-m-titulo').value;
-  const texto=document.getElementById('notas-m-texto').value;
+  const texto=document.getElementById('notas-m-texto').innerHTML;
   notasAtualizar(notasEditandoId, {titulo, texto});
 }
 function notasModalSelecionarCor(corId){
@@ -3676,19 +3719,25 @@ function notasExcluirModal(){ notasAtualizar(notasEditandoId,{excluido:true,fixa
 function notasToggleChecklistModal(){
   const n=notasGetAll().find(x=>x.id===notasEditandoId);
   if(!n) return;
+  const textoEl=document.getElementById('notas-m-texto');
   if(n.tipo==='checklist'){
     // volta para texto simples (junta os itens não concluídos como texto solto)
     const textoJunto=n.itens.map(i=>i.texto).filter(Boolean).join('\n');
-    notasAtualizar(notasEditandoId,{tipo:'texto', texto:(n.texto?n.texto+'\n':'')+textoJunto, itens:[]});
-    document.getElementById('notas-m-texto').value=(n.texto?n.texto+'\n':'')+textoJunto;
-    document.getElementById('notas-m-texto').style.display='block';
+    const novoTexto=(n.texto?n.texto+'\n':'')+textoJunto;
+    notasAtualizar(notasEditandoId,{tipo:'texto', texto:novoTexto, itens:[]});
+    textoEl.innerText=novoTexto;
+    textoEl.style.display='block';
+    document.getElementById('notas-m-fmtbar').style.display='flex';
     document.getElementById('notas-m-checklist').style.display='none';
     document.getElementById('notas-m-add-item').style.display='none';
   } else {
-    const itens = n.texto ? n.texto.split('\n').filter(Boolean).map(t=>({id:notasNovoId(),texto:t,feito:false})) : [{id:notasNovoId(),texto:'',feito:false}];
+    // usa innerText (texto puro, sem tags) pra não vazar HTML de formatação nos itens
+    const textoPlano = textoEl.innerText || '';
+    const itens = textoPlano.trim() ? textoPlano.split('\n').filter(Boolean).map(t=>({id:notasNovoId(),texto:t,feito:false})) : [{id:notasNovoId(),texto:'',feito:false}];
     notasAtualizar(notasEditandoId,{tipo:'checklist', itens, texto:''});
-    document.getElementById('notas-m-texto').value='';
-    document.getElementById('notas-m-texto').style.display='none';
+    textoEl.innerHTML='';
+    textoEl.style.display='none';
+    document.getElementById('notas-m-fmtbar').style.display='none';
     document.getElementById('notas-m-checklist').style.display='block';
     document.getElementById('notas-m-add-item').style.display='inline-block';
     notasModalRenderChecklist();
