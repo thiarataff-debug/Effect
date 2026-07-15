@@ -530,10 +530,9 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
   <div class="card" id="ag-hub-card">
     <div class="card-title">🧭 Atalhos rápidos</div>
-    <div class="ag-hub-grid">
+    <div class="ag-hub-grid" style="grid-template-columns:repeat(2,1fr)">
       <div class="ag-hub-item" id="ag-hub-ciclo" onclick="agAbrirPagina('ciclo')"></div>
       <div class="ag-hub-item" id="ag-hub-registro" onclick="agAbrirPagina('psi')"></div>
-      <div class="ag-hub-item" id="ag-hub-saude" onclick="agAbrirPagina('saude')"></div>
     </div>
     <div class="ag-hub-tarefas">
       <div class="ag-hub-tarefas-head">✅ Tarefas pendentes <a onclick="agAbrirPagina('tarefas')">Ver todas / Matriz →</a></div>
@@ -3142,7 +3141,6 @@ function agRenderHub(){
   agRenderHubCiclo();
   agRenderHubRegistro();
   agRenderHubTarefas();
-  agRenderHubSaude();
 }
 
 function agRenderHubSaude(){
