@@ -317,7 +317,7 @@
       <label class="first">Bloco de texto</label>
       <select id="fmtBlock">
         <option value="title">Título da vaga</option>
-        <option value="rows">Informações (local, horário, requisitos...)</option>
+        <option value="rows">Informações (requisitos...)</option>
         <option value="bens">Benefícios</option>
         <option value="badge">Selo "VAGA ABERTA"</option>
         <option value="salary">Salário</option>
@@ -553,6 +553,24 @@ function drawTagsWrapped(ctx, tags, tints, textColor, xRef, y, maxWidth, th, fon
     cy += th+gapY;
   });
   return cy-y;
+}
+
+// Mede a altura total que drawTagsWrapped vai ocupar, sem desenhar nada
+// (usado para reservar espaço antes de decidir o layout do resto do card).
+function measureTagsWrapped(ctx, tags, font, maxWidth, th, padX, gapX, gapY){
+  if(!tags.length) return 0;
+  ctx.font = font;
+  const widths = tags.map(t=>ctx.measureText(t).width + padX*2);
+  const rows = []; let row=[], rowW=0;
+  tags.forEach((t,i)=>{
+    const w=widths[i];
+    const addW = row.length? w+gapX : w;
+    if(rowW+addW>maxWidth && row.length){ rows.push(row); row=[]; rowW=0; }
+    row.push(w);
+    rowW += row.length>1? w+gapX : w;
+  });
+  if(row.length) rows.push(row);
+  return rows.length*th + Math.max(0, rows.length-1)*gapY;
 }
 
 // Desenha uma imagem "cover" (preenche todo o retângulo, cortando o excesso).
@@ -1282,15 +1300,21 @@ function renderTall(ctx,fmt,data,col,interactive){
   const titleMaxSize = cardW*0.07, titleMinSize = cardW*0.044;
   const yBeforeTitle = y;
 
+  // CLT, Presencial, local e horário agora viram tags/chips compactos (em vez de
+  // linhas inteiras de texto), deixando o bloco "Informações" livre para requisitos
+  // e outros itens que a pessoa queira incluir.
+  const tagList = [data.contratacao, data.regime, data.cidade, data.horario].filter(Boolean);
+  const tagFont = `600 ${Math.round(cardW*0.021)}px Poppins, Arial, sans-serif`;
+  const tagH = cardW*0.036, tagPadX = cardW*0.015, tagGapX = cardW*0.011, tagGapY = cardH*0.011;
+  const tagsGapAfter = cardH*0.018;
+  const tagsBlockH = tagList.length ? measureTagsWrapped(ctx, tagList, tagFont, lw, tagH, tagPadX, tagGapX, tagGapY) + tagsGapAfter : 0;
+
   const rows = [];
-  if(data.cidade) rows.push({icon:'📍', label:'Local de trabalho', text:data.cidade});
-  if(data.horario) rows.push({icon:'🕐', label:'Horário', text:data.horario});
-  if(data.contratacao||data.regime) rows.push({icon:'💼', label:'Contratação', text:[data.contratacao,data.regime].filter(Boolean).join(' · ')});
   data.requisitos.forEach((r,i)=> rows.push({icon: i===0 ? '🎓' : '', label: i===0 ? 'Requisito(s)' : '', text:r}));
 
   const titleLH = 1.08*titleLineHMult;
   let fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, titleMaxSize, titleMinSize, 800, titleFamily);
-  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
   let rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
 
   if(topBE.titleSize==null){
@@ -1298,14 +1322,14 @@ function renderTall(ctx,fmt,data,col,interactive){
     let balanceGuard = 0;
     while(rows.length && rowsFont < ROWS_TARGET_FONT && fit.size > titleMinSize && balanceGuard < 60){
       fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, fit.size-2, titleMinSize, 800, titleFamily);
-      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
       rowsFont = fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult);
       balanceGuard++;
     }
   } else {
     const manualSize = Math.min(Math.max(topBE.titleSize, titleMinSize), titleMaxSize);
     fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, manualSize, titleMinSize, 800, titleFamily);
-    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
     rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
   }
   lastTitleFitSize = fit.size;
@@ -1366,6 +1390,11 @@ function renderTall(ctx,fmt,data,col,interactive){
   }
 
   y += fit.lines.length*fit.size*titleLH + cardH*0.022;
+
+  if(tagList.length){
+    drawTagsWrapped(ctx, tagList, [col.secondary, col.tertiary], col.primary, lx, y, lw, tagH, tagFont, tagPadX, tagGapX, tagGapY, 'left');
+    y += tagsBlockH;
+  }
 
   lastRowsFontHandleRect = null;
   if(interactive && rows.length){
