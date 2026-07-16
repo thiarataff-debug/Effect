@@ -293,7 +293,7 @@
 
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
-      <div class="hint">Dica: clique direto em qualquer peça da arte — selo "VAGA ABERTA", título, foto/ícone, informações, salário, benefícios ou rodapé de contato — pra selecioná-la (aparece um contorno tracejado) e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Na foto, isso funciona como uma panorâmica dentro do enquadramento. Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir posições e espaçamentos</a></div>
+      <div class="hint">Dica: clique direto em qualquer peça da arte — selo "VAGA ABERTA", título, foto/ícone, informações, salário, benefícios ou rodapé de contato — pra selecioná-la (aparece um contorno tracejado) e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Na foto, isso funciona como uma panorâmica dentro do enquadramento. Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla só o tamanho do texto de Informações — e a alcinha no canto superior direito dos "Benefícios" controla só o tamanho do texto de Benefícios (agora totalmente independentes uma da outra). Puxe pra baixo pra aumentar a fonte; ela para de crescer sozinha quando o espaço acaba, então o texto nunca some. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir posições e espaçamentos</a></div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -1266,24 +1266,38 @@ function renderTall(ctx,fmt,data,col,interactive){
   }
   lastTitleFitSize = fit.size;
 
-  const sharedBodyFontAuto = (rows.length && data.beneficios.length) ? Math.min(rowsFont, benFontCandidate) : rowsFont;
-  lastBodyFontFitSize = sharedBodyFontAuto;
-  const bodyFontMin = cardW*0.016, bodyFontMax = cardW*0.05;
-  const sharedBodyFont = topBE.bodyFontSize!=null ? Math.min(Math.max(topBE.bodyFontSize, bodyFontMin), bodyFontMax) : sharedBodyFontAuto;
+  // Fonte do bloco "Informações" (topo) e do bloco "Benefícios" (abaixo do salário) agora são
+  // independentes. Cada uma é limitada ao maior tamanho que cabe no espaço do próprio bloco
+  // (rowsFontMax / bensFontMax), então o texto nunca some ao aumentar a fonte — o arrasto
+  // simplesmente para de crescer quando o espaço acaba.
+  const bodyFontMin = cardW*0.016;
+  const rowsFontMax = rowsFont;
+  const bensFontMax = benFontCandidate;
+  const balancedAuto = (rows.length && data.beneficios.length) ? Math.min(rowsFontMax, bensFontMax) : rowsFontMax;
 
-  const rowsBaseGap = sharedBodyFont*0.55;
+  lastRowsFontFitSize = rowsFontMax;
+  lastBensFontFitSize = bensFontMax;
+
+  const rowsFontFinal = topBE.rowsFontSize!=null
+    ? Math.min(Math.max(topBE.rowsFontSize, bodyFontMin), rowsFontMax)
+    : balancedAuto;
+  const bensFontFinal = topBE.bensFontSize!=null
+    ? Math.min(Math.max(topBE.bensFontSize, bodyFontMin), bensFontMax)
+    : balancedAuto;
+
+  const rowsBaseGap = rowsFontFinal*0.55;
   let rowsGap = rowsBaseGap;
   let rowsNaturalH = 0, rowsExtraUsed = 0;
   const rowsBE = getBlockExtra(currentFormat);
   if(rows.length>1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, sharedBodyFont);
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal);
     const rowsLeftover = Math.max(0, rowsMaxH - rowsNaturalH);
-    if(rowsBE.rows==null) rowsBE.rows = Math.min(rowsLeftover, (rows.length-1)*sharedBodyFont*0.6);
+    if(rowsBE.rows==null) rowsBE.rows = Math.min(rowsLeftover, (rows.length-1)*rowsFontFinal*0.6);
     rowsExtraUsed = Math.min(Math.max(rowsBE.rows,0), rowsLeftover);
     rowsBE.rows = rowsExtraUsed;
     rowsGap = rowsBaseGap + rowsExtraUsed/(rows.length-1);
   } else if(rows.length===1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, sharedBodyFont);
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal);
   }
 
   const titleOff = getTitleOffset(currentFormat);
@@ -1309,9 +1323,9 @@ function renderTall(ctx,fmt,data,col,interactive){
 
   y += fit.lines.length*fit.size*1.08 + cardH*0.022;
 
-  lastBodyFontHandleRect = null;
-  if(interactive && (rows.length || data.beneficios.length)){
-    lastBodyFontHandleRect = drawGrabHandle(ctx, lx+lw, y, cardW*0.045);
+  lastRowsFontHandleRect = null;
+  if(interactive && rows.length){
+    lastRowsFontHandleRect = drawGrabHandle(ctx, lx+lw, y, cardW*0.045);
   }
 
   let rowsTruncated=false;
@@ -1326,7 +1340,7 @@ function renderTall(ctx,fmt,data,col,interactive){
 
     ctx.save();
     ctx.beginPath(); ctx.rect(rx, ry, lw, rowsMaxH); ctx.clip();
-    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, sharedBodyFont, '#4b5563', col.primary, rowsGap).truncated;
+    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, rowsFontFinal, '#4b5563', col.primary, rowsGap).truncated;
     ctx.restore();
     lastRowsBlockRect = {x:rx, y:ry, w:lw, h:Math.min(rowsNaturalH+rowsExtraUsed, rowsMaxH)};
     if(interactive){
@@ -1367,10 +1381,14 @@ function renderTall(ctx,fmt,data,col,interactive){
     bensOff.x = Math.min(Math.max(bensOff.x, -bensNudgeX), bensNudgeX);
     bensOff.y = Math.min(Math.max(bensOff.y, -bensNudgeY), bensNudgeY);
     const bbx = bx+bensOff.x, bby = by+bensOff.y;
-    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, sharedBodyFont, interactive);
+    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, bensFontFinal, interactive);
     benTruncated = rb.truncated || benAvail<=0;
     lastBensBlockRect = {x:bbx, y:bby, w:bw, h:Math.min(rb.height||0, benAvail)};
     if(interactive && selectedTarget==='bensBlock') drawSelectionOutline(ctx, lastBensBlockRect);
+    lastBensFontHandleRect = null;
+    if(interactive){
+      lastBensFontHandleRect = drawGrabHandle(ctx, bbx+bw, bby, cardW*0.045);
+    }
   }
 
   const footerY = cardY+cardH-footerH;
@@ -1541,7 +1559,7 @@ function renderToCanvas(canvas, formatKey, data, col, interactive){
   canvas.width = fmt.w; canvas.height = fmt.h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null; lastTitleBlockRect = null; lastBadgeBlockRect = null; lastPhotoBlockRect = null; lastSalaryBlockRect = null; lastFooterBlockRect = null;
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastRowsFontHandleRect = null; lastBensFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null; lastTitleBlockRect = null; lastBadgeBlockRect = null; lastPhotoBlockRect = null; lastSalaryBlockRect = null; lastFooterBlockRect = null;
 
   const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
   bgGrad.addColorStop(0, col.secondary);
@@ -1599,8 +1617,10 @@ let lastColSplitHandleRect = null;
 let lastTopSplitHandleRect = null;
 let lastTitleHandleRect = null;
 let lastTitleFitSize = null;
-let lastBodyFontHandleRect = null;
-let lastBodyFontFitSize = null;
+let lastRowsFontHandleRect = null;
+let lastRowsFontFitSize = null;
+let lastBensFontHandleRect = null;
+let lastBensFontFitSize = null;
 
 let rowsOffsets = {};
 function getRowsOffset(fmtKey){
@@ -1724,7 +1744,20 @@ function loadState(){
   if(state.photoOffsets && typeof state.photoOffsets==='object') photoOffsets = state.photoOffsets;
   if(state.salaryOffsets && typeof state.salaryOffsets==='object') salaryOffsets = state.salaryOffsets;
   if(state.footerOffsets && typeof state.footerOffsets==='object') footerOffsets = state.footerOffsets;
-  if(state.blockExtra && typeof state.blockExtra==='object') blockExtra = state.blockExtra;
+  if(state.blockExtra && typeof state.blockExtra==='object'){
+    blockExtra = state.blockExtra;
+    // Migração: versões antigas usavam um único "bodyFontSize" compartilhado entre
+    // Informações e Benefícios. Aplica o valor salvo às duas novas fontes independentes,
+    // preservando a aparência de artes já criadas.
+    Object.keys(blockExtra).forEach(fmtKey=>{
+      const be = blockExtra[fmtKey];
+      if(be && be.bodyFontSize!=null){
+        if(be.rowsFontSize==null) be.rowsFontSize = be.bodyFontSize;
+        if(be.bensFontSize==null) be.bensFontSize = be.bodyFontSize;
+        delete be.bodyFontSize;
+      }
+    });
+  }
   if(state.companyId){
     const c = companies.find(x=>x.id===state.companyId);
     if(c) currentCompany=c;
@@ -1940,7 +1973,8 @@ function pointInRect(pt, r){
 function findDragTarget(pt){
   if(pointInRect(pt, lastLogoResizeHandleRect)) return 'logoSize';
   if(pointInRect(pt, lastBannerSizeHandleRect)) return 'bannerSize';
-  if(pointInRect(pt, lastBodyFontHandleRect)) return 'bodyFontSize';
+  if(pointInRect(pt, lastRowsFontHandleRect)) return 'rowsFontSize';
+  if(pointInRect(pt, lastBensFontHandleRect)) return 'bensFontSize';
   if(pointInRect(pt, lastLogoRect)) return 'logo';
   if(pointInRect(pt, lastBannerRect)) return 'banner';
   if(pointInRect(pt, lastRowsHandleRect)) return 'rows';
@@ -1994,9 +2028,12 @@ function wireCanvasDrag(){
     } else if(target==='logoSize'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'logoSize', startPt:pt, startVal: be.logoSize!=null ? be.logoSize : (lastLogoFitSize||0)};
-    } else if(target==='bodyFontSize'){
+    } else if(target==='rowsFontSize'){
       const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'bodyFontSize', startPt:pt, startVal: be.bodyFontSize!=null ? be.bodyFontSize : (lastBodyFontFitSize||0)};
+      activeDrag = {type:'rowsFontSize', startPt:pt, startVal: be.rowsFontSize!=null ? be.rowsFontSize : (lastRowsFontFitSize||0)};
+    } else if(target==='bensFontSize'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'bensFontSize', startPt:pt, startVal: be.bensFontSize!=null ? be.bensFontSize : (lastBensFontFitSize||0)};
     } else {
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
@@ -2027,9 +2064,12 @@ function wireCanvasDrag(){
       } else if(activeDrag.type==='logoSize'){
         const be = getBlockExtra(currentFormat);
         be.logoSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='bodyFontSize'){
+      } else if(activeDrag.type==='rowsFontSize'){
         const be = getBlockExtra(currentFormat);
-        be.bodyFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+        be.rowsFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='bensFontSize'){
+        const be = getBlockExtra(currentFormat);
+        be.bensFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
       } else {
         const be = getBlockExtra(currentFormat);
         be[activeDrag.type] = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
@@ -2081,7 +2121,7 @@ function wireCanvasDrag(){
   $('#resetBlockSpacing').addEventListener('click', (e)=>{
     e.preventDefault();
     const be = getBlockExtra(currentFormat);
-    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bodyFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
+    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, rowsFontSize:null, bensFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
     rowsOffsets[currentFormat] = {x:0, y:0};
     bensOffsets[currentFormat] = {x:0, y:0};
     titleOffsets[currentFormat] = {x:0, y:0};
