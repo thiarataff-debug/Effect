@@ -293,7 +293,7 @@
 
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
-      <div class="hint">Dica: na prévia, arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
+      <div class="hint">Dica: na prévia, arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -1243,7 +1243,10 @@ function renderTall(ctx,fmt,data,col,interactive){
   }
   lastTitleFitSize = fit.size;
 
-  const sharedBodyFont = (rows.length && data.beneficios.length) ? Math.min(rowsFont, benFontCandidate) : rowsFont;
+  const sharedBodyFontAuto = (rows.length && data.beneficios.length) ? Math.min(rowsFont, benFontCandidate) : rowsFont;
+  lastBodyFontFitSize = sharedBodyFontAuto;
+  const bodyFontMin = cardW*0.016, bodyFontMax = cardW*0.05;
+  const sharedBodyFont = topBE.bodyFontSize!=null ? Math.min(Math.max(topBE.bodyFontSize, bodyFontMin), bodyFontMax) : sharedBodyFontAuto;
 
   const rowsBaseGap = sharedBodyFont*0.55;
   let rowsGap = rowsBaseGap;
@@ -1274,6 +1277,11 @@ function renderTall(ctx,fmt,data,col,interactive){
   }
 
   y += fit.lines.length*fit.size*1.08 + cardH*0.022;
+
+  lastBodyFontHandleRect = null;
+  if(interactive && (rows.length || data.beneficios.length)){
+    lastBodyFontHandleRect = drawGrabHandle(ctx, lx+lw, y, cardW*0.045);
+  }
 
   let rowsTruncated=false;
   lastRowsHandleRect = null;
@@ -1468,7 +1476,7 @@ function renderToCanvas(canvas, formatKey, data, col, interactive){
   canvas.width = fmt.w; canvas.height = fmt.h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null;
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null;
 
   const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
   bgGrad.addColorStop(0, col.secondary);
@@ -1526,6 +1534,8 @@ let lastColSplitHandleRect = null;
 let lastTopSplitHandleRect = null;
 let lastTitleHandleRect = null;
 let lastTitleFitSize = null;
+let lastBodyFontHandleRect = null;
+let lastBodyFontFitSize = null;
 
 function drawGrabHandle(ctx, cx, cy, w, vertical){
   const h = w*0.34;
@@ -1807,6 +1817,7 @@ function pointInRect(pt, r){
 function findDragTarget(pt){
   if(pointInRect(pt, lastLogoResizeHandleRect)) return 'logoSize';
   if(pointInRect(pt, lastBannerSizeHandleRect)) return 'bannerSize';
+  if(pointInRect(pt, lastBodyFontHandleRect)) return 'bodyFontSize';
   if(pointInRect(pt, lastLogoRect)) return 'logo';
   if(pointInRect(pt, lastBannerRect)) return 'banner';
   if(pointInRect(pt, lastRowsHandleRect)) return 'rows';
@@ -1845,6 +1856,9 @@ function wireCanvasDrag(){
     } else if(target==='logoSize'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'logoSize', startPt:pt, startVal: be.logoSize!=null ? be.logoSize : (lastLogoFitSize||0)};
+    } else if(target==='bodyFontSize'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'bodyFontSize', startPt:pt, startVal: be.bodyFontSize!=null ? be.bodyFontSize : (lastBodyFontFitSize||0)};
     } else {
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
@@ -1878,6 +1892,9 @@ function wireCanvasDrag(){
       } else if(activeDrag.type==='logoSize'){
         const be = getBlockExtra(currentFormat);
         be.logoSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='bodyFontSize'){
+        const be = getBlockExtra(currentFormat);
+        be.bodyFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
       } else {
         const be = getBlockExtra(currentFormat);
         be[activeDrag.type] = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
@@ -1914,7 +1931,7 @@ function wireCanvasDrag(){
   $('#resetBlockSpacing').addEventListener('click', (e)=>{
     e.preventDefault();
     const be = getBlockExtra(currentFormat);
-    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
+    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bodyFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
     draw();
   });
 }
