@@ -293,7 +293,7 @@
 
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
-      <div class="hint">Dica: na prévia, arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
+      <div class="hint">Dica: clique direto no bloco de "Informações" ou "Benefícios" (no texto, não na alcinha) pra selecioná-lo — aparece um contorno tracejado — e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -1167,6 +1167,7 @@ function renderTall(ctx,fmt,data,col,interactive){
     lastBannerRect = {x:drawX, y:drawY, w:bw2, h:bh};
     if(interactive){
       lastBannerSizeHandleRect = drawGrabHandle(ctx, drawX+bw2, drawY+bh, cardW*0.05);
+      if(selectedTarget==='banner') drawSelectionOutline(ctx, lastBannerRect);
     }
   }
 
@@ -1195,6 +1196,7 @@ function renderTall(ctx,fmt,data,col,interactive){
     lastLogoRect = {x:logoCx-logoR, y:logoCy-logoR, w:logoR*2, h:logoR*2};
     if(interactive){
       lastLogoResizeHandleRect = drawGrabHandle(ctx, logoCx+logoR*0.75, logoCy+logoR*0.75, cardW*0.045);
+      if(selectedTarget==='logo') drawSelectionOutline(ctx, lastLogoRect);
     }
   }
 
@@ -1285,15 +1287,26 @@ function renderTall(ctx,fmt,data,col,interactive){
 
   let rowsTruncated=false;
   lastRowsHandleRect = null;
+  lastRowsBlockRect = null;
   if(rows.length && rowsMaxH>0){
+    const rowsOff = getRowsOffset(currentFormat);
+    const rowsNudgeX = cardW*0.04, rowsNudgeY = cardH*0.05;
+    rowsOff.x = Math.min(Math.max(rowsOff.x, -rowsNudgeX), rowsNudgeX);
+    rowsOff.y = Math.min(Math.max(rowsOff.y, -rowsNudgeY), rowsNudgeY);
+    const rx = lx+rowsOff.x, ry = y+rowsOff.y;
+
     ctx.save();
-    ctx.beginPath(); ctx.rect(lx, y, lw, rowsMaxH); ctx.clip();
-    rowsTruncated = renderRows(ctx, rows, lx, y, lw, rowsMaxH, sharedBodyFont, '#4b5563', col.primary, rowsGap).truncated;
+    ctx.beginPath(); ctx.rect(rx, ry, lw, rowsMaxH); ctx.clip();
+    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, sharedBodyFont, '#4b5563', col.primary, rowsGap).truncated;
     ctx.restore();
-    if(interactive && rows.length>1){
-      const contentBottom = y + rowsNaturalH + rowsExtraUsed;
-      const r = drawGrabHandle(ctx, lx+lw/2, Math.min(contentBottom, y+rowsMaxH), cardW*0.09);
-      lastRowsHandleRect = r;
+    lastRowsBlockRect = {x:rx, y:ry, w:lw, h:Math.min(rowsNaturalH+rowsExtraUsed, rowsMaxH)};
+    if(interactive){
+      if(rows.length>1){
+        const contentBottom = ry + rowsNaturalH + rowsExtraUsed;
+        const r = drawGrabHandle(ctx, rx+lw/2, Math.min(contentBottom, ry+rowsMaxH), cardW*0.09);
+        lastRowsHandleRect = r;
+      }
+      if(selectedTarget==='rowsBlock') drawSelectionOutline(ctx, lastRowsBlockRect);
     }
   } else if(rows.length){
     rowsTruncated = true;
@@ -1310,10 +1323,18 @@ function renderTall(ctx,fmt,data,col,interactive){
   }
 
   let benTruncated=false;
+  lastBensBlockRect = null;
   if(data.beneficios.length){
     const benAvail = Math.max(0, (cardY+cardH-footerH-cardH*0.025) - by);
-    const rb = renderBenefitsBlock(ctx, data.beneficios, bx, by, bw, benAvail, cardW, col, sharedBodyFont, interactive);
+    const bensOff = getBensOffset(currentFormat);
+    const bensNudgeX = cardW*0.04, bensNudgeY = cardH*0.04;
+    bensOff.x = Math.min(Math.max(bensOff.x, -bensNudgeX), bensNudgeX);
+    bensOff.y = Math.min(Math.max(bensOff.y, -bensNudgeY), bensNudgeY);
+    const bbx = bx+bensOff.x, bby = by+bensOff.y;
+    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, sharedBodyFont, interactive);
     benTruncated = rb.truncated || benAvail<=0;
+    lastBensBlockRect = {x:bbx, y:bby, w:bw, h:Math.min(rb.height||0, benAvail)};
+    if(interactive && selectedTarget==='bensBlock') drawSelectionOutline(ctx, lastBensBlockRect);
   }
 
   const footerY = cardY+cardH-footerH;
@@ -1476,7 +1497,7 @@ function renderToCanvas(canvas, formatKey, data, col, interactive){
   canvas.width = fmt.w; canvas.height = fmt.h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null;
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null;
 
   const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
   bgGrad.addColorStop(0, col.secondary);
@@ -1537,6 +1558,29 @@ let lastTitleFitSize = null;
 let lastBodyFontHandleRect = null;
 let lastBodyFontFitSize = null;
 
+let rowsOffsets = {};
+function getRowsOffset(fmtKey){
+  return rowsOffsets[fmtKey] || (rowsOffsets[fmtKey] = {x:0, y:0});
+}
+let bensOffsets = {};
+function getBensOffset(fmtKey){
+  return bensOffsets[fmtKey] || (bensOffsets[fmtKey] = {x:0, y:0});
+}
+let lastRowsBlockRect = null;
+let lastBensBlockRect = null;
+let selectedTarget = null;
+
+function drawSelectionOutline(ctx, rect){
+  if(!rect) return;
+  ctx.save();
+  ctx.setLineDash([8,6]);
+  ctx.strokeStyle = 'rgba(37,99,235,0.9)';
+  ctx.lineWidth = 2.5;
+  roundRectPath(ctx, rect.x-5, rect.y-5, rect.w+10, rect.h+10, 8);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawGrabHandle(ctx, cx, cy, w, vertical){
   const h = w*0.34;
   const rw = vertical ? h : w, rh = vertical ? w : h;
@@ -1579,6 +1623,9 @@ function saveState(){
     contato: $('#contato').value,
     banner: $('#banner').value,
     bannerOffsets: bannerOffsets,
+    logoOffsets: logoOffsets,
+    rowsOffsets: rowsOffsets,
+    bensOffsets: bensOffsets,
     blockExtra: blockExtra
   };
   try{ localStorage.setItem(STORAGE_STATE, JSON.stringify(state)); }catch(e){}
@@ -1602,6 +1649,9 @@ function loadState(){
   $('#contato').value = state.contato||'';
   $('#banner').value = state.banner||'';
   if(state.bannerOffsets && typeof state.bannerOffsets==='object') bannerOffsets = state.bannerOffsets;
+  if(state.logoOffsets && typeof state.logoOffsets==='object') logoOffsets = state.logoOffsets;
+  if(state.rowsOffsets && typeof state.rowsOffsets==='object') rowsOffsets = state.rowsOffsets;
+  if(state.bensOffsets && typeof state.bensOffsets==='object') bensOffsets = state.bensOffsets;
   if(state.blockExtra && typeof state.blockExtra==='object') blockExtra = state.blockExtra;
   if(state.companyId){
     const c = companies.find(x=>x.id===state.companyId);
@@ -1645,6 +1695,7 @@ function initFormatTabs(){
     btn.dataset.key=key;
     btn.addEventListener('click',()=>{
       currentFormat=key;
+      selectedTarget=null;
       wrap.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       draw();
@@ -1825,6 +1876,8 @@ function findDragTarget(pt){
   if(pointInRect(pt, lastColSplitHandleRect)) return 'colsplit';
   if(pointInRect(pt, lastTopSplitHandleRect)) return 'topsplit';
   if(pointInRect(pt, lastTitleHandleRect)) return 'titlesize';
+  if(pointInRect(pt, lastRowsBlockRect)) return 'rowsBlock';
+  if(pointInRect(pt, lastBensBlockRect)) return 'bensBlock';
   return null;
 }
 
@@ -1834,13 +1887,23 @@ function wireCanvasDrag(){
   const onDown = (e)=>{
     const pt = canvasPointFromEvent(e);
     const target = findDragTarget(pt);
-    if(!target) return;
+    if(!target){
+      if(selectedTarget){ selectedTarget = null; draw(); }
+      return;
+    }
+    if(['banner','logo','rowsBlock','bensBlock'].includes(target)) selectedTarget = target;
     if(target==='banner'){
       const off = getBannerOffset(currentFormat);
       activeDrag = {type:'banner', startPt:pt, startX:off.x, startY:off.y};
     } else if(target==='logo'){
       const off = getLogoOffset(currentFormat);
       activeDrag = {type:'logo', startPt:pt, startX:off.x, startY:off.y};
+    } else if(target==='rowsBlock'){
+      const off = getRowsOffset(currentFormat);
+      activeDrag = {type:'rowsBlock', startPt:pt, startX:off.x, startY:off.y};
+    } else if(target==='bensBlock'){
+      const off = getBensOffset(currentFormat);
+      activeDrag = {type:'bensBlock', startPt:pt, startX:off.x, startY:off.y};
     } else if(target==='colsplit'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'colsplit', startPt:pt, startVal: be.col||0};
@@ -1864,6 +1927,7 @@ function wireCanvasDrag(){
       activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
     }
     canvas.style.cursor = 'grabbing';
+    draw();
     e.preventDefault();
   };
   const onMove = (e)=>{
@@ -1875,6 +1939,14 @@ function wireCanvasDrag(){
         off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
       } else if(activeDrag.type==='logo'){
         const off = getLogoOffset(currentFormat);
+        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
+        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='rowsBlock'){
+        const off = getRowsOffset(currentFormat);
+        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
+        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='bensBlock'){
+        const off = getBensOffset(currentFormat);
         off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
         off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
       } else if(activeDrag.type==='colsplit'){
@@ -1920,6 +1992,26 @@ function wireCanvasDrag(){
   canvas.addEventListener('touchmove', onMove, {passive:false});
   window.addEventListener('touchend', onUp);
 
+  window.addEventListener('keydown', (e)=>{
+    if(!selectedTarget) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+    const dirMap = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0]};
+    const dir = dirMap[e.key];
+    if(!dir) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 16 : 4;
+    let off = null;
+    if(selectedTarget==='banner') off = getBannerOffset(currentFormat);
+    else if(selectedTarget==='logo') off = getLogoOffset(currentFormat);
+    else if(selectedTarget==='rowsBlock') off = getRowsOffset(currentFormat);
+    else if(selectedTarget==='bensBlock') off = getBensOffset(currentFormat);
+    if(!off) return;
+    off.x += dir[0]*step;
+    off.y += dir[1]*step;
+    draw();
+  });
+
   $('#resetBannerPos').addEventListener('click', (e)=>{
     e.preventDefault();
     bannerOffsets[currentFormat] = {x:0, y:0};
@@ -1932,6 +2024,8 @@ function wireCanvasDrag(){
     e.preventDefault();
     const be = getBlockExtra(currentFormat);
     blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bodyFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
+    rowsOffsets[currentFormat] = {x:0, y:0};
+    bensOffsets[currentFormat] = {x:0, y:0};
     draw();
   });
 }
