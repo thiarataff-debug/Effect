@@ -3974,6 +3974,49 @@ async function enviarEmailParceiro(vaga, texto) {
 
 app.get("/divulgacao", (req, res) => res.sendFile(path.join(__dirname, "divulgacao.html")));
 
+// ── EMPRESAS CLIENTES (marca/cores/logo/contato por cliente) ─────────────────
+// Guardado num arquivo JSON simples no Volume (mesmo padrão do SOS_PATH /
+// INBOX_DATA_PATH abaixo), pra ficar salvo no servidor e compartilhado entre
+// quem usa a Divulgação de Vagas — em vez de ficar preso ao navegador de uma
+// pessoa só (localStorage). O mesmo cadastro de empresa cliente (nome, CNPJ
+// se vier a ser adicionado, cores, logo, contato) serve tanto pra montar o
+// anúncio de vaga quanto, futuramente, pra emissão de contrato.
+const VAGAS_EMPRESAS_PATH = process.env.VAGAS_EMPRESAS_PATH || "/data/vagas-empresas.json";
+
+function lerEmpresasVagas() {
+  try {
+    if (fs.existsSync(VAGAS_EMPRESAS_PATH)) {
+      const lista = JSON.parse(fs.readFileSync(VAGAS_EMPRESAS_PATH, "utf8"));
+      return Array.isArray(lista) ? lista : [];
+    }
+  } catch (e) { console.error("lerEmpresasVagas:", e.message); }
+  return [];
+}
+
+function gravarEmpresasVagas(lista) {
+  try {
+    const dir = path.dirname(VAGAS_EMPRESAS_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(VAGAS_EMPRESAS_PATH, JSON.stringify(lista), "utf8");
+    return true;
+  } catch (e) { console.error("gravarEmpresasVagas:", e.message); return false; }
+}
+
+// Lista todas as empresas clientes cadastradas (nome, cores, logo, contato).
+app.get("/vagas/empresas", (req, res) => {
+  res.json({ ok: true, empresas: lerEmpresasVagas() });
+});
+
+// Salva a lista inteira de empresas clientes (o painel manda o array completo
+// já com a edição aplicada — mais simples do que endpoints separados de
+// criar/editar/excluir, e evita corrida entre abas).
+app.post("/vagas/empresas", (req, res) => {
+  const lista = Array.isArray(req.body.empresas) ? req.body.empresas : null;
+  if (!lista) return res.json({ ok: false, erro: "Envie { empresas: [...] }" });
+  const salvo = gravarEmpresasVagas(lista);
+  res.json({ ok: salvo, erro: salvo ? undefined : "Não foi possível salvar no servidor" });
+});
+
 // Gera (ou regera) o texto de divulgação, sem enviar nada ainda.
 app.post("/vagas/gerar-texto", async (req, res) => {
   try {
