@@ -933,7 +933,17 @@ function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, r
       const labelW = ctx.measureText(labelTxt).width;
       ctx.font = `${bodyWeight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
       ctx.fillStyle = textColor;
-      const firstRest = lines[0].startsWith(labelTxt) ? lines[0].slice(labelTxt.length) : lines[0];
+      // wrapLines() reconstrói as linhas juntando palavras com um único espaço,
+      // então uma quebra logo após o rótulo produz "Requisito(s):" sem o espaço
+      // final que existe em labelTxt ("Requisito(s): "). Isso fazia o
+      // startsWith(labelTxt) falhar e o rótulo inteiro ser desenhado de novo
+      // como se fosse texto. Comparamos também com a versão sem espaço no final.
+      const labelTrim = labelTxt.replace(/\s+$/, '');
+      let firstRest;
+      if(lines[0].startsWith(labelTxt)) firstRest = lines[0].slice(labelTxt.length);
+      else if(lines[0] === labelTrim) firstRest = '';
+      else if(lines[0].startsWith(labelTrim)) firstRest = lines[0].slice(labelTrim.length).replace(/^\s+/, '');
+      else firstRest = lines[0];
       ctx.fillText(firstRest, textX+labelW, cy+baseFont*0.85);
       for(let li=1; li<lines.length; li++) ctx.fillText(lines[li], textX, cy+baseFont*0.85+li*lineH);
     } else {
