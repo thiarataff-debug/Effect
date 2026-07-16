@@ -36,9 +36,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .lsaved{font-size:11px;color:var(--green);margin-top:6px;display:none}
 
 /* ── HEADER ── */
-header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;flex-shrink:0;height:76px}
+header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;flex-shrink:0;height:82px}
 .header-row{display:flex;align-items:center;justify-content:space-between;width:100%}
-.header-row2{display:flex;align-items:center;gap:6px}
+.header-row2{display:flex;align-items:center;gap:8px;width:100%;padding-top:5px;margin-top:1px;border-top:1px solid rgba(255,255,255,.12)}
 .hlogo{font-weight:800;font-size:15px}.hlogo span{color:var(--green)}
 .hright{display:flex;align-items:center;gap:6px}
 .dot-live{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
@@ -49,10 +49,10 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
 .rbtn:hover{background:rgba(255,255,255,.22)}
 
 /* ── LAYOUT ── */
-.app{display:flex;flex:1;min-height:0;height:calc(100vh - 76px);overflow:hidden}
+.app{display:flex;flex:1;min-height:0;height:calc(100vh - 82px);overflow:hidden}
 
 /* ── SIDEBAR ── */
-.sidebar{width:300px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:calc(100vh - 76px);min-height:0;overflow:hidden}
+.sidebar{width:300px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:calc(100vh - 82px);min-height:0;overflow:hidden}
 .sb-top{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
 .sb-title-row{display:flex;justify-content:space-between;align-items:center}
 .sb-title{font-weight:700;font-size:12px;color:var(--navy)}
@@ -712,12 +712,9 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
         <label class="hmais-btn" style="color:#7c3aed;cursor:pointer">📥 Restaurar backup<input type="file" accept=".json" onchange="importarDados(event);fecharHmais()" style="display:none"></label>
         <button class="hmais-btn" onclick="fazerBackupManual();fecharHmais()">💾 Backup</button>
         <button class="hmais-btn" style="color:#dc2626;font-weight:800" onclick="recarregarDoSheets();fecharHmais()">🔄 Recarregar do Sheets</button>
-        <button class="hmais-btn" style="color:#1fa5f0" onclick="abrirReengajamento();fecharHmais()">📢 Reengajamento</button>
         <hr style="border:none;border-top:1px solid #f1f5f9;margin:4px 0">
         <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
         <button class="hmais-btn" style="color:#6366f1" onclick="mostrarView('ats');fecharHmais()">📑 ATS Viewer</button>
-        <button class="hmais-btn" style="color:#b45309" onclick="mostrarView('financeiro');fecharHmais()">💰 Financeiro</button>
-        <button class="hmais-btn" style="color:#0f766e" onclick="mostrarView('meu-app');fecharHmais()">🧠 PSI</button>
       </div>
     </div>
   </div>
@@ -902,6 +899,8 @@ font-family:'Montserrat',sans-serif
           <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
           <button class="ha-btn" onclick="enviarDiscDireto()" title="Enviar questionário DISC" style="background:#7c3aed;color:#fff;font-weight:700">📊 Enviar DISC</button>
           <button class="ha-btn" onclick="abrirAvaliacao()" title="Abrir formulário de avaliação deste candidato" style="background:#0ea5e9;color:#fff;font-weight:800;font-size:11px;padding:6px 13px">📋 Avaliar</button>
+          <button class="ha-btn" onclick="usarModeloPorTitulo('Solicitação de envio')" title="Inserir modelo: solicitação de envio de currículo" style="background:#0369a1;color:#fff;font-weight:700">📎 Pedir CV</button>
+          <button class="ha-btn" onclick="usarModeloPorTitulo('recebimento de currículo')" title="Inserir modelo: confirmação de recebimento de currículo" style="background:#0d9488;color:#fff;font-weight:700">📄 Confirmar CV</button>
           <button class="ha-btn" onclick="abrirModalModelos()" title="Modelos de comunicação" style="background:#0f766e;color:#fff;font-weight:700">📋 Modelos</button>
           <span class="ha-divider"></span>
           <!-- Dropdown Mais — tudo o que é secundário -->
@@ -5306,6 +5305,12 @@ function renderizarModelos(lista){
       <div style="font-size:10px;color:var(--muted);line-height:1.4">${m.texto.replace(/\\n/g,' ').slice(0,90)}…</div>
     </div>`;
   }).join('');
+}
+
+function usarModeloPorTitulo(trecho){
+  const idx=MODELOS_COMUNICACAO.findIndex(m=>m.titulo.toLowerCase().includes(trecho.toLowerCase()));
+  if(idx<0){toast('Modelo não encontrado','error');return;}
+  usarModeloComunicacao(idx);
 }
 
 function usarModeloComunicacao(idx){
