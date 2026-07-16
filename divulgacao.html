@@ -283,7 +283,7 @@
 
       <label>Frase de destaque (selo sobre a foto)</label>
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
-      <div class="hint">Dica: arraste o selo direto na prévia pra posicionar sem tampar o rosto. <a href="#" id="resetBannerPos" class="toggle-link" style="display:inline;">Voltar posição padrão</a></div>
+      <div class="hint">Dica: arraste o selo direto na prévia pra posicionar sem tampar o rosto, e arraste a alcinha ⠿ no canto dele pra aumentar/diminuir o texto. O logo da empresa (canto da foto) também pode ser arrastado pra mover, e tem sua própria alcinha de canto pra redimensionar. <a href="#" id="resetBannerPos" class="toggle-link" style="display:inline;">Restaurar banner e logo (posição e tamanho)</a></div>
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Ex: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
@@ -1137,7 +1137,11 @@ function renderTall(ctx,fmt,data,col,interactive){
     : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
   if(bannerText){
     const bannerMaxW = rightW*0.74;
-    const bFit = fitText(ctx, `📍 ${bannerText.toUpperCase()}`, bannerMaxW, 4, cardW*0.026, cardW*0.014, 700, 'Poppins, Arial, sans-serif');
+    const bannerBE = getBlockExtra(currentFormat);
+    const bannerAutoSize = cardW*0.026, bannerMinSize = cardW*0.014, bannerManualMax = cardW*0.05;
+    const bannerStartSize = bannerBE.bannerSize!=null ? Math.min(Math.max(bannerBE.bannerSize, bannerMinSize), bannerManualMax) : bannerAutoSize;
+    const bFit = fitText(ctx, `📍 ${bannerText.toUpperCase()}`, bannerMaxW, 4, bannerStartSize, bannerMinSize, 700, 'Poppins, Arial, sans-serif');
+    lastBannerFitSize = bFit.size;
     const bannerFont = `700 ${Math.round(bFit.size)}px Poppins, Arial, sans-serif`;
     const bLineH = bFit.size*1.3;
     const padX = cardW*0.016, padY = cardW*0.013;
@@ -1149,26 +1153,49 @@ function renderTall(ctx,fmt,data,col,interactive){
     const bh = bFit.lines.length*bLineH+padY*2;
 
     const baseX = cardX+leftW+rightW*0.06, baseY = cardY+cardW*0.03;
-    const off = getBannerOffset(currentFormat);
+    const bannerOff = getBannerOffset(currentFormat);
     const margin = cardW*0.02;
     const minX = (cardX+leftW+margin) - baseX;
     const maxX = Math.max(minX, (cardX+leftW+rightW-margin-bw2) - baseX);
     const minY = (cardY+margin) - baseY;
     const maxY = Math.max(minY, (cardY+topH-margin-bh) - baseY);
-    off.x = Math.min(Math.max(off.x, minX), maxX);
-    off.y = Math.min(Math.max(off.y, minY), maxY);
+    bannerOff.x = Math.min(Math.max(bannerOff.x, minX), maxX);
+    bannerOff.y = Math.min(Math.max(bannerOff.y, minY), maxY);
 
-    const drawX = baseX+off.x, drawY = baseY+off.y;
+    const drawX = baseX+bannerOff.x, drawY = baseY+bannerOff.y;
     drawOverlayBanner(ctx, bFit.lines, drawX, drawY, bannerMaxW, 'rgba(20,20,20,0.82)', '#ffffff', bannerFont, bLineH, padX, padY);
     lastBannerRect = {x:drawX, y:drawY, w:bw2, h:bh};
+    if(interactive){
+      lastBannerSizeHandleRect = drawGrabHandle(ctx, drawX+bw2, drawY+bh, cardW*0.05);
+    }
   }
 
   if(col.logo){
-    const logoSize = cardW*0.095;
-    const logoCx = cardX+leftW+cardW*0.04+logoSize/2, logoCy = cardY+topH-cardW*0.04-logoSize/2;
-    ctx.beginPath(); ctx.arc(logoCx,logoCy,logoSize/2+4,0,Math.PI*2);
+    const logoBE = getBlockExtra(currentFormat);
+    const baseLogoSize = cardW*0.095;
+    const logoMinSize = cardW*0.05, logoMaxSize = cardW*0.22;
+    const logoSize = logoBE.logoSize!=null ? Math.min(Math.max(logoBE.logoSize, logoMinSize), logoMaxSize) : baseLogoSize;
+    lastLogoFitSize = logoSize;
+
+    const baseLogoCx = cardX+leftW+cardW*0.04+baseLogoSize/2, baseLogoCy = cardY+topH-cardW*0.04-baseLogoSize/2;
+    const logoOff = getLogoOffset(currentFormat);
+    const logoMargin = cardW*0.02;
+    const logoMinX = (cardX+leftW+logoMargin+logoSize/2) - baseLogoCx;
+    const logoMaxX = (cardX+leftW+rightW-logoMargin-logoSize/2) - baseLogoCx;
+    const logoMinY = (cardY+logoMargin+logoSize/2) - baseLogoCy;
+    const logoMaxY = (cardY+topH-logoMargin-logoSize/2) - baseLogoCy;
+    logoOff.x = Math.min(Math.max(logoOff.x, Math.min(logoMinX,logoMaxX)), Math.max(logoMinX,logoMaxX));
+    logoOff.y = Math.min(Math.max(logoOff.y, Math.min(logoMinY,logoMaxY)), Math.max(logoMinY,logoMaxY));
+
+    const logoCx = baseLogoCx+logoOff.x, logoCy = baseLogoCy+logoOff.y;
+    const logoR = logoSize/2+4;
+    ctx.beginPath(); ctx.arc(logoCx,logoCy,logoR,0,Math.PI*2);
     ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
     drawLogoCircle(ctx, col, logoCx, logoCy, logoSize, '#ffffff', col.primary);
+    lastLogoRect = {x:logoCx-logoR, y:logoCy-logoR, w:logoR*2, h:logoR*2};
+    if(interactive){
+      lastLogoResizeHandleRect = drawGrabHandle(ctx, logoCx+logoR*0.75, logoCy+logoR*0.75, cardW*0.045);
+    }
   }
 
   lastTopSplitHandleRect = null;
@@ -1441,7 +1468,7 @@ function renderToCanvas(canvas, formatKey, data, col, interactive){
   canvas.width = fmt.w; canvas.height = fmt.h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null;
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null;
 
   const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
   bgGrad.addColorStop(0, col.secondary);
@@ -1478,6 +1505,16 @@ let lastBannerRect = null;
 function getBannerOffset(fmtKey){
   return bannerOffsets[fmtKey] || (bannerOffsets[fmtKey] = {x:0, y:0});
 }
+
+let logoOffsets = {};
+function getLogoOffset(fmtKey){
+  return logoOffsets[fmtKey] || (logoOffsets[fmtKey] = {x:0, y:0});
+}
+let lastLogoRect = null;
+let lastLogoResizeHandleRect = null;
+let lastLogoFitSize = null;
+let lastBannerSizeHandleRect = null;
+let lastBannerFitSize = null;
 
 let blockExtra = {};
 function getBlockExtra(fmtKey){
@@ -1768,6 +1805,9 @@ function pointInRect(pt, r){
 }
 
 function findDragTarget(pt){
+  if(pointInRect(pt, lastLogoResizeHandleRect)) return 'logoSize';
+  if(pointInRect(pt, lastBannerSizeHandleRect)) return 'bannerSize';
+  if(pointInRect(pt, lastLogoRect)) return 'logo';
   if(pointInRect(pt, lastBannerRect)) return 'banner';
   if(pointInRect(pt, lastRowsHandleRect)) return 'rows';
   if(pointInRect(pt, lastBenHandleRect)) return 'ben';
@@ -1787,6 +1827,9 @@ function wireCanvasDrag(){
     if(target==='banner'){
       const off = getBannerOffset(currentFormat);
       activeDrag = {type:'banner', startPt:pt, startX:off.x, startY:off.y};
+    } else if(target==='logo'){
+      const off = getLogoOffset(currentFormat);
+      activeDrag = {type:'logo', startPt:pt, startX:off.x, startY:off.y};
     } else if(target==='colsplit'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'colsplit', startPt:pt, startVal: be.col||0};
@@ -1796,6 +1839,12 @@ function wireCanvasDrag(){
     } else if(target==='titlesize'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'titlesize', startPt:pt, startVal: be.titleSize!=null ? be.titleSize : (lastTitleFitSize||0)};
+    } else if(target==='bannerSize'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'bannerSize', startPt:pt, startVal: be.bannerSize!=null ? be.bannerSize : (lastBannerFitSize||0)};
+    } else if(target==='logoSize'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'logoSize', startPt:pt, startVal: be.logoSize!=null ? be.logoSize : (lastLogoFitSize||0)};
     } else {
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
@@ -1810,6 +1859,10 @@ function wireCanvasDrag(){
         const off = getBannerOffset(currentFormat);
         off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
         off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='logo'){
+        const off = getLogoOffset(currentFormat);
+        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
+        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
       } else if(activeDrag.type==='colsplit'){
         const be = getBlockExtra(currentFormat);
         be.col = activeDrag.startVal + (pt.x-activeDrag.startPt.x);
@@ -1819,6 +1872,12 @@ function wireCanvasDrag(){
       } else if(activeDrag.type==='titlesize'){
         const be = getBlockExtra(currentFormat);
         be.titleSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='bannerSize'){
+        const be = getBlockExtra(currentFormat);
+        be.bannerSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='logoSize'){
+        const be = getBlockExtra(currentFormat);
+        be.logoSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
       } else {
         const be = getBlockExtra(currentFormat);
         be[activeDrag.type] = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
@@ -1847,11 +1906,15 @@ function wireCanvasDrag(){
   $('#resetBannerPos').addEventListener('click', (e)=>{
     e.preventDefault();
     bannerOffsets[currentFormat] = {x:0, y:0};
+    logoOffsets[currentFormat] = {x:0, y:0};
+    const be = getBlockExtra(currentFormat);
+    be.bannerSize = null; be.logoSize = null;
     draw();
   });
   $('#resetBlockSpacing').addEventListener('click', (e)=>{
     e.preventDefault();
-    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null};
+    const be = getBlockExtra(currentFormat);
+    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
     draw();
   });
 }
