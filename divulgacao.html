@@ -293,7 +293,7 @@
 
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
-      <div class="hint">Dica: clique direto no bloco de "Informações" ou "Benefícios" (no texto, não na alcinha) pra selecioná-lo — aparece um contorno tracejado — e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
+      <div class="hint">Dica: clique direto em qualquer peça da arte — selo "VAGA ABERTA", título, foto/ícone, informações, salário, benefícios ou rodapé de contato — pra selecioná-la (aparece um contorno tracejado) e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Na foto, isso funciona como uma panorâmica dentro do enquadramento. Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla o tamanho do texto de informações + benefícios (os dois sempre juntos, do mesmo tamanho) — puxe pra baixo pra aumentar a fonte quando sobrar espaço em branco. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir posições e espaçamentos</a></div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -524,13 +524,21 @@ function drawTagsWrapped(ctx, tags, tints, textColor, xRef, y, maxWidth, th, fon
 }
 
 // Desenha uma imagem "cover" (preenche todo o retângulo, cortando o excesso).
-function drawImageCover(ctx, img, x, y, w, h){
+function drawImageCover(ctx, img, x, y, w, h, offXpx, offYpx){
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   if(!iw || !ih) return;
   const ir = iw/ih, r = w/h;
   let sx,sy,sw,sh;
   if(ir > r){ sh=ih; sw=sh*r; sx=(iw-sw)/2; sy=0; }
   else { sw=iw; sh=sw/r; sx=0; sy=(ih-sh)/2; }
+  // permite "panorâmica" (arrastar ou setas do teclado) dentro do
+  // enquadramento fixo — só tem efeito no eixo em que a imagem realmente
+  // sobra (foi cortada pelo corte "cover"); no outro eixo não faz diferença.
+  if(ir > r && w>0){
+    sx = Math.min(Math.max(sx - (offXpx||0)*(sw/w), 0), Math.max(0,iw-sw));
+  } else if(h>0){
+    sy = Math.min(Math.max(sy - (offYpx||0)*(sh/h), 0), Math.max(0,ih-sh));
+  }
   ctx.drawImage(img, sx,sy,sw,sh, x,y,w,h);
 }
 
@@ -1117,19 +1125,26 @@ function renderTall(ctx,fmt,data,col,interactive){
   const photoImg = data.foto ? getPhotoImage(data.foto) : null;
   const hasPhoto = !!(photoImg && photoImg.complete && photoImg.naturalWidth);
 
+  const photoOff = getPhotoOffset(currentFormat);
+  const photoNudgeX = rightW*0.3, photoNudgeY = topH*0.3;
+  photoOff.x = Math.min(Math.max(photoOff.x, -photoNudgeX), photoNudgeX);
+  photoOff.y = Math.min(Math.max(photoOff.y, -photoNudgeY), photoNudgeY);
+
   ctx.save();
   roundRectPath(ctx, cardX+leftW, cardY, rightW, topH, {tl:0,tr:cardR,br:0,bl:0});
   ctx.clip();
   const iconCy = cardY + topH*0.46;
   if(hasPhoto){
-    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, topH);
+    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, topH, photoOff.x, photoOff.y);
   } else {
     const g = ctx.createLinearGradient(cardX+leftW, cardY, cardX+leftW, cardY+topH);
     g.addColorStop(0, col.primary); g.addColorStop(1, shade(col.primary,-25));
     ctx.fillStyle=g; ctx.fillRect(cardX+leftW, cardY, rightW, topH);
-    drawIcon(ctx, data.categoria, cardX+leftW+rightW/2, iconCy, Math.min(rightW,topH)*0.22, hexToRgba('#ffffff',0.85));
+    drawIcon(ctx, data.categoria, cardX+leftW+rightW/2+photoOff.x, iconCy+photoOff.y, Math.min(rightW,topH)*0.22, hexToRgba('#ffffff',0.85));
   }
   ctx.restore();
+  lastPhotoBlockRect = {x:cardX+leftW, y:cardY, w:rightW, h:topH};
+  if(interactive && selectedTarget==='photoBlock') drawSelectionOutline(ctx, lastPhotoBlockRect);
 
   lastBannerRect = null;
   let bannerText = data.banner
@@ -1211,7 +1226,13 @@ function renderTall(ctx,fmt,data,col,interactive){
 
   const badgeFont = `700 ${Math.round(cardW*0.023)}px Poppins, Arial, sans-serif`;
   const badgeH = cardW*0.05;
-  drawPill(ctx, '📣 VAGA ABERTA', lx, y, badgeH, col.primary, '#ffffff', badgeFont, cardW*0.022);
+  const badgeOff = getBadgeOffset(currentFormat);
+  const badgeNudgeX = cardW*0.05, badgeNudgeY = cardH*0.03;
+  badgeOff.x = Math.min(Math.max(badgeOff.x, -badgeNudgeX), badgeNudgeX);
+  badgeOff.y = Math.min(Math.max(badgeOff.y, -badgeNudgeY), badgeNudgeY);
+  const badgeW = drawPill(ctx, '📣 VAGA ABERTA', lx+badgeOff.x, y+badgeOff.y, badgeH, col.primary, '#ffffff', badgeFont, cardW*0.022);
+  lastBadgeBlockRect = {x:lx+badgeOff.x, y:y+badgeOff.y, w:badgeW, h:badgeH};
+  if(interactive && selectedTarget==='badgeBlock') drawSelectionOutline(ctx, lastBadgeBlockRect);
   y += badgeH + cardH*0.02;
 
   const titleFamily='Poppins, Arial, sans-serif';
@@ -1265,17 +1286,25 @@ function renderTall(ctx,fmt,data,col,interactive){
     rowsNaturalH = measureRowsHeight(ctx, rows, lw, sharedBodyFont);
   }
 
+  const titleOff = getTitleOffset(currentFormat);
+  const titleNudgeX = cardW*0.05, titleNudgeY = cardH*0.035;
+  titleOff.x = Math.min(Math.max(titleOff.x, -titleNudgeX), titleNudgeX);
+  titleOff.y = Math.min(Math.max(titleOff.y, -titleNudgeY), titleNudgeY);
+  const tx = lx+titleOff.x, ty = y+titleOff.y;
+
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   fit.lines.forEach((ln,i)=>{
     ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
     ctx.fillStyle = (i===fit.lines.length-1 && fit.lines.length>1) ? col.tertiary : col.primary;
-    ctx.fillText(ln, lx, y+fit.size*0.85 + i*fit.size*1.08);
+    ctx.fillText(ln, tx, ty+fit.size*0.85 + i*fit.size*1.08);
   });
+  lastTitleBlockRect = {x:tx, y:ty, w:lw, h:fit.lines.length*fit.size*1.08};
 
   lastTitleHandleRect = null;
   if(interactive){
-    const titleBottomY = y + fit.lines.length*fit.size*1.08;
-    lastTitleHandleRect = drawGrabHandle(ctx, lx+lw/2, titleBottomY, cardW*0.09);
+    const titleBottomY = ty + fit.lines.length*fit.size*1.08;
+    lastTitleHandleRect = drawGrabHandle(ctx, tx+lw/2, titleBottomY, cardW*0.09);
+    if(selectedTarget==='titleBlock') drawSelectionOutline(ctx, lastTitleBlockRect);
   }
 
   y += fit.lines.length*fit.size*1.08 + cardH*0.022;
@@ -1315,9 +1344,16 @@ function renderTall(ctx,fmt,data,col,interactive){
   let by = cardY+topH+cardH*0.03;
 
   let salTruncated=false;
+  lastSalaryBlockRect = null;
   if(data.salario){
     if(by+salH < cardY+cardH-footerH){
-      renderSalaryBox(ctx, data.salario, bx, by, bw, salH, cardW, col);
+      const salOff = getSalaryOffset(currentFormat);
+      const salNudgeX = cardW*0.04, salNudgeY = cardH*0.025;
+      salOff.x = Math.min(Math.max(salOff.x, -salNudgeX), salNudgeX);
+      salOff.y = Math.min(Math.max(salOff.y, -salNudgeY), salNudgeY);
+      renderSalaryBox(ctx, data.salario, bx+salOff.x, by+salOff.y, bw, salH, cardW, col);
+      lastSalaryBlockRect = {x:bx+salOff.x, y:by+salOff.y, w:bw, h:salH};
+      if(interactive && selectedTarget==='salaryBlock') drawSelectionOutline(ctx, lastSalaryBlockRect);
       by += salH+cardH*0.022;
     } else { salTruncated=true; }
   }
@@ -1343,8 +1379,13 @@ function renderTall(ctx,fmt,data,col,interactive){
   ctx.fillStyle=col.tertiary;
   ctx.fillRect(cardX, footerY, cardW, Math.max(3,cardH*0.006));
 
+  const footerOff = getFooterOffset(currentFormat);
+  const footerNudgeX = cardW*0.05, footerNudgeY = footerH*0.3;
+  footerOff.x = Math.min(Math.max(footerOff.x, -footerNudgeX), footerNudgeX);
+  footerOff.y = Math.min(Math.max(footerOff.y, -footerNudgeY), footerNudgeY);
+
   const fBadgeSize = footerH*0.46;
-  const fbx = cardX+cardW*0.06, fby = footerY+(footerH-fBadgeSize)/2;
+  const fbx = cardX+cardW*0.06+footerOff.x, fby = footerY+(footerH-fBadgeSize)/2+footerOff.y;
   roundRectPath(ctx, fbx, fby, fBadgeSize, fBadgeSize, fBadgeSize*0.3);
   ctx.fillStyle=col.tertiary; ctx.fill();
   ctx.font=`${Math.round(fBadgeSize*0.55)}px sans-serif`;
@@ -1356,11 +1397,14 @@ function renderTall(ctx,fmt,data,col,interactive){
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   ctx.fillStyle=hexToRgba('#ffffff',0.7);
   ctx.font=`700 ${Math.round(cardW*0.016)}px Poppins, Arial, sans-serif`;
-  ctx.fillText('INTERESSADOS, ENTRE EM CONTATO', ftx, footerY+footerH*0.36);
+  ctx.fillText('INTERESSADOS, ENTRE EM CONTATO', ftx, footerY+footerH*0.36+footerOff.y);
   ctx.fillStyle='#ffffff';
   const lineFit = fitText(ctx, mainLine, cardX+cardW-ftx-cardW*0.05, 1, cardW*0.03, cardW*0.018, 800, 'Poppins, Arial, sans-serif');
   ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
-  ctx.fillText(lineFit.lines[0], ftx, footerY+footerH*0.72);
+  ctx.fillText(lineFit.lines[0], ftx, footerY+footerH*0.72+footerOff.y);
+
+  lastFooterBlockRect = {x:fbx, y:fby, w:cardX+cardW-fbx-cardW*0.05, h:fBadgeSize};
+  if(interactive && selectedTarget==='footerBlock') drawSelectionOutline(ctx, lastFooterBlockRect);
 
   ctx.restore();
   return rowsTruncated || salTruncated || benTruncated;
@@ -1497,7 +1541,7 @@ function renderToCanvas(canvas, formatKey, data, col, interactive){
   canvas.width = fmt.w; canvas.height = fmt.h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null;
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastBodyFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null; lastTitleBlockRect = null; lastBadgeBlockRect = null; lastPhotoBlockRect = null; lastSalaryBlockRect = null; lastFooterBlockRect = null;
 
   const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
   bgGrad.addColorStop(0, col.secondary);
@@ -1568,6 +1612,24 @@ function getBensOffset(fmtKey){
 }
 let lastRowsBlockRect = null;
 let lastBensBlockRect = null;
+
+let titleOffsets = {};
+function getTitleOffset(fmtKey){ return titleOffsets[fmtKey] || (titleOffsets[fmtKey] = {x:0, y:0}); }
+let badgeOffsets = {};
+function getBadgeOffset(fmtKey){ return badgeOffsets[fmtKey] || (badgeOffsets[fmtKey] = {x:0, y:0}); }
+let photoOffsets = {};
+function getPhotoOffset(fmtKey){ return photoOffsets[fmtKey] || (photoOffsets[fmtKey] = {x:0, y:0}); }
+let salaryOffsets = {};
+function getSalaryOffset(fmtKey){ return salaryOffsets[fmtKey] || (salaryOffsets[fmtKey] = {x:0, y:0}); }
+let footerOffsets = {};
+function getFooterOffset(fmtKey){ return footerOffsets[fmtKey] || (footerOffsets[fmtKey] = {x:0, y:0}); }
+
+let lastTitleBlockRect = null;
+let lastBadgeBlockRect = null;
+let lastPhotoBlockRect = null;
+let lastSalaryBlockRect = null;
+let lastFooterBlockRect = null;
+
 let selectedTarget = null;
 
 function drawSelectionOutline(ctx, rect){
@@ -1626,6 +1688,11 @@ function saveState(){
     logoOffsets: logoOffsets,
     rowsOffsets: rowsOffsets,
     bensOffsets: bensOffsets,
+    titleOffsets: titleOffsets,
+    badgeOffsets: badgeOffsets,
+    photoOffsets: photoOffsets,
+    salaryOffsets: salaryOffsets,
+    footerOffsets: footerOffsets,
     blockExtra: blockExtra
   };
   try{ localStorage.setItem(STORAGE_STATE, JSON.stringify(state)); }catch(e){}
@@ -1652,6 +1719,11 @@ function loadState(){
   if(state.logoOffsets && typeof state.logoOffsets==='object') logoOffsets = state.logoOffsets;
   if(state.rowsOffsets && typeof state.rowsOffsets==='object') rowsOffsets = state.rowsOffsets;
   if(state.bensOffsets && typeof state.bensOffsets==='object') bensOffsets = state.bensOffsets;
+  if(state.titleOffsets && typeof state.titleOffsets==='object') titleOffsets = state.titleOffsets;
+  if(state.badgeOffsets && typeof state.badgeOffsets==='object') badgeOffsets = state.badgeOffsets;
+  if(state.photoOffsets && typeof state.photoOffsets==='object') photoOffsets = state.photoOffsets;
+  if(state.salaryOffsets && typeof state.salaryOffsets==='object') salaryOffsets = state.salaryOffsets;
+  if(state.footerOffsets && typeof state.footerOffsets==='object') footerOffsets = state.footerOffsets;
   if(state.blockExtra && typeof state.blockExtra==='object') blockExtra = state.blockExtra;
   if(state.companyId){
     const c = companies.find(x=>x.id===state.companyId);
@@ -1878,11 +1950,23 @@ function findDragTarget(pt){
   if(pointInRect(pt, lastTitleHandleRect)) return 'titlesize';
   if(pointInRect(pt, lastRowsBlockRect)) return 'rowsBlock';
   if(pointInRect(pt, lastBensBlockRect)) return 'bensBlock';
+  if(pointInRect(pt, lastTitleBlockRect)) return 'titleBlock';
+  if(pointInRect(pt, lastBadgeBlockRect)) return 'badgeBlock';
+  if(pointInRect(pt, lastSalaryBlockRect)) return 'salaryBlock';
+  if(pointInRect(pt, lastFooterBlockRect)) return 'footerBlock';
+  if(pointInRect(pt, lastPhotoBlockRect)) return 'photoBlock';
   return null;
 }
 
 function wireCanvasDrag(){
   const canvas = $('#preview');
+
+  const MOVABLE = ['banner','logo','rowsBlock','bensBlock','titleBlock','badgeBlock','salaryBlock','footerBlock','photoBlock'];
+  const OFFSET_GETTERS = {
+    banner:getBannerOffset, logo:getLogoOffset, rowsBlock:getRowsOffset, bensBlock:getBensOffset,
+    titleBlock:getTitleOffset, badgeBlock:getBadgeOffset, salaryBlock:getSalaryOffset,
+    footerBlock:getFooterOffset, photoBlock:getPhotoOffset
+  };
 
   const onDown = (e)=>{
     const pt = canvasPointFromEvent(e);
@@ -1891,19 +1975,10 @@ function wireCanvasDrag(){
       if(selectedTarget){ selectedTarget = null; draw(); }
       return;
     }
-    if(['banner','logo','rowsBlock','bensBlock'].includes(target)) selectedTarget = target;
-    if(target==='banner'){
-      const off = getBannerOffset(currentFormat);
-      activeDrag = {type:'banner', startPt:pt, startX:off.x, startY:off.y};
-    } else if(target==='logo'){
-      const off = getLogoOffset(currentFormat);
-      activeDrag = {type:'logo', startPt:pt, startX:off.x, startY:off.y};
-    } else if(target==='rowsBlock'){
-      const off = getRowsOffset(currentFormat);
-      activeDrag = {type:'rowsBlock', startPt:pt, startX:off.x, startY:off.y};
-    } else if(target==='bensBlock'){
-      const off = getBensOffset(currentFormat);
-      activeDrag = {type:'bensBlock', startPt:pt, startX:off.x, startY:off.y};
+    if(MOVABLE.includes(target)) selectedTarget = target;
+    if(MOVABLE.includes(target)){
+      const off = OFFSET_GETTERS[target](currentFormat);
+      activeDrag = {type:target, startPt:pt, startX:off.x, startY:off.y};
     } else if(target==='colsplit'){
       const be = getBlockExtra(currentFormat);
       activeDrag = {type:'colsplit', startPt:pt, startVal: be.col||0};
@@ -1933,20 +2008,8 @@ function wireCanvasDrag(){
   const onMove = (e)=>{
     const pt = canvasPointFromEvent(e);
     if(activeDrag){
-      if(activeDrag.type==='banner'){
-        const off = getBannerOffset(currentFormat);
-        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
-        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='logo'){
-        const off = getLogoOffset(currentFormat);
-        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
-        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='rowsBlock'){
-        const off = getRowsOffset(currentFormat);
-        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
-        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='bensBlock'){
-        const off = getBensOffset(currentFormat);
+      if(MOVABLE.includes(activeDrag.type)){
+        const off = OFFSET_GETTERS[activeDrag.type](currentFormat);
         off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
         off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
       } else if(activeDrag.type==='colsplit'){
@@ -1993,7 +2056,7 @@ function wireCanvasDrag(){
   window.addEventListener('touchend', onUp);
 
   window.addEventListener('keydown', (e)=>{
-    if(!selectedTarget) return;
+    if(!selectedTarget || !MOVABLE.includes(selectedTarget)) return;
     const tag = (document.activeElement && document.activeElement.tagName) || '';
     if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
     const dirMap = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0]};
@@ -2001,12 +2064,7 @@ function wireCanvasDrag(){
     if(!dir) return;
     e.preventDefault();
     const step = e.shiftKey ? 16 : 4;
-    let off = null;
-    if(selectedTarget==='banner') off = getBannerOffset(currentFormat);
-    else if(selectedTarget==='logo') off = getLogoOffset(currentFormat);
-    else if(selectedTarget==='rowsBlock') off = getRowsOffset(currentFormat);
-    else if(selectedTarget==='bensBlock') off = getBensOffset(currentFormat);
-    if(!off) return;
+    const off = OFFSET_GETTERS[selectedTarget](currentFormat);
     off.x += dir[0]*step;
     off.y += dir[1]*step;
     draw();
@@ -2026,6 +2084,11 @@ function wireCanvasDrag(){
     blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, bodyFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
     rowsOffsets[currentFormat] = {x:0, y:0};
     bensOffsets[currentFormat] = {x:0, y:0};
+    titleOffsets[currentFormat] = {x:0, y:0};
+    badgeOffsets[currentFormat] = {x:0, y:0};
+    photoOffsets[currentFormat] = {x:0, y:0};
+    salaryOffsets[currentFormat] = {x:0, y:0};
+    footerOffsets[currentFormat] = {x:0, y:0};
     draw();
   });
 }
