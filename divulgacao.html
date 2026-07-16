@@ -310,6 +310,38 @@
       <div class="hint">Se você adicionar uma foto (loja, equipe, ambiente), ela aparece no topo da arte no lugar do ícone — fica bem mais atrativo. Sem foto, o ícone da categoria continua aparecendo sozinho.</div>
     </div>
 
+    <div class="card">
+      <h2>Formatação de texto</h2>
+      <div class="intro" style="margin-bottom:10px;">Escolha um bloco de texto da arte e ajuste tamanho, espaçamento entre linhas e negrito — igual no Canva. Também dá pra arrastar direto na prévia (alcinhas ⠿ e cantos).</div>
+
+      <label class="first">Bloco de texto</label>
+      <select id="fmtBlock">
+        <option value="title">Título da vaga</option>
+        <option value="rows">Informações (local, horário, requisitos...)</option>
+        <option value="bens">Benefícios</option>
+        <option value="badge">Selo "VAGA ABERTA"</option>
+        <option value="salary">Salário</option>
+        <option value="footer">Rodapé de contato</option>
+      </select>
+
+      <label>Tamanho da fonte <span id="fmtSizeVal" style="color:var(--gray); font-weight:500;"></span></label>
+      <input type="range" id="fmtSize" min="55" max="180" step="1">
+
+      <div id="fmtLineHRow">
+        <label>Espaçamento entre linhas <span id="fmtLineHVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="fmtLineH" min="85" max="160" step="1">
+      </div>
+
+      <div id="fmtBoldRow" style="margin-top:10px;">
+        <label style="display:flex; align-items:center; gap:8px; margin:0;">
+          <input type="checkbox" id="fmtBold" style="width:auto;"> Negrito
+        </label>
+      </div>
+
+      <button type="button" class="toggle-link" id="fmtReset" style="margin-top:10px;">Redefinir este bloco pro padrão</button>
+      <div class="hint">Dica: o tamanho nunca deixa o texto sumir — quando o bloco atinge o espaço disponível, o controle simplesmente para de crescer.</div>
+    </div>
+
   </aside>
 
   <main class="main">
@@ -844,9 +876,10 @@ function getColors(){
 /* ---------------------------------------------------------
    RENDERIZAÇÃO — LINHAS DE INFORMAÇÃO (ícone + texto)
 --------------------------------------------------------- */
-function measureRowsHeight(ctx, rows, w, baseFont, rowGapOverride){
+function measureRowsHeight(ctx, rows, w, baseFont, rowGapOverride, lineHMult){
   if(!rows.length) return 0;
-  const lineH = baseFont*1.32, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconW = baseFont*1.7;
+  const lhm = lineHMult||1;
+  const lineH = baseFont*1.32*lhm, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconW = baseFont*1.7;
   let total=0;
   rows.forEach((r,i)=>{
     ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
@@ -857,8 +890,9 @@ function measureRowsHeight(ctx, rows, w, baseFont, rowGapOverride){
   return total;
 }
 
-function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, rowGapOverride){
-  const lineH = baseFont*1.32, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconSize = baseFont*1.3;
+function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, rowGapOverride, lineHMult, bold){
+  const lhm = lineHMult||1, bodyWeight = bold? 700 : 500;
+  const lineH = baseFont*1.32*lhm, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconSize = baseFont*1.3;
   const textX = x+iconSize+baseFont*0.4, textW = w-iconSize-baseFont*0.4;
   let cy=y; const yLimit=y+maxH; let truncated=false;
   for(let i=0;i<rows.length;i++){
@@ -879,13 +913,13 @@ function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, r
       ctx.fillStyle = labelColor;
       ctx.fillText(labelTxt, textX, cy+baseFont*0.85);
       const labelW = ctx.measureText(labelTxt).width;
-      ctx.font = `500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+      ctx.font = `${bodyWeight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
       ctx.fillStyle = textColor;
       const firstRest = lines[0].startsWith(labelTxt) ? lines[0].slice(labelTxt.length) : lines[0];
       ctx.fillText(firstRest, textX+labelW, cy+baseFont*0.85);
       for(let li=1; li<lines.length; li++) ctx.fillText(lines[li], textX, cy+baseFont*0.85+li*lineH);
     } else {
-      ctx.font = `500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+      ctx.font = `${bodyWeight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
       ctx.fillStyle = textColor;
       lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
     }
@@ -894,12 +928,12 @@ function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, r
   return {height: cy-y, truncated};
 }
 
-function fitRowsFont(ctx, rows, w, maxH, cardW){
+function fitRowsFont(ctx, rows, w, maxH, cardW, lineHMult){
   if(!rows.length) return cardW*0.026;
   let baseFont = cardW*0.034;
   const minFont = cardW*0.015, step = cardW*0.0006;
   for(; baseFont>=minFont; baseFont-=step){
-    if(measureRowsHeight(ctx, rows, w, baseFont) <= maxH) return baseFont;
+    if(measureRowsHeight(ctx, rows, w, baseFont, null, lineHMult) <= maxH) return baseFont;
   }
   return minFont;
 }
@@ -920,31 +954,33 @@ function balanceColumns(ctx, items, colW, refFont){
   return [left,right];
 }
 
-function measureColumnHeight(ctx, items, w, baseFont, rowGapOverride){
+function measureColumnHeight(ctx, items, w, baseFont, rowGapOverride, lineHMult){
   if(!items.length) return 0;
-  const lineH=baseFont*1.28, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconW=baseFont*1.25;
+  const lhm = lineHMult||1;
+  const lineH=baseFont*1.28*lhm, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconW=baseFont*1.25;
   let total=0;
   items.forEach((it,i)=>{
-    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    ctx.font=`700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
     const lines = wrapLines(ctx, it, w-iconW);
     total += Math.max(1,lines.length)*lineH + (i<items.length-1?rowGap:0);
   });
   return total;
 }
 
-function renderColumn(ctx, items, x, y, w, maxH, baseFont, textColor, rowGapOverride){
-  const lineH=baseFont*1.28, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconSize=baseFont*1.1;
+function renderColumn(ctx, items, x, y, w, maxH, baseFont, textColor, rowGapOverride, lineHMult, bold){
+  const lhm = lineHMult||1, weight = bold? 700 : 500;
+  const lineH=baseFont*1.28*lhm, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconSize=baseFont*1.1;
   const textX = x+iconSize+baseFont*0.32, textW=w-iconSize-baseFont*0.32;
   let cy=y; const yLimit=y+maxH; let truncated=false;
   for(let i=0;i<items.length;i++){
-    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    ctx.font=`700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
     const lines = wrapLines(ctx, items[i], textW);
     const h = Math.max(1,lines.length)*lineH;
     if(cy+h>yLimit+0.5){ truncated=true; break; }
     ctx.font=`${Math.round(iconSize)}px sans-serif`;
     ctx.textAlign='left'; ctx.textBaseline='middle';
     ctx.fillText('✅', x, cy+lineH*0.4);
-    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    ctx.font=`${weight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
     ctx.fillStyle=textColor; ctx.textBaseline='alphabetic';
     lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
     cy += h + (i<items.length-1?rowGap:0);
@@ -952,26 +988,26 @@ function renderColumn(ctx, items, x, y, w, maxH, baseFont, textColor, rowGapOver
   return {height: cy-y, truncated};
 }
 
-function fitBenefitsFont(ctx, items, w, maxH, cardW, left, right){
+function fitBenefitsFont(ctx, items, w, maxH, cardW, left, right, lineHMult){
   if(!items.length) return cardW*0.022;
   let baseFont = cardW*0.038;
   const minFont = cardW*0.013, step = cardW*0.0002;
   for(; baseFont>=minFont; baseFont-=step){
     const headerH = baseFont*2.0, headerGap = baseFont*1.0, colGap = baseFont*1.1;
     const colW = (w-colGap)/2;
-    const need = headerH + headerGap + Math.max(measureColumnHeight(ctx,left,colW,baseFont), measureColumnHeight(ctx,right,colW,baseFont));
+    const need = headerH + headerGap + Math.max(measureColumnHeight(ctx,left,colW,baseFont,null,lineHMult), measureColumnHeight(ctx,right,colW,baseFont,null,lineHMult));
     if(need<=maxH) return baseFont;
   }
   return minFont;
 }
 
-function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, interactive){
+function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, interactive, lineHMult, bold){
   lastBenHandleRect = null;
   if(!items.length || maxH<=0) return {height:0, truncated:false};
   const refFont = cardW*0.022, colGapRef = refFont*1.1;
   const colWRef = (w-colGapRef)/2;
   const [left,right] = balanceColumns(ctx, items, colWRef, refFont);
-  const baseFont = forcedFont || fitBenefitsFont(ctx, items, w, maxH, cardW, left, right);
+  const baseFont = forcedFont || fitBenefitsFont(ctx, items, w, maxH, cardW, left, right, lineHMult);
   const headerFont = `700 ${Math.round(baseFont*1.02)}px Poppins, Arial, sans-serif`;
   ctx.font = headerFont;
   const headerText = '🎁  BENEFÍCIOS';
@@ -997,7 +1033,7 @@ function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, 
   const baseRowGap = baseFont*0.4;
   const headerGapBase = baseFont*1.0;
   const bodyMaxHAtBase = Math.max(0, maxH-(hh+headerGapBase));
-  const naturalMax = Math.max(measureColumnHeight(ctx,left,leftColW,baseFont,baseRowGap), measureColumnHeight(ctx,right,rightColW,baseFont,baseRowGap));
+  const naturalMax = Math.max(measureColumnHeight(ctx,left,leftColW,baseFont,baseRowGap,lineHMult), measureColumnHeight(ctx,right,rightColW,baseFont,baseRowGap,lineHMult));
   const leftover = Math.max(0, bodyMaxHAtBase - naturalMax);
   const maxGaps = Math.max(left.length-1, right.length-1, 1);
 
@@ -1011,8 +1047,8 @@ function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, 
   const bodyY = y+hh+headerGap;
   const bodyMaxH = Math.max(0, maxH-(hh+headerGap));
 
-  const r1 = renderColumn(ctx,left,x,bodyY,leftColW,bodyMaxH,baseFont,'#2a2a2e',rowGap);
-  const r2 = right.length ? renderColumn(ctx,right,x+leftColW+colGap,bodyY,rightColW,bodyMaxH,baseFont,'#2a2a2e',rowGap) : {height:0,truncated:false};
+  const r1 = renderColumn(ctx,left,x,bodyY,leftColW,bodyMaxH,baseFont,'#2a2a2e',rowGap,lineHMult,bold);
+  const r2 = right.length ? renderColumn(ctx,right,x+leftColW+colGap,bodyY,rightColW,bodyMaxH,baseFont,'#2a2a2e',rowGap,lineHMult,bold) : {height:0,truncated:false};
 
   if(interactive){
     const contentBottom = Math.min(bodyY+Math.max(r1.height,r2.height), y+maxH);
@@ -1041,7 +1077,8 @@ function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, 
 /* ---------------------------------------------------------
    RENDERIZAÇÃO — CAIXA DE SALÁRIO E SELOS
 --------------------------------------------------------- */
-function renderSalaryBox(ctx, salario, x, y, w, h, cardW, col){
+function renderSalaryBox(ctx, salario, x, y, w, h, cardW, col, scale){
+  const sc = scale||1;
   roundRectPath(ctx, x, y, w, h, h*0.24);
   ctx.fillStyle = col.primary; ctx.fill();
   const badgeSize = h*0.6;
@@ -1054,11 +1091,11 @@ function renderSalaryBox(ctx, salario, x, y, w, h, cardW, col){
   const tx = bx+badgeSize+cardW*0.03;
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   ctx.fillStyle = hexToRgba('#ffffff',0.7);
-  ctx.font = `700 ${Math.round(cardW*0.017)}px Poppins, Arial, sans-serif`;
+  ctx.font = `700 ${Math.round(cardW*0.017*sc)}px Poppins, Arial, sans-serif`;
   ctx.fillText('SALÁRIO', tx, y+h*0.38);
   ctx.fillStyle = '#ffffff';
   const maxValW = x+w-tx-cardW*0.03;
-  const valFit = fitText(ctx, salario, maxValW, 1, cardW*0.036, cardW*0.02, 800, 'Poppins, Arial, sans-serif');
+  const valFit = fitText(ctx, salario, maxValW, 1, cardW*0.036*sc, cardW*0.02, 800, 'Poppins, Arial, sans-serif');
   ctx.font = `800 ${Math.round(valFit.size)}px Poppins, Arial, sans-serif`;
   ctx.fillText(valFit.lines[0], tx, y+h*0.76);
 }
@@ -1098,6 +1135,11 @@ function renderTall(ctx,fmt,data,col,interactive){
   const topH = cardH*0.48;
 
   const topBE = getBlockExtra(currentFormat);
+  const titleLineHMult = topBE.titleLineH!=null ? Math.min(Math.max(topBE.titleLineH,0.85),1.6) : 1;
+  const rowsLineHMult = topBE.rowsLineH!=null ? Math.min(Math.max(topBE.rowsLineH,0.85),1.6) : 1;
+  const bensLineHMult = topBE.bensLineH!=null ? Math.min(Math.max(topBE.bensLineH,0.85),1.6) : 1;
+  const rowsBold = !!topBE.rowsBold;
+  const bensBold = !!topBE.bensBold;
   const leftWBase = cardW*0.57;
   const maxTopOffset = cardW*0.14;
   if(topBE.top==null) topBE.top = 0;
@@ -1119,7 +1161,7 @@ function renderTall(ctx,fmt,data,col,interactive){
     const refFontBen = cardW*0.022, colGapRefBen = refFontBen*1.1;
     const colWRefBen = (bw-colGapRefBen)/2;
     const [benLeft, benRight] = balanceColumns(ctx, data.beneficios, colWRefBen, refFontBen);
-    benFontCandidate = fitBenefitsFont(ctx, data.beneficios, bw, benAvailPre, cardW, benLeft, benRight);
+    benFontCandidate = fitBenefitsFont(ctx, data.beneficios, bw, benAvailPre, cardW, benLeft, benRight, bensLineHMult);
   }
 
   const photoImg = data.foto ? getPhotoImage(data.foto) : null;
@@ -1224,8 +1266,9 @@ function renderTall(ctx,fmt,data,col,interactive){
   const lw = leftW-pad-cardW*0.055;
   let y = cardY+cardH*0.035;
 
-  const badgeFont = `700 ${Math.round(cardW*0.023)}px Poppins, Arial, sans-serif`;
-  const badgeH = cardW*0.05;
+  const badgeScale = topBE.badgeScale!=null ? Math.min(Math.max(topBE.badgeScale,0.6),2) : 1;
+  const badgeFont = `700 ${Math.round(cardW*0.023*badgeScale)}px Poppins, Arial, sans-serif`;
+  const badgeH = cardW*0.05*badgeScale;
   const badgeOff = getBadgeOffset(currentFormat);
   const badgeNudgeX = cardW*0.05, badgeNudgeY = cardH*0.03;
   badgeOff.x = Math.min(Math.max(badgeOff.x, -badgeNudgeX), badgeNudgeX);
@@ -1245,24 +1288,25 @@ function renderTall(ctx,fmt,data,col,interactive){
   if(data.contratacao||data.regime) rows.push({icon:'💼', label:'Contratação', text:[data.contratacao,data.regime].filter(Boolean).join(' · ')});
   data.requisitos.forEach((r,i)=> rows.push({icon: i===0 ? '🎓' : '', label: i===0 ? 'Requisito(s)' : '', text:r}));
 
+  const titleLH = 1.08*titleLineHMult;
   let fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, titleMaxSize, titleMinSize, 800, titleFamily);
-  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
-  let rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW) : cardW*0.026;
+  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+  let rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
 
   if(topBE.titleSize==null){
     const ROWS_TARGET_FONT = Math.min(benFontCandidate, cardW*0.03);
     let balanceGuard = 0;
     while(rows.length && rowsFont < ROWS_TARGET_FONT && fit.size > titleMinSize && balanceGuard < 60){
       fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, fit.size-2, titleMinSize, 800, titleFamily);
-      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
-      rowsFont = fitRowsFont(ctx, rows, lw, rowsMaxH, cardW);
+      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+      rowsFont = fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult);
       balanceGuard++;
     }
   } else {
     const manualSize = Math.min(Math.max(topBE.titleSize, titleMinSize), titleMaxSize);
     fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, manualSize, titleMinSize, 800, titleFamily);
-    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
-    rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW) : cardW*0.026;
+    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - cardH*0.03);
+    rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
   }
   lastTitleFitSize = fit.size;
 
@@ -1290,14 +1334,14 @@ function renderTall(ctx,fmt,data,col,interactive){
   let rowsNaturalH = 0, rowsExtraUsed = 0;
   const rowsBE = getBlockExtra(currentFormat);
   if(rows.length>1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal);
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal, null, rowsLineHMult);
     const rowsLeftover = Math.max(0, rowsMaxH - rowsNaturalH);
     if(rowsBE.rows==null) rowsBE.rows = Math.min(rowsLeftover, (rows.length-1)*rowsFontFinal*0.6);
     rowsExtraUsed = Math.min(Math.max(rowsBE.rows,0), rowsLeftover);
     rowsBE.rows = rowsExtraUsed;
     rowsGap = rowsBaseGap + rowsExtraUsed/(rows.length-1);
   } else if(rows.length===1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal);
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal, null, rowsLineHMult);
   }
 
   const titleOff = getTitleOffset(currentFormat);
@@ -1310,18 +1354,18 @@ function renderTall(ctx,fmt,data,col,interactive){
   fit.lines.forEach((ln,i)=>{
     ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
     ctx.fillStyle = (i===fit.lines.length-1 && fit.lines.length>1) ? col.tertiary : col.primary;
-    ctx.fillText(ln, tx, ty+fit.size*0.85 + i*fit.size*1.08);
+    ctx.fillText(ln, tx, ty+fit.size*0.85 + i*fit.size*titleLH);
   });
-  lastTitleBlockRect = {x:tx, y:ty, w:lw, h:fit.lines.length*fit.size*1.08};
+  lastTitleBlockRect = {x:tx, y:ty, w:lw, h:fit.lines.length*fit.size*titleLH};
 
   lastTitleHandleRect = null;
   if(interactive){
-    const titleBottomY = ty + fit.lines.length*fit.size*1.08;
+    const titleBottomY = ty + fit.lines.length*fit.size*titleLH;
     lastTitleHandleRect = drawGrabHandle(ctx, tx+lw/2, titleBottomY, cardW*0.09);
     if(selectedTarget==='titleBlock') drawSelectionOutline(ctx, lastTitleBlockRect);
   }
 
-  y += fit.lines.length*fit.size*1.08 + cardH*0.022;
+  y += fit.lines.length*fit.size*titleLH + cardH*0.022;
 
   lastRowsFontHandleRect = null;
   if(interactive && rows.length){
@@ -1340,7 +1384,7 @@ function renderTall(ctx,fmt,data,col,interactive){
 
     ctx.save();
     ctx.beginPath(); ctx.rect(rx, ry, lw, rowsMaxH); ctx.clip();
-    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, rowsFontFinal, '#4b5563', col.primary, rowsGap).truncated;
+    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, rowsFontFinal, '#4b5563', col.primary, rowsGap, rowsLineHMult, rowsBold).truncated;
     ctx.restore();
     lastRowsBlockRect = {x:rx, y:ry, w:lw, h:Math.min(rowsNaturalH+rowsExtraUsed, rowsMaxH)};
     if(interactive){
@@ -1365,7 +1409,8 @@ function renderTall(ctx,fmt,data,col,interactive){
       const salNudgeX = cardW*0.04, salNudgeY = cardH*0.025;
       salOff.x = Math.min(Math.max(salOff.x, -salNudgeX), salNudgeX);
       salOff.y = Math.min(Math.max(salOff.y, -salNudgeY), salNudgeY);
-      renderSalaryBox(ctx, data.salario, bx+salOff.x, by+salOff.y, bw, salH, cardW, col);
+      const salaryScale = topBE.salaryScale!=null ? Math.min(Math.max(topBE.salaryScale,0.6),2) : 1;
+      renderSalaryBox(ctx, data.salario, bx+salOff.x, by+salOff.y, bw, salH, cardW, col, salaryScale);
       lastSalaryBlockRect = {x:bx+salOff.x, y:by+salOff.y, w:bw, h:salH};
       if(interactive && selectedTarget==='salaryBlock') drawSelectionOutline(ctx, lastSalaryBlockRect);
       by += salH+cardH*0.022;
@@ -1381,7 +1426,7 @@ function renderTall(ctx,fmt,data,col,interactive){
     bensOff.x = Math.min(Math.max(bensOff.x, -bensNudgeX), bensNudgeX);
     bensOff.y = Math.min(Math.max(bensOff.y, -bensNudgeY), bensNudgeY);
     const bbx = bx+bensOff.x, bby = by+bensOff.y;
-    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, bensFontFinal, interactive);
+    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, bensFontFinal, interactive, bensLineHMult, bensBold);
     benTruncated = rb.truncated || benAvail<=0;
     lastBensBlockRect = {x:bbx, y:bby, w:bw, h:Math.min(rb.height||0, benAvail)};
     if(interactive && selectedTarget==='bensBlock') drawSelectionOutline(ctx, lastBensBlockRect);
@@ -1402,6 +1447,7 @@ function renderTall(ctx,fmt,data,col,interactive){
   footerOff.x = Math.min(Math.max(footerOff.x, -footerNudgeX), footerNudgeX);
   footerOff.y = Math.min(Math.max(footerOff.y, -footerNudgeY), footerNudgeY);
 
+  const footerScale = topBE.footerScale!=null ? Math.min(Math.max(topBE.footerScale,0.6),2) : 1;
   const fBadgeSize = footerH*0.46;
   const fbx = cardX+cardW*0.06+footerOff.x, fby = footerY+(footerH-fBadgeSize)/2+footerOff.y;
   roundRectPath(ctx, fbx, fby, fBadgeSize, fBadgeSize, fBadgeSize*0.3);
@@ -1414,10 +1460,10 @@ function renderTall(ctx,fmt,data,col,interactive){
   const mainLine = data.contato || data.cta || '';
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   ctx.fillStyle=hexToRgba('#ffffff',0.7);
-  ctx.font=`700 ${Math.round(cardW*0.016)}px Poppins, Arial, sans-serif`;
+  ctx.font=`700 ${Math.round(cardW*0.016*footerScale)}px Poppins, Arial, sans-serif`;
   ctx.fillText('INTERESSADOS, ENTRE EM CONTATO', ftx, footerY+footerH*0.36+footerOff.y);
   ctx.fillStyle='#ffffff';
-  const lineFit = fitText(ctx, mainLine, cardX+cardW-ftx-cardW*0.05, 1, cardW*0.03, cardW*0.018, 800, 'Poppins, Arial, sans-serif');
+  const lineFit = fitText(ctx, mainLine, cardX+cardW-ftx-cardW*0.05, 1, cardW*0.03*footerScale, cardW*0.018, 800, 'Poppins, Arial, sans-serif');
   ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
   ctx.fillText(lineFit.lines[0], ftx, footerY+footerH*0.72+footerOff.y);
 
@@ -1686,6 +1732,7 @@ function draw(){
   const truncated = renderToCanvas(canvas, currentFormat, data, col, true);
   $('#overflowWarning').classList.toggle('show', !!truncated);
   saveState();
+  syncFmtPanel();
 }
 
 function saveState(){
@@ -2121,7 +2168,7 @@ function wireCanvasDrag(){
   $('#resetBlockSpacing').addEventListener('click', (e)=>{
     e.preventDefault();
     const be = getBlockExtra(currentFormat);
-    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, rowsFontSize:null, bensFontSize:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
+    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, rowsFontSize:null, bensFontSize:null, titleLineH:null, rowsLineH:null, bensLineH:null, rowsBold:false, bensBold:false, badgeScale:null, salaryScale:null, footerScale:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
     rowsOffsets[currentFormat] = {x:0, y:0};
     bensOffsets[currentFormat] = {x:0, y:0};
     titleOffsets[currentFormat] = {x:0, y:0};
@@ -2133,6 +2180,105 @@ function wireCanvasDrag(){
   });
 }
 
+/* ---------------------------------------------------------
+   PAINEL DE FORMATAÇÃO DE TEXTO (tamanho, espaçamento, negrito)
+--------------------------------------------------------- */
+const FMT_BLOCKS = {
+  title:  { sizeKey:'titleSize',    isScale:false, lineHKey:'titleLineH', boldKey:null,       fitVar:()=>lastTitleFitSize },
+  rows:   { sizeKey:'rowsFontSize', isScale:false, lineHKey:'rowsLineH',  boldKey:'rowsBold',  fitVar:()=>lastRowsFontFitSize },
+  bens:   { sizeKey:'bensFontSize', isScale:false, lineHKey:'bensLineH',  boldKey:'bensBold',  fitVar:()=>lastBensFontFitSize },
+  badge:  { sizeKey:'badgeScale',   isScale:true,  lineHKey:null,         boldKey:null },
+  salary: { sizeKey:'salaryScale',  isScale:true,  lineHKey:null,         boldKey:null },
+  footer: { sizeKey:'footerScale',  isScale:true,  lineHKey:null,         boldKey:null },
+};
+
+function fmtSizeToPct(cfg, be){
+  const raw = be[cfg.sizeKey];
+  if(cfg.isScale) return raw!=null ? Math.round(raw*100) : 100;
+  const ref = cfg.fitVar ? cfg.fitVar() : null;
+  if(!ref) return 100;
+  return Math.round((raw!=null ? raw : ref)/ref*100);
+}
+
+function fmtPctToSize(cfg, be, pct){
+  if(cfg.isScale) return Math.min(Math.max(pct/100, 0.55), 1.8);
+  const ref = cfg.fitVar ? cfg.fitVar() : null;
+  if(!ref) return null;
+  return ref*(pct/100);
+}
+
+function syncFmtPanel(){
+  const blockSel = $('#fmtBlock');
+  if(!blockSel) return;
+  const key = blockSel.value;
+  const cfg = FMT_BLOCKS[key];
+  const be = getBlockExtra(currentFormat);
+
+  const pct = fmtSizeToPct(cfg, be);
+  $('#fmtSize').value = pct;
+  $('#fmtSizeVal').textContent = pct+'%';
+
+  const lineHRow = $('#fmtLineHRow');
+  if(cfg.lineHKey){
+    lineHRow.style.display = '';
+    const lhPct = Math.round((be[cfg.lineHKey]!=null ? be[cfg.lineHKey] : 1)*100);
+    $('#fmtLineH').value = lhPct;
+    $('#fmtLineHVal').textContent = lhPct+'%';
+  } else {
+    lineHRow.style.display = 'none';
+  }
+
+  const boldRow = $('#fmtBoldRow');
+  if(cfg.boldKey){
+    boldRow.style.display = '';
+    $('#fmtBold').checked = !!be[cfg.boldKey];
+  } else {
+    boldRow.style.display = 'none';
+  }
+}
+
+function wireFmtPanel(){
+  const blockSel = $('#fmtBlock');
+  blockSel.addEventListener('change', syncFmtPanel);
+
+  $('#fmtSize').addEventListener('input', (e)=>{
+    const cfg = FMT_BLOCKS[blockSel.value];
+    const be = getBlockExtra(currentFormat);
+    const pct = parseInt(e.target.value, 10);
+    $('#fmtSizeVal').textContent = pct+'%';
+    const val = fmtPctToSize(cfg, be, pct);
+    if(val!=null) be[cfg.sizeKey] = val;
+    draw();
+  });
+
+  $('#fmtLineH').addEventListener('input', (e)=>{
+    const cfg = FMT_BLOCKS[blockSel.value];
+    if(!cfg.lineHKey) return;
+    const be = getBlockExtra(currentFormat);
+    const pct = parseInt(e.target.value, 10);
+    $('#fmtLineHVal').textContent = pct+'%';
+    be[cfg.lineHKey] = Math.min(Math.max(pct/100, 0.85), 1.6);
+    draw();
+  });
+
+  $('#fmtBold').addEventListener('change', (e)=>{
+    const cfg = FMT_BLOCKS[blockSel.value];
+    if(!cfg.boldKey) return;
+    const be = getBlockExtra(currentFormat);
+    be[cfg.boldKey] = e.target.checked;
+    draw();
+  });
+
+  $('#fmtReset').addEventListener('click', ()=>{
+    const cfg = FMT_BLOCKS[blockSel.value];
+    const be = getBlockExtra(currentFormat);
+    be[cfg.sizeKey] = null;
+    if(cfg.lineHKey) be[cfg.lineHKey] = null;
+    if(cfg.boldKey) be[cfg.boldKey] = false;
+    draw();
+  });
+}
+
 function wireDownloads(){
   $('#downloadCurrent').addEventListener('click', ()=>{
     const data = getData();
@@ -2140,6 +2286,7 @@ function wireDownloads(){
     const tmp = document.createElement('canvas');
     renderToCanvas(tmp, currentFormat, data, col);
     downloadCanvas(tmp, `vaga-${slug(data.cargo)}-${currentFormat}.png`);
+    draw(); // restaura os tamanhos "naturais" do formato atual (usados no painel de formatação)
   });
 
   $('#downloadAll').addEventListener('click', async ()=>{
@@ -2160,6 +2307,7 @@ function wireDownloads(){
         }, 'image/png');
       });
     }
+    draw(); // restaura os tamanhos "naturais" do formato atual (usados no painel de formatação)
   });
 }
 
@@ -2178,6 +2326,7 @@ async function init(){
   wireJobPhoto();
   wireDownloads();
   wireCanvasDrag();
+  wireFmtPanel();
 
   loadState();
 
