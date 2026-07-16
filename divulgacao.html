@@ -4,151 +4,174 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Effect | Divulgação de Vagas</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-:root {
-  --white:#ffffff; --bg:#f5f7fa; --dark:#2a2a2b; --gray:#a1a1aa;
-  --green:#8ed1b2; --blue:#1fa5f0; --sage:#7b8e60; --salmon:#f4afa1;
-  --navy:#162440; --teal:#4ecdc4; --navy2:#1e3358;
-  /* Paleta do cartaz alinhada à marca real da Effect (a mesma usada no
-     dashboard/sidebar do sistema): navy como cor de autoridade/estrutura,
-     teal como destaque. Nada de verde genérico do modelo de referência. */
-  --paccent:#4ecdc4; --paccent-dark:#162440; --pdark:#162440;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark)}
-.topbar{background:var(--navy);color:#fff;padding:16px 26px;display:flex;align-items:center;gap:12px}
-.topbar h1{font-size:16px;font-weight:700;letter-spacing:1px}
-.topbar .sub{font-size:11px;color:var(--teal);margin-left:auto}
-.wrap{max-width:920px;margin:0 auto;padding:22px 20px 60px}
-.card{background:var(--white);border-radius:14px;padding:20px;border:1px solid rgba(0,0,0,0.06);margin-bottom:16px}
-.card h2{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.card h2 .n{background:var(--navy);color:#fff;width:20px;height:20px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-label{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;margin-top:8px}
-input,textarea,select{width:100%;padding:9px 10px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-family:inherit;font-size:12px;background:#fff}
-textarea{resize:vertical;min-height:70px}
-#texto-divulgacao{min-height:170px}
-.btn{padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;transition:.2s;display:inline-flex;align-items:center;gap:7px}
-.btn-primary{background:var(--green);color:var(--navy)}
-.btn-primary:hover{background:#79c9a5}
-.btn-outline{background:transparent;border:1px solid rgba(0,0,0,0.15);color:var(--dark)}
-.btn-outline:hover{border-color:var(--navy)}
-.btn-send{background:var(--navy);color:#fff}
-.btn-send:hover{background:var(--navy2)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-.provider-row{display:flex;gap:16px;margin-top:8px}
-.provider-row label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;text-transform:none;color:var(--dark);margin:0}
-.provider-row input[type=radio]{width:auto}
-.banner{background:#fff7e6;border:1px solid #f0c96b;color:#7a5b00;border-radius:10px;padding:12px 14px;font-size:11.5px;line-height:1.5;margin-bottom:16px}
-.banner b{color:#5c4400}
-.check-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:600}
-.check-row input{width:auto}
-#candidatos-lista{max-height:220px;overflow-y:auto;border:1px solid rgba(0,0,0,0.08);border-radius:8px;margin-top:8px;display:none}
-.cand-item{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.05)}
-.cand-item:last-child{border-bottom:none}
-.cand-item input{width:auto}
-#status-msg{font-size:12px;margin-top:12px;padding:10px 12px;border-radius:8px;display:none}
-.status-ok{background:#e6f7f0;color:#146c43;display:block!important}
-.status-erro{background:#fdecea;color:#a83232;display:block!important}
-.badge-count{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
-.small{font-size:10.5px;color:var(--gray);margin-top:6px}
-
-/* Card visual pra baixar (PNG/PDF) — formato cartaz/flyer completo (retrato),
-   reproduzindo o modelo de referência: faixa "vaga aberta", foto, linhas de
-   informação com ícone, caixa de salário, grade de benefícios e rodapé com
-   WhatsApp + QR Code. */
-#card-preview-wrap{display:flex;justify-content:center;padding:10px 0}
-#card-preview{
-  width:1080px;height:1345px;transform-origin:top left;
-  background:#fff;color:var(--pdark);font-family:'Montserrat',sans-serif;
-  position:relative;overflow:hidden;padding:56px 56px 0;display:flex;flex-direction:column;
-  /* Quando há pouco conteúdo (poucos benefícios/specs), distribui o espaço
-     sobrando ENTRE as seções em vez de deixar tudo concentrado como um vão
-     vazio só antes do rodapé. */
-  justify-content:space-between;
-}
-#card-aviso-overflow{display:none;background:#fdecea;color:#a83232;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:600;margin-top:10px}
-/* Cabeçalho: coluna de texto à esquerda + foto grande e "sangrando" na borda
-   direita (sem moldura de caixa pequena) — dá a sensação fluida/editorial em
-   vez de retângulo estático flutuando no meio do espaço em branco. */
-#card-preview .cpv-topo{display:flex;gap:34px;margin-bottom:26px;align-items:stretch;min-height:560px}
-#card-preview .cpv-esq{flex:1;min-width:0;display:flex;flex-direction:column}
-#card-preview .cpv-ribbon{
-  display:inline-flex;align-self:flex-start;align-items:center;gap:10px;
-  background:var(--paccent);color:#fff;font-weight:800;font-size:24px;letter-spacing:.5px;
-  padding:12px 24px 12px 16px;border-radius:0 30px 30px 0;margin-bottom:22px;margin-left:-56px;
-}
-#card-preview .cpv-ribbon i{font-size:22px}
-#card-preview .cpv-titulo{font-size:58px;font-weight:800;line-height:1.08;text-transform:uppercase;word-break:break-word;color:var(--pdark)}
-#card-preview .cpv-titulo .destaque{color:var(--paccent)}
-#card-preview .cpv-esq .cpv-linhas{margin-top:auto;padding-top:24px}
-#card-preview .cpv-dir{
-  width:420px;flex-shrink:0;position:relative;overflow:hidden;background:#eef1ee;
-  margin-right:-56px;
-}
-#card-preview .cpv-dir img{width:100%;height:100%;object-fit:cover;display:block}
-#card-preview .cpv-foto-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#8fa398;background:linear-gradient(155deg,#eef4f0 0%,#dfe9e3 100%)}
-#card-preview .cpv-foto-placeholder i{font-size:56px;color:#b9cabf}
-#card-preview .cpv-foto-placeholder span{font-size:15px;font-weight:700;text-align:center;padding:0 84px 0 34px;line-height:1.4}
-/* Borda curvilínea na foto: um SVG (curva branca cobrindo parte da foto +
-   linha teal translúcida acompanhando a curva) usado como background-image.
-   Curva única e ampla (não várias ondulações pequenas) — transmite mais
-   sobriedade/competência do que um rabisco cheio de picos. Não é
-   clip-path/mask — é só imagem de fundo, que o html2canvas (gera o PNG/PDF)
-   reproduz de forma 100% confiável. */
-#card-preview .cpv-onda{
-  position:absolute;top:0;left:0;width:90px;height:100%;z-index:2;
-  background-repeat:no-repeat;background-size:100% 100%;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 600' preserveAspectRatio='none'%3E%3Cpath d='M0,0 C60,60 20,140 55,220 C90,300 15,380 55,460 C85,520 30,580 45,600 L0,600 Z' fill='white'/%3E%3Cpath d='M0,0 C60,60 20,140 55,220 C90,300 15,380 55,460 C85,520 30,580 45,600' fill='none' stroke='%234ecdc4' stroke-width='7' stroke-opacity='0.65'/%3E%3C/svg%3E");
-}
-#card-preview .cpv-foto-badge{
-  position:absolute;top:20px;left:20px;right:20px;background:var(--pdark);color:#fff;
-  border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700;line-height:1.35;z-index:3;
-}
-#card-preview .cpv-foto-badge .cidade{color:var(--paccent);font-size:22px;font-weight:800;display:block}
-#card-preview .cpv-foto-badge .pin{color:var(--paccent);margin-right:4px}
-
-#card-preview .cpv-linhas{display:flex;flex-direction:column;gap:12px}
-#card-preview .cpv-linha-simples{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:var(--pdark)}
-#card-preview .cpv-linha-simples i{color:var(--paccent);font-size:20px;width:22px;text-align:center;flex-shrink:0}
-
-#card-preview .cpv-especs-wrap{display:flex;flex-direction:column;gap:14px;margin:22px 0}
-#card-preview .cpv-espec{display:flex;align-items:center;gap:16px;border:2px solid var(--paccent);border-radius:16px;padding:14px 22px}
-#card-preview .cpv-espec .cpv-ic-lg{width:52px;height:52px;border-radius:50%;background:var(--pdark);color:var(--paccent);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-#card-preview .cpv-espec .lbl{font-size:15px;font-weight:800;letter-spacing:.5px;color:#666;text-transform:uppercase}
-#card-preview .cpv-espec .val{font-size:26px;font-weight:800;color:var(--pdark)}
-#card-preview .cpv-espec .val.destaque{color:var(--paccent-dark)}
-
-#card-preview .cpv-infoadd{border:2px solid var(--paccent);border-radius:16px;padding:16px 22px;margin-bottom:22px}
-#card-preview .cpv-infoadd-titulo{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--paccent-dark);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-#card-preview .cpv-infoadd-item{display:flex;align-items:flex-start;gap:10px;font-size:18px;font-weight:600;padding:8px 0;border-top:1px solid rgba(0,0,0,0.08)}
-#card-preview .cpv-infoadd-item:first-child{border-top:none;padding-top:0}
-#card-preview .cpv-infoadd-item i{color:var(--paccent-dark);font-size:16px;margin-top:3px;flex-shrink:0}
-
-#card-preview .cpv-beneficios-titulo{background:var(--paccent);color:#fff;font-weight:800;font-size:20px;letter-spacing:.5px;padding:11px 22px;border-radius:30px;display:inline-flex;align-items:center;gap:10px;margin-bottom:16px}
-#card-preview .cpv-beneficios-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:10px}
-#card-preview .cpv-beneficio-item{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
-#card-preview .cpv-beneficio-item i{color:var(--paccent-dark);font-size:16px;width:18px;text-align:center;flex-shrink:0}
-
-#card-preview .cpv-rodape{background:var(--pdark);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 56px;margin-left:-56px;margin-right:-56px}
-#card-preview .cpv-rodape-esq{display:flex;align-items:center;gap:14px}
-#card-preview .cpv-wa-icone{width:52px;height:52px;border-radius:50%;background:var(--paccent);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
-#card-preview .cpv-rodape-esq .tel{font-size:26px;font-weight:800}
-#card-preview .cpv-rodape-esq .sub{font-size:14px;font-weight:600;color:#a9e4df}
-#card-preview .cpv-rodape-dir{display:flex;align-items:center;gap:12px;text-align:right}
-#card-preview .cpv-rodape-dir .txt{font-size:12px;font-weight:700;line-height:1.4;max-width:150px}
-#card-preview .cpv-rodape-dir .txt .g{color:var(--paccent)}
-#card-preview .cpv-qr{background:#fff;border-radius:10px;padding:6px;width:84px;height:84px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-#card-preview .cpv-qr img,#card-preview .cpv-qr canvas{width:100%!important;height:100%!important}
-
-#card-preview-scaled{width:340px;height:423px;overflow:hidden;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
-#card-preview-scaled #card-preview{transform:scale(0.31481);}
+  :root{
+    --navy:#1f3a5f;
+    --blue:#7fb8e6;
+    --mint:#8ed1b2;
+    --coral:#f4afa1;
+    --dark:#2a2a2e;
+    --gray:#a1a1aa;
+    --bg-light:#f5f7fa;
+    --white:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Montserrat', Arial, sans-serif;
+    background:var(--bg-light);
+    color:var(--dark);
+  }
+  .topbar{
+    background:var(--navy);
+    color:#fff;
+    padding:16px 26px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .topbar h1{font-size:16px;font-weight:700;letter-spacing:1px;margin:0;}
+  .topbar .sub{font-size:11px;color:var(--blue);margin-left:auto;}
+  .topbar a.voltar{color:rgba(255,255,255,.75);text-decoration:none;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .topbar a.voltar:hover{color:#fff;}
+  .layout{
+    display:flex;
+    align-items:flex-start;
+    gap:0;
+    min-height:calc(100vh - 60px);
+  }
+  .sidebar{
+    width:400px;
+    min-width:340px;
+    max-height:calc(100vh - 60px);
+    overflow-y:auto;
+    background:#fff;
+    padding:20px;
+    border-right:1px solid #e5e7eb;
+  }
+  .main{
+    flex:1;
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .card{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--navy);
+    margin:0 0 12px;
+    font-weight:700;
+  }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--dark);
+    margin:10px 0 4px;
+  }
+  label.first{margin-top:0;}
+  input[type=text], input[type=tel], input[type=search], select, textarea{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid #d7dbe0;
+    border-radius:8px;
+    font-family:inherit;
+    font-size:13.5px;
+    background:#fff;
+    color:var(--dark);
+  }
+  textarea{resize:vertical;min-height:64px;line-height:1.4;}
+  input[type=color]{
+    width:44px;height:32px;border:1px solid #d7dbe0;border-radius:6px;padding:2px;cursor:pointer;background:#fff;
+  }
+  .colorrow{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
+  .colorrow .colitem{display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
+  .colorrow .colitem span{font-size:11px; color:var(--gray); font-weight:600;}
+  .row2{display:flex; gap:10px;}
+  .row2 > div{flex:1;}
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:10px 14px;
+    border-radius:8px;
+    border:none;
+    font-family:inherit;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  .btn:hover{opacity:.88;}
+  .btn-primary{background:var(--navy); color:#fff;}
+  .btn-accent{background:var(--coral); color:var(--dark);}
+  .btn-outline{background:#fff; color:var(--navy); border:1px solid var(--navy);}
+  .btn-danger{background:#fff; color:#c0392b; border:1px solid #f0c4bd;}
+  .btn-block{width:100%;}
+  .btn-sm{padding:6px 10px; font-size:12px;}
+  .hint{font-size:11.5px; color:var(--gray); margin-top:4px; line-height:1.4;}
+  #companyEditPanel{display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #e5e7eb;}
+  #companyEditPanel.open{display:block;}
+  .toggle-link{
+    background:none; border:none; color:var(--navy); font-weight:600; font-size:12.5px; cursor:pointer; padding:0; margin-top:10px;
+    text-decoration:underline;
+  }
+  .logo-row{display:flex; align-items:center; gap:10px; margin-top:6px;}
+  .logo-preview{
+    width:48px;height:48px;border-radius:50%;background:#eef1f5;display:flex;align-items:center;justify-content:center;
+    overflow:hidden; border:1px solid #e5e7eb; flex-shrink:0;
+  }
+  .logo-preview img{width:100%;height:100%;object-fit:cover;}
+  .company-actions{display:flex; gap:8px; margin-top:14px;}
+  .tabs{
+    display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; justify-content:center;
+  }
+  .tab-btn{
+    padding:9px 16px; border-radius:20px; border:1px solid #d7dbe0; background:#fff; color:var(--dark);
+    font-family:inherit; font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .tab-btn.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .canvas-wrap{
+    background:#fff; border-radius:14px; padding:14px; box-shadow:0 2px 14px rgba(0,0,0,.08);
+    display:flex; align-items:center; justify-content:center; max-width:100%;
+  }
+  #preview{
+    max-width:100%;
+    max-height:62vh;
+    width:auto;
+    height:auto;
+    display:block;
+    border-radius:8px;
+  }
+  .actions-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; justify-content:center;}
+  .warning{
+    margin-top:10px; background:#fff4e5; color:#8a5a00; border:1px solid #f5d8a0; padding:8px 12px;
+    border-radius:8px; font-size:12.5px; max-width:520px; text-align:center; display:none;
+  }
+  .warning.show{display:block;}
+  .save-status{
+    margin-top:8px; font-size:11.5px; color:var(--gray);
+  }
+  .save-status.erro{color:#c0392b;}
+  .intro{
+    font-size:12px; color:var(--gray); line-height:1.5; margin-bottom:14px;
+  }
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:#d7dbe0;border-radius:4px;}
 </style>
 </head>
 <body>
@@ -156,550 +179,1747 @@ textarea{resize:vertical;min-height:70px}
 <div class="topbar">
   <i class="fas fa-bullhorn"></i>
   <h1>DIVULGAÇÃO DE VAGAS — LIA</h1>
+  <a class="voltar" href="/dashboard"><i class="fas fa-arrow-left"></i> Painel</a>
   <div class="sub">Effect Pessoas &amp; Performance</div>
 </div>
 
-<div class="wrap">
+<div class="layout">
+  <aside class="sidebar">
 
-  <div class="banner">
-    <b>⚠️ Antes de aprovar:</b> este disparo só sai quando você clicar em "Aprovar e Enviar" — nada é enviado automaticamente.
-    Candidatos que não falam com a Lia há mais de 24h só podem receber mensagem via <b>template aprovado na Meta</b>
-    (o sistema tenta o texto livre primeiro e cai automaticamente para o template de reengajamento quando bloqueado).
-  </div>
-
-  <div class="card">
-    <h2><span class="n">1</span> Dados da vaga</h2>
-    <div class="grid2">
-      <div>
-        <label>Cargo *</label>
-        <input id="v-cargo" placeholder="Ex: Auxiliar de Produção">
-      </div>
-      <div>
-        <label>Cidade</label>
-        <input id="v-cidade" placeholder="Ex: Serra/ES">
-      </div>
-      <div>
-        <label>Salário</label>
-        <input id="v-salario" placeholder="Ex: R$ 1.800 ou A combinar">
-      </div>
-      <div>
-        <label>Horário</label>
-        <input id="v-horario" placeholder="Ex: Seg-Sex 08h às 17h48">
-      </div>
-    </div>
-    <label>Benefícios</label>
-    <input id="v-beneficios" placeholder="Ex: VT, VA, Plano de saúde">
-    <label>Requisitos</label>
-    <textarea id="v-requisitos" placeholder="Ex: Ensino médio completo, disponibilidade de horário..."></textarea>
-    <label>Responsabilidades</label>
-    <textarea id="v-responsabilidades" placeholder="Principais atividades do cargo..."></textarea>
-    <div class="small">Dica: abra esta página a partir do card da vaga no Dashboard (botão 📢 Divulgar) que estes campos já vêm preenchidos.</div>
-  </div>
-
-  <div class="card">
-    <h2><span class="n">1.1</span> Dados extras para o cartaz (seção 5)</h2>
-    <div class="grid2">
-      <div>
-        <label>Escolaridade</label>
-        <input id="v-escolaridade" placeholder="Ex: Ensino Médio completo">
-      </div>
-      <div>
-        <label>Diferencial</label>
-        <input id="v-diferencial" placeholder="Ex: Experiência na área será um diferencial">
-      </div>
-      <div>
-        <label>WhatsApp de contato (com DDD)</label>
-        <input id="v-telefone" placeholder="Ex: 27992566126">
-      </div>
+    <div class="intro">
+      <strong>Como usar:</strong> 1) Escolha a empresa cliente (ou cadastre uma nova). 2) Preencha o cargo e os detalhes da vaga. 3) Escolha o formato ao lado e baixe a imagem. Campos vazios somem sozinhos do layout — não precisa preencher tudo.
     </div>
 
-    <label style="margin-top:8px">Informações adicionais</label>
-    <textarea id="v-info-adicional" placeholder="Uma informação por linha. Ex:&#10;Vaga CLT&#10;Não é obrigatória experiência na função&#10;Necessário disponibilidade para trabalhar aos finais de semana&#10;Vaga para início imediato"></textarea>
-    <div class="small">Cada linha vira um item de lista no cartaz (com ícone de check), num quadro próprio de "Informações adicionais".</div>
+    <div class="card">
+      <h2>Empresa cliente</h2>
+      <label class="first">Selecionar empresa</label>
+      <select id="companySelect"></select>
+      <button type="button" class="toggle-link" id="toggleCompanyEdit">Editar dados / logo / cores da empresa ▾</button>
 
-    <label style="margin-top:16px">Foto do cartaz</label>
-    <input type="file" id="v-foto" accept="image/*" style="display:none">
-    <div class="row" style="margin-top:2px">
-      <label for="v-foto" class="btn btn-outline" style="margin:0"><i class="fas fa-upload"></i> Enviar imagem</label>
-      <button class="btn btn-outline" id="btn-gerar-foto" onclick="gerarFotoIA()"><i class="fas fa-wand-magic-sparkles"></i> Gerar foto com IA (a partir do cargo)</button>
-      <button class="btn btn-outline" id="btn-remover-foto" onclick="removerFotoCartaz()" style="display:none"><i class="fas fa-trash"></i> Remover foto</button>
-    </div>
-    <div id="foto-status" style="display:flex;align-items:center;gap:10px;margin-top:10px"></div>
-    <div class="small">Enviar imagem = a foto que você escolher no computador. Gerar foto com IA = cria uma foto do zero com base no cargo digitado (tem custo, DALL-E 3 — por isso não é automático). Uma opção sempre substitui a outra no cartaz.</div>
-    <div class="small">Esses campos alimentam só o cartaz da seção 5 (PNG/PDF) — não entram no texto de divulgação nem na mensagem de WhatsApp.</div>
-  </div>
+      <div id="companyEditPanel">
+        <label class="first">Nome da empresa</label>
+        <input type="text" id="companyName" placeholder="Ex: Effect Pessoas & Performance">
 
-  <div class="card">
-    <h2><span class="n">2</span> Gerar texto de divulgação</h2>
-    <div class="provider-row">
-      <label><input type="radio" name="provider" value="gemini" checked> Gemini (já integrado à Lia)</label>
-      <label><input type="radio" name="provider" value="chatgpt"> ChatGPT / OpenAI</label>
-    </div>
-    <div class="row">
-      <button class="btn btn-outline" id="btn-gerar" onclick="gerarTexto()"><i class="fas fa-wand-magic-sparkles"></i> Gerar texto com IA</button>
-    </div>
-    <label style="margin-top:14px">Texto (edite à vontade antes de enviar)</label>
-    <textarea id="texto-divulgacao" placeholder="O texto gerado aparece aqui — ou escreva o seu diretamente."></textarea>
-    <div class="small" id="provider-usado"></div>
-  </div>
+        <label>Logo</label>
+        <div class="logo-row">
+          <div class="logo-preview" id="logoPreview">—</div>
+          <input type="file" id="companyLogo" accept="image/*">
+        </div>
+        <button type="button" class="toggle-link" id="removeLogo" style="margin-top:6px;">Remover logo</button>
 
-  <div class="card">
-    <h2><span class="n">3</span> Quem recebe</h2>
-    <div class="check-row"><input type="checkbox" id="chk-whatsapp" checked> Enviar por WhatsApp aos candidatos compatíveis do banco de talentos</div>
-    <div class="row">
-      <button class="btn btn-outline" id="btn-buscar-cands" onclick="buscarCandidatos()"><i class="fas fa-users"></i> Ver candidatos compatíveis</button>
-      <span id="cand-total"></span>
-    </div>
-    <div id="candidatos-lista"></div>
-    <div class="small">A lista é sugerida por área/cargo/cidade do banco de talentos. Desmarque quem não quiser incluir.</div>
+        <label>Cores da marca</label>
+        <div class="colorrow">
+          <div class="colitem"><input type="color" id="colorPrimary" value="#1f3a5f"><span>Primária</span></div>
+          <div class="colitem"><input type="color" id="colorSecondary" value="#7fb8e6"><span>Azul</span></div>
+          <div class="colitem"><input type="color" id="colorTertiary" value="#8ed1b2"><span>Verde</span></div>
+          <div class="colitem"><input type="color" id="colorAccent" value="#f4afa1"><span>Salmão</span></div>
+        </div>
+        <div class="hint">Azul e verde são as cores principais do layout. O salmão aparece só em detalhes (ícones, contornos, faixa fina).</div>
 
-    <div class="check-row" style="margin-top:16px"><input type="checkbox" id="chk-email" checked> Enviar e-mail para o parceiro de divulgação nas redes sociais</div>
-    <div class="small">Requer e-mail do parceiro configurado no servidor (PARCEIRO_EMAIL).</div>
-  </div>
+        <label>Cidade / região padrão</label>
+        <input type="text" id="companyCity" placeholder="Ex: São Paulo - SP">
 
-  <div class="card">
-    <h2><span class="n">4</span> Aprovar e enviar</h2>
-    <div class="row">
-      <button class="btn btn-send" id="btn-aprovar" onclick="aprovarEEnviar()"><i class="fas fa-paper-plane"></i> Aprovar e Enviar</button>
-    </div>
-    <div id="status-msg"></div>
-  </div>
+        <label>WhatsApp / contato padrão</label>
+        <input type="text" id="companyWhatsapp" placeholder="Ex: (11) 99999-9999">
 
-  <div class="card">
-    <h2><span class="n">5</span> Baixar cartaz para postar (PNG / PDF)</h2>
-    <div class="small">Gera um cartaz completo pronto pra postar (Instagram, Facebook, WhatsApp Status ou imprimir), com foto, ícones, benefícios e QR Code do WhatsApp. Atualiza sozinho conforme você edita os campos acima.</div>
-    <div id="card-preview-wrap">
-      <div id="card-preview-scaled">
-        <div id="card-preview"><!-- montado via JS em renderCardPreview() --></div>
+        <label>Instagram (opcional)</label>
+        <input type="text" id="companyInstagram" placeholder="@empresa">
+
+        <label>Texto de chamada (CTA) padrão</label>
+        <input type="text" id="companyCta" placeholder="Ex: Envie seu currículo pelo WhatsApp">
+
+        <label>Frase de destaque padrão (selo sobre a foto)</label>
+        <input type="text" id="companyBanner" placeholder="Ex: Venha fazer parte da maior empresa de vigilância do ES">
+        <div class="hint">Se quiser que a cidade apareça automaticamente, use {cidade} no texto. Ex: "Venha fazer parte do time em {cidade}!". Deixe vazio para usar o padrão com a cidade.</div>
+
+        <div class="company-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="saveCompany">Salvar empresa</button>
+          <button type="button" class="btn btn-danger btn-sm" id="deleteCompany">Excluir</button>
+        </div>
+        <div class="hint">As cores, logo, cidade, contato e CTA ficam salvas nesta empresa <b>no servidor</b> — qualquer pessoa do time que abrir esta página vê a mesma lista. Da próxima vez que você selecionar ela, tudo isso preenche sozinho — só falta o cargo.</div>
+        <div class="save-status" id="companySaveStatus"></div>
       </div>
     </div>
-    <div id="card-aviso-overflow">⚠️ O conteúdo está passando do tamanho do cartaz (1080x1345, formato Instagram) e pode sair cortado no PNG/PDF. Reduza o texto de Benefícios, Informações adicionais ou Diferencial.</div>
-    <div class="row">
-      <button class="btn btn-outline" onclick="renderCardPreview()"><i class="fas fa-arrows-rotate"></i> Atualizar prévia</button>
-      <button class="btn btn-outline" id="btn-png" onclick="baixarCardPNG()"><i class="fas fa-image"></i> Baixar PNG</button>
-      <button class="btn btn-outline" id="btn-pdf" onclick="baixarCardPDF()"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
-    </div>
-  </div>
 
+    <div class="card">
+      <h2>Dados da vaga</h2>
+
+      <label class="first">Cargo</label>
+      <input type="text" id="cargo" placeholder="Ex: Auxiliar de Logística">
+      <div class="hint">O ícone é escolhido automaticamente conforme o cargo digitado. Se preferir outro, é só trocar abaixo.</div>
+
+      <label>Categoria do cargo (define o ícone)</label>
+      <select id="categoria"></select>
+
+      <div class="row2">
+        <div>
+          <label>Tipo de contratação</label>
+          <select id="contratacao">
+            <option value="">—</option>
+            <option>CLT</option>
+            <option>PJ</option>
+            <option>Temporário</option>
+            <option>Estágio</option>
+            <option>Jovem Aprendiz</option>
+            <option>Freelancer</option>
+          </select>
+        </div>
+        <div>
+          <label>Regime</label>
+          <select id="regime">
+            <option value="">—</option>
+            <option>Presencial</option>
+            <option>Híbrido</option>
+            <option>Remoto</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Horário de trabalho</label>
+      <input type="text" id="horario" placeholder="Ex: Seg a Sex, 08h às 18h">
+
+      <label>Cidade / local</label>
+      <input type="text" id="cidade" placeholder="Preenchido pela empresa (editável)">
+
+      <label>Frase de destaque (selo sobre a foto)</label>
+      <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
+      <div class="hint">Dica: arraste o selo direto na prévia pra posicionar sem tampar o rosto. <a href="#" id="resetBannerPos" class="toggle-link" style="display:inline;">Voltar posição padrão</a></div>
+
+      <label>Salário</label>
+      <input type="text" id="salario" placeholder="Ex: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
+
+      <label>Requisitos (um por linha)</label>
+      <textarea id="requisitos" placeholder="Ensino médio completo&#10;Experiência mínima de 1 ano&#10;Disponibilidade de horário"></textarea>
+
+      <label>Benefícios (um por linha)</label>
+      <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
+      <div class="hint">Dica: na prévia, arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir espaçamentos</a></div>
+
+      <label>Texto de chamada (CTA)</label>
+      <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
+
+      <label>Contato exibido na arte</label>
+      <input type="text" id="contato" placeholder="Preenchido pela empresa (editável)">
+
+      <label>Foto da vaga / ambiente (opcional)</label>
+      <div class="logo-row">
+        <div class="logo-preview" id="jobPhotoPreview">—</div>
+        <input type="file" id="jobPhoto" accept="image/*">
+      </div>
+      <button type="button" class="toggle-link" id="removeJobPhoto" style="margin-top:6px;">Remover foto</button>
+      <div class="hint">Se você adicionar uma foto (loja, equipe, ambiente), ela aparece no topo da arte no lugar do ícone — fica bem mais atrativo. Sem foto, o ícone da categoria continua aparecendo sozinho.</div>
+    </div>
+
+  </aside>
+
+  <main class="main">
+    <div class="tabs" id="formatTabs"></div>
+    <div class="canvas-wrap">
+      <canvas id="preview" width="1080" height="1080"></canvas>
+    </div>
+    <div class="warning" id="overflowWarning">⚠ O texto está grande demais para este formato. Considere reduzir requisitos/benefícios ou escolher um formato mais alto (Stories).</div>
+    <div class="actions-row">
+      <button type="button" class="btn btn-accent" id="downloadCurrent">⬇ Baixar este formato (PNG)</button>
+      <button type="button" class="btn btn-outline" id="downloadAll">⬇ Baixar todos os formatos</button>
+    </div>
+  </main>
 </div>
 
 <script>
-const API_BASE = '';
+(function(){
+"use strict";
 
-function paramsVaga(){
+const $ = s => document.querySelector(s);
+
+/* ---------------------------------------------------------
+   DADOS DE REFERÊNCIA
+--------------------------------------------------------- */
+const CATEGORIES = [
+  {v:'generico',      l:'Genérico / Outros'},
+  {v:'lideranca',     l:'Liderança / Gestão'},
+  {v:'administrativo',l:'Administrativo'},
+  {v:'operacional',   l:'Operacional'},
+  {v:'logistica',     l:'Logística'},
+  {v:'varejo',        l:'Varejo / Loja'},
+  {v:'industria',     l:'Indústria / Produção'},
+  {v:'restaurante',   l:'Restaurante / Food Service'},
+  {v:'comercial',     l:'Comercial / Vendas'},
+  {v:'tecnologia',    l:'Tecnologia / TI'},
+  {v:'saude',         l:'Saúde'},
+  {v:'seguranca',     l:'Segurança / Vigilância'}
+];
+
+// Remove acentos usando um mapa de caracteres explícito (evita problemas de
+// codificação com regex de faixa Unicode). Usado para comparar palavras-chave
+// sem depender do usuário digitar com ou sem acento.
+const ACCENT_MAP = {a:'aàáâãä',e:'eèéêë',i:'iìíîï',o:'oòóôõö',u:'uùúûü',c:'cç'};
+const ACCENT_LOOKUP = {};
+Object.keys(ACCENT_MAP).forEach(base=>{
+  ACCENT_MAP[base].split('').forEach(ch=> ACCENT_LOOKUP[ch]=base);
+});
+function stripAccents(s){
+  return String(s||'').toLowerCase().split('').map(ch=>ACCENT_LOOKUP[ch]||ch).join('');
+}
+
+// Palavras-chave (já sem acento, comparadas via stripAccents) usadas para
+// detectar automaticamente a categoria/ícone assim que o cargo é digitado,
+// sem precisar escolher a categoria à parte.
+const CATEGORY_KEYWORDS = {
+  seguranca:      ['vigilante','vigilancia','seguranca patrimonial','seguranca','porteiro','portaria','vigia'],
+  lideranca:      ['gerente','supervisor','supervisora','coordenador','coordenadora','lider','gestor','gestora','diretor','diretora','head '],
+  tecnologia:     ['desenvolvedor','desenvolvedora','programador','programadora','ti ','tecnologia','analista de sistemas','suporte tecnico','devops','dados'],
+  saude:          ['enfermeiro','enfermeira','tecnico de enfermagem','saude','cuidador','cuidadora','fisioterapeuta','farmaceutico','farmaceutica'],
+  restaurante:    ['cozinheiro','cozinheira','garcom','garconete','restaurante','chef','copeiro','copeira','food service','confeiteiro','confeiteira','churrasqueiro'],
+  logistica:      ['logistica','motorista','entregador','entregadora','estoque','almoxarife','conferente','expedicao','estoquista'],
+  varejo:         ['vendedor de loja','caixa','loja','varejo','repositor','repositora','balconista'],
+  comercial:      ['vendas','comercial','representante comercial','sdr','account','vendedor','vendedora'],
+  industria:      ['industria','fabrica','soldador','soldadora','mecanico','mecanica','industrial','operador de maquina'],
+  administrativo: ['administrativo','administrativa','auxiliar administrativo','assistente administrativo','recepcionista','secretario','secretaria','financeiro','recursos humanos',' rh '],
+  operacional:    ['operador','operacional','producao','montador','montadora','auxiliar de producao']
+};
+
+function detectCategoryFromCargo(text){
+  const t = ' '+stripAccents(text)+' ';
+  if(!t.trim()) return null;
+  for(const cat of Object.keys(CATEGORY_KEYWORDS)){
+    const words = CATEGORY_KEYWORDS[cat];
+    for(const w of words){
+      if(t.includes(stripAccents(w))) return cat;
+    }
+  }
+  return null;
+}
+
+const FORMATS = {
+  feed:     {w:1080, h:1080, label:'Feed (1:1)'},
+  retrato:  {w:1080, h:1345, label:'Feed Retrato (4:5)'},
+  stories:  {w:1080, h:1920, label:'Stories (9:16)'},
+  linkedin: {w:1200, h:630,  label:'LinkedIn / Facebook'}
+};
+
+const STORAGE_COMPANIES_CACHE = 'effectVagas.companies.cache';
+const STORAGE_STATE = 'effectVagas.lastState';
+
+/* ---------------------------------------------------------
+   HELPERS DE DESENHO
+--------------------------------------------------------- */
+function roundRectPath(ctx,x,y,w,h,r){
+  if (typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r};
+  ctx.beginPath();
+  ctx.moveTo(x+r.tl,y);
+  ctx.lineTo(x+w-r.tr,y);
+  ctx.arcTo(x+w,y,x+w,y+r.tr,r.tr);
+  ctx.lineTo(x+w,y+h-r.br);
+  ctx.arcTo(x+w,y+h,x+w-r.br,y+h,r.br);
+  ctx.lineTo(x+r.bl,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r.bl,r.bl);
+  ctx.lineTo(x,y+r.tl);
+  ctx.arcTo(x,y,x+r.tl,y,r.tl);
+  ctx.closePath();
+}
+
+function shade(hex,pct){
+  hex=(hex||'#1f3a5f').replace('#','');
+  if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const f=parseInt(hex,16), t=pct<0?0:255, p=Math.abs(pct)/100;
+  const R=f>>16, G=(f>>8)&0xFF, B=f&0xFF;
+  const nr=Math.round((t-R)*p)+R, ng=Math.round((t-G)*p)+G, nb=Math.round((t-B)*p)+B;
+  return '#'+(0x1000000+nr*0x10000+ng*0x100+nb).toString(16).slice(1);
+}
+
+function hexToRgba(hex,a){
+  hex=(hex||'#1f3a5f').replace('#','');
+  if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function textColorOn(hex){
+  hex=(hex||'#1f3a5f').replace('#','');
+  if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const lum=(0.299*r+0.587*g+0.114*b)/255;
+  return lum>0.6 ? '#2a2a2e' : '#ffffff';
+}
+
+function wrapLines(ctx,text,maxWidth){
+  const words=String(text||'').split(/\s+/).filter(Boolean);
+  const lines=[]; let cur='';
+  for(const w of words){
+    const test=cur?cur+' '+w:w;
+    if(ctx.measureText(test).width>maxWidth && cur){lines.push(cur);cur=w;}
+    else cur=test;
+  }
+  if(cur) lines.push(cur);
+  return lines.length?lines:[''];
+}
+
+function fitText(ctx,text,maxWidth,maxLines,startSize,minSize,weight,family){
+  let size=startSize,lines=[''];
+  for(;size>=minSize;size-=2){
+    ctx.font=`${weight} ${Math.round(size)}px ${family}`;
+    lines=wrapLines(ctx,text,maxWidth);
+    if(lines.length<=maxLines) return {size,lines};
+  }
+  size=minSize;
+  ctx.font=`${weight} ${Math.round(size)}px ${family}`;
+  lines=wrapLines(ctx,text,maxWidth);
+  if(lines.length>maxLines){
+    lines=lines.slice(0,maxLines);
+    lines[maxLines-1]=lines[maxLines-1].replace(/\s+\S*$/,'')+'…';
+  }
+  return {size,lines};
+}
+
+function drawStar(ctx,cx,cy,outerR,innerR,color){
+  const spikes=5; let rot=Math.PI/2*3, x,y; const step=Math.PI/spikes;
+  ctx.beginPath(); ctx.moveTo(cx,cy-outerR);
+  for(let i=0;i<spikes;i++){
+    x=cx+Math.cos(rot)*outerR; y=cy+Math.sin(rot)*outerR; ctx.lineTo(x,y); rot+=step;
+    x=cx+Math.cos(rot)*innerR; y=cy+Math.sin(rot)*innerR; ctx.lineTo(x,y); rot+=step;
+  }
+  ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+}
+
+function drawPill(ctx,text,x,y,h,bg,fg,font,paddingX){
+  ctx.font=font;
+  const w=ctx.measureText(text).width+paddingX*2;
+  roundRectPath(ctx,x,y,w,h,h/2);
+  ctx.fillStyle=bg; ctx.fill();
+  ctx.fillStyle=fg;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,x+w/2,y+h/2+1);
+  return w;
+}
+
+// Distribui "tags" (chips) em uma ou mais linhas dentro de uma largura máxima.
+function drawTagsWrapped(ctx, tags, tints, textColor, xRef, y, maxWidth, th, font, padX, gapX, gapY, align){
+  ctx.font = font;
+  const widths = tags.map(t=>ctx.measureText(t).width + padX*2);
+  const rows = []; let row=[], rowW=0;
+  tags.forEach((t,i)=>{
+    const w=widths[i];
+    const addW = row.length? w+gapX : w;
+    if(rowW+addW>maxWidth && row.length){ rows.push(row); row=[]; rowW=0; }
+    row.push({t,w,tint:tints[i%tints.length]});
+    rowW += row.length>1? w+gapX : w;
+  });
+  if(row.length) rows.push(row);
+
+  let cy=y;
+  rows.forEach(r=>{
+    const rowTotalW = r.reduce((a,b,idx)=>a+b.w+(idx>0?gapX:0),0);
+    let tx = align==='left' ? xRef : xRef-rowTotalW/2;
+    r.forEach(item=>{
+      roundRectPath(ctx,tx,cy,item.w,th,th/2);
+      ctx.fillStyle = hexToRgba(item.tint,0.2); ctx.fill();
+      ctx.fillStyle = textColor; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font=font;
+      ctx.fillText(item.t, tx+item.w/2, cy+th/2+1);
+      tx += item.w+gapX;
+    });
+    cy += th+gapY;
+  });
+  return cy-y;
+}
+
+// Desenha uma imagem "cover" (preenche todo o retângulo, cortando o excesso).
+function drawImageCover(ctx, img, x, y, w, h){
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  if(!iw || !ih) return;
+  const ir = iw/ih, r = w/h;
+  let sx,sy,sw,sh;
+  if(ir > r){ sh=ih; sw=sh*r; sx=(iw-sw)/2; sy=0; }
+  else { sw=iw; sh=sw/r; sx=0; sy=(ih-sh)/2; }
+  ctx.drawImage(img, sx,sy,sw,sh, x,y,w,h);
+}
+
+/* ---------------------------------------------------------
+   BIBLIOTECA DE ÍCONES (traço único, coordenadas -50..50)
+--------------------------------------------------------- */
+const ICONS = {
+  generico(ctx){
+    roundRectPath(ctx,-32,-6,64,34,6); ctx.stroke();
+    roundRectPath(ctx,-13,-26,26,14,6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-32,11); ctx.lineTo(32,11); ctx.stroke();
+    roundRectPath(ctx,-5,5,10,8,2); ctx.fill();
+  },
+  lideranca(ctx,color){
+    ctx.beginPath(); ctx.arc(0,-26,13,0,Math.PI*2); ctx.stroke();
+    roundRectPath(ctx,-20,-6,40,34,17); ctx.stroke();
+    drawStar(ctx,26,-32,10,4,color);
+  },
+  administrativo(ctx){
+    roundRectPath(ctx,-24,-30,48,66,6); ctx.stroke();
+    roundRectPath(ctx,-10,-38,20,12,4); ctx.stroke();
+    [-10,4,18].forEach(y=>{ ctx.beginPath(); ctx.moveTo(-14,y); ctx.lineTo(14,y); ctx.stroke(); });
+  },
+  operacional(ctx){
+    ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.stroke();
+    for(let i=0;i<8;i++){
+      ctx.save(); ctx.rotate(i*Math.PI/4);
+      ctx.beginPath(); ctx.rect(-4,-32,8,10); ctx.fill();
+      ctx.restore();
+    }
+  },
+  logistica(ctx){
+    roundRectPath(ctx,-34,-12,44,28,4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10,-12); ctx.lineTo(28,-12); ctx.lineTo(34,4); ctx.lineTo(10,4); ctx.closePath(); ctx.stroke();
+    roundRectPath(ctx,14,-8,10,8,2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-16,20,7,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(22,20,7,0,Math.PI*2); ctx.stroke();
+  },
+  varejo(ctx){
+    ctx.beginPath(); ctx.moveTo(-22,-8); ctx.lineTo(22,-8); ctx.lineTo(28,32); ctx.lineTo(-28,32); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,-8,12,Math.PI,0,false); ctx.stroke();
+  },
+  industria(ctx){
+    ctx.beginPath(); ctx.moveTo(-36,30); ctx.lineTo(36,30); ctx.stroke();
+    roundRectPath(ctx,-36,-4,34,34,4); ctx.stroke();
+    roundRectPath(ctx,-4,-24,10,20,2); ctx.stroke();
+    roundRectPath(ctx,12,-14,10,10,2); ctx.stroke();
+  },
+  restaurante(ctx){
+    const prevW=ctx.lineWidth; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(-14,-30); ctx.lineTo(-14,26); ctx.stroke();
+    [-20,-14,-8].forEach(x=>{ ctx.beginPath(); ctx.moveTo(x,-30); ctx.lineTo(x,-14); ctx.stroke(); });
+    ctx.beginPath(); ctx.moveTo(14,-30); ctx.lineTo(14,26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8,-30); ctx.lineTo(20,-30); ctx.lineTo(14,-10); ctx.closePath(); ctx.stroke();
+    ctx.lineWidth=prevW;
+  },
+  comercial(ctx){
+    ctx.fillRect(-26,10,10,16);
+    ctx.fillRect(-10,-6,10,32);
+    ctx.fillRect(6,-20,10,46);
+    const prevW=ctx.lineWidth; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(-28,20); ctx.lineTo(24,-22); ctx.stroke();
+    ctx.lineWidth=prevW;
+    ctx.beginPath(); ctx.moveTo(24,-22); ctx.lineTo(12,-20); ctx.lineTo(22,-10); ctx.closePath(); ctx.fill();
+  },
+  tecnologia(ctx){
+    roundRectPath(ctx,-30,-22,60,40,4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,18); ctx.lineTo(0,26); ctx.stroke();
+    roundRectPath(ctx,-14,26,28,6,3); ctx.stroke();
+    const prevW=ctx.lineWidth; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(-14,-10); ctx.lineTo(-20,0); ctx.lineTo(-14,10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6,-10); ctx.lineTo(12,0); ctx.lineTo(6,10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4,12); ctx.lineTo(4,-12); ctx.stroke();
+    ctx.lineWidth=prevW;
+  },
+  saude(ctx){
+    roundRectPath(ctx,-8,-28,16,56,4); ctx.fill();
+    roundRectPath(ctx,-28,-8,56,16,4); ctx.fill();
+  },
+  seguranca(ctx){
+    ctx.beginPath();
+    ctx.moveTo(0,-36);
+    ctx.lineTo(27,-25);
+    ctx.lineTo(27,5);
+    ctx.quadraticCurveTo(27,29,0,38);
+    ctx.quadraticCurveTo(-27,29,-27,5);
+    ctx.lineTo(-27,-25);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-11,2);
+    ctx.lineTo(-2,13);
+    ctx.lineTo(15,-11);
+    ctx.stroke();
+  }
+};
+
+function drawIcon(ctx,key,cx,cy,size,color){
+  const fn = ICONS[key] || ICONS.generico;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.scale(size/100,size/100);
+  ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=8; ctx.lineCap='round'; ctx.lineJoin='round';
+  fn(ctx,color);
+  ctx.restore();
+}
+
+function drawLogoCircle(ctx, col, cx, cy, size, bgColor, textColor){
+  bgColor = bgColor || col.primary; textColor = textColor || '#ffffff';
+  const img = col.logo ? getLogoImage(col.logo) : null;
+  if(img && img.complete && img.naturalWidth){
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx,cy,size/2,0,Math.PI*2); ctx.clip();
+    ctx.drawImage(img, cx-size/2, cy-size/2, size, size);
+    ctx.restore();
+  } else {
+    ctx.beginPath(); ctx.arc(cx,cy,size/2,0,Math.PI*2);
+    ctx.fillStyle=bgColor; ctx.fill();
+    ctx.fillStyle=textColor; ctx.font=`700 ${Math.round(size*0.4)}px Poppins, Arial, sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText((col.nome||'?').trim().charAt(0).toUpperCase(), cx, cy+2);
+  }
+}
+
+/* ---------------------------------------------------------
+   ESTADO: EMPRESAS CLIENTES (agora salvas no servidor da Lia, não mais só
+   no navegador — assim o time inteiro vê a mesma lista de empresas/clientes.
+   Fica um cache em localStorage só pra abrir instantâneo/funcionar offline;
+   a fonte de verdade é sempre o servidor.)
+--------------------------------------------------------- */
+let companies = [];
+let currentCompany = null;
+let jobPhotoDataUrl = null;
+let companiesLoadedFromServer = false;
+
+function seedDefaultCompany(){
   return {
-    cargo: document.getElementById('v-cargo').value.trim(),
-    cidade: document.getElementById('v-cidade').value.trim(),
-    salario: document.getElementById('v-salario').value.trim(),
-    horario: document.getElementById('v-horario').value.trim(),
-    beneficios: document.getElementById('v-beneficios').value.trim(),
-    requisitos: document.getElementById('v-requisitos').value.trim(),
-    responsabilidades: document.getElementById('v-responsabilidades').value.trim()
+    id:'seed-effect',
+    nome:'Effect Pessoas & Performance',
+    corPrimaria:'#1f3a5f',
+    corSecundaria:'#7fb8e6',
+    corTerciaria:'#8ed1b2',
+    corDestaque:'#f4afa1',
+    logoDataUrl:null,
+    cidadePadrao:'',
+    whatsapp:'',
+    instagram:'@effectpessoaseperformance',
+    ctaPadrao:'Envie seu currículo pelo WhatsApp',
+    bannerPadrao:''
   };
 }
 
-function providerSelecionado(){
-  return document.querySelector('input[name=provider]:checked').value;
+function setCompanySaveStatus(msg, isErro){
+  const el = $('#companySaveStatus');
+  if(!el) return;
+  el.textContent = msg||'';
+  el.classList.toggle('erro', !!isErro);
 }
 
-function preencherDaURL(){
-  const p = new URLSearchParams(window.location.search);
-  const map = { cargo:'v-cargo', cidade:'v-cidade', salario:'v-salario', horario:'v-horario', beneficios:'v-beneficios', requisitos:'v-requisitos', responsabilidades:'v-responsabilidades', escolaridade:'v-escolaridade', diferencial:'v-diferencial', telefone:'v-telefone' };
-  Object.entries(map).forEach(([key, id]) => {
-    if (p.get(key)) document.getElementById(id).value = p.get(key);
+// Carrega do servidor (fonte de verdade). Se falhar (offline, etc.), usa o
+// cache local do último carregamento bem-sucedido, pra não travar o painel.
+async function loadCompanies(){
+  try{
+    const cached = localStorage.getItem(STORAGE_COMPANIES_CACHE);
+    if(cached) companies = JSON.parse(cached);
+  }catch(e){ companies = []; }
+
+  try{
+    const r = await fetch('/vagas/empresas');
+    const data = await r.json();
+    if(data.ok && Array.isArray(data.empresas)){
+      companies = data.empresas;
+      companiesLoadedFromServer = true;
+      localStorage.setItem(STORAGE_COMPANIES_CACHE, JSON.stringify(companies));
+    }
+  }catch(e){
+    console.error('Não foi possível carregar empresas do servidor, usando cache local.', e);
+  }
+
+  if(!companies.length){
+    companies.push(seedDefaultCompany());
+    await saveCompanies();
+  }
+}
+
+// Salva a lista inteira no servidor (fonte de verdade pro time todo) +
+// atualiza o cache local.
+async function saveCompanies(){
+  localStorage.setItem(STORAGE_COMPANIES_CACHE, JSON.stringify(companies));
+  try{
+    const r = await fetch('/vagas/empresas', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ empresas: companies })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Falha ao salvar');
+    setCompanySaveStatus('✓ Salvo no servidor — visível pra todo o time.', false);
+    return true;
+  }catch(e){
+    setCompanySaveStatus('⚠ Não foi possível salvar no servidor agora (ficou salvo só neste navegador). ' + e.message, true);
+    return false;
+  }
+}
+
+function populateCompanySelect(selectId){
+  const sel = $('#companySelect');
+  sel.innerHTML='';
+  companies.forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.id; opt.textContent=c.nome;
+    sel.appendChild(opt);
+  });
+  const optNew=document.createElement('option');
+  optNew.value='__new__'; optNew.textContent='+ Nova empresa';
+  sel.appendChild(optNew);
+  if(selectId) sel.value=selectId;
+}
+
+function fillCompanyEditPanel(c){
+  $('#companyName').value = c.nome||'';
+  $('#colorPrimary').value = c.corPrimaria||'#1f3a5f';
+  $('#colorSecondary').value = c.corSecundaria||'#7fb8e6';
+  $('#colorTertiary').value = c.corTerciaria||'#8ed1b2';
+  $('#colorAccent').value = c.corDestaque||'#f4afa1';
+  $('#companyCity').value = c.cidadePadrao||'';
+  $('#companyWhatsapp').value = c.whatsapp||'';
+  $('#companyInstagram').value = c.instagram||'';
+  $('#companyCta').value = c.ctaPadrao||'';
+  $('#companyBanner').value = c.bannerPadrao||'';
+  const prev = $('#logoPreview');
+  prev.innerHTML = c.logoDataUrl ? `<img src="${c.logoDataUrl}">` : (c.nome? c.nome.charAt(0).toUpperCase() : '—');
+  setCompanySaveStatus('');
+}
+
+function applyCompanyToJobFields(c){
+  if(!c) return;
+  $('#cidade').value = c.cidadePadrao||'';
+  $('#contato').value = c.whatsapp || c.instagram || '';
+  $('#cta').value = c.ctaPadrao || '';
+  $('#banner').value = c.bannerPadrao || '';
+}
+
+/* ---------------------------------------------------------
+   IMAGENS (cache)
+--------------------------------------------------------- */
+const logoImgCache = {};
+function getLogoImage(src){
+  if(!src) return null;
+  if(logoImgCache[src]) return logoImgCache[src];
+  const img = new Image();
+  img.onload = () => draw();
+  img.src = src;
+  logoImgCache[src]=img;
+  return img;
+}
+
+const photoImgCache = {};
+function getPhotoImage(src){
+  if(!src) return null;
+  if(photoImgCache[src]) return photoImgCache[src];
+  const img = new Image();
+  img.onload = () => draw();
+  img.src = src;
+  photoImgCache[src]=img;
+  return img;
+}
+
+/* ---------------------------------------------------------
+   LEITURA DO FORMULÁRIO
+--------------------------------------------------------- */
+function getData(){
+  return {
+    cargo: $('#cargo').value.trim() || 'Nome da Vaga',
+    categoria: $('#categoria').value || 'generico',
+    cidade: $('#cidade').value.trim(),
+    contratacao: $('#contratacao').value,
+    regime: $('#regime').value,
+    horario: $('#horario').value.trim(),
+    salario: $('#salario').value.trim(),
+    requisitos: $('#requisitos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    beneficios: $('#beneficios').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    cta: $('#cta').value.trim() || 'Envie seu currículo',
+    contato: $('#contato').value.trim(),
+    banner: $('#banner').value.trim(),
+    foto: jobPhotoDataUrl
+  };
+}
+
+function getColors(){
+  const c = currentCompany || {};
+  return {
+    primary: c.corPrimaria || '#1f3a5f',
+    secondary: c.corSecundaria || '#7fb8e6',
+    tertiary: c.corTerciaria || '#8ed1b2',
+    accent: c.corDestaque || '#f4afa1',
+    logo: c.logoDataUrl || null,
+    nome: c.nome || ''
+  };
+}
+
+/* ---------------------------------------------------------
+   RENDERIZAÇÃO — LINHAS DE INFORMAÇÃO (ícone + texto)
+--------------------------------------------------------- */
+function measureRowsHeight(ctx, rows, w, baseFont, rowGapOverride){
+  if(!rows.length) return 0;
+  const lineH = baseFont*1.32, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconW = baseFont*1.7;
+  let total=0;
+  rows.forEach((r,i)=>{
+    ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    const full = (r.label? r.label+': ':'') + r.text;
+    const lines = wrapLines(ctx, full, w-iconW);
+    total += Math.max(1,lines.length)*lineH + (i<rows.length-1?rowGap:0);
+  });
+  return total;
+}
+
+function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, rowGapOverride){
+  const lineH = baseFont*1.32, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconSize = baseFont*1.3;
+  const textX = x+iconSize+baseFont*0.4, textW = w-iconSize-baseFont*0.4;
+  let cy=y; const yLimit=y+maxH; let truncated=false;
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    const labelTxt = r.label? r.label+': ' : '';
+    const lines = wrapLines(ctx, labelTxt+r.text, textW);
+    const rowH = Math.max(1,lines.length)*lineH;
+    if(cy+rowH > yLimit+0.5){ truncated=true; break; }
+
+    ctx.font = `${Math.round(iconSize)}px sans-serif`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(r.icon, x, cy+lineH*0.4);
+    ctx.textBaseline='alphabetic';
+
+    if(labelTxt){
+      ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+      ctx.fillStyle = labelColor;
+      ctx.fillText(labelTxt, textX, cy+baseFont*0.85);
+      const labelW = ctx.measureText(labelTxt).width;
+      ctx.font = `500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+      ctx.fillStyle = textColor;
+      const firstRest = lines[0].startsWith(labelTxt) ? lines[0].slice(labelTxt.length) : lines[0];
+      ctx.fillText(firstRest, textX+labelW, cy+baseFont*0.85);
+      for(let li=1; li<lines.length; li++) ctx.fillText(lines[li], textX, cy+baseFont*0.85+li*lineH);
+    } else {
+      ctx.font = `500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+      ctx.fillStyle = textColor;
+      lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
+    }
+    cy += rowH + (i<rows.length-1? rowGap:0);
+  }
+  return {height: cy-y, truncated};
+}
+
+function fitRowsFont(ctx, rows, w, maxH, cardW){
+  if(!rows.length) return cardW*0.026;
+  let baseFont = cardW*0.034;
+  const minFont = cardW*0.015, step = cardW*0.0006;
+  for(; baseFont>=minFont; baseFont-=step){
+    if(measureRowsHeight(ctx, rows, w, baseFont) <= maxH) return baseFont;
+  }
+  return minFont;
+}
+
+/* ---------------------------------------------------------
+   RENDERIZAÇÃO — BENEFÍCIOS EM DUAS COLUNAS
+--------------------------------------------------------- */
+function balanceColumns(ctx, items, colW, refFont){
+  if(!items.length) return [[],[]];
+  const iconW = refFont*1.25, lineH = refFont*1.28, rowGap = refFont*0.4;
+  ctx.font = `500 ${Math.round(refFont)}px Poppins, Arial, sans-serif`;
+  const weights = items.map(it => Math.max(1, wrapLines(ctx, it, colW-iconW).length)*lineH + rowGap);
+  const left=[], right=[]; let leftH=0, rightH=0;
+  items.forEach((it,i)=>{
+    if(leftH<=rightH){ left.push(it); leftH+=weights[i]; }
+    else { right.push(it); rightH+=weights[i]; }
+  });
+  return [left,right];
+}
+
+function measureColumnHeight(ctx, items, w, baseFont, rowGapOverride){
+  if(!items.length) return 0;
+  const lineH=baseFont*1.28, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconW=baseFont*1.25;
+  let total=0;
+  items.forEach((it,i)=>{
+    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    const lines = wrapLines(ctx, it, w-iconW);
+    total += Math.max(1,lines.length)*lineH + (i<items.length-1?rowGap:0);
+  });
+  return total;
+}
+
+function renderColumn(ctx, items, x, y, w, maxH, baseFont, textColor, rowGapOverride){
+  const lineH=baseFont*1.28, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconSize=baseFont*1.1;
+  const textX = x+iconSize+baseFont*0.32, textW=w-iconSize-baseFont*0.32;
+  let cy=y; const yLimit=y+maxH; let truncated=false;
+  for(let i=0;i<items.length;i++){
+    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    const lines = wrapLines(ctx, items[i], textW);
+    const h = Math.max(1,lines.length)*lineH;
+    if(cy+h>yLimit+0.5){ truncated=true; break; }
+    ctx.font=`${Math.round(iconSize)}px sans-serif`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('✅', x, cy+lineH*0.4);
+    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    ctx.fillStyle=textColor; ctx.textBaseline='alphabetic';
+    lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
+    cy += h + (i<items.length-1?rowGap:0);
+  }
+  return {height: cy-y, truncated};
+}
+
+function fitBenefitsFont(ctx, items, w, maxH, cardW, left, right){
+  if(!items.length) return cardW*0.022;
+  let baseFont = cardW*0.038;
+  const minFont = cardW*0.013, step = cardW*0.0002;
+  for(; baseFont>=minFont; baseFont-=step){
+    const headerH = baseFont*2.0, headerGap = baseFont*1.0, colGap = baseFont*1.1;
+    const colW = (w-colGap)/2;
+    const need = headerH + headerGap + Math.max(measureColumnHeight(ctx,left,colW,baseFont), measureColumnHeight(ctx,right,colW,baseFont));
+    if(need<=maxH) return baseFont;
+  }
+  return minFont;
+}
+
+function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, interactive){
+  lastBenHandleRect = null;
+  if(!items.length || maxH<=0) return {height:0, truncated:false};
+  const refFont = cardW*0.022, colGapRef = refFont*1.1;
+  const colWRef = (w-colGapRef)/2;
+  const [left,right] = balanceColumns(ctx, items, colWRef, refFont);
+  const baseFont = forcedFont || fitBenefitsFont(ctx, items, w, maxH, cardW, left, right);
+  const headerFont = `700 ${Math.round(baseFont*1.02)}px Poppins, Arial, sans-serif`;
+  ctx.font = headerFont;
+  const headerText = '🎁  BENEFÍCIOS';
+  const hh = baseFont*2.0;
+  const hw = ctx.measureText(headerText).width + baseFont*1.8;
+  roundRectPath(ctx, x, y, hw, hh, hh/2);
+  ctx.fillStyle = col.tertiary; ctx.fill();
+  ctx.fillStyle = textColorOn(col.tertiary);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(headerText, x+hw/2, y+hh/2+1);
+
+  const colGap = baseFont*1.1;
+  const colWBase = (w-colGap)/2;
+
+  const benBE = getBlockExtra(currentFormat);
+  const maxColOffset = colWBase*0.55;
+  if(benBE.col==null) benBE.col = 0;
+  const colOffset = Math.min(Math.max(benBE.col, -maxColOffset), maxColOffset);
+  benBE.col = colOffset;
+  const leftColW = colWBase + (right.length? colOffset : 0);
+  const rightColW = colWBase - colOffset;
+
+  const baseRowGap = baseFont*0.4;
+  const headerGapBase = baseFont*1.0;
+  const bodyMaxHAtBase = Math.max(0, maxH-(hh+headerGapBase));
+  const naturalMax = Math.max(measureColumnHeight(ctx,left,leftColW,baseFont,baseRowGap), measureColumnHeight(ctx,right,rightColW,baseFont,baseRowGap));
+  const leftover = Math.max(0, bodyMaxHAtBase - naturalMax);
+  const maxGaps = Math.max(left.length-1, right.length-1, 1);
+
+  if(benBE.ben==null) benBE.ben = Math.min(leftover, baseFont*1.2 + maxGaps*baseFont*0.6);
+  const extraUsed = Math.min(Math.max(benBE.ben,0), leftover);
+  benBE.ben = extraUsed;
+
+  const headerGap = headerGapBase + extraUsed*0.7;
+  const rowGap = baseRowGap + (extraUsed*0.3)/maxGaps;
+
+  const bodyY = y+hh+headerGap;
+  const bodyMaxH = Math.max(0, maxH-(hh+headerGap));
+
+  const r1 = renderColumn(ctx,left,x,bodyY,leftColW,bodyMaxH,baseFont,'#2a2a2e',rowGap);
+  const r2 = right.length ? renderColumn(ctx,right,x+leftColW+colGap,bodyY,rightColW,bodyMaxH,baseFont,'#2a2a2e',rowGap) : {height:0,truncated:false};
+
+  if(interactive){
+    const contentBottom = Math.min(bodyY+Math.max(r1.height,r2.height), y+maxH);
+    lastBenHandleRect = drawGrabHandle(ctx, x+w/2, contentBottom, cardW*0.09);
+  }
+
+  lastColSplitHandleRect = null;
+  if(right.length){
+    ctx.save();
+    ctx.setLineDash([baseFont*0.3, baseFont*0.3]);
+    ctx.strokeStyle = hexToRgba(col.primary,0.25);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x+leftColW+colGap/2, bodyY);
+    ctx.lineTo(x+leftColW+colGap/2, bodyY+Math.max(r1.height,r2.height));
+    ctx.stroke();
+    ctx.restore();
+    if(interactive){
+      const midY = bodyY + Math.max(r1.height,r2.height)/2;
+      lastColSplitHandleRect = drawGrabHandle(ctx, x+leftColW+colGap/2, midY, cardW*0.075, true);
+    }
+  }
+  return { height: hh+headerGap+Math.max(r1.height,r2.height), truncated: r1.truncated||r2.truncated };
+}
+
+/* ---------------------------------------------------------
+   RENDERIZAÇÃO — CAIXA DE SALÁRIO E SELOS
+--------------------------------------------------------- */
+function renderSalaryBox(ctx, salario, x, y, w, h, cardW, col){
+  roundRectPath(ctx, x, y, w, h, h*0.24);
+  ctx.fillStyle = col.primary; ctx.fill();
+  const badgeSize = h*0.6;
+  const bx = x+h*0.2, by = y+(h-badgeSize)/2;
+  roundRectPath(ctx, bx, by, badgeSize, badgeSize, badgeSize*0.3);
+  ctx.fillStyle = col.tertiary; ctx.fill();
+  ctx.font = `${Math.round(badgeSize*0.55)}px sans-serif`;
+  ctx.fillStyle = '#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('💰', bx+badgeSize/2, by+badgeSize/2+1);
+  const tx = bx+badgeSize+cardW*0.03;
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle = hexToRgba('#ffffff',0.7);
+  ctx.font = `700 ${Math.round(cardW*0.017)}px Poppins, Arial, sans-serif`;
+  ctx.fillText('SALÁRIO', tx, y+h*0.38);
+  ctx.fillStyle = '#ffffff';
+  const maxValW = x+w-tx-cardW*0.03;
+  const valFit = fitText(ctx, salario, maxValW, 1, cardW*0.036, cardW*0.02, 800, 'Poppins, Arial, sans-serif');
+  ctx.font = `800 ${Math.round(valFit.size)}px Poppins, Arial, sans-serif`;
+  ctx.fillText(valFit.lines[0], tx, y+h*0.76);
+}
+
+// Selo escuro sobre a foto/painel, pode ter mais de uma linha.
+function drawOverlayBanner(ctx, lines, x, y, w, bg, fg, font, lineH, padX, padY){
+  ctx.font = font;
+  let maxLineW = 0;
+  lines.forEach(l=> maxLineW = Math.max(maxLineW, ctx.measureText(l).width));
+  const bw = Math.min(w, maxLineW+padX*2);
+  const bh = lines.length*lineH+padY*2;
+  roundRectPath(ctx, x, y, bw, bh, bh*0.22);
+  ctx.fillStyle=bg; ctx.fill();
+  ctx.fillStyle=fg; ctx.textAlign='center'; ctx.textBaseline='middle';
+  lines.forEach((l,i)=>{ ctx.fillText(l, x+bw/2, y+padY+lineH*i+lineH/2); });
+  return {w:bw, h:bh};
+}
+
+/* ---------------------------------------------------------
+   RENDERIZAÇÃO — LAYOUT VERTICAL (feed / retrato / stories)
+--------------------------------------------------------- */
+function renderTall(ctx,fmt,data,col,interactive){
+  const W=fmt.w,H=fmt.h;
+  const cardX=W*0.045, cardY=H*0.045, cardW=W-cardX*2, cardH=H-cardY*2, cardR=W*0.045;
+
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=W*0.02; ctx.shadowOffsetY=H*0.006;
+  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
+  ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
+  ctx.clip();
+
+  const pad = cardW*0.045;
+  const topH = cardH*0.48;
+
+  const topBE = getBlockExtra(currentFormat);
+  const leftWBase = cardW*0.57;
+  const maxTopOffset = cardW*0.14;
+  if(topBE.top==null) topBE.top = 0;
+  const topOffset = Math.min(Math.max(topBE.top, -maxTopOffset), maxTopOffset);
+  topBE.top = topOffset;
+  const leftW = leftWBase + topOffset;
+  const rightW = cardW-leftW;
+
+  const bx = cardX+pad;
+  const bw = cardW-pad*2;
+  const footerH = cardH*0.11;
+  const salH = cardH*0.088;
+
+  let byPre = cardY+topH+cardH*0.03;
+  if(data.salario && byPre+salH < cardY+cardH-footerH) byPre += salH+cardH*0.022;
+  const benAvailPre = Math.max(0, (cardY+cardH-footerH-cardH*0.025) - byPre);
+  let benFontCandidate = cardW*0.03;
+  if(data.beneficios.length && benAvailPre>0){
+    const refFontBen = cardW*0.022, colGapRefBen = refFontBen*1.1;
+    const colWRefBen = (bw-colGapRefBen)/2;
+    const [benLeft, benRight] = balanceColumns(ctx, data.beneficios, colWRefBen, refFontBen);
+    benFontCandidate = fitBenefitsFont(ctx, data.beneficios, bw, benAvailPre, cardW, benLeft, benRight);
+  }
+
+  const photoImg = data.foto ? getPhotoImage(data.foto) : null;
+  const hasPhoto = !!(photoImg && photoImg.complete && photoImg.naturalWidth);
+
+  ctx.save();
+  roundRectPath(ctx, cardX+leftW, cardY, rightW, topH, {tl:0,tr:cardR,br:0,bl:0});
+  ctx.clip();
+  const iconCy = cardY + topH*0.46;
+  if(hasPhoto){
+    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, topH);
+  } else {
+    const g = ctx.createLinearGradient(cardX+leftW, cardY, cardX+leftW, cardY+topH);
+    g.addColorStop(0, col.primary); g.addColorStop(1, shade(col.primary,-25));
+    ctx.fillStyle=g; ctx.fillRect(cardX+leftW, cardY, rightW, topH);
+    drawIcon(ctx, data.categoria, cardX+leftW+rightW/2, iconCy, Math.min(rightW,topH)*0.22, hexToRgba('#ffffff',0.85));
+  }
+  ctx.restore();
+
+  lastBannerRect = null;
+  let bannerText = data.banner
+    ? data.banner.replace(/\{cidade\}/gi, data.cidade||'')
+    : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
+  if(bannerText){
+    const bannerMaxW = rightW*0.74;
+    const bFit = fitText(ctx, `📍 ${bannerText.toUpperCase()}`, bannerMaxW, 4, cardW*0.026, cardW*0.014, 700, 'Poppins, Arial, sans-serif');
+    const bannerFont = `700 ${Math.round(bFit.size)}px Poppins, Arial, sans-serif`;
+    const bLineH = bFit.size*1.3;
+    const padX = cardW*0.016, padY = cardW*0.013;
+
+    ctx.font = bannerFont;
+    let maxLineW = 0;
+    bFit.lines.forEach(l=> maxLineW = Math.max(maxLineW, ctx.measureText(l).width));
+    const bw2 = Math.min(bannerMaxW, maxLineW+padX*2);
+    const bh = bFit.lines.length*bLineH+padY*2;
+
+    const baseX = cardX+leftW+rightW*0.06, baseY = cardY+cardW*0.03;
+    const off = getBannerOffset(currentFormat);
+    const margin = cardW*0.02;
+    const minX = (cardX+leftW+margin) - baseX;
+    const maxX = Math.max(minX, (cardX+leftW+rightW-margin-bw2) - baseX);
+    const minY = (cardY+margin) - baseY;
+    const maxY = Math.max(minY, (cardY+topH-margin-bh) - baseY);
+    off.x = Math.min(Math.max(off.x, minX), maxX);
+    off.y = Math.min(Math.max(off.y, minY), maxY);
+
+    const drawX = baseX+off.x, drawY = baseY+off.y;
+    drawOverlayBanner(ctx, bFit.lines, drawX, drawY, bannerMaxW, 'rgba(20,20,20,0.82)', '#ffffff', bannerFont, bLineH, padX, padY);
+    lastBannerRect = {x:drawX, y:drawY, w:bw2, h:bh};
+  }
+
+  if(col.logo){
+    const logoSize = cardW*0.095;
+    const logoCx = cardX+leftW+cardW*0.04+logoSize/2, logoCy = cardY+topH-cardW*0.04-logoSize/2;
+    ctx.beginPath(); ctx.arc(logoCx,logoCy,logoSize/2+4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
+    drawLogoCircle(ctx, col, logoCx, logoCy, logoSize, '#ffffff', col.primary);
+  }
+
+  lastTopSplitHandleRect = null;
+  if(interactive){
+    lastTopSplitHandleRect = drawGrabHandle(ctx, cardX+leftW, cardY+topH/2, cardW*0.075, true);
+  }
+
+  const lx = cardX+pad;
+  const lw = leftW-pad-cardW*0.055;
+  let y = cardY+cardH*0.035;
+
+  const badgeFont = `700 ${Math.round(cardW*0.023)}px Poppins, Arial, sans-serif`;
+  const badgeH = cardW*0.05;
+  drawPill(ctx, '📣 VAGA ABERTA', lx, y, badgeH, col.primary, '#ffffff', badgeFont, cardW*0.022);
+  y += badgeH + cardH*0.02;
+
+  const titleFamily='Poppins, Arial, sans-serif';
+  const titleMaxSize = cardW*0.07, titleMinSize = cardW*0.044;
+  const yBeforeTitle = y;
+
+  const rows = [];
+  if(data.cidade) rows.push({icon:'📍', label:'Local de trabalho', text:data.cidade});
+  if(data.horario) rows.push({icon:'🕐', label:'Horário', text:data.horario});
+  if(data.contratacao||data.regime) rows.push({icon:'💼', label:'Contratação', text:[data.contratacao,data.regime].filter(Boolean).join(' · ')});
+  data.requisitos.forEach((r,i)=> rows.push({icon: i===0 ? '🎓' : '', label: i===0 ? 'Requisito(s)' : '', text:r}));
+
+  let fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, titleMaxSize, titleMinSize, 800, titleFamily);
+  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
+  let rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW) : cardW*0.026;
+
+  if(topBE.titleSize==null){
+    const ROWS_TARGET_FONT = Math.min(benFontCandidate, cardW*0.03);
+    let balanceGuard = 0;
+    while(rows.length && rowsFont < ROWS_TARGET_FONT && fit.size > titleMinSize && balanceGuard < 60){
+      fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, fit.size-2, titleMinSize, 800, titleFamily);
+      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
+      rowsFont = fitRowsFont(ctx, rows, lw, rowsMaxH, cardW);
+      balanceGuard++;
+    }
+  } else {
+    const manualSize = Math.min(Math.max(topBE.titleSize, titleMinSize), titleMaxSize);
+    fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, manualSize, titleMinSize, 800, titleFamily);
+    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*1.08 + cardH*0.022) - cardH*0.03);
+    rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW) : cardW*0.026;
+  }
+  lastTitleFitSize = fit.size;
+
+  const sharedBodyFont = (rows.length && data.beneficios.length) ? Math.min(rowsFont, benFontCandidate) : rowsFont;
+
+  const rowsBaseGap = sharedBodyFont*0.55;
+  let rowsGap = rowsBaseGap;
+  let rowsNaturalH = 0, rowsExtraUsed = 0;
+  const rowsBE = getBlockExtra(currentFormat);
+  if(rows.length>1){
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, sharedBodyFont);
+    const rowsLeftover = Math.max(0, rowsMaxH - rowsNaturalH);
+    if(rowsBE.rows==null) rowsBE.rows = Math.min(rowsLeftover, (rows.length-1)*sharedBodyFont*0.6);
+    rowsExtraUsed = Math.min(Math.max(rowsBE.rows,0), rowsLeftover);
+    rowsBE.rows = rowsExtraUsed;
+    rowsGap = rowsBaseGap + rowsExtraUsed/(rows.length-1);
+  } else if(rows.length===1){
+    rowsNaturalH = measureRowsHeight(ctx, rows, lw, sharedBodyFont);
+  }
+
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  fit.lines.forEach((ln,i)=>{
+    ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
+    ctx.fillStyle = (i===fit.lines.length-1 && fit.lines.length>1) ? col.tertiary : col.primary;
+    ctx.fillText(ln, lx, y+fit.size*0.85 + i*fit.size*1.08);
+  });
+
+  lastTitleHandleRect = null;
+  if(interactive){
+    const titleBottomY = y + fit.lines.length*fit.size*1.08;
+    lastTitleHandleRect = drawGrabHandle(ctx, lx+lw/2, titleBottomY, cardW*0.09);
+  }
+
+  y += fit.lines.length*fit.size*1.08 + cardH*0.022;
+
+  let rowsTruncated=false;
+  lastRowsHandleRect = null;
+  if(rows.length && rowsMaxH>0){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(lx, y, lw, rowsMaxH); ctx.clip();
+    rowsTruncated = renderRows(ctx, rows, lx, y, lw, rowsMaxH, sharedBodyFont, '#4b5563', col.primary, rowsGap).truncated;
+    ctx.restore();
+    if(interactive && rows.length>1){
+      const contentBottom = y + rowsNaturalH + rowsExtraUsed;
+      const r = drawGrabHandle(ctx, lx+lw/2, Math.min(contentBottom, y+rowsMaxH), cardW*0.09);
+      lastRowsHandleRect = r;
+    }
+  } else if(rows.length){
+    rowsTruncated = true;
+  }
+
+  let by = cardY+topH+cardH*0.03;
+
+  let salTruncated=false;
+  if(data.salario){
+    if(by+salH < cardY+cardH-footerH){
+      renderSalaryBox(ctx, data.salario, bx, by, bw, salH, cardW, col);
+      by += salH+cardH*0.022;
+    } else { salTruncated=true; }
+  }
+
+  let benTruncated=false;
+  if(data.beneficios.length){
+    const benAvail = Math.max(0, (cardY+cardH-footerH-cardH*0.025) - by);
+    const rb = renderBenefitsBlock(ctx, data.beneficios, bx, by, bw, benAvail, cardW, col, sharedBodyFont, interactive);
+    benTruncated = rb.truncated || benAvail<=0;
+  }
+
+  const footerY = cardY+cardH-footerH;
+  roundRectPath(ctx, cardX, footerY, cardW, footerH, {tl:0,tr:0,br:cardR,bl:cardR});
+  ctx.fillStyle=col.primary; ctx.fill();
+  ctx.fillStyle=col.tertiary;
+  ctx.fillRect(cardX, footerY, cardW, Math.max(3,cardH*0.006));
+
+  const fBadgeSize = footerH*0.46;
+  const fbx = cardX+cardW*0.06, fby = footerY+(footerH-fBadgeSize)/2;
+  roundRectPath(ctx, fbx, fby, fBadgeSize, fBadgeSize, fBadgeSize*0.3);
+  ctx.fillStyle=col.tertiary; ctx.fill();
+  ctx.font=`${Math.round(fBadgeSize*0.55)}px sans-serif`;
+  ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('📲', fbx+fBadgeSize/2, fby+fBadgeSize/2+1);
+
+  const ftx = fbx+fBadgeSize+cardW*0.03;
+  const mainLine = data.contato || data.cta || '';
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle=hexToRgba('#ffffff',0.7);
+  ctx.font=`700 ${Math.round(cardW*0.016)}px Poppins, Arial, sans-serif`;
+  ctx.fillText('INTERESSADOS, ENTRE EM CONTATO', ftx, footerY+footerH*0.36);
+  ctx.fillStyle='#ffffff';
+  const lineFit = fitText(ctx, mainLine, cardX+cardW-ftx-cardW*0.05, 1, cardW*0.03, cardW*0.018, 800, 'Poppins, Arial, sans-serif');
+  ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
+  ctx.fillText(lineFit.lines[0], ftx, footerY+footerH*0.72);
+
+  ctx.restore();
+  return rowsTruncated || salTruncated || benTruncated;
+}
+
+/* ---------------------------------------------------------
+   RENDERIZAÇÃO — LAYOUT HORIZONTAL (linkedin / facebook)
+--------------------------------------------------------- */
+function renderWide(ctx,fmt,data,col){
+  const W=fmt.w,H=fmt.h;
+  const cardX=W*0.035, cardY=H*0.06, cardW=W-cardX*2, cardH=H-cardY*2, cardR=W*0.025;
+
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=W*0.015; ctx.shadowOffsetY=H*0.008;
+  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
+  ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
+  ctx.clip();
+
+  const rightW = cardW*0.36;
+  const leftW = cardW - rightW;
+
+  const photoImg = data.foto ? getPhotoImage(data.foto) : null;
+  const hasPhoto = !!(photoImg && photoImg.complete && photoImg.naturalWidth);
+
+  roundRectPath(ctx, cardX+leftW, cardY, rightW, cardH, {tl:0,bl:0,tr:cardR,br:cardR});
+  if(hasPhoto){
+    ctx.save(); ctx.clip();
+    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, cardH);
+    ctx.fillStyle = hexToRgba(col.primary,0.55);
+    ctx.fillRect(cardX+leftW, cardY, rightW, cardH);
+    ctx.restore();
+  } else {
+    ctx.fillStyle=col.primary; ctx.fill();
+  }
+
+  const rcx = cardX+leftW+rightW/2;
+  const logoSize=rightW*0.3;
+  const logoY = cardY+cardH*0.1;
+  drawLogoCircle(ctx, col, rcx, logoY+logoSize/2, logoSize, '#ffffff', col.primary);
+
+  const blobD = rightW*0.5;
+  const blobCy = cardY+cardH*0.55;
+  ctx.beginPath(); ctx.arc(rcx,blobCy,blobD/2,0,Math.PI*2);
+  ctx.fillStyle=hexToRgba(col.tertiary,0.3); ctx.fill();
+  ctx.lineWidth=3; ctx.strokeStyle=hexToRgba(col.accent,0.85); ctx.stroke();
+  drawIcon(ctx, data.categoria, rcx, blobCy, blobD*0.55, '#ffffff');
+
+  ctx.font=`700 ${Math.round(rightW*0.075)}px Poppins, Arial, sans-serif`;
+  ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const badgeLines = wrapLines(ctx,'ESTAMOS CONTRATANDO', rightW*0.78);
+  badgeLines.forEach((ln,i)=>{
+    ctx.fillText(ln, rcx, cardY+cardH*0.87 + i*rightW*0.09);
+  });
+
+  const innerX=cardX+cardW*0.045, innerW=leftW-cardW*0.07;
+  let y=cardY+cardH*0.09;
+
+  const titleFamily='Poppins, Arial, sans-serif';
+  const fit = fitText(ctx, data.cargo.toUpperCase(), innerW, 2, cardW*0.05, cardW*0.028, 800, titleFamily);
+  ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
+  ctx.fillStyle=col.primary; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  fit.lines.forEach((ln,i)=>{
+    ctx.fillText(ln, innerX, y+fit.size*0.85 + i*fit.size*1.15);
+  });
+  y += fit.lines.length*fit.size*1.15 + cardH*0.025;
+
+  const tags=[data.contratacao,data.regime,data.horario,data.cidade].filter(Boolean);
+  if(tags.length){
+    const tagFont=`600 ${Math.round(cardW*0.015)}px Poppins, Arial, sans-serif`;
+    const th=cardW*0.032, padX=cardW*0.012, gapX=cardW*0.01, gapY=cardH*0.014;
+    const usedH = drawTagsWrapped(ctx, tags, [col.secondary,col.tertiary], col.primary, innerX, y, innerW, th, tagFont, padX, gapX, gapY, 'left');
+    y += usedH + cardH*0.012;
+  }
+
+  if(data.salario){
+    ctx.font=`700 ${Math.round(cardW*0.016)}px Poppins, Arial, sans-serif`;
+    ctx.fillStyle=col.primary; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.fillText('SALÁRIO: ', innerX, y+cardW*0.016);
+    const labelW = ctx.measureText('SALÁRIO: ').width;
+    ctx.font=`800 ${Math.round(cardW*0.019)}px Poppins, Arial, sans-serif`;
+    ctx.fillText(data.salario, innerX+labelW, y+cardW*0.018);
+    y += cardH*0.055;
+  }
+
+  const footerH = cardH*0.14;
+  const footerY = cardY+cardH-footerH;
+  const availH = footerY - y - cardH*0.015;
+  if(availH>cardH*0.05 && (data.requisitos.length||data.beneficios.length)){
+    const baseFont=cardW*0.0145;
+    const combined=[
+      ...data.requisitos.slice(0,3).map(r=>'✓  '+r),
+      ...data.beneficios.slice(0,2).map(b=>'★  '+b)
+    ];
+    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
+    ctx.fillStyle='#4b5563'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const lineH=baseFont*1.6;
+    const maxLines=Math.max(0,Math.floor(availH/lineH));
+    let cy=y+baseFont;
+    combined.slice(0,maxLines).forEach(t=>{
+      const lines=wrapLines(ctx,t,innerW);
+      ctx.fillText(lines[0], innerX, cy);
+      cy+=lineH;
+    });
+  }
+
+  roundRectPath(ctx,cardX,footerY,cardW,footerH,{tl:0,tr:0,br:cardR,bl:cardR});
+  ctx.fillStyle=col.primary; ctx.fill();
+  ctx.fillStyle=col.accent;
+  ctx.fillRect(cardX, footerY, cardW, Math.max(2,cardH*0.008));
+
+  const mainLine = data.contato || data.cta || '';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillStyle=hexToRgba('#ffffff',0.75);
+  ctx.font=`700 ${Math.round(cardW*0.013)}px Poppins, Arial, sans-serif`;
+  ctx.fillText('CANDIDATE-SE', cardX+cardW*0.04, footerY+footerH*0.35);
+  const lineFit = fitText(ctx, mainLine, cardW*0.5, 1, cardW*0.022, cardW*0.014, 800, 'Poppins, Arial, sans-serif');
+  ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
+  ctx.fillStyle='#ffffff';
+  ctx.fillText(lineFit.lines[0], cardX+cardW*0.04, footerY+footerH*0.68);
+
+  ctx.restore();
+  return false;
+}
+
+/* ---------------------------------------------------------
+   RENDER PRINCIPAL
+--------------------------------------------------------- */
+function renderToCanvas(canvas, formatKey, data, col, interactive){
+  const fmt = FORMATS[formatKey];
+  canvas.width = fmt.w; canvas.height = fmt.h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,fmt.w,fmt.h);
+  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null;
+
+  const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
+  bgGrad.addColorStop(0, col.secondary);
+  bgGrad.addColorStop(0.55, col.primary);
+  bgGrad.addColorStop(1, shade(col.primary,-25));
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,fmt.w,fmt.h);
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(fmt.w*0.9, fmt.h*0.03, fmt.w*0.3,0,Math.PI*2);
+  ctx.fillStyle = hexToRgba(col.tertiary,0.22); ctx.fill();
+  ctx.beginPath(); ctx.arc(fmt.w*0.05, fmt.h*0.97, fmt.w*0.26,0,Math.PI*2);
+  ctx.fillStyle = hexToRgba(col.secondary,0.22); ctx.fill();
+  ctx.restore();
+
+  const isWide = fmt.w > fmt.h;
+  const truncated = isWide ? renderWide(ctx,fmt,data,col) : renderTall(ctx,fmt,data,col,!!interactive);
+
+  ctx.font = `600 ${Math.round(fmt.w*0.014)}px Poppins, Arial, sans-serif`;
+  ctx.fillStyle = hexToRgba('#ffffff',0.55);
+  ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('via Effect Pessoas & Performance', fmt.w-fmt.w*0.03, fmt.h-fmt.h*0.014);
+
+  return truncated;
+}
+
+/* ---------------------------------------------------------
+   ESTADO GERAL / EVENTOS
+--------------------------------------------------------- */
+let currentFormat='feed';
+
+let bannerOffsets = {};
+let lastBannerRect = null;
+function getBannerOffset(fmtKey){
+  return bannerOffsets[fmtKey] || (bannerOffsets[fmtKey] = {x:0, y:0});
+}
+
+let blockExtra = {};
+function getBlockExtra(fmtKey){
+  return blockExtra[fmtKey] || (blockExtra[fmtKey] = {rows:null, ben:null});
+}
+let lastRowsHandleRect = null;
+let lastBenHandleRect = null;
+let lastColSplitHandleRect = null;
+let lastTopSplitHandleRect = null;
+let lastTitleHandleRect = null;
+let lastTitleFitSize = null;
+
+function drawGrabHandle(ctx, cx, cy, w, vertical){
+  const h = w*0.34;
+  const rw = vertical ? h : w, rh = vertical ? w : h;
+  roundRectPath(ctx, cx-rw/2, cy-rh/2, rw, rh, Math.min(rw,rh)/2);
+  ctx.fillStyle = hexToRgba('#000000', 0.16);
+  ctx.fill();
+  ctx.fillStyle = hexToRgba('#ffffff', 0.9);
+  ctx.font = `700 ${Math.round(h*0.62)}px Arial, sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.save();
+  if(vertical){ ctx.translate(cx,cy); ctx.rotate(Math.PI/2); ctx.fillText('⠿', 0, 1); }
+  else { ctx.fillText('⠿', cx, cy+1); }
+  ctx.restore();
+  return {x:cx-rw/2, y:cy-rh/2, w:rw, h:rh};
+}
+
+function draw(){
+  const canvas = $('#preview');
+  const data = getData();
+  const col = getColors();
+  const truncated = renderToCanvas(canvas, currentFormat, data, col, true);
+  $('#overflowWarning').classList.toggle('show', !!truncated);
+  saveState();
+}
+
+function saveState(){
+  const state = {
+    companyId: currentCompany ? currentCompany.id : null,
+    format: currentFormat,
+    cargo: $('#cargo').value,
+    categoria: $('#categoria').value,
+    contratacao: $('#contratacao').value,
+    regime: $('#regime').value,
+    horario: $('#horario').value,
+    cidade: $('#cidade').value,
+    salario: $('#salario').value,
+    requisitos: $('#requisitos').value,
+    beneficios: $('#beneficios').value,
+    cta: $('#cta').value,
+    contato: $('#contato').value,
+    banner: $('#banner').value,
+    bannerOffsets: bannerOffsets,
+    blockExtra: blockExtra
+  };
+  try{ localStorage.setItem(STORAGE_STATE, JSON.stringify(state)); }catch(e){}
+}
+
+function loadState(){
+  let state=null;
+  try{ state = JSON.parse(localStorage.getItem(STORAGE_STATE)||'null'); }catch(e){}
+  if(!state) return;
+  if(state.format && FORMATS[state.format]) currentFormat=state.format;
+  $('#cargo').value = state.cargo||'';
+  if(state.categoria) $('#categoria').value = state.categoria;
+  if(state.contratacao) $('#contratacao').value = state.contratacao;
+  if(state.regime) $('#regime').value = state.regime;
+  $('#horario').value = state.horario||'';
+  $('#cidade').value = state.cidade||'';
+  $('#salario').value = state.salario||'';
+  $('#requisitos').value = state.requisitos||'';
+  $('#beneficios').value = state.beneficios||'';
+  $('#cta').value = state.cta||'';
+  $('#contato').value = state.contato||'';
+  $('#banner').value = state.banner||'';
+  if(state.bannerOffsets && typeof state.bannerOffsets==='object') bannerOffsets = state.bannerOffsets;
+  if(state.blockExtra && typeof state.blockExtra==='object') blockExtra = state.blockExtra;
+  if(state.companyId){
+    const c = companies.find(x=>x.id===state.companyId);
+    if(c) currentCompany=c;
+  }
+}
+
+function slug(str){
+  return String(str||'vaga').normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'vaga';
+}
+
+function downloadCanvas(canvas, filename){
+  canvas.toBlob(blob=>{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }, 'image/png');
+}
+
+/* ---------------------------------------------------------
+   INICIALIZAÇÃO DA UI
+--------------------------------------------------------- */
+function initCategorySelect(){
+  const sel = $('#categoria');
+  CATEGORIES.forEach(c=>{
+    const opt=document.createElement('option');
+    opt.value=c.v; opt.textContent=c.l;
+    sel.appendChild(opt);
   });
 }
-preencherDaURL();
 
-// Lembra o WhatsApp de contato entre uma vaga e outra — é o campo mais repetitivo
-// (quase sempre o mesmo número), então evita ficar digitando de novo toda vez.
-(function preencherTelefoneSalvo(){
-  const campo = document.getElementById('v-telefone');
-  const salvo = localStorage.getItem('effect_divulgacao_telefone');
-  if (salvo && !campo.value) campo.value = salvo;
-  campo.addEventListener('input', () => localStorage.setItem('effect_divulgacao_telefone', campo.value.trim()));
-})();
-
-let candidatosEncontrados = [];
-
-async function gerarTexto(){
-  const vaga = paramsVaga();
-  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
-  const btn = document.getElementById('btn-gerar');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-  try {
-    const r = await fetch(`${API_BASE}/vagas/gerar-texto`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ vaga, provider: providerSelecionado() })
+function initFormatTabs(){
+  const wrap = $('#formatTabs');
+  Object.keys(FORMATS).forEach(key=>{
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='tab-btn'+(key===currentFormat?' active':'');
+    btn.textContent=FORMATS[key].label;
+    btn.dataset.key=key;
+    btn.addEventListener('click',()=>{
+      currentFormat=key;
+      wrap.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      draw();
     });
-    const data = await r.json();
-    if (data.ok) {
-      document.getElementById('texto-divulgacao').value = data.texto;
-      document.getElementById('provider-usado').textContent = `Gerado com: ${data.providerUsado === 'chatgpt' ? 'ChatGPT' : data.providerUsado === 'gemini' ? 'Gemini' : 'texto fixo (IA indisponível)'}`;
-    } else {
-      alert('Erro ao gerar texto: ' + (data.erro || 'desconhecido'));
-    }
-  } catch(e) {
-    alert('Erro de conexão: ' + e.message);
-  }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Gerar texto com IA';
+    wrap.appendChild(btn);
+  });
 }
 
-async function buscarCandidatos(){
-  const vaga = paramsVaga();
-  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
-  const btn = document.getElementById('btn-buscar-cands');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
-  try {
-    const r = await fetch(`${API_BASE}/vagas/candidatos-compativeis`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ vaga })
-    });
-    const data = await r.json();
-    if (data.ok) {
-      candidatosEncontrados = data.candidatos;
-      document.getElementById('cand-total').innerHTML = `<span class="badge-count">${data.total} compatível(is)</span>`;
-      const div = document.getElementById('candidatos-lista');
-      div.style.display = data.total ? 'block' : 'none';
-      div.innerHTML = candidatosEncontrados.map((c,i) => `
-        <div class="cand-item">
-          <input type="checkbox" class="cand-check" data-tel="${c.telefone}" checked>
-          <span>${c.nome || 'Sem nome'} — ${c.telefone}</span>
-        </div>`).join('');
-    } else {
-      alert('Erro ao buscar candidatos: ' + (data.erro || 'desconhecido'));
-    }
-  } catch(e) {
-    alert('Erro de conexão: ' + e.message);
-  }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-users"></i> Ver candidatos compatíveis';
-}
-
-async function aprovarEEnviar(){
-  const vaga = paramsVaga();
-  const texto = document.getElementById('texto-divulgacao').value.trim();
-  if (!vaga.cargo) { alert('Preencha ao menos o cargo da vaga.'); return; }
-  if (!texto) { alert('Gere ou escreva o texto de divulgação antes de enviar.'); return; }
-
-  const enviarWhatsapp = document.getElementById('chk-whatsapp').checked;
-  const enviarEmail = document.getElementById('chk-email').checked;
-
-  let telefones = null;
-  const checks = document.querySelectorAll('.cand-check');
-  if (checks.length) {
-    telefones = Array.from(checks).filter(c => c.checked).map(c => c.dataset.tel);
-  }
-
-  if (!confirm(`Confirma o disparo?\n\nWhatsApp: ${enviarWhatsapp ? (telefones ? telefones.length : 'candidatos compatíveis (buscados automaticamente)') : 'não'}\nE-mail parceiro: ${enviarEmail ? 'sim' : 'não'}`)) return;
-
-  const btn = document.getElementById('btn-aprovar');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-  const statusEl = document.getElementById('status-msg');
-  statusEl.className = ''; statusEl.style.display = 'none';
-
-  try {
-    const r = await fetch(`${API_BASE}/vagas/aprovar`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ vaga, provider: providerSelecionado(), texto, telefones, enviarWhatsapp, enviarEmail })
-    });
-    const data = await r.json();
-    if (data.ok) {
-      statusEl.className = 'status-ok';
-      statusEl.innerHTML = `✅ Disparo iniciado! WhatsApp: ${data.whatsappDisparado ? data.totalCandidatosWhatsapp + ' candidato(s) na fila (envio ~1/seg em segundo plano)' : 'não enviado'}.<br>E-mail parceiro: ${data.email?.ok ? 'enviado com sucesso' : (enviarEmail ? 'falhou — ' + (data.email?.erro || '') : 'não solicitado')}.`;
-    } else {
-      statusEl.className = 'status-erro';
-      statusEl.textContent = '❌ Erro: ' + (data.erro || 'desconhecido');
-    }
-  } catch(e) {
-    statusEl.className = 'status-erro';
-    statusEl.textContent = '❌ Erro de conexão: ' + e.message;
-  }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Aprovar e Enviar';
-}
-
-// ─── CARTAZ PARA POSTAR (PNG / PDF) ───
-// Reproduz um layout de cartaz completo: faixa "vaga aberta", foto, linhas de
-// info com ícone, caixa de salário, grade de benefícios e rodapé com
-// WhatsApp + QR Code — tudo gerado em HTML/CSS (sem depender de geração de
-// imagem por IA, que erra texto/logotipo). O QR Code é gerado localmente
-// (biblioteca qrcodejs), sem chamada externa a cada atualização.
-
-let _fotoCartazDataUrl = '';
-
-function _mostrarFotoStatus(origem){
-  const el = document.getElementById('foto-status');
-  const btnRemover = document.getElementById('btn-remover-foto');
-  if (!_fotoCartazDataUrl) {
-    el.innerHTML = '<span class="small" style="margin:0">Nenhuma imagem selecionada — o cartaz mostra um espaço reservado no lugar da foto.</span>';
-    btnRemover.style.display = 'none';
+function onCompanySelectChange(){
+  const val = $('#companySelect').value;
+  if(val==='__new__'){
+    currentCompany = {
+      id:null, nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1',
+      logoDataUrl:null, cidadePadrao:'', whatsapp:'', instagram:'', ctaPadrao:'', bannerPadrao:''
+    };
+    fillCompanyEditPanel(currentCompany);
+    $('#companyEditPanel').classList.add('open');
     return;
   }
-  el.innerHTML = `
-    <img src="${_fotoCartazDataUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,0.1)">
-    <span class="small" style="margin:0">${origem === 'ia' ? '✨ Foto gerada por IA' : '📁 Imagem enviada por você'}</span>
-  `;
-  btnRemover.style.display = 'inline-flex';
-}
-
-function removerFotoCartaz(){
-  _fotoCartazDataUrl = '';
-  document.getElementById('v-foto').value = '';
-  _mostrarFotoStatus();
-  renderCardPreview();
-}
-
-document.getElementById('v-foto').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) { _fotoCartazDataUrl = ''; _mostrarFotoStatus(); renderCardPreview(); return; }
-  const reader = new FileReader();
-  reader.onload = () => { _fotoCartazDataUrl = reader.result; _mostrarFotoStatus('upload'); renderCardPreview(); };
-  reader.readAsDataURL(file);
-});
-_mostrarFotoStatus();
-
-async function gerarFotoIA(){
-  const cargo = document.getElementById('v-cargo').value.trim();
-  if (!cargo) { alert('Preencha o cargo antes de gerar a foto.'); return; }
-  const btn = document.getElementById('btn-gerar-foto');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando foto (10-20s)...';
-  try {
-    const r = await fetch(`${API_BASE}/vagas/gerar-foto`, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ cargo })
-    });
-    const data = await r.json();
-    if (data.ok) {
-      _fotoCartazDataUrl = `data:image/png;base64,${data.imagemBase64}`;
-      document.getElementById('v-foto').value = '';
-      _mostrarFotoStatus('ia');
-      renderCardPreview();
-    } else {
-      alert('Não foi possível gerar a foto: ' + (data.erro || 'erro desconhecido'));
-    }
-  } catch(e) {
-    alert('Erro de conexão ao gerar foto: ' + e.message);
+  const c = companies.find(x=>x.id===val);
+  if(c){
+    currentCompany = c;
+    fillCompanyEditPanel(c);
+    applyCompanyToJobFields(c);
+    draw();
   }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Gerar foto com IA (a partir do cargo)';
 }
 
-// Ícone por palavra-chave do benefício — cobre os termos mais comuns usados
-// pela Effect; cai num ícone genérico de "check" quando não reconhece.
-function _iconeBeneficio(txtOriginal){
-  const txt = (txtOriginal || '').toLowerCase();
-  const mapa = [
-    [/odont/, 'fa-tooth'],
-    [/m[eé]dic|sa[uú]de/, 'fa-heart-pulse'],
-    [/seguro de vida/, 'fa-shield-heart'],
-    [/vale.?transporte|\bvt\b/, 'fa-bus'],
-    [/alimenta|\bva\b|restaurante|refei/, 'fa-utensils'],
-    [/anivers/, 'fa-gift'],
-    [/desconto|parceir|faculdade|ipog/, 'fa-graduation-cap'],
-    [/sesc/, 'fa-ticket'],
-    [/banco de horas/, 'fa-clock'],
-    [/adiantamento/, 'fa-sack-dollar'],
-    [/totalpass|academia|gym/, 'fa-dumbbell'],
-    [/premia[cç][aã]o|meta/, 'fa-trophy'],
+function wireCompanyEditInputs(){
+  const liveFields = [
+    ['companyName','nome'], ['companyCity','cidadePadrao'], ['companyWhatsapp','whatsapp'],
+    ['companyInstagram','instagram'], ['companyCta','ctaPadrao'], ['companyBanner','bannerPadrao']
   ];
-  for (const [re, icone] of mapa) if (re.test(txt)) return icone;
-  return 'fa-circle-check';
+  liveFields.forEach(([id,key])=>{
+    $('#'+id).addEventListener('input', ()=>{
+      if(!currentCompany) return;
+      currentCompany[key] = $('#'+id).value;
+      if(key==='nome'){
+        const prev=$('#logoPreview');
+        if(!currentCompany.logoDataUrl) prev.innerHTML = currentCompany.nome ? currentCompany.nome.charAt(0).toUpperCase() : '—';
+      }
+      draw();
+    });
+  });
+  ['colorPrimary','colorSecondary','colorTertiary','colorAccent'].forEach((id,i)=>{
+    const keys=['corPrimaria','corSecundaria','corTerciaria','corDestaque'];
+    $('#'+id).addEventListener('input', ()=>{
+      if(!currentCompany) return;
+      currentCompany[keys[i]] = $('#'+id).value;
+      draw();
+    });
+  });
+
+  $('#companyLogo').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file || !currentCompany) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      currentCompany.logoDataUrl = reader.result;
+      $('#logoPreview').innerHTML = `<img src="${reader.result}">`;
+      draw();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('#removeLogo').addEventListener('click', ()=>{
+    if(!currentCompany) return;
+    currentCompany.logoDataUrl = null;
+    $('#logoPreview').innerHTML = currentCompany.nome ? currentCompany.nome.charAt(0).toUpperCase() : '—';
+    draw();
+  });
 }
 
-function _splitBeneficios(txt){
-  return (txt || '').split(/[,\n;•]+/).map(s => s.trim()).filter(Boolean);
-}
+function wireCompanyActions(){
+  $('#toggleCompanyEdit').addEventListener('click', ()=>{
+    $('#companyEditPanel').classList.toggle('open');
+  });
 
-function _telefoneLimpo(){
-  const bruto = (document.getElementById('v-telefone').value || '').replace(/\D/g, '');
-  if (!bruto) return '';
-  return bruto.startsWith('55') ? bruto : '55' + bruto;
-}
-
-function _telefoneFormatado(){
-  const bruto = (document.getElementById('v-telefone').value || '').replace(/\D/g, '');
-  if (bruto.length < 10) return document.getElementById('v-telefone').value || '';
-  const ddd = bruto.slice(-11, -9);
-  const resto = bruto.slice(-9);
-  return `(${ddd}) ${resto.slice(0,5)}-${resto.slice(5)}`;
-}
-
-function renderCardPreview(){
-  const vaga = paramsVaga();
-  const escolaridade = document.getElementById('v-escolaridade').value.trim();
-  const diferencial = document.getElementById('v-diferencial').value.trim();
-  const infoAdicional = (document.getElementById('v-info-adicional').value || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const telExibicao = _telefoneFormatado();
-
-  // Linhas simples (só ícone + valor em negrito) pra dados de contexto rápido —
-  // igual ao "📍 cidade" do modelo de referência.
-  const linhasSimples = [];
-  if (vaga.cidade) linhasSimples.push({icone:'fa-location-dot', val:vaga.cidade});
-  if (vaga.horario) linhasSimples.push({icone:'fa-clock', val:vaga.horario});
-
-  // Specs em caixa (ícone em círculo navy + rótulo + valor) — Salário sempre
-  // primeiro e em destaque (navy); Escolaridade/Diferencial no mesmo estilo.
-  const especs = [];
-  if (vaga.salario) especs.push({icone:'fa-sack-dollar', label:'Salário', val:vaga.salario, destaque:true});
-  if (escolaridade) especs.push({icone:'fa-graduation-cap', label:'Escolaridade', val:escolaridade});
-  if (diferencial) especs.push({icone:'fa-award', label:'Diferencial', val:diferencial});
-
-  const beneficios = _splitBeneficios(vaga.beneficios);
-
-  const fotoHtml = _fotoCartazDataUrl
-    ? `<img src="${_fotoCartazDataUrl}" alt="Foto da vaga">`
-    : `<div class="cpv-foto-placeholder"><i class="fas fa-image"></i><span>Adicione uma foto em "Dados extras para o cartaz"</span></div>`;
-
-  document.getElementById('card-preview').innerHTML = `
-    <div class="cpv-topo">
-      <div class="cpv-esq">
-        <div class="cpv-ribbon"><i class="fas fa-bullhorn"></i> VAGA ABERTA</div>
-        <div class="cpv-titulo">${vaga.cargo || 'Cargo da vaga'}</div>
-        ${linhasSimples.length ? `
-        <div class="cpv-linhas">
-          ${linhasSimples.map(l => `<div class="cpv-linha-simples"><i class="fas ${l.icone}"></i>${l.val}</div>`).join('')}
-        </div>` : ''}
-      </div>
-      <div class="cpv-dir">
-        ${fotoHtml}
-        <div class="cpv-onda"></div>
-        ${vaga.cidade ? `<div class="cpv-foto-badge">VENHA FAZER PARTE DO TIME EM<span class="cidade"><i class="fas fa-location-dot pin"></i>${vaga.cidade.toUpperCase()}!</span></div>` : ''}
-      </div>
-    </div>
-
-    ${especs.length ? `
-    <div class="cpv-especs-wrap">
-      ${especs.map(e => `
-        <div class="cpv-espec">
-          <div class="cpv-ic-lg"><i class="fas ${e.icone}"></i></div>
-          <div><div class="lbl">${e.label}</div><div class="val${e.destaque ? ' destaque' : ''}">${e.val}</div></div>
-        </div>`).join('')}
-    </div>` : ''}
-
-    ${infoAdicional.length ? `
-    <div class="cpv-infoadd">
-      <div class="cpv-infoadd-titulo"><i class="fas fa-circle-info"></i> INFORMAÇÕES ADICIONAIS</div>
-      ${infoAdicional.map(l => `<div class="cpv-infoadd-item"><i class="fas fa-check-circle"></i>${l}</div>`).join('')}
-    </div>` : ''}
-
-    ${beneficios.length ? `
-    <div class="cpv-beneficios">
-      <div class="cpv-beneficios-titulo"><i class="fas fa-gift"></i> BENEFÍCIOS</div>
-      <div class="cpv-beneficios-grid">
-        ${beneficios.map(b => `<div class="cpv-beneficio-item"><i class="fas ${_iconeBeneficio(b)}"></i>${b}</div>`).join('')}
-      </div>
-    </div>` : ''}
-
-    <div class="cpv-rodape">
-      <div class="cpv-rodape-esq">
-        <div class="cpv-wa-icone"><i class="fab fa-whatsapp"></i></div>
-        <div>
-          <div class="tel">${telExibicao || 'Adicione o WhatsApp de contato'}</div>
-          <div class="sub">Fale conosco pelo WhatsApp!</div>
-        </div>
-      </div>
-      ${_telefoneLimpo() ? `
-      <div class="cpv-rodape-dir">
-        <div class="txt">ESCANEIE O <span class="g">QR CODE</span><br>E FALE COM A EFFECT PELO WHATSAPP!</div>
-        <div class="cpv-qr" id="cpv-qr"></div>
-      </div>` : ''}
-    </div>
-  `;
-
-  const telLimpo = _telefoneLimpo();
-  if (telLimpo && typeof QRCode !== 'undefined') {
-    const qrEl = document.getElementById('cpv-qr');
-    if (qrEl) new QRCode(qrEl, { text: `https://wa.me/${telLimpo}`, width: 84, height: 84, correctLevel: QRCode.CorrectLevel.M });
-  }
-
-  // O cartaz é fixo em 1080x1345 (formato aceito pelo Instagram) — se o
-  // conteúdo digitado (benefícios, informações adicionais, diferencial etc.)
-  // for maior do que isso, avisa em vez de deixar cortar em silêncio no
-  // PNG/PDF baixado.
-  const card = document.getElementById('card-preview');
-  const avisoEl = document.getElementById('card-aviso-overflow');
-  if (avisoEl) avisoEl.style.display = card.scrollHeight > card.clientHeight ? 'block' : 'none';
-}
-// Atualiza a prévia sozinha sempre que os campos relevantes mudam
-['v-cargo','v-cidade','v-salario','v-horario','v-beneficios','v-escolaridade','v-diferencial','v-telefone','v-info-adicional','texto-divulgacao'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', renderCardPreview);
-});
-renderCardPreview();
-
-function _prepararCardParaCaptura(){
-  // html2canvas precisa do elemento no tamanho real (sem a escala reduzida
-  // usada só pra prévia na tela) pra capturar com nitidez.
-  const card = document.getElementById('card-preview');
-  const scaleAntes = card.style.transform;
-  card.style.transform = 'none';
-  return () => { card.style.transform = scaleAntes; };
-}
-
-async function _gerarCanvasDoCard(){
-  if (typeof html2canvas === 'undefined') {
-    alert('Não foi possível carregar a ferramenta de geração de imagem (html2canvas). Verifique sua conexão com a internet e recarregue a página.');
-    return null;
-  }
-  renderCardPreview();
-  // Dá um instante pro QR Code (gerado de forma assíncrona) desenhar antes da captura.
-  await new Promise(res => setTimeout(res, 150));
-  const restaurar = _prepararCardParaCaptura();
-  try {
-    const card = document.getElementById('card-preview');
-    // Tamanho fixo 1080x1345 (Instagram) — se o conteúdo for maior que isso,
-    // o aviso na tela (renderCardPreview) já avisou antes de chegar aqui.
-    const canvas = await html2canvas(card, { width: 1080, height: 1345, scale: 1, backgroundColor: '#ffffff', useCORS: true });
-    return canvas;
-  } finally {
-    restaurar();
-  }
-}
-
-function _nomeArquivoVaga(ext){
-  const mapa = {'á':'a','à':'a','ã':'a','â':'a','é':'e','ê':'e','í':'i','ó':'o','ô':'o','õ':'o','ú':'u','ç':'c'};
-  const bruto = (document.getElementById('v-cargo').value.trim() || 'vaga').toLowerCase();
-  const semAcento = bruto.split('').map(ch => mapa[ch] || ch).join('');
-  const cargo = semAcento.replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'');
-  return `divulgacao-${cargo || 'vaga'}.${ext}`;
-}
-
-async function baixarCardPNG(){
-  const btn = document.getElementById('btn-png');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-  try {
-    const canvas = await _gerarCanvasDoCard();
-    if (!canvas) return;
-    const link = document.createElement('a');
-    link.download = _nomeArquivoVaga('png');
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  } catch(e) {
-    alert('Erro ao gerar PNG: ' + e.message);
-  }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-image"></i> Baixar PNG';
-}
-
-async function baixarCardPDF(){
-  const btn = document.getElementById('btn-pdf');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-  try {
-    if (typeof window.jspdf === 'undefined') {
-      alert('Não foi possível carregar a ferramenta de geração de PDF (jsPDF). Verifique sua conexão com a internet e recarregue a página.');
+  $('#saveCompany').addEventListener('click', async ()=>{
+    if(!currentCompany) return;
+    if(!currentCompany.nome || !currentCompany.nome.trim()){
+      alert('Dê um nome para a empresa antes de salvar.');
       return;
     }
-    const canvas = await _gerarCanvasDoCard();
-    if (!canvas) return;
-    const img = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    // Usa as dimensões reais do canvas gerado (1080x1345, formato Instagram).
-    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:[canvas.width, canvas.height] });
-    pdf.addImage(img, 'PNG', 0, 0, canvas.width, canvas.height);
-    pdf.save(_nomeArquivoVaga('pdf'));
-  } catch(e) {
-    alert('Erro ao gerar PDF: ' + e.message);
-  }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> Baixar PDF';
-}
-</script>
+    if(!currentCompany.id){
+      currentCompany.id = 'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+      companies.push(currentCompany);
+    } else {
+      const idx = companies.findIndex(x=>x.id===currentCompany.id);
+      if(idx>=0) companies[idx]=currentCompany; else companies.push(currentCompany);
+    }
+    setCompanySaveStatus('Salvando...', false);
+    const ok = await saveCompanies();
+    populateCompanySelect(currentCompany.id);
+    applyCompanyToJobFields(currentCompany);
+    draw();
+    if(ok) alert('Empresa salva no servidor! Da próxima vez, qualquer pessoa do time pode selecionar "'+currentCompany.nome+'" que tudo preenche sozinho.');
+  });
 
+  $('#deleteCompany').addEventListener('click', async ()=>{
+    if(!currentCompany || !currentCompany.id){
+      alert('Selecione uma empresa salva para excluir.');
+      return;
+    }
+    if(!confirm('Excluir a empresa "'+currentCompany.nome+'"? Essa ação não pode ser desfeita (vale pra todo o time).')) return;
+    companies = companies.filter(x=>x.id!==currentCompany.id);
+    await saveCompanies();
+    currentCompany = companies[0] || null;
+    populateCompanySelect(currentCompany ? currentCompany.id : null);
+    if(currentCompany){ fillCompanyEditPanel(currentCompany); applyCompanyToJobFields(currentCompany); }
+    draw();
+  });
+}
+
+let categoriaTouchedByUser = false;
+
+function wireCargoAutoCategory(){
+  const cargoEl = $('#cargo'), catEl = $('#categoria');
+  cargoEl.addEventListener('input', ()=>{
+    if(categoriaTouchedByUser) return;
+    const detected = detectCategoryFromCargo(cargoEl.value);
+    if(detected && catEl.value !== detected) catEl.value = detected;
+  });
+  catEl.addEventListener('change', ()=> { categoriaTouchedByUser = true; });
+}
+
+function wireJobFields(){
+  ['cargo','categoria','contratacao','regime','horario','cidade','salario','requisitos','beneficios','cta','contato','banner']
+  .forEach(id=>{
+    const el = $('#'+id);
+    el.addEventListener('input', draw);
+    el.addEventListener('change', draw);
+  });
+}
+
+function wireJobPhoto(){
+  $('#jobPhoto').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      jobPhotoDataUrl = reader.result;
+      $('#jobPhotoPreview').innerHTML = `<img src="${reader.result}">`;
+      draw();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('#removeJobPhoto').addEventListener('click', ()=>{
+    jobPhotoDataUrl = null;
+    $('#jobPhotoPreview').innerHTML = '—';
+    draw();
+  });
+}
+
+let activeDrag = null;
+
+function canvasPointFromEvent(e){
+  const canvas = $('#preview');
+  const rect = canvas.getBoundingClientRect();
+  const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+  return { x: (t.clientX-rect.left)*scaleX, y: (t.clientY-rect.top)*scaleY };
+}
+
+function pointInRect(pt, r){
+  return !!r && pt.x>=r.x && pt.x<=r.x+r.w && pt.y>=r.y && pt.y<=r.y+r.h;
+}
+
+function findDragTarget(pt){
+  if(pointInRect(pt, lastBannerRect)) return 'banner';
+  if(pointInRect(pt, lastRowsHandleRect)) return 'rows';
+  if(pointInRect(pt, lastBenHandleRect)) return 'ben';
+  if(pointInRect(pt, lastColSplitHandleRect)) return 'colsplit';
+  if(pointInRect(pt, lastTopSplitHandleRect)) return 'topsplit';
+  if(pointInRect(pt, lastTitleHandleRect)) return 'titlesize';
+  return null;
+}
+
+function wireCanvasDrag(){
+  const canvas = $('#preview');
+
+  const onDown = (e)=>{
+    const pt = canvasPointFromEvent(e);
+    const target = findDragTarget(pt);
+    if(!target) return;
+    if(target==='banner'){
+      const off = getBannerOffset(currentFormat);
+      activeDrag = {type:'banner', startPt:pt, startX:off.x, startY:off.y};
+    } else if(target==='colsplit'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'colsplit', startPt:pt, startVal: be.col||0};
+    } else if(target==='topsplit'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'topsplit', startPt:pt, startVal: be.top||0};
+    } else if(target==='titlesize'){
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:'titlesize', startPt:pt, startVal: be.titleSize!=null ? be.titleSize : (lastTitleFitSize||0)};
+    } else {
+      const be = getBlockExtra(currentFormat);
+      activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
+    }
+    canvas.style.cursor = 'grabbing';
+    e.preventDefault();
+  };
+  const onMove = (e)=>{
+    const pt = canvasPointFromEvent(e);
+    if(activeDrag){
+      if(activeDrag.type==='banner'){
+        const off = getBannerOffset(currentFormat);
+        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
+        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.type==='colsplit'){
+        const be = getBlockExtra(currentFormat);
+        be.col = activeDrag.startVal + (pt.x-activeDrag.startPt.x);
+      } else if(activeDrag.type==='topsplit'){
+        const be = getBlockExtra(currentFormat);
+        be.top = activeDrag.startVal + (pt.x-activeDrag.startPt.x);
+      } else if(activeDrag.type==='titlesize'){
+        const be = getBlockExtra(currentFormat);
+        be.titleSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      } else {
+        const be = getBlockExtra(currentFormat);
+        be[activeDrag.type] = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
+      }
+      draw();
+      e.preventDefault();
+    } else {
+      canvas.style.cursor = findDragTarget(pt) ? 'grab' : 'default';
+    }
+  };
+  const onUp = ()=>{
+    if(activeDrag){
+      activeDrag = null;
+      canvas.style.cursor = 'grab';
+      saveState();
+    }
+  };
+
+  canvas.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, {passive:false});
+  canvas.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  $('#resetBannerPos').addEventListener('click', (e)=>{
+    e.preventDefault();
+    bannerOffsets[currentFormat] = {x:0, y:0};
+    draw();
+  });
+  $('#resetBlockSpacing').addEventListener('click', (e)=>{
+    e.preventDefault();
+    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null};
+    draw();
+  });
+}
+
+function wireDownloads(){
+  $('#downloadCurrent').addEventListener('click', ()=>{
+    const data = getData();
+    const col = getColors();
+    const tmp = document.createElement('canvas');
+    renderToCanvas(tmp, currentFormat, data, col);
+    downloadCanvas(tmp, `vaga-${slug(data.cargo)}-${currentFormat}.png`);
+  });
+
+  $('#downloadAll').addEventListener('click', async ()=>{
+    const data = getData();
+    const col = getColors();
+    const keys = Object.keys(FORMATS);
+    for(let i=0;i<keys.length;i++){
+      const key = keys[i];
+      const tmp = document.createElement('canvas');
+      renderToCanvas(tmp, key, data, col);
+      await new Promise(res=>{
+        tmp.toBlob(blob=>{
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href=url; a.download=`vaga-${slug(data.cargo)}-${key}.png`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(()=>{ URL.revokeObjectURL(url); res(); }, 350);
+        }, 'image/png');
+      });
+    }
+  });
+}
+
+/* ---------------------------------------------------------
+   BOOT
+--------------------------------------------------------- */
+async function init(){
+  await loadCompanies();
+  initCategorySelect();
+  initFormatTabs();
+  populateCompanySelect();
+  wireCompanyEditInputs();
+  wireCompanyActions();
+  wireCargoAutoCategory();
+  wireJobFields();
+  wireJobPhoto();
+  wireDownloads();
+  wireCanvasDrag();
+
+  loadState();
+
+  if(!currentCompany) currentCompany = companies[0] || null;
+  if(currentCompany){
+    $('#companySelect').value = currentCompany.id || '__new__';
+    fillCompanyEditPanel(currentCompany);
+  }
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.key===currentFormat);
+  });
+
+  $('#companySelect').addEventListener('change', onCompanySelectChange);
+
+  draw();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
 </body>
 </html>
