@@ -1243,6 +1243,7 @@ function buildTallLayout(fmt, data, col){
     data.requisitos.forEach((r,i)=>{
       const t = newTextEl(lx, y, lw, r, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
       els.push(t);
+      ctx.font = `500 ${Math.round(rowsFont)}px 'Poppins', Arial, sans-serif`;
       const lines = wrapLines(ctx, r, lw);
       y += lines.length*rowsFont*1.3 + rowsFont*0.35;
     });
@@ -1274,6 +1275,7 @@ function buildTallLayout(fmt, data, col){
       const byy = isLeft ? leftY : rightY;
       const t = newTextEl(bx, byy, colW, `✅ ${b}`, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28});
       els.push(t);
+      ctx.font = `500 ${Math.round(benFont)}px 'Poppins', Arial, sans-serif`;
       const lines = wrapLines(ctx, `✅ ${b}`, colW);
       const h = lines.length*benFont*1.28+benFont*0.4;
       if(isLeft) leftY += h; else rightY += h;
