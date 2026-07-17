@@ -174,6 +174,23 @@
     font-size:12px; color:var(--gray); line-height:1.5; margin-bottom:14px;
   }
   .el-panel-empty{font-size:12.5px; color:var(--gray); text-align:center; padding:10px 0;}
+  .emoji-popup{
+    position:absolute; z-index:20; top:calc(100% + 6px); left:0; right:0;
+    background:#fff; border:1px solid #d7dbe0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14);
+    padding:10px; max-height:260px; display:flex; flex-direction:column; gap:8px;
+  }
+  .emoji-tabs{display:flex; gap:4px; flex-wrap:wrap;}
+  .emoji-tabs button{
+    border:1px solid #e5e7eb; background:#fff; border-radius:6px; padding:4px 6px; font-size:15px; cursor:pointer;
+  }
+  .emoji-tabs button.active{background:var(--navy); border-color:var(--navy);}
+  .emoji-grid{
+    display:grid; grid-template-columns:repeat(8, 1fr); gap:2px; overflow-y:auto; max-height:200px;
+  }
+  .emoji-grid button{
+    border:none; background:none; font-size:20px; line-height:1; padding:5px 0; border-radius:6px; cursor:pointer;
+  }
+  .emoji-grid button:hover{background:#eef1f5;}
   .align-row{display:flex; gap:6px;}
   .align-row button{flex:1; padding:8px 0; border-radius:6px; border:1px solid #d7dbe0; background:#fff; cursor:pointer; font-size:13px;}
   .align-row button.active{background:var(--navy); color:#fff; border-color:var(--navy);}
@@ -334,6 +351,15 @@
         <button type="button" class="btn btn-toggle btn-sm" id="btnRedo">↷ Refazer</button>
       </div>
       <div class="hint">Clique numa peça na prévia (ou adicione uma nova aqui) pra selecionar e editar no painel abaixo. Tecla Delete/Backspace apaga a peça selecionada (fora de campos de texto). Ctrl+Z desfaz, Ctrl+Shift+Z refaz.</div>
+
+      <div style="position:relative; margin-top:10px;">
+        <button type="button" class="btn btn-outline btn-block btn-sm" id="emojiToggle">😀 Inserir emoji</button>
+        <div id="emojiPopup" class="emoji-popup" style="display:none;">
+          <div class="emoji-tabs" id="emojiTabs"></div>
+          <div class="emoji-grid" id="emojiGrid"></div>
+        </div>
+      </div>
+      <div class="hint">Com um texto selecionado, clique num emoji pra inserir no cursor (ou no final do texto). Sem nada selecionado, o emoji vira uma peça nova solta na arte — como um sticker.</div>
     </div>
 
     <div class="card" id="elPanel" style="display:none;">
@@ -1215,9 +1241,9 @@ function buildTallLayout(fmt, data, col){
   if(data.requisitos.length){
     const rowsFont = cardW*0.026;
     data.requisitos.forEach((r,i)=>{
-      const t = newTextEl(lx, y, lw, `🎓 ${r}`, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
+      const t = newTextEl(lx, y, lw, r, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
       els.push(t);
-      const lines = wrapLines(ctx, `🎓 ${r}`, lw);
+      const lines = wrapLines(ctx, r, lw);
       y += lines.length*rowsFont*1.3*1.3 + rowsFont*0.35;
     });
     y += cardH*0.01;
@@ -1740,6 +1766,111 @@ function wireToolbar(){
 }
 
 /* ---------------------------------------------------------
+   PICKER DE EMOJI (mesmo conjunto Unicode usado pelo WhatsApp —
+   o app não expõe os próprios PNGs pra uso externo, então usamos os
+   emojis padrão do sistema, organizados como no picker do WhatsApp)
+--------------------------------------------------------- */
+const STORAGE_RECENT_EMOJI = 'effectVagas.recentEmojis';
+
+const EMOJI_CATEGORIES = [
+  {key:'recent', label:'🕒'},
+  {key:'smileys', label:'😀', emojis:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🥳','😎','🤓','🧐','😕','🙁','😮','😲','🥺','😢','😭','😱','😤','😡','🤬','😈','💀','🤡','👻','🤖','🎓'] },
+  {key:'gestures', label:'👍', emojis:['👍','👎','👊','✊','🤛','🤜','🤞','✌️','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤙','💪','🙏','🤝','👏','🙌','👐','🤲','💅'] },
+  {key:'work', label:'💼', emojis:['💼','📋','📝','✅','✔️','☑️','📌','📍','📅','📆','🗓️','⏰','⏱️','💰','💵','💳','🏆','🎯','📈','📊','🛠️','🔧','🔨','⚙️','🧰','👷','👨‍💻','👩‍💻','🚚','🏭','🏢','🏬','🏪','📣','📢','🔔','🔒','🔑','📞','📱','✉️','📧','🌐','🔗','📎','🗂️','🖨️'] },
+  {key:'objects', label:'💡', emojis:['💡','🔥','⭐','🌟','✨','🎉','🎊','🎁','🏅','🥇','🥈','🥉','📚','🍽️','🍕','🍔','☕','🥤','🚗','🚌','🚲','✈️','🏠','🏡','🌆','🌍','☀️','🌧️','❄️','🌈','⚡'] },
+  {key:'symbols', label:'❤️', emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💯','‼️','⁉️','❗','❓','✅','❌','⭕','🚫','⚠️','♻️','🔴','🟠','🟡','🟢','🔵','🟣','⚪','⚫','🔶','🔷','🔺','🔻','◀️','▶️','⬆️','⬇️','➡️','⬅️'] },
+];
+
+let emojiActiveCat = 'smileys';
+
+function getRecentEmojis(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_RECENT_EMOJI)||'[]'); }catch(e){ return []; }
+}
+function pushRecentEmoji(em){
+  let list = getRecentEmojis();
+  list = [em, ...list.filter(x=>x!==em)].slice(0,32);
+  try{ localStorage.setItem(STORAGE_RECENT_EMOJI, JSON.stringify(list)); }catch(e){}
+}
+
+function renderEmojiTabs(){
+  const wrap = $('#emojiTabs');
+  wrap.innerHTML='';
+  EMOJI_CATEGORIES.forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.type='button'; btn.textContent=cat.label; btn.title=cat.key;
+    btn.className = cat.key===emojiActiveCat ? 'active' : '';
+    btn.addEventListener('click', ()=>{ emojiActiveCat=cat.key; renderEmojiTabs(); renderEmojiGrid(); });
+    wrap.appendChild(btn);
+  });
+}
+
+function renderEmojiGrid(){
+  const grid = $('#emojiGrid');
+  grid.innerHTML='';
+  const cat = EMOJI_CATEGORIES.find(c=>c.key===emojiActiveCat);
+  const list = cat.key==='recent' ? getRecentEmojis() : (cat.emojis||[]);
+  if(!list.length){
+    const p = document.createElement('div');
+    p.className='hint'; p.style.gridColumn='1 / -1';
+    p.textContent = 'Nenhum emoji recente ainda.';
+    grid.appendChild(p);
+    return;
+  }
+  list.forEach(em=>{
+    const btn = document.createElement('button');
+    btn.type='button'; btn.textContent=em;
+    btn.addEventListener('click', ()=> insertEmoji(em));
+    grid.appendChild(btn);
+  });
+}
+
+function insertEmoji(em){
+  pushRecentEmoji(em);
+  const ta = $('#elText');
+  const el = currentEl();
+  const panelOpen = $('#elPanel').style.display !== 'none';
+  if(el && el.type==='text' && panelOpen && document.activeElement===ta){
+    pushHistory();
+    const start = ta.selectionStart!=null ? ta.selectionStart : ta.value.length;
+    const end = ta.selectionEnd!=null ? ta.selectionEnd : ta.value.length;
+    const newVal = ta.value.slice(0,start)+em+ta.value.slice(end);
+    ta.value = newVal;
+    el.text = newVal;
+    const pos = start+em.length;
+    ta.focus();
+    ta.setSelectionRange(pos,pos);
+    draw();
+  } else if(el && el.type==='text'){
+    pushHistory();
+    el.text = (el.text||'') + em;
+    draw(); syncElPanel();
+  } else {
+    const f = FORMATS[currentFormat];
+    addElement(newTextEl(f.w*0.42, f.h*0.42, f.w*0.16, em, {fontSize:f.w*0.09, align:'center'}));
+  }
+}
+
+function wireEmojiPicker(){
+  renderEmojiTabs();
+  renderEmojiGrid();
+  const toggleBtn = $('#emojiToggle');
+  const popup = $('#emojiPopup');
+  toggleBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = popup.style.display==='none';
+    if(willOpen){
+      emojiActiveCat = getRecentEmojis().length ? 'recent' : 'smileys';
+      renderEmojiTabs(); renderEmojiGrid();
+    }
+    popup.style.display = willOpen ? 'flex' : 'none';
+  });
+  document.addEventListener('click', (e)=>{
+    if(popup.style.display!=='none' && !popup.contains(e.target) && e.target!==toggleBtn) popup.style.display='none';
+  });
+  popup.addEventListener('click', (e)=> e.stopPropagation());
+}
+
+/* ---------------------------------------------------------
    PERSISTÊNCIA (localStorage — por navegador)
 --------------------------------------------------------- */
 function saveState(){
@@ -2029,6 +2160,7 @@ async function init(){
   wireCanvasInteraction();
   wireElPanel();
   wireToolbar();
+  wireEmojiPicker();
 
   loadState();
 
