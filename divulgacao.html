@@ -97,11 +97,14 @@
   input[type=color]{
     width:44px;height:32px;border:1px solid #d7dbe0;border-radius:6px;padding:2px;cursor:pointer;background:#fff;
   }
+  input[type=range]{width:100%;}
   .colorrow{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
   .colorrow .colitem{display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
   .colorrow .colitem span{font-size:11px; color:var(--gray); font-weight:600;}
   .row2{display:flex; gap:10px;}
   .row2 > div{flex:1;}
+  .row3{display:flex; gap:8px;}
+  .row3 > *{flex:1;}
   .btn{
     display:inline-flex;
     align-items:center;
@@ -114,7 +117,7 @@
     font-weight:600;
     font-size:13px;
     cursor:pointer;
-    transition:opacity .15s;
+    transition:opacity .15s, background .15s;
   }
   .btn:hover{opacity:.88;}
   .btn-primary{background:var(--navy); color:#fff;}
@@ -123,6 +126,8 @@
   .btn-danger{background:#fff; color:#c0392b; border:1px solid #f0c4bd;}
   .btn-block{width:100%;}
   .btn-sm{padding:6px 10px; font-size:12px;}
+  .btn-toggle{background:#fff; color:var(--navy); border:1px solid #d7dbe0;}
+  .btn-toggle.active{background:var(--navy); color:#fff; border-color:var(--navy);}
   .hint{font-size:11.5px; color:var(--gray); margin-top:4px; line-height:1.4;}
   #companyEditPanel{display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #e5e7eb;}
   #companyEditPanel.open{display:block;}
@@ -136,7 +141,7 @@
     overflow:hidden; border:1px solid #e5e7eb; flex-shrink:0;
   }
   .logo-preview img{width:100%;height:100%;object-fit:cover;}
-  .company-actions{display:flex; gap:8px; margin-top:14px;}
+  .company-actions{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
   .tabs{
     display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; justify-content:center;
   }
@@ -147,7 +152,7 @@
   .tab-btn.active{background:var(--navy); color:#fff; border-color:var(--navy);}
   .canvas-wrap{
     background:#fff; border-radius:14px; padding:14px; box-shadow:0 2px 14px rgba(0,0,0,.08);
-    display:flex; align-items:center; justify-content:center; max-width:100%;
+    display:flex; align-items:center; justify-content:center; max-width:100%; position:relative;
   }
   #preview{
     max-width:100%;
@@ -156,13 +161,11 @@
     height:auto;
     display:block;
     border-radius:8px;
+    touch-action:none;
   }
   .actions-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; justify-content:center;}
-  .warning{
-    margin-top:10px; background:#fff4e5; color:#8a5a00; border:1px solid #f5d8a0; padding:8px 12px;
-    border-radius:8px; font-size:12.5px; max-width:520px; text-align:center; display:none;
-  }
-  .warning.show{display:block;}
+  .toolbar-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .toolbar-row .btn{flex:1; min-width:74px;}
   .save-status{
     margin-top:8px; font-size:11.5px; color:var(--gray);
   }
@@ -170,6 +173,10 @@
   .intro{
     font-size:12px; color:var(--gray); line-height:1.5; margin-bottom:14px;
   }
+  .el-panel-empty{font-size:12.5px; color:var(--gray); text-align:center; padding:10px 0;}
+  .align-row{display:flex; gap:6px;}
+  .align-row button{flex:1; padding:8px 0; border-radius:6px; border:1px solid #d7dbe0; background:#fff; cursor:pointer; font-size:13px;}
+  .align-row button.active{background:var(--navy); color:#fff; border-color:var(--navy);}
   ::-webkit-scrollbar{width:8px;}
   ::-webkit-scrollbar-thumb{background:#d7dbe0;border-radius:4px;}
 </style>
@@ -187,7 +194,7 @@
   <aside class="sidebar">
 
     <div class="intro">
-      <strong>Como usar:</strong> 1) Escolha a empresa cliente (ou cadastre uma nova). 2) Preencha o cargo e os detalhes da vaga. 3) Escolha o formato ao lado e baixe a imagem. Campos vazios somem sozinhos do layout — não precisa preencher tudo.
+      <strong>Como usar:</strong> 1) Escolha a empresa cliente. 2) Preencha o cargo e os detalhes da vaga. 3) Clique em <b>"Gerar arte a partir do formulário"</b> pra criar o design inicial. 4) A partir daí é igual ao Canva: clique numa peça pra selecioná-la, arraste pra mover, puxe os cantos pra redimensionar (em texto, isso também aumenta/diminui a fonte), use a alcinha de cima pra girar, e edite tudo (cor, negrito, alinhamento, fundo etc.) no painel "Elemento selecionado" que aparece aqui embaixo. Dá pra adicionar textos, formas, ícones e imagens novas, deletar qualquer peça e reorganizar a ordem das camadas.
     </div>
 
     <div class="card">
@@ -214,7 +221,7 @@
           <div class="colitem"><input type="color" id="colorTertiary" value="#8ed1b2"><span>Verde</span></div>
           <div class="colitem"><input type="color" id="colorAccent" value="#f4afa1"><span>Salmão</span></div>
         </div>
-        <div class="hint">Azul e verde são as cores principais do layout. O salmão aparece só em detalhes (ícones, contornos, faixa fina).</div>
+        <div class="hint">Essas cores são só o ponto de partida do design gerado — depois de gerado, cada peça pode ter sua própria cor no painel de elemento.</div>
 
         <label>Cidade / região padrão</label>
         <input type="text" id="companyCity" placeholder="Ex: São Paulo - SP">
@@ -230,13 +237,13 @@
 
         <label>Frase de destaque padrão (selo sobre a foto)</label>
         <input type="text" id="companyBanner" placeholder="Ex: Venha fazer parte da maior empresa de vigilância do ES">
-        <div class="hint">Se quiser que a cidade apareça automaticamente, use {cidade} no texto. Ex: "Venha fazer parte do time em {cidade}!". Deixe vazio para usar o padrão com a cidade.</div>
+        <div class="hint">Se quiser que a cidade apareça automaticamente, use {cidade} no texto. Deixe vazio para usar o padrão com a cidade.</div>
 
         <div class="company-actions">
           <button type="button" class="btn btn-primary btn-sm" id="saveCompany">Salvar empresa</button>
           <button type="button" class="btn btn-danger btn-sm" id="deleteCompany">Excluir</button>
         </div>
-        <div class="hint">As cores, logo, cidade, contato e CTA ficam salvas nesta empresa <b>no servidor</b> — qualquer pessoa do time que abrir esta página vê a mesma lista. Da próxima vez que você selecionar ela, tudo isso preenche sozinho — só falta o cargo.</div>
+        <div class="hint">As cores, logo, cidade, contato e CTA ficam salvas nesta empresa <b>no servidor</b> — qualquer pessoa do time que abrir esta página vê a mesma lista.</div>
         <div class="save-status" id="companySaveStatus"></div>
       </div>
     </div>
@@ -246,7 +253,7 @@
 
       <label class="first">Cargo</label>
       <input type="text" id="cargo" placeholder="Ex: Auxiliar de Logística">
-      <div class="hint">O ícone é escolhido automaticamente conforme o cargo digitado. Se preferir outro, é só trocar abaixo.</div>
+      <div class="hint">O ícone é escolhido automaticamente conforme o cargo digitado.</div>
 
       <label>Categoria do cargo (define o ícone)</label>
       <select id="categoria"></select>
@@ -283,7 +290,6 @@
 
       <label>Frase de destaque (selo sobre a foto)</label>
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
-      <div class="hint">Dica: arraste o selo direto na prévia pra posicionar sem tampar o rosto, e arraste a alcinha ⠿ no canto dele pra aumentar/diminuir o texto. O logo da empresa (canto da foto) também pode ser arrastado pra mover, e tem sua própria alcinha de canto pra redimensionar. <a href="#" id="resetBannerPos" class="toggle-link" style="display:inline;">Restaurar banner e logo (posição e tamanho)</a></div>
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Ex: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
@@ -293,7 +299,6 @@
 
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
-      <div class="hint">Dica: clique direto em qualquer peça da arte — selo "VAGA ABERTA", título, foto/ícone, informações, salário, benefícios ou rodapé de contato — pra selecioná-la (aparece um contorno tracejado) e arraste com o mouse ou use as setas do teclado pra mover, igual no Canva (Shift+seta move mais rápido). Na foto, isso funciona como uma panorâmica dentro do enquadramento. Clique em área vazia pra desmarcar. Além disso: arraste a alcinha ⠿ abaixo do título (pra crescer/diminuir), abaixo das "Informações" e abaixo dos "Benefícios" (pra ajustar o respiro de cada bloco). A alcinha no canto superior direito, logo acima das "Informações", controla só o tamanho do texto de Informações — e a alcinha no canto superior direito dos "Benefícios" controla só o tamanho do texto de Benefícios (agora totalmente independentes uma da outra). Puxe pra baixo pra aumentar a fonte; ela para de crescer sozinha quando o espaço acaba, então o texto nunca some. Arraste a alcinha na linha pontilhada do meio dos Benefícios pra deixar uma coluna mais larga que a outra, e a alcinha na divisa entre o texto e a foto (parte de cima) pra dar mais espaço pra um lado ou outro. <a href="#" id="resetBlockSpacing" class="toggle-link" style="display:inline;">Redefinir posições e espaçamentos</a></div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -307,39 +312,102 @@
         <input type="file" id="jobPhoto" accept="image/*">
       </div>
       <button type="button" class="toggle-link" id="removeJobPhoto" style="margin-top:6px;">Remover foto</button>
-      <div class="hint">Se você adicionar uma foto (loja, equipe, ambiente), ela aparece no topo da arte no lugar do ícone — fica bem mais atrativo. Sem foto, o ícone da categoria continua aparecendo sozinho.</div>
+
+      <button type="button" class="btn btn-primary btn-block" id="generateLayout" style="margin-top:14px;">🪄 Gerar arte a partir do formulário</button>
+      <div class="hint">Isso (re)cria o design deste formato do zero com os dados acima. Se você já tiver customizado essa arte, ela será substituída — peça confirmação antes.</div>
     </div>
 
     <div class="card">
-      <h2>Formatação de texto</h2>
-      <div class="intro" style="margin-bottom:10px;">Escolha um bloco de texto da arte e ajuste tamanho, espaçamento entre linhas e negrito — igual no Canva. Também dá pra arrastar direto na prévia (alcinhas ⠿ e cantos).</div>
+      <h2>Elementos</h2>
+      <div class="toolbar-row">
+        <button type="button" class="btn btn-outline btn-sm" id="addText">+ Texto</button>
+        <button type="button" class="btn btn-outline btn-sm" id="addRect">+ Retângulo</button>
+        <button type="button" class="btn btn-outline btn-sm" id="addEllipse">+ Círculo</button>
+      </div>
+      <div class="toolbar-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-outline btn-sm" id="addIcon">+ Ícone</button>
+        <button type="button" class="btn btn-outline btn-sm" id="addImageBtn">+ Imagem</button>
+        <input type="file" id="addImageFile" accept="image/*" style="display:none;">
+      </div>
+      <div class="toolbar-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-toggle btn-sm" id="btnUndo">↶ Desfazer</button>
+        <button type="button" class="btn btn-toggle btn-sm" id="btnRedo">↷ Refazer</button>
+      </div>
+      <div class="hint">Clique numa peça na prévia (ou adicione uma nova aqui) pra selecionar e editar no painel abaixo. Tecla Delete/Backspace apaga a peça selecionada (fora de campos de texto). Ctrl+Z desfaz, Ctrl+Shift+Z refaz.</div>
+    </div>
 
-      <label class="first">Bloco de texto</label>
-      <select id="fmtBlock">
-        <option value="title">Título da vaga</option>
-        <option value="rows">Informações (requisitos...)</option>
-        <option value="bens">Benefícios</option>
-        <option value="badge">Selo "VAGA ABERTA"</option>
-        <option value="salary">Salário</option>
-        <option value="footer">Rodapé de contato</option>
-      </select>
+    <div class="card" id="elPanel" style="display:none;">
+      <h2>Elemento selecionado <span id="elTypeLabel" style="text-transform:none; color:var(--gray); font-weight:500;"></span></h2>
 
-      <label>Tamanho da fonte <span id="fmtSizeVal" style="color:var(--gray); font-weight:500;"></span></label>
-      <input type="range" id="fmtSize" min="55" max="180" step="1">
+      <div id="elTextControls">
+        <label class="first">Texto</label>
+        <textarea id="elText" rows="3"></textarea>
 
-      <div id="fmtLineHRow">
-        <label>Espaçamento entre linhas <span id="fmtLineHVal" style="color:var(--gray); font-weight:500;"></span></label>
-        <input type="range" id="fmtLineH" min="85" max="160" step="1">
+        <label>Tamanho da fonte <span id="elFontSizeVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elFontSize" min="10" max="260" step="1">
+
+        <div class="row3" style="margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:6px; margin:0;"><input type="checkbox" id="elBold" style="width:auto;"> Negrito</label>
+          <label style="display:flex; align-items:center; gap:6px; margin:0;"><input type="checkbox" id="elItalic" style="width:auto;"> Itálico</label>
+        </div>
+
+        <label>Alinhamento</label>
+        <div class="align-row" id="elAlignRow">
+          <button type="button" data-align="left">⯇ Esq.</button>
+          <button type="button" data-align="center">Centro</button>
+          <button type="button" data-align="right">Dir. ⯈</button>
+        </div>
+
+        <label>Cor do texto</label>
+        <input type="color" id="elColor">
+
+        <label style="display:flex; align-items:center; gap:6px; margin-top:12px;"><input type="checkbox" id="elBgToggle" style="width:auto;"> Fundo colorido (chip)</label>
+        <input type="color" id="elBgColor" style="margin-top:6px;">
+
+        <label>Espaçamento entre linhas <span id="elLineHVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elLineH" min="80" max="200" step="1">
       </div>
 
-      <div id="fmtBoldRow" style="margin-top:10px;">
-        <label style="display:flex; align-items:center; gap:8px; margin:0;">
-          <input type="checkbox" id="fmtBold" style="width:auto;"> Negrito
-        </label>
+      <div id="elShapeControls">
+        <label class="first">Cor de preenchimento</label>
+        <input type="color" id="elFill">
+        <label style="display:flex; align-items:center; gap:6px; margin-top:10px;"><input type="checkbox" id="elGradToggle" style="width:auto;"> Gradiente</label>
+        <div class="colorrow" style="margin-top:6px;">
+          <input type="color" id="elGrad1"><input type="color" id="elGrad2">
+        </div>
+        <label>Arredondamento das bordas <span id="elRadiusVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elRadius" min="0" max="50" step="1">
       </div>
 
-      <button type="button" class="toggle-link" id="fmtReset" style="margin-top:10px;">Redefinir este bloco pro padrão</button>
-      <div class="hint">Dica: o tamanho nunca deixa o texto sumir — quando o bloco atinge o espaço disponível, o controle simplesmente para de crescer.</div>
+      <div id="elIconControls">
+        <label class="first">Ícone</label>
+        <select id="elIconKey"></select>
+        <label>Cor do ícone</label>
+        <input type="color" id="elIconColor">
+        <label style="display:flex; align-items:center; gap:6px; margin-top:10px;"><input type="checkbox" id="elIconBgToggle" style="width:auto;"> Fundo circular</label>
+        <input type="color" id="elIconBg" style="margin-top:6px;">
+      </div>
+
+      <div id="elImageControls">
+        <label class="first">Substituir imagem</label>
+        <input type="file" id="elImageFile" accept="image/*">
+        <label style="display:flex; align-items:center; gap:6px; margin-top:10px;"><input type="checkbox" id="elImageRound" style="width:auto;"> Recorte circular</label>
+      </div>
+
+      <label style="margin-top:12px;">Opacidade <span id="elOpacityVal" style="color:var(--gray); font-weight:500;"></span></label>
+      <input type="range" id="elOpacity" min="10" max="100" step="1">
+
+      <label>Rotação <span id="elRotVal" style="color:var(--gray); font-weight:500;"></span></label>
+      <input type="range" id="elRotation" min="-180" max="180" step="1">
+
+      <div class="company-actions">
+        <button type="button" class="btn btn-outline btn-sm" id="elDuplicate">⧉ Duplicar</button>
+        <button type="button" class="btn btn-danger btn-sm" id="elDelete">🗑 Excluir</button>
+      </div>
+      <div class="company-actions">
+        <button type="button" class="btn btn-outline btn-sm" id="elFront">⬆ Trazer p/ frente</button>
+        <button type="button" class="btn btn-outline btn-sm" id="elBack">⬇ Enviar p/ trás</button>
+      </div>
     </div>
 
   </aside>
@@ -349,7 +417,6 @@
     <div class="canvas-wrap">
       <canvas id="preview" width="1080" height="1080"></canvas>
     </div>
-    <div class="warning" id="overflowWarning">⚠ O texto está grande demais para este formato. Considere reduzir requisitos/benefícios ou escolher um formato mais alto (Stories).</div>
     <div class="actions-row">
       <button type="button" class="btn btn-accent" id="downloadCurrent">⬇ Baixar este formato (PNG)</button>
       <button type="button" class="btn btn-outline" id="downloadAll">⬇ Baixar todos os formatos</button>
@@ -381,9 +448,6 @@ const CATEGORIES = [
   {v:'seguranca',     l:'Segurança / Vigilância'}
 ];
 
-// Remove acentos usando um mapa de caracteres explícito (evita problemas de
-// codificação com regex de faixa Unicode). Usado para comparar palavras-chave
-// sem depender do usuário digitar com ou sem acento.
 const ACCENT_MAP = {a:'aàáâãä',e:'eèéêë',i:'iìíîï',o:'oòóôõö',u:'uùúûü',c:'cç'};
 const ACCENT_LOOKUP = {};
 Object.keys(ACCENT_MAP).forEach(base=>{
@@ -393,9 +457,6 @@ function stripAccents(s){
   return String(s||'').toLowerCase().split('').map(ch=>ACCENT_LOOKUP[ch]||ch).join('');
 }
 
-// Palavras-chave (já sem acento, comparadas via stripAccents) usadas para
-// detectar automaticamente a categoria/ícone assim que o cargo é digitado,
-// sem precisar escolher a categoria à parte.
 const CATEGORY_KEYWORDS = {
   seguranca:      ['vigilante','vigilancia','seguranca patrimonial','seguranca','porteiro','portaria','vigia'],
   lideranca:      ['gerente','supervisor','supervisora','coordenador','coordenadora','lider','gestor','gestora','diretor','diretora','head '],
@@ -430,13 +491,15 @@ const FORMATS = {
 };
 
 const STORAGE_COMPANIES_CACHE = 'effectVagas.companies.cache';
-const STORAGE_STATE = 'effectVagas.lastState';
+const STORAGE_STATE = 'effectVagas.lastState.v2';
 
 /* ---------------------------------------------------------
-   HELPERS DE DESENHO
+   HELPERS DE DESENHO (genéricos, reaproveitados por vários tipos)
 --------------------------------------------------------- */
 function roundRectPath(ctx,x,y,w,h,r){
   if (typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r};
+  const maxR = Math.max(0, Math.min(w,h)/2);
+  r = {tl:Math.min(r.tl,maxR), tr:Math.min(r.tr,maxR), br:Math.min(r.br,maxR), bl:Math.min(r.bl,maxR)};
   ctx.beginPath();
   ctx.moveTo(x+r.tl,y);
   ctx.lineTo(x+w-r.tr,y);
@@ -513,82 +576,14 @@ function drawStar(ctx,cx,cy,outerR,innerR,color){
   ctx.closePath(); ctx.fillStyle=color; ctx.fill();
 }
 
-function drawPill(ctx,text,x,y,h,bg,fg,font,paddingX){
-  ctx.font=font;
-  const w=ctx.measureText(text).width+paddingX*2;
-  roundRectPath(ctx,x,y,w,h,h/2);
-  ctx.fillStyle=bg; ctx.fill();
-  ctx.fillStyle=fg;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(text,x+w/2,y+h/2+1);
-  return w;
-}
-
-// Distribui "tags" (chips) em uma ou mais linhas dentro de uma largura máxima.
-function drawTagsWrapped(ctx, tags, tints, textColor, xRef, y, maxWidth, th, font, padX, gapX, gapY, align){
-  ctx.font = font;
-  const widths = tags.map(t=>ctx.measureText(t).width + padX*2);
-  const rows = []; let row=[], rowW=0;
-  tags.forEach((t,i)=>{
-    const w=widths[i];
-    const addW = row.length? w+gapX : w;
-    if(rowW+addW>maxWidth && row.length){ rows.push(row); row=[]; rowW=0; }
-    row.push({t,w,tint:tints[i%tints.length]});
-    rowW += row.length>1? w+gapX : w;
-  });
-  if(row.length) rows.push(row);
-
-  let cy=y;
-  rows.forEach(r=>{
-    const rowTotalW = r.reduce((a,b,idx)=>a+b.w+(idx>0?gapX:0),0);
-    let tx = align==='left' ? xRef : xRef-rowTotalW/2;
-    r.forEach(item=>{
-      roundRectPath(ctx,tx,cy,item.w,th,th/2);
-      ctx.fillStyle = hexToRgba(item.tint,0.2); ctx.fill();
-      ctx.fillStyle = textColor; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.font=font;
-      ctx.fillText(item.t, tx+item.w/2, cy+th/2+1);
-      tx += item.w+gapX;
-    });
-    cy += th+gapY;
-  });
-  return cy-y;
-}
-
-// Mede a altura total que drawTagsWrapped vai ocupar, sem desenhar nada
-// (usado para reservar espaço antes de decidir o layout do resto do card).
-function measureTagsWrapped(ctx, tags, font, maxWidth, th, padX, gapX, gapY){
-  if(!tags.length) return 0;
-  ctx.font = font;
-  const widths = tags.map(t=>ctx.measureText(t).width + padX*2);
-  const rows = []; let row=[], rowW=0;
-  tags.forEach((t,i)=>{
-    const w=widths[i];
-    const addW = row.length? w+gapX : w;
-    if(rowW+addW>maxWidth && row.length){ rows.push(row); row=[]; rowW=0; }
-    row.push(w);
-    rowW += row.length>1? w+gapX : w;
-  });
-  if(row.length) rows.push(row);
-  return rows.length*th + Math.max(0, rows.length-1)*gapY;
-}
-
 // Desenha uma imagem "cover" (preenche todo o retângulo, cortando o excesso).
-function drawImageCover(ctx, img, x, y, w, h, offXpx, offYpx){
+function drawImageCover(ctx, img, x, y, w, h){
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   if(!iw || !ih) return;
   const ir = iw/ih, r = w/h;
   let sx,sy,sw,sh;
   if(ir > r){ sh=ih; sw=sh*r; sx=(iw-sw)/2; sy=0; }
   else { sw=iw; sh=sw/r; sx=0; sy=(ih-sh)/2; }
-  // permite "panorâmica" (arrastar ou setas do teclado) dentro do
-  // enquadramento fixo — só tem efeito no eixo em que a imagem realmente
-  // sobra (foi cortada pelo corte "cover"); no outro eixo não faz diferença.
-  if(ir > r && w>0){
-    sx = Math.min(Math.max(sx - (offXpx||0)*(sw/w), 0), Math.max(0,iw-sw));
-  } else if(h>0){
-    sy = Math.min(Math.max(sy - (offYpx||0)*(sh/h), 0), Math.max(0,ih-sh));
-  }
   ctx.drawImage(img, sx,sy,sw,sh, x,y,w,h);
 }
 
@@ -698,33 +693,12 @@ function drawIcon(ctx,key,cx,cy,size,color){
   ctx.restore();
 }
 
-function drawLogoCircle(ctx, col, cx, cy, size, bgColor, textColor){
-  bgColor = bgColor || col.primary; textColor = textColor || '#ffffff';
-  const img = col.logo ? getLogoImage(col.logo) : null;
-  if(img && img.complete && img.naturalWidth){
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx,cy,size/2,0,Math.PI*2); ctx.clip();
-    ctx.drawImage(img, cx-size/2, cy-size/2, size, size);
-    ctx.restore();
-  } else {
-    ctx.beginPath(); ctx.arc(cx,cy,size/2,0,Math.PI*2);
-    ctx.fillStyle=bgColor; ctx.fill();
-    ctx.fillStyle=textColor; ctx.font=`700 ${Math.round(size*0.4)}px Poppins, Arial, sans-serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText((col.nome||'?').trim().charAt(0).toUpperCase(), cx, cy+2);
-  }
-}
-
 /* ---------------------------------------------------------
-   ESTADO: EMPRESAS CLIENTES (agora salvas no servidor da Lia, não mais só
-   no navegador — assim o time inteiro vê a mesma lista de empresas/clientes.
-   Fica um cache em localStorage só pra abrir instantâneo/funcionar offline;
-   a fonte de verdade é sempre o servidor.)
+   ESTADO: EMPRESAS CLIENTES (salvas no servidor da Lia)
 --------------------------------------------------------- */
 let companies = [];
 let currentCompany = null;
 let jobPhotoDataUrl = null;
-let companiesLoadedFromServer = false;
 
 function seedDefaultCompany(){
   return {
@@ -750,8 +724,6 @@ function setCompanySaveStatus(msg, isErro){
   el.classList.toggle('erro', !!isErro);
 }
 
-// Carrega do servidor (fonte de verdade). Se falhar (offline, etc.), usa o
-// cache local do último carregamento bem-sucedido, pra não travar o painel.
 async function loadCompanies(){
   try{
     const cached = localStorage.getItem(STORAGE_COMPANIES_CACHE);
@@ -763,7 +735,6 @@ async function loadCompanies(){
     const data = await r.json();
     if(data.ok && Array.isArray(data.empresas)){
       companies = data.empresas;
-      companiesLoadedFromServer = true;
       localStorage.setItem(STORAGE_COMPANIES_CACHE, JSON.stringify(companies));
     }
   }catch(e){
@@ -776,8 +747,6 @@ async function loadCompanies(){
   }
 }
 
-// Salva a lista inteira no servidor (fonte de verdade pro time todo) +
-// atualiza o cache local.
 async function saveCompanies(){
   localStorage.setItem(STORAGE_COMPANIES_CACHE, JSON.stringify(companies));
   try{
@@ -834,31 +803,6 @@ function applyCompanyToJobFields(c){
 }
 
 /* ---------------------------------------------------------
-   IMAGENS (cache)
---------------------------------------------------------- */
-const logoImgCache = {};
-function getLogoImage(src){
-  if(!src) return null;
-  if(logoImgCache[src]) return logoImgCache[src];
-  const img = new Image();
-  img.onload = () => draw();
-  img.src = src;
-  logoImgCache[src]=img;
-  return img;
-}
-
-const photoImgCache = {};
-function getPhotoImage(src){
-  if(!src) return null;
-  if(photoImgCache[src]) return photoImgCache[src];
-  const img = new Image();
-  img.onload = () => draw();
-  img.src = src;
-  photoImgCache[src]=img;
-  return img;
-}
-
-/* ---------------------------------------------------------
    LEITURA DO FORMULÁRIO
 --------------------------------------------------------- */
 function getData(){
@@ -891,889 +835,913 @@ function getColors(){
   };
 }
 
-/* ---------------------------------------------------------
-   RENDERIZAÇÃO — LINHAS DE INFORMAÇÃO (ícone + texto)
---------------------------------------------------------- */
-function measureRowsHeight(ctx, rows, w, baseFont, rowGapOverride, lineHMult){
-  if(!rows.length) return 0;
-  const lhm = lineHMult||1;
-  const lineH = baseFont*1.32*lhm, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconW = baseFont*1.7;
-  let total=0;
-  rows.forEach((r,i)=>{
-    ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    const full = (r.label? r.label+': ':'') + r.text;
-    const lines = wrapLines(ctx, full, w-iconW);
-    total += Math.max(1,lines.length)*lineH + (i<rows.length-1?rowGap:0);
-  });
-  return total;
+/* ===========================================================
+   MOTOR DE CANVAS LIVRE (estilo Canva) — objetos independentes
+=========================================================== */
+
+// layouts[formatKey] = array de elementos (ordem = ordem de camadas, último = frente)
+let layouts = {};
+let currentFormat = 'feed';
+let selectedId = null;
+let activeDrag = null;
+let history = {}; // formatKey -> {undo:[...], redo:[...]}
+
+function getElements(fmt){
+  return layouts[fmt] || (layouts[fmt] = []);
+}
+function findElement(fmt, id){
+  return getElements(fmt).find(e=>e.id===id) || null;
+}
+function uid(){
+  return 'el'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
+function cloneEls(els){
+  return JSON.parse(JSON.stringify(els));
+}
+function getHistory(fmt){
+  return history[fmt] || (history[fmt] = {undo:[], redo:[]});
+}
+function pushHistory(){
+  const h = getHistory(currentFormat);
+  h.undo.push(cloneEls(getElements(currentFormat)));
+  if(h.undo.length>60) h.undo.shift();
+  h.redo.length = 0;
+}
+function doUndo(){
+  const h = getHistory(currentFormat);
+  if(!h.undo.length) return;
+  h.redo.push(cloneEls(getElements(currentFormat)));
+  layouts[currentFormat] = h.undo.pop();
+  selectedId = null;
+  draw(); syncElPanel();
+}
+function doRedo(){
+  const h = getHistory(currentFormat);
+  if(!h.redo.length) return;
+  h.undo.push(cloneEls(getElements(currentFormat)));
+  layouts[currentFormat] = h.redo.pop();
+  selectedId = null;
+  draw(); syncElPanel();
 }
 
-function renderRows(ctx, rows, x, y, w, maxH, baseFont, textColor, labelColor, rowGapOverride, lineHMult, bold){
-  const lhm = lineHMult||1, bodyWeight = bold? 700 : 500;
-  const lineH = baseFont*1.32*lhm, rowGap = rowGapOverride!=null?rowGapOverride:baseFont*0.55, iconSize = baseFont*1.3;
-  const textX = x+iconSize+baseFont*0.4, textW = w-iconSize-baseFont*0.4;
-  let cy=y; const yLimit=y+maxH; let truncated=false;
-  for(let i=0;i<rows.length;i++){
-    const r = rows[i];
-    ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    const labelTxt = r.label? r.label+': ' : '';
-    const lines = wrapLines(ctx, labelTxt+r.text, textW);
-    const rowH = Math.max(1,lines.length)*lineH;
-    if(cy+rowH > yLimit+0.5){ truncated=true; break; }
+const imgCache = {};
+function getImg(src){
+  if(!src) return null;
+  if(imgCache[src]) return imgCache[src];
+  const img = new Image();
+  img.onload = () => draw();
+  img.src = src;
+  imgCache[src] = img;
+  return img;
+}
 
-    ctx.font = `${Math.round(iconSize)}px sans-serif`;
-    ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText(r.icon, x, cy+lineH*0.4);
+function newBaseEl(type, x, y, w, h){
+  return { id:uid(), type, x, y, w, h, rotation:0, opacity:1, hidden:false, locked:false };
+}
+
+function newTextEl(x,y,w,text,opts){
+  const el = Object.assign(newBaseEl('text',x,y,w,10), {
+    text: text||'Texto', fontSize: 42, fontWeight:500, italic:false,
+    color:'#2a2a2e', align:'left', lineHeight:1.25, bg:null, radius:null
+  }, opts||{});
+  return el;
+}
+function newRectEl(x,y,w,h,opts){
+  return Object.assign(newBaseEl('rect',x,y,w,h), {
+    fill:'#1f3a5f', gradient:null, radiusPct:0.12, shadow:false, stroke:null, strokeWidth:0
+  }, opts||{});
+}
+function newEllipseEl(x,y,w,h,opts){
+  return Object.assign(newBaseEl('ellipse',x,y,w,h), {
+    fill:'#1f3a5f', gradient:null, shadow:false, stroke:null, strokeWidth:0
+  }, opts||{});
+}
+function newImageEl(x,y,w,h,src,opts){
+  return Object.assign(newBaseEl('image',x,y,w,h), {
+    src: src||null, round:false, radiusPct:0
+  }, opts||{});
+}
+function newIconEl(x,y,w,h,key,color,opts){
+  return Object.assign(newBaseEl('icon',x,y,w,h), {
+    key: key||'generico', color: color||'#ffffff', bg:null
+  }, opts||{});
+}
+
+/* ---------- Renderização por tipo ---------- */
+function withTransform(ctx, el, fn){
+  const cx = el.x+el.w/2, cy = el.y+el.h/2;
+  ctx.save();
+  ctx.globalAlpha = el.opacity!=null ? el.opacity : 1;
+  ctx.translate(cx,cy);
+  if(el.rotation) ctx.rotate(el.rotation*Math.PI/180);
+  ctx.translate(-cx,-cy);
+  fn();
+  ctx.restore();
+}
+
+function fontString(el){
+  return `${el.italic?'italic ':''}${el.fontWeight||500} ${Math.round(el.fontSize)}px 'Poppins', Arial, sans-serif`;
+}
+
+function drawTextElement(ctx, el){
+  ctx.font = fontString(el);
+  const lineH = el.fontSize*(el.lineHeight||1.25);
+  const padX = el.bg ? el.fontSize*0.55 : 0;
+  const padY = el.bg ? el.fontSize*0.3 : 0;
+  const wrapW = Math.max(10, el.w - padX*2);
+  const raw = String(el.text||'');
+  let lines = [];
+  raw.split('\n').forEach(p=>{ lines.push(...wrapLines(ctx, p, wrapW)); });
+  if(!lines.length) lines=[''];
+  el.h = lines.length*lineH + padY*2;
+
+  withTransform(ctx, el, ()=>{
+    if(el.bg){
+      const r = el.radius!=null ? el.radius : Math.min(el.h/2, 18);
+      roundRectPath(ctx, el.x, el.y, el.w, el.h, r);
+      ctx.fillStyle = el.bg; ctx.fill();
+    }
+    ctx.fillStyle = el.color||'#2a2a2e';
     ctx.textBaseline='alphabetic';
-
-    if(labelTxt){
-      ctx.font = `700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-      ctx.fillStyle = labelColor;
-      ctx.fillText(labelTxt, textX, cy+baseFont*0.85);
-      const labelW = ctx.measureText(labelTxt).width;
-      ctx.font = `${bodyWeight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-      ctx.fillStyle = textColor;
-      // wrapLines() reconstrói as linhas juntando palavras com um único espaço,
-      // então uma quebra logo após o rótulo produz "Requisito(s):" sem o espaço
-      // final que existe em labelTxt ("Requisito(s): "). Isso fazia o
-      // startsWith(labelTxt) falhar e o rótulo inteiro ser desenhado de novo
-      // como se fosse texto. Comparamos também com a versão sem espaço no final.
-      const labelTrim = labelTxt.replace(/\s+$/, '');
-      let firstRest;
-      if(lines[0].startsWith(labelTxt)) firstRest = lines[0].slice(labelTxt.length);
-      else if(lines[0] === labelTrim) firstRest = '';
-      else if(lines[0].startsWith(labelTrim)) firstRest = lines[0].slice(labelTrim.length).replace(/^\s+/, '');
-      else firstRest = lines[0];
-      ctx.fillText(firstRest, textX+labelW, cy+baseFont*0.85);
-      for(let li=1; li<lines.length; li++) ctx.fillText(lines[li], textX, cy+baseFont*0.85+li*lineH);
-    } else {
-      ctx.font = `${bodyWeight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-      ctx.fillStyle = textColor;
-      lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
-    }
-    cy += rowH + (i<rows.length-1? rowGap:0);
-  }
-  return {height: cy-y, truncated};
-}
-
-function fitRowsFont(ctx, rows, w, maxH, cardW, lineHMult){
-  if(!rows.length) return cardW*0.026;
-  let baseFont = cardW*0.034;
-  const minFont = cardW*0.015, step = cardW*0.0006;
-  for(; baseFont>=minFont; baseFont-=step){
-    if(measureRowsHeight(ctx, rows, w, baseFont, null, lineHMult) <= maxH) return baseFont;
-  }
-  return minFont;
-}
-
-/* ---------------------------------------------------------
-   RENDERIZAÇÃO — BENEFÍCIOS EM DUAS COLUNAS
---------------------------------------------------------- */
-function balanceColumns(ctx, items, colW, refFont){
-  if(!items.length) return [[],[]];
-  const iconW = refFont*1.25, lineH = refFont*1.28, rowGap = refFont*0.4;
-  ctx.font = `500 ${Math.round(refFont)}px Poppins, Arial, sans-serif`;
-  const weights = items.map(it => Math.max(1, wrapLines(ctx, it, colW-iconW).length)*lineH + rowGap);
-  const left=[], right=[]; let leftH=0, rightH=0;
-  items.forEach((it,i)=>{
-    if(leftH<=rightH){ left.push(it); leftH+=weights[i]; }
-    else { right.push(it); rightH+=weights[i]; }
-  });
-  return [left,right];
-}
-
-function measureColumnHeight(ctx, items, w, baseFont, rowGapOverride, lineHMult){
-  if(!items.length) return 0;
-  const lhm = lineHMult||1;
-  const lineH=baseFont*1.28*lhm, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconW=baseFont*1.25;
-  let total=0;
-  items.forEach((it,i)=>{
-    ctx.font=`700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    const lines = wrapLines(ctx, it, w-iconW);
-    total += Math.max(1,lines.length)*lineH + (i<items.length-1?rowGap:0);
-  });
-  return total;
-}
-
-function renderColumn(ctx, items, x, y, w, maxH, baseFont, textColor, rowGapOverride, lineHMult, bold){
-  const lhm = lineHMult||1, weight = bold? 700 : 500;
-  const lineH=baseFont*1.28*lhm, rowGap=rowGapOverride!=null?rowGapOverride:baseFont*0.4, iconSize=baseFont*1.1;
-  const textX = x+iconSize+baseFont*0.32, textW=w-iconSize-baseFont*0.32;
-  let cy=y; const yLimit=y+maxH; let truncated=false;
-  for(let i=0;i<items.length;i++){
-    ctx.font=`700 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    const lines = wrapLines(ctx, items[i], textW);
-    const h = Math.max(1,lines.length)*lineH;
-    if(cy+h>yLimit+0.5){ truncated=true; break; }
-    ctx.font=`${Math.round(iconSize)}px sans-serif`;
-    ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText('✅', x, cy+lineH*0.4);
-    ctx.font=`${weight} ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    ctx.fillStyle=textColor; ctx.textBaseline='alphabetic';
-    lines.forEach((ln,li)=> ctx.fillText(ln, textX, cy+baseFont*0.85+li*lineH));
-    cy += h + (i<items.length-1?rowGap:0);
-  }
-  return {height: cy-y, truncated};
-}
-
-function fitBenefitsFont(ctx, items, w, maxH, cardW, left, right, lineHMult){
-  if(!items.length) return cardW*0.022;
-  let baseFont = cardW*0.038;
-  const minFont = cardW*0.013, step = cardW*0.0002;
-  for(; baseFont>=minFont; baseFont-=step){
-    const headerH = baseFont*2.0, headerGap = baseFont*1.0, colGap = baseFont*1.1;
-    const colW = (w-colGap)/2;
-    const need = headerH + headerGap + Math.max(measureColumnHeight(ctx,left,colW,baseFont,null,lineHMult), measureColumnHeight(ctx,right,colW,baseFont,null,lineHMult));
-    if(need<=maxH) return baseFont;
-  }
-  return minFont;
-}
-
-function renderBenefitsBlock(ctx, items, x, y, w, maxH, cardW, col, forcedFont, interactive, lineHMult, bold){
-  lastBenHandleRect = null;
-  if(!items.length || maxH<=0) return {height:0, truncated:false};
-  const refFont = cardW*0.022, colGapRef = refFont*1.1;
-  const colWRef = (w-colGapRef)/2;
-  const [left,right] = balanceColumns(ctx, items, colWRef, refFont);
-  const baseFont = forcedFont || fitBenefitsFont(ctx, items, w, maxH, cardW, left, right, lineHMult);
-  const headerFont = `700 ${Math.round(baseFont*1.02)}px Poppins, Arial, sans-serif`;
-  ctx.font = headerFont;
-  const headerText = '🎁  BENEFÍCIOS';
-  const hh = baseFont*2.0;
-  const hw = ctx.measureText(headerText).width + baseFont*1.8;
-  roundRectPath(ctx, x, y, hw, hh, hh/2);
-  ctx.fillStyle = col.tertiary; ctx.fill();
-  ctx.fillStyle = textColorOn(col.tertiary);
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(headerText, x+hw/2, y+hh/2+1);
-
-  const colGap = baseFont*1.1;
-  const colWBase = (w-colGap)/2;
-
-  const benBE = getBlockExtra(currentFormat);
-  const maxColOffset = colWBase*0.55;
-  if(benBE.col==null) benBE.col = 0;
-  const colOffset = Math.min(Math.max(benBE.col, -maxColOffset), maxColOffset);
-  benBE.col = colOffset;
-  const leftColW = colWBase + (right.length? colOffset : 0);
-  const rightColW = colWBase - colOffset;
-
-  const baseRowGap = baseFont*0.4;
-  const headerGapBase = baseFont*1.0;
-  const bodyMaxHAtBase = Math.max(0, maxH-(hh+headerGapBase));
-  const naturalMax = Math.max(measureColumnHeight(ctx,left,leftColW,baseFont,baseRowGap,lineHMult), measureColumnHeight(ctx,right,rightColW,baseFont,baseRowGap,lineHMult));
-  const leftover = Math.max(0, bodyMaxHAtBase - naturalMax);
-  const maxGaps = Math.max(left.length-1, right.length-1, 1);
-
-  if(benBE.ben==null) benBE.ben = Math.min(leftover, baseFont*1.2 + maxGaps*baseFont*0.6);
-  const extraUsed = Math.min(Math.max(benBE.ben,0), leftover);
-  benBE.ben = extraUsed;
-
-  const headerGap = headerGapBase + extraUsed*0.7;
-  const rowGap = baseRowGap + (extraUsed*0.3)/maxGaps;
-
-  const bodyY = y+hh+headerGap;
-  const bodyMaxH = Math.max(0, maxH-(hh+headerGap));
-
-  const r1 = renderColumn(ctx,left,x,bodyY,leftColW,bodyMaxH,baseFont,'#2a2a2e',rowGap,lineHMult,bold);
-  const r2 = right.length ? renderColumn(ctx,right,x+leftColW+colGap,bodyY,rightColW,bodyMaxH,baseFont,'#2a2a2e',rowGap,lineHMult,bold) : {height:0,truncated:false};
-
-  if(interactive){
-    const contentBottom = Math.min(bodyY+Math.max(r1.height,r2.height), y+maxH);
-    lastBenHandleRect = drawGrabHandle(ctx, x+w/2, contentBottom, cardW*0.09);
-  }
-
-  lastColSplitHandleRect = null;
-  if(right.length){
-    ctx.save();
-    ctx.setLineDash([baseFont*0.3, baseFont*0.3]);
-    ctx.strokeStyle = hexToRgba(col.primary,0.25);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x+leftColW+colGap/2, bodyY);
-    ctx.lineTo(x+leftColW+colGap/2, bodyY+Math.max(r1.height,r2.height));
-    ctx.stroke();
-    ctx.restore();
-    if(interactive){
-      const midY = bodyY + Math.max(r1.height,r2.height)/2;
-      lastColSplitHandleRect = drawGrabHandle(ctx, x+leftColW+colGap/2, midY, cardW*0.075, true);
-    }
-  }
-  return { height: hh+headerGap+Math.max(r1.height,r2.height), truncated: r1.truncated||r2.truncated };
-}
-
-/* ---------------------------------------------------------
-   RENDERIZAÇÃO — CAIXA DE SALÁRIO E SELOS
---------------------------------------------------------- */
-function renderSalaryBox(ctx, salario, x, y, w, h, cardW, col, scale){
-  const sc = scale||1;
-  roundRectPath(ctx, x, y, w, h, h*0.24);
-  ctx.fillStyle = col.primary; ctx.fill();
-  const badgeSize = h*0.6;
-  const bx = x+h*0.2, by = y+(h-badgeSize)/2;
-  roundRectPath(ctx, bx, by, badgeSize, badgeSize, badgeSize*0.3);
-  ctx.fillStyle = col.tertiary; ctx.fill();
-  ctx.font = `${Math.round(badgeSize*0.55)}px sans-serif`;
-  ctx.fillStyle = '#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('💰', bx+badgeSize/2, by+badgeSize/2+1);
-  const tx = bx+badgeSize+cardW*0.03;
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.fillStyle = hexToRgba('#ffffff',0.7);
-  ctx.font = `700 ${Math.round(cardW*0.017*sc)}px Poppins, Arial, sans-serif`;
-  ctx.fillText('SALÁRIO', tx, y+h*0.38);
-  ctx.fillStyle = '#ffffff';
-  const maxValW = x+w-tx-cardW*0.03;
-  const valFit = fitText(ctx, salario, maxValW, 1, cardW*0.036*sc, cardW*0.02, 800, 'Poppins, Arial, sans-serif');
-  ctx.font = `800 ${Math.round(valFit.size)}px Poppins, Arial, sans-serif`;
-  ctx.fillText(valFit.lines[0], tx, y+h*0.76);
-}
-
-// Selo escuro sobre a foto/painel, pode ter mais de uma linha.
-function drawOverlayBanner(ctx, lines, x, y, w, bg, fg, font, lineH, padX, padY){
-  ctx.font = font;
-  let maxLineW = 0;
-  lines.forEach(l=> maxLineW = Math.max(maxLineW, ctx.measureText(l).width));
-  const bw = Math.min(w, maxLineW+padX*2);
-  const bh = lines.length*lineH+padY*2;
-  roundRectPath(ctx, x, y, bw, bh, bh*0.22);
-  ctx.fillStyle=bg; ctx.fill();
-  ctx.fillStyle=fg; ctx.textAlign='center'; ctx.textBaseline='middle';
-  lines.forEach((l,i)=>{ ctx.fillText(l, x+bw/2, y+padY+lineH*i+lineH/2); });
-  return {w:bw, h:bh};
-}
-
-/* ---------------------------------------------------------
-   RENDERIZAÇÃO — LAYOUT VERTICAL (feed / retrato / stories)
---------------------------------------------------------- */
-function renderTall(ctx,fmt,data,col,interactive){
-  const W=fmt.w,H=fmt.h;
-  const cardX=W*0.045, cardY=H*0.045, cardW=W-cardX*2, cardH=H-cardY*2, cardR=W*0.045;
-
-  ctx.save();
-  ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=W*0.02; ctx.shadowOffsetY=H*0.006;
-  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
-  ctx.fillStyle='#ffffff'; ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
-  ctx.clip();
-
-  const pad = cardW*0.045;
-  const topH = cardH*0.48;
-
-  const topBE = getBlockExtra(currentFormat);
-  const titleLineHMult = topBE.titleLineH!=null ? Math.min(Math.max(topBE.titleLineH,0.85),1.6) : 1;
-  const rowsLineHMult = topBE.rowsLineH!=null ? Math.min(Math.max(topBE.rowsLineH,0.85),1.6) : 1;
-  const bensLineHMult = topBE.bensLineH!=null ? Math.min(Math.max(topBE.bensLineH,0.85),1.6) : 1;
-  const rowsBold = !!topBE.rowsBold;
-  const bensBold = !!topBE.bensBold;
-  const leftWBase = cardW*0.57;
-  const maxTopOffset = cardW*0.14;
-  if(topBE.top==null) topBE.top = 0;
-  const topOffset = Math.min(Math.max(topBE.top, -maxTopOffset), maxTopOffset);
-  topBE.top = topOffset;
-  const leftW = leftWBase + topOffset;
-  const rightW = cardW-leftW;
-
-  const bx = cardX+pad;
-  const bw = cardW-pad*2;
-  const footerH = cardH*0.11;
-  const salH = cardH*0.088;
-
-  let byPre = cardY+topH+cardH*0.03;
-  if(data.salario && byPre+salH < cardY+cardH-footerH) byPre += salH+cardH*0.022;
-  const benAvailPre = Math.max(0, (cardY+cardH-footerH-cardH*0.025) - byPre);
-  let benFontCandidate = cardW*0.03;
-  if(data.beneficios.length && benAvailPre>0){
-    const refFontBen = cardW*0.022, colGapRefBen = refFontBen*1.1;
-    const colWRefBen = (bw-colGapRefBen)/2;
-    const [benLeft, benRight] = balanceColumns(ctx, data.beneficios, colWRefBen, refFontBen);
-    benFontCandidate = fitBenefitsFont(ctx, data.beneficios, bw, benAvailPre, cardW, benLeft, benRight, bensLineHMult);
-  }
-
-  const photoImg = data.foto ? getPhotoImage(data.foto) : null;
-  const hasPhoto = !!(photoImg && photoImg.complete && photoImg.naturalWidth);
-
-  const photoOff = getPhotoOffset(currentFormat);
-  const photoNudgeX = rightW*0.3, photoNudgeY = topH*0.3;
-  photoOff.x = Math.min(Math.max(photoOff.x, -photoNudgeX), photoNudgeX);
-  photoOff.y = Math.min(Math.max(photoOff.y, -photoNudgeY), photoNudgeY);
-
-  ctx.save();
-  roundRectPath(ctx, cardX+leftW, cardY, rightW, topH, {tl:0,tr:cardR,br:0,bl:0});
-  ctx.clip();
-  const iconCy = cardY + topH*0.46;
-  if(hasPhoto){
-    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, topH, photoOff.x, photoOff.y);
-  } else {
-    const g = ctx.createLinearGradient(cardX+leftW, cardY, cardX+leftW, cardY+topH);
-    g.addColorStop(0, col.primary); g.addColorStop(1, shade(col.primary,-25));
-    ctx.fillStyle=g; ctx.fillRect(cardX+leftW, cardY, rightW, topH);
-    drawIcon(ctx, data.categoria, cardX+leftW+rightW/2+photoOff.x, iconCy+photoOff.y, Math.min(rightW,topH)*0.22, hexToRgba('#ffffff',0.85));
-  }
-  ctx.restore();
-  lastPhotoBlockRect = {x:cardX+leftW, y:cardY, w:rightW, h:topH};
-  if(interactive && selectedTarget==='photoBlock') drawSelectionOutline(ctx, lastPhotoBlockRect);
-
-  lastBannerRect = null;
-  let bannerText = data.banner
-    ? data.banner.replace(/\{cidade\}/gi, data.cidade||'')
-    : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
-  if(bannerText){
-    const bannerMaxW = rightW*0.74;
-    const bannerBE = getBlockExtra(currentFormat);
-    const bannerAutoSize = cardW*0.026, bannerMinSize = cardW*0.014, bannerManualMax = cardW*0.05;
-    const bannerStartSize = bannerBE.bannerSize!=null ? Math.min(Math.max(bannerBE.bannerSize, bannerMinSize), bannerManualMax) : bannerAutoSize;
-    const bFit = fitText(ctx, `📍 ${bannerText.toUpperCase()}`, bannerMaxW, 4, bannerStartSize, bannerMinSize, 700, 'Poppins, Arial, sans-serif');
-    lastBannerFitSize = bFit.size;
-    const bannerFont = `700 ${Math.round(bFit.size)}px Poppins, Arial, sans-serif`;
-    const bLineH = bFit.size*1.3;
-    const padX = cardW*0.016, padY = cardW*0.013;
-
-    ctx.font = bannerFont;
-    let maxLineW = 0;
-    bFit.lines.forEach(l=> maxLineW = Math.max(maxLineW, ctx.measureText(l).width));
-    const bw2 = Math.min(bannerMaxW, maxLineW+padX*2);
-    const bh = bFit.lines.length*bLineH+padY*2;
-
-    const baseX = cardX+leftW+rightW*0.06, baseY = cardY+cardW*0.03;
-    const bannerOff = getBannerOffset(currentFormat);
-    const margin = cardW*0.02;
-    const minX = (cardX+leftW+margin) - baseX;
-    const maxX = Math.max(minX, (cardX+leftW+rightW-margin-bw2) - baseX);
-    const minY = (cardY+margin) - baseY;
-    const maxY = Math.max(minY, (cardY+topH-margin-bh) - baseY);
-    bannerOff.x = Math.min(Math.max(bannerOff.x, minX), maxX);
-    bannerOff.y = Math.min(Math.max(bannerOff.y, minY), maxY);
-
-    const drawX = baseX+bannerOff.x, drawY = baseY+bannerOff.y;
-    drawOverlayBanner(ctx, bFit.lines, drawX, drawY, bannerMaxW, 'rgba(20,20,20,0.82)', '#ffffff', bannerFont, bLineH, padX, padY);
-    lastBannerRect = {x:drawX, y:drawY, w:bw2, h:bh};
-    if(interactive){
-      lastBannerSizeHandleRect = drawGrabHandle(ctx, drawX+bw2, drawY+bh, cardW*0.05);
-      if(selectedTarget==='banner') drawSelectionOutline(ctx, lastBannerRect);
-    }
-  }
-
-  if(col.logo){
-    const logoBE = getBlockExtra(currentFormat);
-    const baseLogoSize = cardW*0.095;
-    const logoMinSize = cardW*0.05, logoMaxSize = cardW*0.22;
-    const logoSize = logoBE.logoSize!=null ? Math.min(Math.max(logoBE.logoSize, logoMinSize), logoMaxSize) : baseLogoSize;
-    lastLogoFitSize = logoSize;
-
-    const baseLogoCx = cardX+leftW+cardW*0.04+baseLogoSize/2, baseLogoCy = cardY+topH-cardW*0.04-baseLogoSize/2;
-    const logoOff = getLogoOffset(currentFormat);
-    const logoMargin = cardW*0.02;
-    const logoMinX = (cardX+leftW+logoMargin+logoSize/2) - baseLogoCx;
-    const logoMaxX = (cardX+leftW+rightW-logoMargin-logoSize/2) - baseLogoCx;
-    const logoMinY = (cardY+logoMargin+logoSize/2) - baseLogoCy;
-    const logoMaxY = (cardY+topH-logoMargin-logoSize/2) - baseLogoCy;
-    logoOff.x = Math.min(Math.max(logoOff.x, Math.min(logoMinX,logoMaxX)), Math.max(logoMinX,logoMaxX));
-    logoOff.y = Math.min(Math.max(logoOff.y, Math.min(logoMinY,logoMaxY)), Math.max(logoMinY,logoMaxY));
-
-    const logoCx = baseLogoCx+logoOff.x, logoCy = baseLogoCy+logoOff.y;
-    const logoR = logoSize/2+4;
-    ctx.beginPath(); ctx.arc(logoCx,logoCy,logoR,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
-    drawLogoCircle(ctx, col, logoCx, logoCy, logoSize, '#ffffff', col.primary);
-    lastLogoRect = {x:logoCx-logoR, y:logoCy-logoR, w:logoR*2, h:logoR*2};
-    if(interactive){
-      lastLogoResizeHandleRect = drawGrabHandle(ctx, logoCx+logoR*0.75, logoCy+logoR*0.75, cardW*0.045);
-      if(selectedTarget==='logo') drawSelectionOutline(ctx, lastLogoRect);
-    }
-  }
-
-  lastTopSplitHandleRect = null;
-  if(interactive){
-    lastTopSplitHandleRect = drawGrabHandle(ctx, cardX+leftW, cardY+topH/2, cardW*0.075, true);
-  }
-
-  const lx = cardX+pad;
-  const lw = leftW-pad-cardW*0.055;
-  let y = cardY+cardH*0.035;
-
-  const badgeScale = topBE.badgeScale!=null ? Math.min(Math.max(topBE.badgeScale,0.6),2) : 1;
-  const badgeFont = `700 ${Math.round(cardW*0.023*badgeScale)}px Poppins, Arial, sans-serif`;
-  const badgeH = cardW*0.05*badgeScale;
-  const badgeOff = getBadgeOffset(currentFormat);
-  const badgeNudgeX = cardW*0.05, badgeNudgeY = cardH*0.03;
-  badgeOff.x = Math.min(Math.max(badgeOff.x, -badgeNudgeX), badgeNudgeX);
-  badgeOff.y = Math.min(Math.max(badgeOff.y, -badgeNudgeY), badgeNudgeY);
-  const badgeW = drawPill(ctx, '📣 VAGA ABERTA', lx+badgeOff.x, y+badgeOff.y, badgeH, col.primary, '#ffffff', badgeFont, cardW*0.022);
-  lastBadgeBlockRect = {x:lx+badgeOff.x, y:y+badgeOff.y, w:badgeW, h:badgeH};
-  if(interactive && selectedTarget==='badgeBlock') drawSelectionOutline(ctx, lastBadgeBlockRect);
-  y += badgeH + cardH*0.02;
-
-  const titleFamily='Poppins, Arial, sans-serif';
-  const titleMaxSize = cardW*0.07, titleMinSize = cardW*0.044;
-  const yBeforeTitle = y;
-
-  // CLT, Presencial, local e horário agora viram tags/chips compactos (em vez de
-  // linhas inteiras de texto), deixando o bloco "Informações" livre para requisitos
-  // e outros itens que a pessoa queira incluir.
-  const tagList = [data.contratacao, data.regime, data.cidade, data.horario].filter(Boolean);
-  const tagFont = `600 ${Math.round(cardW*0.021)}px Poppins, Arial, sans-serif`;
-  const tagH = cardW*0.036, tagPadX = cardW*0.015, tagGapX = cardW*0.011, tagGapY = cardH*0.011;
-  const tagsGapAfter = cardH*0.018;
-  const tagsBlockH = tagList.length ? measureTagsWrapped(ctx, tagList, tagFont, lw, tagH, tagPadX, tagGapX, tagGapY) + tagsGapAfter : 0;
-
-  const rows = [];
-  data.requisitos.forEach((r,i)=> rows.push({icon: i===0 ? '🎓' : '', label: i===0 ? 'Requisito(s)' : '', text:r}));
-
-  const titleLH = 1.08*titleLineHMult;
-  let fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, titleMaxSize, titleMinSize, 800, titleFamily);
-  let rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
-  let rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
-
-  if(topBE.titleSize==null){
-    const ROWS_TARGET_FONT = Math.min(benFontCandidate, cardW*0.03);
-    let balanceGuard = 0;
-    while(rows.length && rowsFont < ROWS_TARGET_FONT && fit.size > titleMinSize && balanceGuard < 60){
-      fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, fit.size-2, titleMinSize, 800, titleFamily);
-      rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
-      rowsFont = fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult);
-      balanceGuard++;
-    }
-  } else {
-    const manualSize = Math.min(Math.max(topBE.titleSize, titleMinSize), titleMaxSize);
-    fit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, manualSize, titleMinSize, 800, titleFamily);
-    rowsMaxH = Math.max(0, (cardY+topH) - (yBeforeTitle + fit.lines.length*fit.size*titleLH + cardH*0.022) - tagsBlockH - cardH*0.03);
-    rowsFont = rows.length ? fitRowsFont(ctx, rows, lw, rowsMaxH, cardW, rowsLineHMult) : cardW*0.026;
-  }
-  lastTitleFitSize = fit.size;
-
-  // Fonte do bloco "Informações" (topo) e do bloco "Benefícios" (abaixo do salário) agora são
-  // independentes. Cada uma é limitada ao maior tamanho que cabe no espaço do próprio bloco
-  // (rowsFontMax / bensFontMax), então o texto nunca some ao aumentar a fonte — o arrasto
-  // simplesmente para de crescer quando o espaço acaba.
-  const bodyFontMin = cardW*0.016;
-  const rowsFontMax = rowsFont;
-  const bensFontMax = benFontCandidate;
-  const balancedAuto = (rows.length && data.beneficios.length) ? Math.min(rowsFontMax, bensFontMax) : rowsFontMax;
-
-  lastRowsFontFitSize = rowsFontMax;
-  lastBensFontFitSize = bensFontMax;
-
-  const rowsFontFinal = topBE.rowsFontSize!=null
-    ? Math.min(Math.max(topBE.rowsFontSize, bodyFontMin), rowsFontMax)
-    : balancedAuto;
-  const bensFontFinal = topBE.bensFontSize!=null
-    ? Math.min(Math.max(topBE.bensFontSize, bodyFontMin), bensFontMax)
-    : balancedAuto;
-
-  const rowsBaseGap = rowsFontFinal*0.55;
-  let rowsGap = rowsBaseGap;
-  let rowsNaturalH = 0, rowsExtraUsed = 0;
-  const rowsBE = getBlockExtra(currentFormat);
-  if(rows.length>1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal, null, rowsLineHMult);
-    const rowsLeftover = Math.max(0, rowsMaxH - rowsNaturalH);
-    if(rowsBE.rows==null) rowsBE.rows = Math.min(rowsLeftover, (rows.length-1)*rowsFontFinal*0.6);
-    rowsExtraUsed = Math.min(Math.max(rowsBE.rows,0), rowsLeftover);
-    rowsBE.rows = rowsExtraUsed;
-    rowsGap = rowsBaseGap + rowsExtraUsed/(rows.length-1);
-  } else if(rows.length===1){
-    rowsNaturalH = measureRowsHeight(ctx, rows, lw, rowsFontFinal, null, rowsLineHMult);
-  }
-
-  const titleOff = getTitleOffset(currentFormat);
-  const titleNudgeX = cardW*0.05, titleNudgeY = cardH*0.035;
-  titleOff.x = Math.min(Math.max(titleOff.x, -titleNudgeX), titleNudgeX);
-  titleOff.y = Math.min(Math.max(titleOff.y, -titleNudgeY), titleNudgeY);
-  const tx = lx+titleOff.x, ty = y+titleOff.y;
-
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  fit.lines.forEach((ln,i)=>{
-    ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
-    ctx.fillStyle = (i===fit.lines.length-1 && fit.lines.length>1) ? col.tertiary : col.primary;
-    ctx.fillText(ln, tx, ty+fit.size*0.85 + i*fit.size*titleLH);
-  });
-  lastTitleBlockRect = {x:tx, y:ty, w:lw, h:fit.lines.length*fit.size*titleLH};
-
-  lastTitleHandleRect = null;
-  if(interactive){
-    const titleBottomY = ty + fit.lines.length*fit.size*titleLH;
-    lastTitleHandleRect = drawGrabHandle(ctx, tx+lw/2, titleBottomY, cardW*0.09);
-    if(selectedTarget==='titleBlock') drawSelectionOutline(ctx, lastTitleBlockRect);
-  }
-
-  y += fit.lines.length*fit.size*titleLH + cardH*0.022;
-
-  if(tagList.length){
-    drawTagsWrapped(ctx, tagList, [col.secondary, col.tertiary], col.primary, lx, y, lw, tagH, tagFont, tagPadX, tagGapX, tagGapY, 'left');
-    y += tagsBlockH;
-  }
-
-  lastRowsFontHandleRect = null;
-  if(interactive && rows.length){
-    lastRowsFontHandleRect = drawGrabHandle(ctx, lx+lw, y, cardW*0.045);
-  }
-
-  let rowsTruncated=false;
-  lastRowsHandleRect = null;
-  lastRowsBlockRect = null;
-  if(rows.length && rowsMaxH>0){
-    const rowsOff = getRowsOffset(currentFormat);
-    const rowsNudgeX = cardW*0.04, rowsNudgeY = cardH*0.05;
-    rowsOff.x = Math.min(Math.max(rowsOff.x, -rowsNudgeX), rowsNudgeX);
-    rowsOff.y = Math.min(Math.max(rowsOff.y, -rowsNudgeY), rowsNudgeY);
-    const rx = lx+rowsOff.x, ry = y+rowsOff.y;
-
-    ctx.save();
-    ctx.beginPath(); ctx.rect(rx, ry, lw, rowsMaxH); ctx.clip();
-    rowsTruncated = renderRows(ctx, rows, rx, ry, lw, rowsMaxH, rowsFontFinal, '#4b5563', col.primary, rowsGap, rowsLineHMult, rowsBold).truncated;
-    ctx.restore();
-    lastRowsBlockRect = {x:rx, y:ry, w:lw, h:Math.min(rowsNaturalH+rowsExtraUsed, rowsMaxH)};
-    if(interactive){
-      if(rows.length>1){
-        const contentBottom = ry + rowsNaturalH + rowsExtraUsed;
-        const r = drawGrabHandle(ctx, rx+lw/2, Math.min(contentBottom, ry+rowsMaxH), cardW*0.09);
-        lastRowsHandleRect = r;
-      }
-      if(selectedTarget==='rowsBlock') drawSelectionOutline(ctx, lastRowsBlockRect);
-    }
-  } else if(rows.length){
-    rowsTruncated = true;
-  }
-
-  let by = cardY+topH+cardH*0.03;
-
-  let salTruncated=false;
-  lastSalaryBlockRect = null;
-  if(data.salario){
-    if(by+salH < cardY+cardH-footerH){
-      const salOff = getSalaryOffset(currentFormat);
-      const salNudgeX = cardW*0.04, salNudgeY = cardH*0.025;
-      salOff.x = Math.min(Math.max(salOff.x, -salNudgeX), salNudgeX);
-      salOff.y = Math.min(Math.max(salOff.y, -salNudgeY), salNudgeY);
-      const salaryScale = topBE.salaryScale!=null ? Math.min(Math.max(topBE.salaryScale,0.6),2) : 1;
-      renderSalaryBox(ctx, data.salario, bx+salOff.x, by+salOff.y, bw, salH, cardW, col, salaryScale);
-      lastSalaryBlockRect = {x:bx+salOff.x, y:by+salOff.y, w:bw, h:salH};
-      if(interactive && selectedTarget==='salaryBlock') drawSelectionOutline(ctx, lastSalaryBlockRect);
-      by += salH+cardH*0.022;
-    } else { salTruncated=true; }
-  }
-
-  let benTruncated=false;
-  lastBensBlockRect = null;
-  if(data.beneficios.length){
-    const benAvail = Math.max(0, (cardY+cardH-footerH-cardH*0.025) - by);
-    const bensOff = getBensOffset(currentFormat);
-    const bensNudgeX = cardW*0.04, bensNudgeY = cardH*0.04;
-    bensOff.x = Math.min(Math.max(bensOff.x, -bensNudgeX), bensNudgeX);
-    bensOff.y = Math.min(Math.max(bensOff.y, -bensNudgeY), bensNudgeY);
-    const bbx = bx+bensOff.x, bby = by+bensOff.y;
-    const rb = renderBenefitsBlock(ctx, data.beneficios, bbx, bby, bw, benAvail, cardW, col, bensFontFinal, interactive, bensLineHMult, bensBold);
-    benTruncated = rb.truncated || benAvail<=0;
-    lastBensBlockRect = {x:bbx, y:bby, w:bw, h:Math.min(rb.height||0, benAvail)};
-    if(interactive && selectedTarget==='bensBlock') drawSelectionOutline(ctx, lastBensBlockRect);
-    lastBensFontHandleRect = null;
-    if(interactive){
-      lastBensFontHandleRect = drawGrabHandle(ctx, bbx+bw, bby, cardW*0.045);
-    }
-  }
-
-  const footerY = cardY+cardH-footerH;
-  roundRectPath(ctx, cardX, footerY, cardW, footerH, {tl:0,tr:0,br:cardR,bl:cardR});
-  ctx.fillStyle=col.primary; ctx.fill();
-  ctx.fillStyle=col.tertiary;
-  ctx.fillRect(cardX, footerY, cardW, Math.max(3,cardH*0.006));
-
-  const footerOff = getFooterOffset(currentFormat);
-  const footerNudgeX = cardW*0.05, footerNudgeY = footerH*0.3;
-  footerOff.x = Math.min(Math.max(footerOff.x, -footerNudgeX), footerNudgeX);
-  footerOff.y = Math.min(Math.max(footerOff.y, -footerNudgeY), footerNudgeY);
-
-  const footerScale = topBE.footerScale!=null ? Math.min(Math.max(topBE.footerScale,0.6),2) : 1;
-  const fBadgeSize = footerH*0.46;
-  const fbx = cardX+cardW*0.06+footerOff.x, fby = footerY+(footerH-fBadgeSize)/2+footerOff.y;
-  roundRectPath(ctx, fbx, fby, fBadgeSize, fBadgeSize, fBadgeSize*0.3);
-  ctx.fillStyle=col.tertiary; ctx.fill();
-  ctx.font=`${Math.round(fBadgeSize*0.55)}px sans-serif`;
-  ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('📲', fbx+fBadgeSize/2, fby+fBadgeSize/2+1);
-
-  const ftx = fbx+fBadgeSize+cardW*0.03;
-  const mainLine = data.contato || data.cta || '';
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.fillStyle=hexToRgba('#ffffff',0.7);
-  ctx.font=`700 ${Math.round(cardW*0.016*footerScale)}px Poppins, Arial, sans-serif`;
-  ctx.fillText('INTERESSADOS, ENTRE EM CONTATO', ftx, footerY+footerH*0.36+footerOff.y);
-  ctx.fillStyle='#ffffff';
-  const lineFit = fitText(ctx, mainLine, cardX+cardW-ftx-cardW*0.05, 1, cardW*0.03*footerScale, cardW*0.018, 800, 'Poppins, Arial, sans-serif');
-  ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
-  ctx.fillText(lineFit.lines[0], ftx, footerY+footerH*0.72+footerOff.y);
-
-  lastFooterBlockRect = {x:fbx, y:fby, w:cardX+cardW-fbx-cardW*0.05, h:fBadgeSize};
-  if(interactive && selectedTarget==='footerBlock') drawSelectionOutline(ctx, lastFooterBlockRect);
-
-  ctx.restore();
-  return rowsTruncated || salTruncated || benTruncated;
-}
-
-/* ---------------------------------------------------------
-   RENDERIZAÇÃO — LAYOUT HORIZONTAL (linkedin / facebook)
---------------------------------------------------------- */
-function renderWide(ctx,fmt,data,col){
-  const W=fmt.w,H=fmt.h;
-  const cardX=W*0.035, cardY=H*0.06, cardW=W-cardX*2, cardH=H-cardY*2, cardR=W*0.025;
-
-  ctx.save();
-  ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=W*0.015; ctx.shadowOffsetY=H*0.008;
-  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
-  ctx.fillStyle='#ffffff'; ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  roundRectPath(ctx,cardX,cardY,cardW,cardH,cardR);
-  ctx.clip();
-
-  const rightW = cardW*0.36;
-  const leftW = cardW - rightW;
-
-  const photoImg = data.foto ? getPhotoImage(data.foto) : null;
-  const hasPhoto = !!(photoImg && photoImg.complete && photoImg.naturalWidth);
-
-  roundRectPath(ctx, cardX+leftW, cardY, rightW, cardH, {tl:0,bl:0,tr:cardR,br:cardR});
-  if(hasPhoto){
-    ctx.save(); ctx.clip();
-    drawImageCover(ctx, photoImg, cardX+leftW, cardY, rightW, cardH);
-    ctx.fillStyle = hexToRgba(col.primary,0.55);
-    ctx.fillRect(cardX+leftW, cardY, rightW, cardH);
-    ctx.restore();
-  } else {
-    ctx.fillStyle=col.primary; ctx.fill();
-  }
-
-  const rcx = cardX+leftW+rightW/2;
-  const logoSize=rightW*0.3;
-  const logoY = cardY+cardH*0.1;
-  drawLogoCircle(ctx, col, rcx, logoY+logoSize/2, logoSize, '#ffffff', col.primary);
-
-  const blobD = rightW*0.5;
-  const blobCy = cardY+cardH*0.55;
-  ctx.beginPath(); ctx.arc(rcx,blobCy,blobD/2,0,Math.PI*2);
-  ctx.fillStyle=hexToRgba(col.tertiary,0.3); ctx.fill();
-  ctx.lineWidth=3; ctx.strokeStyle=hexToRgba(col.accent,0.85); ctx.stroke();
-  drawIcon(ctx, data.categoria, rcx, blobCy, blobD*0.55, '#ffffff');
-
-  ctx.font=`700 ${Math.round(rightW*0.075)}px Poppins, Arial, sans-serif`;
-  ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  const badgeLines = wrapLines(ctx,'ESTAMOS CONTRATANDO', rightW*0.78);
-  badgeLines.forEach((ln,i)=>{
-    ctx.fillText(ln, rcx, cardY+cardH*0.87 + i*rightW*0.09);
-  });
-
-  const innerX=cardX+cardW*0.045, innerW=leftW-cardW*0.07;
-  let y=cardY+cardH*0.09;
-
-  const titleFamily='Poppins, Arial, sans-serif';
-  const fit = fitText(ctx, data.cargo.toUpperCase(), innerW, 2, cardW*0.05, cardW*0.028, 800, titleFamily);
-  ctx.font=`800 ${Math.round(fit.size)}px ${titleFamily}`;
-  ctx.fillStyle=col.primary; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  fit.lines.forEach((ln,i)=>{
-    ctx.fillText(ln, innerX, y+fit.size*0.85 + i*fit.size*1.15);
-  });
-  y += fit.lines.length*fit.size*1.15 + cardH*0.025;
-
-  const tags=[data.contratacao,data.regime,data.horario,data.cidade].filter(Boolean);
-  if(tags.length){
-    const tagFont=`600 ${Math.round(cardW*0.015)}px Poppins, Arial, sans-serif`;
-    const th=cardW*0.032, padX=cardW*0.012, gapX=cardW*0.01, gapY=cardH*0.014;
-    const usedH = drawTagsWrapped(ctx, tags, [col.secondary,col.tertiary], col.primary, innerX, y, innerW, th, tagFont, padX, gapX, gapY, 'left');
-    y += usedH + cardH*0.012;
-  }
-
-  if(data.salario){
-    ctx.font=`700 ${Math.round(cardW*0.016)}px Poppins, Arial, sans-serif`;
-    ctx.fillStyle=col.primary; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-    ctx.fillText('SALÁRIO: ', innerX, y+cardW*0.016);
-    const labelW = ctx.measureText('SALÁRIO: ').width;
-    ctx.font=`800 ${Math.round(cardW*0.019)}px Poppins, Arial, sans-serif`;
-    ctx.fillText(data.salario, innerX+labelW, y+cardW*0.018);
-    y += cardH*0.055;
-  }
-
-  const footerH = cardH*0.14;
-  const footerY = cardY+cardH-footerH;
-  const availH = footerY - y - cardH*0.015;
-  if(availH>cardH*0.05 && (data.requisitos.length||data.beneficios.length)){
-    const baseFont=cardW*0.0145;
-    const combined=[
-      ...data.requisitos.slice(0,3).map(r=>'✓  '+r),
-      ...data.beneficios.slice(0,2).map(b=>'★  '+b)
-    ];
-    ctx.font=`500 ${Math.round(baseFont)}px Poppins, Arial, sans-serif`;
-    ctx.fillStyle='#4b5563'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-    const lineH=baseFont*1.6;
-    const maxLines=Math.max(0,Math.floor(availH/lineH));
-    let cy=y+baseFont;
-    combined.slice(0,maxLines).forEach(t=>{
-      const lines=wrapLines(ctx,t,innerW);
-      ctx.fillText(lines[0], innerX, cy);
-      cy+=lineH;
+    ctx.textAlign = el.align||'left';
+    let tx = el.x+padX;
+    if(el.align==='center') tx = el.x+el.w/2;
+    else if(el.align==='right') tx = el.x+el.w-padX;
+    lines.forEach((ln,i)=>{
+      ctx.fillText(ln, tx, el.y+padY+el.fontSize*0.85+i*lineH);
     });
+  });
+}
+
+function drawShapeElement(ctx, el){
+  withTransform(ctx, el, ()=>{
+    if(el.shadow){ ctx.save(); ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=Math.max(el.w,el.h)*0.03; ctx.shadowOffsetY=Math.max(el.w,el.h)*0.015; }
+    if(el.type==='ellipse'){
+      ctx.beginPath(); ctx.ellipse(el.x+el.w/2, el.y+el.h/2, Math.max(0,el.w/2), Math.max(0,el.h/2), 0,0,Math.PI*2);
+    } else {
+      roundRectPath(ctx, el.x, el.y, el.w, el.h, Math.min(el.w,el.h)/2*(el.radiusPct!=null?el.radiusPct:0.12));
+    }
+    if(el.gradient){
+      const g = ctx.createLinearGradient(el.x,el.y,el.x+el.w,el.y+el.h);
+      g.addColorStop(0, el.gradient[0]); g.addColorStop(1, el.gradient[1]);
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = el.fill || '#1f3a5f';
+    }
+    ctx.fill();
+    if(el.shadow) ctx.restore();
+    if(el.stroke && el.strokeWidth){ ctx.lineWidth = el.strokeWidth; ctx.strokeStyle = el.stroke; ctx.stroke(); }
+  });
+}
+
+function drawImageElement(ctx, el){
+  withTransform(ctx, el, ()=>{
+    ctx.save();
+    if(el.round){
+      ctx.beginPath(); ctx.ellipse(el.x+el.w/2, el.y+el.h/2, el.w/2, el.h/2, 0,0,Math.PI*2); ctx.clip();
+    } else if(el.radiusPct){
+      roundRectPath(ctx, el.x, el.y, el.w, el.h, Math.min(el.w,el.h)*el.radiusPct); ctx.clip();
+    }
+    const img = getImg(el.src);
+    if(img && img.complete && img.naturalWidth){
+      drawImageCover(ctx, img, el.x, el.y, el.w, el.h);
+    } else {
+      ctx.fillStyle = '#e5e7eb'; ctx.fillRect(el.x, el.y, el.w, el.h);
+      ctx.fillStyle = '#9aa1ab'; ctx.font='500 20px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('imagem', el.x+el.w/2, el.y+el.h/2);
+    }
+    ctx.restore();
+  });
+}
+
+function drawIconElement(ctx, el){
+  withTransform(ctx, el, ()=>{
+    if(el.bg){
+      ctx.beginPath(); ctx.ellipse(el.x+el.w/2, el.y+el.h/2, el.w/2, el.h/2, 0,0,Math.PI*2);
+      ctx.fillStyle = el.bg; ctx.fill();
+    }
+    const size = Math.min(el.w, el.h)*0.72;
+    drawIcon(ctx, el.key||'generico', el.x+el.w/2, el.y+el.h/2, size, el.color||'#ffffff');
+  });
+}
+
+function drawElement(ctx, el){
+  if(el.hidden) return;
+  if(el.type==='text') drawTextElement(ctx, el);
+  else if(el.type==='rect' || el.type==='ellipse') drawShapeElement(ctx, el);
+  else if(el.type==='image') drawImageElement(ctx, el);
+  else if(el.type==='icon') drawIconElement(ctx, el);
+}
+
+/* ---------- Seleção / handles / hit-test (com suporte a rotação) ---------- */
+function toLocal(pt, el){
+  const cx = el.x+el.w/2, cy = el.y+el.h/2;
+  const rad = -(el.rotation||0)*Math.PI/180;
+  const dx = pt.x-cx, dy = pt.y-cy;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  return { x: cx+dx*cos-dy*sin, y: cy+dx*sin+dy*cos };
+}
+function toCanvasPoint(lx,ly,el){
+  const cx = el.x+el.w/2, cy = el.y+el.h/2;
+  const rad = (el.rotation||0)*Math.PI/180;
+  const dx = lx-cx, dy = ly-cy;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  return { x: cx+dx*cos-dy*sin, y: cy+dx*sin+dy*cos };
+}
+function hitTestEl(pt, el){
+  const lp = toLocal(pt, el);
+  return lp.x>=el.x && lp.x<=el.x+el.w && lp.y>=el.y && lp.y<=el.y+el.h;
+}
+function findElementAt(pt, els){
+  for(let i=els.length-1;i>=0;i--){
+    const el = els[i];
+    if(!el.hidden && !el.locked && hitTestEl(pt, el)) return el;
   }
-
-  roundRectPath(ctx,cardX,footerY,cardW,footerH,{tl:0,tr:0,br:cardR,bl:cardR});
-  ctx.fillStyle=col.primary; ctx.fill();
-  ctx.fillStyle=col.accent;
-  ctx.fillRect(cardX, footerY, cardW, Math.max(2,cardH*0.008));
-
-  const mainLine = data.contato || data.cta || '';
-  ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.fillStyle=hexToRgba('#ffffff',0.75);
-  ctx.font=`700 ${Math.round(cardW*0.013)}px Poppins, Arial, sans-serif`;
-  ctx.fillText('CANDIDATE-SE', cardX+cardW*0.04, footerY+footerH*0.35);
-  const lineFit = fitText(ctx, mainLine, cardW*0.5, 1, cardW*0.022, cardW*0.014, 800, 'Poppins, Arial, sans-serif');
-  ctx.font=`800 ${Math.round(lineFit.size)}px Poppins, Arial, sans-serif`;
-  ctx.fillStyle='#ffffff';
-  ctx.fillText(lineFit.lines[0], cardX+cardW*0.04, footerY+footerH*0.68);
-
-  ctx.restore();
-  return false;
+  return null;
 }
-
-/* ---------------------------------------------------------
-   RENDER PRINCIPAL
---------------------------------------------------------- */
-function renderToCanvas(canvas, formatKey, data, col, interactive){
-  const fmt = FORMATS[formatKey];
-  canvas.width = fmt.w; canvas.height = fmt.h;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,fmt.w,fmt.h);
-  lastBannerRect = null; lastRowsHandleRect = null; lastBenHandleRect = null; lastColSplitHandleRect = null; lastTopSplitHandleRect = null; lastTitleHandleRect = null; lastLogoRect = null; lastLogoResizeHandleRect = null; lastBannerSizeHandleRect = null; lastRowsFontHandleRect = null; lastBensFontHandleRect = null; lastRowsBlockRect = null; lastBensBlockRect = null; lastTitleBlockRect = null; lastBadgeBlockRect = null; lastPhotoBlockRect = null; lastSalaryBlockRect = null; lastFooterBlockRect = null;
-
-  const bgGrad = ctx.createLinearGradient(0,0,fmt.w,fmt.h);
-  bgGrad.addColorStop(0, col.secondary);
-  bgGrad.addColorStop(0.55, col.primary);
-  bgGrad.addColorStop(1, shade(col.primary,-25));
-  ctx.fillStyle=bgGrad;
-  ctx.fillRect(0,0,fmt.w,fmt.h);
-
-  ctx.save();
-  ctx.beginPath(); ctx.arc(fmt.w*0.9, fmt.h*0.03, fmt.w*0.3,0,Math.PI*2);
-  ctx.fillStyle = hexToRgba(col.tertiary,0.22); ctx.fill();
-  ctx.beginPath(); ctx.arc(fmt.w*0.05, fmt.h*0.97, fmt.w*0.26,0,Math.PI*2);
-  ctx.fillStyle = hexToRgba(col.secondary,0.22); ctx.fill();
-  ctx.restore();
-
-  const isWide = fmt.w > fmt.h;
-  const truncated = isWide ? renderWide(ctx,fmt,data,col) : renderTall(ctx,fmt,data,col,!!interactive);
-
-  ctx.font = `600 ${Math.round(fmt.w*0.014)}px Poppins, Arial, sans-serif`;
-  ctx.fillStyle = hexToRgba('#ffffff',0.55);
-  ctx.textAlign='right'; ctx.textBaseline='bottom';
-  ctx.fillText('via Effect Pessoas & Performance', fmt.w-fmt.w*0.03, fmt.h-fmt.h*0.014);
-
-  return truncated;
+function getHandlePoints(el){
+  const cx=el.x+el.w/2, cy=el.y+el.h/2;
+  const pts = {
+    nw: toCanvasPoint(el.x, el.y, el),
+    ne: toCanvasPoint(el.x+el.w, el.y, el),
+    sw: toCanvasPoint(el.x, el.y+el.h, el),
+    se: toCanvasPoint(el.x+el.w, el.y+el.h, el)
+  };
+  if(el.type!=='text'){
+    pts.n = toCanvasPoint(cx, el.y, el);
+    pts.s = toCanvasPoint(cx, el.y+el.h, el);
+    pts.e = toCanvasPoint(el.x+el.w, cy, el);
+    pts.w = toCanvasPoint(el.x, cy, el);
+  }
+  pts.rotate = toCanvasPoint(cx, el.y-Math.max(36, el.h*0.18+24), el);
+  return pts;
 }
+function handleSize(fmt){ return Math.max(16, fmt.w*0.016); }
 
-/* ---------------------------------------------------------
-   ESTADO GERAL / EVENTOS
---------------------------------------------------------- */
-let currentFormat='feed';
-
-let bannerOffsets = {};
-let lastBannerRect = null;
-function getBannerOffset(fmtKey){
-  return bannerOffsets[fmtKey] || (bannerOffsets[fmtKey] = {x:0, y:0});
-}
-
-let logoOffsets = {};
-function getLogoOffset(fmtKey){
-  return logoOffsets[fmtKey] || (logoOffsets[fmtKey] = {x:0, y:0});
-}
-let lastLogoRect = null;
-let lastLogoResizeHandleRect = null;
-let lastLogoFitSize = null;
-let lastBannerSizeHandleRect = null;
-let lastBannerFitSize = null;
-
-let blockExtra = {};
-function getBlockExtra(fmtKey){
-  return blockExtra[fmtKey] || (blockExtra[fmtKey] = {rows:null, ben:null});
-}
-let lastRowsHandleRect = null;
-let lastBenHandleRect = null;
-let lastColSplitHandleRect = null;
-let lastTopSplitHandleRect = null;
-let lastTitleHandleRect = null;
-let lastTitleFitSize = null;
-let lastRowsFontHandleRect = null;
-let lastRowsFontFitSize = null;
-let lastBensFontHandleRect = null;
-let lastBensFontFitSize = null;
-
-let rowsOffsets = {};
-function getRowsOffset(fmtKey){
-  return rowsOffsets[fmtKey] || (rowsOffsets[fmtKey] = {x:0, y:0});
-}
-let bensOffsets = {};
-function getBensOffset(fmtKey){
-  return bensOffsets[fmtKey] || (bensOffsets[fmtKey] = {x:0, y:0});
-}
-let lastRowsBlockRect = null;
-let lastBensBlockRect = null;
-
-let titleOffsets = {};
-function getTitleOffset(fmtKey){ return titleOffsets[fmtKey] || (titleOffsets[fmtKey] = {x:0, y:0}); }
-let badgeOffsets = {};
-function getBadgeOffset(fmtKey){ return badgeOffsets[fmtKey] || (badgeOffsets[fmtKey] = {x:0, y:0}); }
-let photoOffsets = {};
-function getPhotoOffset(fmtKey){ return photoOffsets[fmtKey] || (photoOffsets[fmtKey] = {x:0, y:0}); }
-let salaryOffsets = {};
-function getSalaryOffset(fmtKey){ return salaryOffsets[fmtKey] || (salaryOffsets[fmtKey] = {x:0, y:0}); }
-let footerOffsets = {};
-function getFooterOffset(fmtKey){ return footerOffsets[fmtKey] || (footerOffsets[fmtKey] = {x:0, y:0}); }
-
-let lastTitleBlockRect = null;
-let lastBadgeBlockRect = null;
-let lastPhotoBlockRect = null;
-let lastSalaryBlockRect = null;
-let lastFooterBlockRect = null;
-
-let selectedTarget = null;
-
-function drawSelectionOutline(ctx, rect){
-  if(!rect) return;
+function drawSelectionUI(ctx, el, fmt){
+  const pts = getHandlePoints(el);
+  const hs = handleSize(fmt);
   ctx.save();
   ctx.setLineDash([8,6]);
   ctx.strokeStyle = 'rgba(37,99,235,0.9)';
   ctx.lineWidth = 2.5;
-  roundRectPath(ctx, rect.x-5, rect.y-5, rect.w+10, rect.h+10, 8);
+  ctx.beginPath();
+  ctx.moveTo(pts.nw.x, pts.nw.y); ctx.lineTo(pts.ne.x, pts.ne.y);
+  ctx.lineTo(pts.se.x, pts.se.y); ctx.lineTo(pts.sw.x, pts.sw.y); ctx.closePath();
   ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo((pts.nw.x+pts.ne.x)/2, (pts.nw.y+pts.ne.y)/2); ctx.lineTo(pts.rotate.x, pts.rotate.y); ctx.stroke();
   ctx.restore();
+
+  const handleNames = el.type==='text' ? ['nw','ne','sw','se'] : ['nw','ne','sw','se','n','s','e','w'];
+  handleNames.forEach(name=>{
+    const p = pts[name];
+    ctx.beginPath(); ctx.rect(p.x-hs/2, p.y-hs/2, hs, hs);
+    ctx.fillStyle='#ffffff'; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='rgba(37,99,235,0.9)'; ctx.stroke();
+  });
+  ctx.beginPath(); ctx.arc(pts.rotate.x, pts.rotate.y, hs*0.55, 0, Math.PI*2);
+  ctx.fillStyle='#ffffff'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(37,99,235,0.9)'; ctx.stroke();
 }
 
-function drawGrabHandle(ctx, cx, cy, w, vertical){
-  const h = w*0.34;
-  const rw = vertical ? h : w, rh = vertical ? w : h;
-  roundRectPath(ctx, cx-rw/2, cy-rh/2, rw, rh, Math.min(rw,rh)/2);
-  ctx.fillStyle = hexToRgba('#000000', 0.16);
-  ctx.fill();
-  ctx.fillStyle = hexToRgba('#ffffff', 0.9);
-  ctx.font = `700 ${Math.round(h*0.62)}px Arial, sans-serif`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.save();
-  if(vertical){ ctx.translate(cx,cy); ctx.rotate(Math.PI/2); ctx.fillText('⠿', 0, 1); }
-  else { ctx.fillText('⠿', cx, cy+1); }
-  ctx.restore();
-  return {x:cx-rw/2, y:cy-rh/2, w:rw, h:rh};
+function handleAt(pt, el, fmt){
+  const pts = getHandlePoints(el);
+  const hs = handleSize(fmt)*1.4;
+  const names = Object.keys(pts);
+  for(const name of names){
+    const p = pts[name];
+    if(Math.abs(pt.x-p.x)<=hs/2 && Math.abs(pt.y-p.y)<=hs/2) return name;
+  }
+  return null;
+}
+
+/* ---------- Render principal ---------- */
+function renderFormat(canvas, fmtKey, interactive){
+  const fmt = FORMATS[fmtKey];
+  canvas.width = fmt.w; canvas.height = fmt.h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,fmt.w,fmt.h);
+  const els = getElements(fmtKey);
+  els.forEach(el=> drawElement(ctx, el));
+  if(interactive && selectedId){
+    const el = els.find(e=>e.id===selectedId);
+    if(el) drawSelectionUI(ctx, el, fmt);
+  }
 }
 
 function draw(){
   const canvas = $('#preview');
-  const data = getData();
-  const col = getColors();
-  const truncated = renderToCanvas(canvas, currentFormat, data, col, true);
-  $('#overflowWarning').classList.toggle('show', !!truncated);
+  renderFormat(canvas, currentFormat, true);
   saveState();
-  syncFmtPanel();
 }
 
+/* ===========================================================
+   GERADOR DE LAYOUT PADRÃO (ponto de partida a partir do formulário)
+=========================================================== */
+function tagList(data){
+  return [data.contratacao, data.regime, data.cidade, data.horario].filter(Boolean);
+}
+
+function measureChipWidth(ctx, text, font, padX){
+  ctx.font = font;
+  return ctx.measureText(text).width + padX*2;
+}
+
+function buildTallLayout(fmt, data, col){
+  const W=fmt.w, H=fmt.h;
+  const els = [];
+  const tmpCanvas = document.createElement('canvas');
+  const ctx = tmpCanvas.getContext('2d');
+
+  els.push(newRectEl(0,0,W,H,{fill:col.primary, gradient:[col.secondary, shade(col.primary,-25)], radiusPct:0}));
+  els.push(newEllipseEl(W*0.6,-W*0.27,W*0.6,W*0.6,{fill:col.tertiary, opacity:0.22}));
+  els.push(newEllipseEl(-W*0.21,H-W*0.29,W*0.52,W*0.52,{fill:col.secondary, opacity:0.22}));
+
+  const cardX=W*0.045, cardY=H*0.045, cardW=W-cardX*2, cardH=H-cardY*2;
+  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.09, shadow:true}));
+
+  const pad = cardW*0.045;
+  const topH = cardH*0.48;
+  const leftW = cardW*0.57, rightW = cardW-leftW;
+
+  // painel foto / ícone
+  if(data.foto){
+    els.push(newImageEl(cardX+leftW, cardY, rightW, topH, data.foto, {radiusPct:0}));
+  } else {
+    els.push(newRectEl(cardX+leftW, cardY, rightW, topH, {fill:col.primary, gradient:[col.primary, shade(col.primary,-25)], radiusPct:0}));
+    els.push(newIconEl(cardX+leftW, cardY, rightW, topH, data.categoria, hexToRgba('#ffffff',0.85)));
+  }
+
+  // banner sobre a foto
+  let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
+  if(bannerText){
+    const bt = newTextEl(cardX+leftW+rightW*0.06, cardY+cardW*0.03, rightW*0.74, `📍 ${bannerText.toUpperCase()}`, {
+      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'rgba(20,20,20,0.82)', align:'left', radius:cardW*0.012
+    });
+    els.push(bt);
+  }
+
+  // logo
+  if(col.logo){
+    const logoSize = cardW*0.16;
+    els.push(newImageEl(cardX+leftW+cardW*0.04, cardY+topH-logoSize-cardW*0.04, logoSize, logoSize, col.logo, {round:true}));
+  }
+
+  const lx = cardX+pad, lw = leftW-pad-cardW*0.055;
+  let y = cardY+cardH*0.035;
+
+  els.push(newTextEl(lx, y, lw*0.7, '📣 VAGA ABERTA', {fontSize:cardW*0.023, fontWeight:700, color:'#ffffff', bg:col.primary, align:'left'}));
+  y += cardW*0.05 + cardH*0.02;
+
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.07, cardW*0.044, 800, "'Poppins', Arial, sans-serif");
+  const titleEl = newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1});
+  els.push(titleEl);
+  y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.022;
+
+  const tags = tagList(data);
+  if(tags.length){
+    const tagFont = `600 ${Math.round(cardW*0.021)}px 'Poppins', Arial, sans-serif`;
+    const tagH = cardW*0.036, tagPadX = cardW*0.015, gapX = cardW*0.011;
+    let tx = lx, ty = y, rowMaxH = tagH, usedW = 0;
+    tags.forEach((t,i)=>{
+      const w = measureChipWidth(ctx, t, tagFont, tagPadX);
+      if(usedW+w > lw && usedW>0){ tx = lx; ty += tagH+cardH*0.011; usedW=0; }
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.021, fontWeight:600, color:col.primary, bg:hexToRgba(i%2? col.tertiary: col.secondary,0.35), align:'center', radius:tagH/2}));
+      tx += w+gapX; usedW += w+gapX;
+    });
+    y = ty+tagH+cardH*0.018;
+  }
+
+  if(data.requisitos.length){
+    const rowsFont = cardW*0.026;
+    data.requisitos.forEach((r,i)=>{
+      const t = newTextEl(lx, y, lw, `🎓 ${r}`, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
+      els.push(t);
+      const lines = wrapLines(ctx, `🎓 ${r}`, lw);
+      y += lines.length*rowsFont*1.3*1.3 + rowsFont*0.35;
+    });
+    y += cardH*0.01;
+  }
+
+  const footerH = cardH*0.11;
+  let by = y;
+  if(data.salario && by+cardH*0.088 < cardY+cardH-footerH){
+    const salH = cardH*0.088;
+    els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:col.primary, radiusPct:0.24}));
+    els.push(newTextEl(cardX+pad+salH*0.22, by, cardW-pad*2-salH*0.4, `💰 SALÁRIO\n${data.salario}`, {fontSize:cardW*0.026, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
+    by += salH+cardH*0.022;
+  }
+
+  if(data.beneficios.length){
+    const headerFont = `700 ${Math.round(cardW*0.023)}px 'Poppins', Arial, sans-serif`;
+    const headerH = cardW*0.05;
+    const hw = measureChipWidth(ctx, '🎁 BENEFÍCIOS', headerFont, cardW*0.02);
+    els.push(newTextEl(cardX+pad, by, hw, '🎁 BENEFÍCIOS', {fontSize:cardW*0.023, fontWeight:700, color:textColorOn(col.tertiary), bg:col.tertiary, align:'left'}));
+    by += headerH+cardH*0.014;
+    const colGap = cardW*0.03;
+    const colW = (cardW-pad*2-colGap)/2;
+    const benFont = cardW*0.02;
+    let leftY=by, rightY=by;
+    data.beneficios.forEach((b,i)=>{
+      const isLeft = i%2===0;
+      const bx = isLeft ? cardX+pad : cardX+pad+colW+colGap;
+      const byy = isLeft ? leftY : rightY;
+      const t = newTextEl(bx, byy, colW, `✅ ${b}`, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28});
+      els.push(t);
+      const lines = wrapLines(ctx, `✅ ${b}`, colW);
+      const h = lines.length*benFont*1.28+benFont*0.4;
+      if(isLeft) leftY += h; else rightY += h;
+    });
+  }
+
+  // rodapé
+  const footerY = cardY+cardH-footerH;
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0}));
+  els.push(newRectEl(cardX, footerY, cardW, Math.max(3,cardH*0.006), {fill:col.tertiary, radiusPct:0}));
+  const fBadgeSize = footerH*0.46;
+  els.push(newIconEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, 'generico', '#ffffff', {bg:col.tertiary}));
+  const mainLine = data.contato || data.cta || '';
+  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.14, cardW*0.6, 'INTERESSADOS, ENTRE EM CONTATO', {fontSize:cardW*0.016, fontWeight:700, color:'rgba(255,255,255,0.7)', align:'left'}));
+  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.42, cardW*0.6, mainLine, {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left'}));
+
+  els.push(newTextEl(W*0.55, H-H*0.045, W*0.42, 'via Effect Pessoas & Performance', {fontSize:W*0.014, fontWeight:600, color:'rgba(255,255,255,0.55)', align:'right', opacity:0.9}));
+
+  return els;
+}
+
+function buildWideLayout(fmt, data, col){
+  const W=fmt.w, H=fmt.h;
+  const els = [];
+  const tmpCanvas = document.createElement('canvas');
+  const ctx = tmpCanvas.getContext('2d');
+
+  els.push(newRectEl(0,0,W,H,{fill:col.primary, gradient:[col.secondary, shade(col.primary,-25)], radiusPct:0}));
+
+  const cardX=W*0.035, cardY=H*0.06, cardW=W-cardX*2, cardH=H-cardY*2;
+  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.05, shadow:true}));
+
+  const rightW=cardW*0.36, leftW=cardW-rightW;
+  if(data.foto){
+    els.push(newImageEl(cardX+leftW, cardY, rightW, cardH, data.foto, {radiusPct:0}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, opacity:0.55, radiusPct:0}));
+  } else {
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusPct:0}));
+  }
+  if(col.logo){
+    const logoSize = rightW*0.3;
+    els.push(newImageEl(cardX+leftW+rightW/2-logoSize/2, cardY+cardH*0.1, logoSize, logoSize, col.logo, {round:true}));
+  }
+  els.push(newIconEl(cardX+leftW+rightW*0.25, cardY+cardH*0.34, rightW*0.5, rightW*0.5, data.categoria, '#ffffff', {bg:hexToRgba(col.tertiary,0.3)}));
+  els.push(newTextEl(cardX+leftW+rightW*0.11, cardY+cardH*0.8, rightW*0.78, 'ESTAMOS CONTRATANDO', {fontSize:rightW*0.075, fontWeight:700, color:'#ffffff', align:'center', lineHeight:1.15}));
+
+  const innerX=cardX+cardW*0.045, innerW=leftW-cardW*0.07;
+  let y=cardY+cardH*0.09;
+  const fit = fitText(ctx, data.cargo.toUpperCase(), innerW, 2, cardW*0.05, cardW*0.028, 800, "'Poppins', Arial, sans-serif");
+  els.push(newTextEl(innerX, y, innerW, data.cargo.toUpperCase(), {fontSize:fit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
+  y += fit.lines.length*fit.size*1.15 + cardH*0.03;
+
+  const tags = tagList(data);
+  if(tags.length){
+    const tagFont = `600 ${Math.round(cardW*0.015)}px 'Poppins', Arial, sans-serif`;
+    const tagH = cardW*0.032, padX=cardW*0.012, gapX=cardW*0.01;
+    let tx=innerX, ty=y;
+    tags.forEach((t,i)=>{
+      const w = measureChipWidth(ctx, t, tagFont, padX);
+      if(tx+w>innerX+innerW && tx>innerX){ tx=innerX; ty+=tagH+cardH*0.014; }
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.015, fontWeight:600, color:col.primary, bg:hexToRgba(i%2?col.tertiary:col.secondary,0.35), align:'center', radius:tagH/2}));
+      tx += w+gapX;
+    });
+    y = ty+tagH+cardH*0.02;
+  }
+
+  if(data.salario){
+    els.push(newTextEl(innerX, y, innerW, `SALÁRIO: ${data.salario}`, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
+    y += cardH*0.06;
+  }
+
+  const combined = [
+    ...data.requisitos.slice(0,3).map(r=>'✓  '+r),
+    ...data.beneficios.slice(0,2).map(b=>'★  '+b)
+  ];
+  combined.forEach(t=>{
+    els.push(newTextEl(innerX, y, innerW, t, {fontSize:cardW*0.0145, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4}));
+    y += cardW*0.0145*1.4*1.35;
+  });
+
+  const footerH = cardH*0.14, footerY=cardY+cardH-footerH;
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0}));
+  els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.008), {fill:col.accent, radiusPct:0}));
+  const mainLine = data.contato || data.cta || '';
+  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.16, cardW*0.5, 'CANDIDATE-SE', {fontSize:cardW*0.013, fontWeight:700, color:'rgba(255,255,255,0.75)', align:'left'}));
+  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.5, cardW*0.5, mainLine, {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left'}));
+
+  return els;
+}
+
+function generateDefaultLayout(fmtKey){
+  const fmt = FORMATS[fmtKey];
+  const data = getData();
+  const col = getColors();
+  return (fmt.w>fmt.h) ? buildWideLayout(fmt,data,col) : buildTallLayout(fmt,data,col);
+}
+
+function confirmAndGenerate(fmtKey){
+  const els = getElements(fmtKey);
+  const doIt = () => {
+    pushHistory();
+    layouts[fmtKey] = generateDefaultLayout(fmtKey);
+    selectedId = null;
+    draw(); syncElPanel();
+  };
+  if(els.length){
+    if(confirm('Isso substitui a arte atual deste formato pelo design gerado a partir do formulário. Continuar?')) doIt();
+  } else {
+    doIt();
+  }
+}
+
+/* ---------- Interação: seleção, arrastar, redimensionar, girar ---------- */
+function canvasPointFromEvent(e){
+  const canvas = $('#preview');
+  const rect = canvas.getBoundingClientRect();
+  const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+  return { x: (t.clientX-rect.left)*scaleX, y: (t.clientY-rect.top)*scaleY };
+}
+
+const CORNER_ANCHOR = {nw:'se', ne:'sw', sw:'ne', se:'nw'};
+function cornerPoint(box, name){
+  return { x: name.includes('w') ? box.x : box.x+box.w, y: name.includes('n') ? box.y : box.y+box.h };
+}
+
+function applyShapeResize(handle, el, startEl, localPt){
+  let x0=startEl.x, y0=startEl.y, x1=startEl.x+startEl.w, y1=startEl.y+startEl.h;
+  if(handle.includes('n')) y0 = localPt.y;
+  if(handle.includes('s')) y1 = localPt.y;
+  if(handle.includes('w')) x0 = localPt.x;
+  if(handle.includes('e')) x1 = localPt.x;
+  const minSize=12;
+  if(x1-x0<minSize){ if(handle.includes('w')) x0=x1-minSize; else x1=x0+minSize; }
+  if(y1-y0<minSize){ if(handle.includes('n')) y0=y1-minSize; else y1=y0+minSize; }
+  el.x=Math.min(x0,x1); el.y=Math.min(y0,y1); el.w=Math.abs(x1-x0); el.h=Math.abs(y1-y0);
+}
+
+function applyTextResize(handle, el, startEl, localPt){
+  const anchorName = CORNER_ANCHOR[handle];
+  const anchor = cornerPoint(startEl, anchorName);
+  const startCorner = cornerPoint(startEl, handle);
+  const d0 = Math.hypot(startCorner.x-anchor.x, startCorner.y-anchor.y) || 1;
+  const d1 = Math.hypot(localPt.x-anchor.x, localPt.y-anchor.y);
+  let scale = d1/d0;
+  scale = Math.min(Math.max(scale, 0.15), 8);
+  el.fontSize = Math.max(6, startEl.fontSize*scale);
+  const newW = Math.max(20, startEl.w*scale);
+  const newH = Math.max(10, startEl.h*scale);
+  if(handle==='se'){ el.x=anchor.x; el.y=anchor.y; }
+  else if(handle==='nw'){ el.x=anchor.x-newW; el.y=anchor.y-newH; }
+  else if(handle==='ne'){ el.x=anchor.x; el.y=anchor.y-newH; }
+  else if(handle==='sw'){ el.x=anchor.x-newW; el.y=anchor.y; }
+  el.w = newW;
+}
+
+function wireCanvasInteraction(){
+  const canvas = $('#preview');
+
+  const onDown = (e)=>{
+    const pt = canvasPointFromEvent(e);
+    const els = getElements(currentFormat);
+    const fmt = FORMATS[currentFormat];
+
+    if(selectedId){
+      const el = findElement(currentFormat, selectedId);
+      if(el){
+        const h = handleAt(pt, el, fmt);
+        if(h==='rotate'){
+          pushHistory();
+          activeDrag = {mode:'rotate', el};
+          canvas.style.cursor='grabbing'; e.preventDefault(); return;
+        }
+        if(h){
+          pushHistory();
+          activeDrag = {mode:'resize', handle:h, el, startEl: JSON.parse(JSON.stringify(el))};
+          canvas.style.cursor='grabbing'; e.preventDefault(); return;
+        }
+      }
+    }
+
+    const hit = findElementAt(pt, els);
+    if(hit){
+      selectedId = hit.id;
+      pushHistory();
+      activeDrag = {mode:'move', el:hit, startPt:pt, startX:hit.x, startY:hit.y};
+      canvas.style.cursor='grabbing';
+      draw(); syncElPanel();
+      e.preventDefault();
+    } else {
+      if(selectedId){ selectedId=null; draw(); syncElPanel(); }
+    }
+  };
+
+  const onMove = (e)=>{
+    const pt = canvasPointFromEvent(e);
+    if(activeDrag){
+      const el = activeDrag.el;
+      if(activeDrag.mode==='move'){
+        el.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
+        el.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
+      } else if(activeDrag.mode==='resize'){
+        const localPt = toLocal(pt, activeDrag.startEl);
+        if(el.type==='text') applyTextResize(activeDrag.handle, el, activeDrag.startEl, localPt);
+        else applyShapeResize(activeDrag.handle, el, activeDrag.startEl, localPt);
+      } else if(activeDrag.mode==='rotate'){
+        const cx=el.x+el.w/2, cy=el.y+el.h/2;
+        let angle = Math.atan2(pt.y-cy, pt.x-cx)*180/Math.PI + 90;
+        if(e.shiftKey) angle = Math.round(angle/15)*15;
+        el.rotation = Math.round(angle);
+      }
+      draw();
+      e.preventDefault();
+    } else {
+      const els = getElements(currentFormat);
+      const fmt = FORMATS[currentFormat];
+      let cursor='default';
+      if(selectedId){
+        const el = findElement(currentFormat, selectedId);
+        if(el){ const h = handleAt(pt, el, fmt); if(h==='rotate') cursor='grab'; else if(h) cursor='nwse-resize'; }
+      }
+      if(cursor==='default' && findElementAt(pt, els)) cursor='grab';
+      canvas.style.cursor = cursor;
+    }
+  };
+
+  const onUp = ()=>{
+    if(activeDrag){
+      activeDrag = null;
+      canvas.style.cursor='grab';
+      syncElPanel();
+      saveState();
+    }
+  };
+
+  canvas.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, {passive:false});
+  canvas.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  window.addEventListener('keydown', (e)=>{
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    const inField = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT';
+
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !inField){
+      e.preventDefault();
+      if(e.shiftKey) doRedo(); else doUndo();
+      return;
+    }
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y' && !inField){
+      e.preventDefault(); doRedo(); return;
+    }
+
+    if(!selectedId || inField) return;
+
+    if(e.key==='Delete' || e.key==='Backspace'){
+      e.preventDefault();
+      deleteSelected();
+      return;
+    }
+    const dirMap = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0]};
+    const dir = dirMap[e.key];
+    if(!dir) return;
+    e.preventDefault();
+    const el = findElement(currentFormat, selectedId);
+    if(!el) return;
+    const step = e.shiftKey ? 16 : 4;
+    el.x += dir[0]*step; el.y += dir[1]*step;
+    draw();
+  });
+}
+
+/* ---------- Ações de elemento (adicionar / duplicar / excluir / camadas) ---------- */
+function selectElement(id){
+  selectedId = id;
+  draw(); syncElPanel();
+}
+
+function addElement(el){
+  pushHistory();
+  const els = getElements(currentFormat);
+  els.push(el);
+  selectedId = el.id;
+  draw(); syncElPanel();
+}
+
+function deleteSelected(){
+  if(!selectedId) return;
+  pushHistory();
+  const els = getElements(currentFormat);
+  const idx = els.findIndex(e=>e.id===selectedId);
+  if(idx>=0) els.splice(idx,1);
+  selectedId = null;
+  draw(); syncElPanel();
+}
+
+function duplicateSelected(){
+  if(!selectedId) return;
+  const els = getElements(currentFormat);
+  const el = els.find(e=>e.id===selectedId);
+  if(!el) return;
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(el));
+  copy.id = uid();
+  copy.x += 24; copy.y += 24;
+  els.push(copy);
+  selectedId = copy.id;
+  draw(); syncElPanel();
+}
+
+function layerMove(dir){
+  if(!selectedId) return;
+  const els = getElements(currentFormat);
+  const idx = els.findIndex(e=>e.id===selectedId);
+  if(idx<0) return;
+  pushHistory();
+  const [el] = els.splice(idx,1);
+  if(dir==='front') els.push(el);
+  else els.unshift(el);
+  draw(); syncElPanel();
+}
+
+/* ---------- Painel de propriedades do elemento selecionado ---------- */
+function syncElPanel(){
+  const panel = $('#elPanel');
+  const el = selectedId ? findElement(currentFormat, selectedId) : null;
+  if(!el){ panel.style.display='none'; return; }
+  panel.style.display='block';
+
+  $('#elTypeLabel').textContent = ({text:'· Texto', rect:'· Retângulo', ellipse:'· Círculo', image:'· Imagem', icon:'· Ícone'})[el.type] || '';
+
+  $('#elTextControls').style.display = el.type==='text' ? 'block':'none';
+  $('#elShapeControls').style.display = (el.type==='rect'||el.type==='ellipse') ? 'block':'none';
+  $('#elIconControls').style.display = el.type==='icon' ? 'block':'none';
+  $('#elImageControls').style.display = el.type==='image' ? 'block':'none';
+
+  if(el.type==='text'){
+    $('#elText').value = el.text||'';
+    $('#elFontSize').value = Math.round(el.fontSize);
+    $('#elFontSizeVal').textContent = Math.round(el.fontSize)+'px';
+    $('#elBold').checked = (el.fontWeight||500) >= 700;
+    $('#elItalic').checked = !!el.italic;
+    $('#elColor').value = el.color || '#2a2a2e';
+    $('#elBgToggle').checked = !!el.bg;
+    $('#elBgColor').value = toHexColor(el.bg) || '#1f3a5f';
+    $('#elBgColor').style.visibility = el.bg ? 'visible':'hidden';
+    const lh = Math.round((el.lineHeight||1.25)*100);
+    $('#elLineH').value = lh; $('#elLineHVal').textContent = lh+'%';
+    document.querySelectorAll('#elAlignRow button').forEach(b=> b.classList.toggle('active', b.dataset.align===(el.align||'left')));
+  }
+  if(el.type==='rect'||el.type==='ellipse'){
+    $('#elFill').value = el.fill || '#1f3a5f';
+    $('#elGradToggle').checked = !!el.gradient;
+    $('#elGrad1').value = (el.gradient && el.gradient[0]) || '#1f3a5f';
+    $('#elGrad2').value = (el.gradient && el.gradient[1]) || '#7fb8e6';
+    const radPct = Math.round((el.radiusPct!=null?el.radiusPct:0.12)*100);
+    $('#elRadius').value = radPct; $('#elRadiusVal').textContent = radPct+'%';
+    $('#elRadius').closest('div, label').style.display = el.type==='rect' ? '' : 'none';
+  }
+  if(el.type==='icon'){
+    $('#elIconKey').value = el.key||'generico';
+    $('#elIconColor').value = el.color || '#ffffff';
+    $('#elIconBgToggle').checked = !!el.bg;
+    $('#elIconBg').value = toHexColor(el.bg) || '#1f3a5f';
+  }
+  if(el.type==='image'){
+    $('#elImageRound').checked = !!el.round;
+  }
+
+  const op = Math.round((el.opacity!=null?el.opacity:1)*100);
+  $('#elOpacity').value = op; $('#elOpacityVal').textContent = op+'%';
+  const rot = Math.round(el.rotation||0);
+  $('#elRotation').value = rot; $('#elRotVal').textContent = rot+'°';
+}
+
+function toHexColor(v){
+  if(!v) return null;
+  if(v.startsWith('#')) return v;
+  return null; // rgba() não é suportado pelo <input type=color>; ignora e mantém cor anterior
+}
+
+function currentEl(){ return selectedId ? findElement(currentFormat, selectedId) : null; }
+
+function wireElPanel(){
+  let editingFlag = false;
+  function withHistory(fn){
+    return (e)=>{
+      const el = currentEl(); if(!el) return;
+      if(!editingFlag){ pushHistory(); editingFlag=true; }
+      fn(el, e);
+      draw();
+    };
+  }
+  ['#elText','#elFontSize','#elBold','#elItalic','#elColor','#elBgToggle','#elBgColor','#elLineH',
+   '#elFill','#elGradToggle','#elGrad1','#elGrad2','#elRadius','#elIconKey','#elIconColor','#elIconBgToggle','#elIconBg',
+   '#elImageRound','#elOpacity','#elRotation'].forEach(sel=>{
+    const node = $(sel);
+    node.addEventListener('focus', ()=>{ editingFlag=false; });
+    node.addEventListener('mousedown', ()=>{ editingFlag=false; });
+  });
+
+  $('#elText').addEventListener('input', withHistory((el,e)=>{ el.text = e.target.value; }));
+  $('#elFontSize').addEventListener('input', withHistory((el,e)=>{ el.fontSize = parseInt(e.target.value,10); $('#elFontSizeVal').textContent = e.target.value+'px'; }));
+  $('#elBold').addEventListener('change', withHistory((el,e)=>{ el.fontWeight = e.target.checked ? 800 : 500; }));
+  $('#elItalic').addEventListener('change', withHistory((el,e)=>{ el.italic = e.target.checked; }));
+  $('#elColor').addEventListener('input', withHistory((el,e)=>{ el.color = e.target.value; }));
+  $('#elBgToggle').addEventListener('change', withHistory((el,e)=>{ el.bg = e.target.checked ? $('#elBgColor').value : null; $('#elBgColor').style.visibility = el.bg?'visible':'hidden'; }));
+  $('#elBgColor').addEventListener('input', withHistory((el,e)=>{ if(el.bg) el.bg = e.target.value; }));
+  $('#elLineH').addEventListener('input', withHistory((el,e)=>{ el.lineHeight = parseInt(e.target.value,10)/100; $('#elLineHVal').textContent = e.target.value+'%'; }));
+
+  document.querySelectorAll('#elAlignRow button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const el = currentEl(); if(!el) return;
+      pushHistory();
+      el.align = b.dataset.align;
+      document.querySelectorAll('#elAlignRow button').forEach(x=>x.classList.toggle('active', x===b));
+      draw();
+    });
+  });
+
+  $('#elFill').addEventListener('input', withHistory((el,e)=>{ el.fill = e.target.value; }));
+  $('#elGradToggle').addEventListener('change', withHistory((el,e)=>{ el.gradient = e.target.checked ? [$('#elGrad1').value, $('#elGrad2').value] : null; }));
+  $('#elGrad1').addEventListener('input', withHistory((el,e)=>{ if(el.gradient) el.gradient=[e.target.value, el.gradient[1]]; }));
+  $('#elGrad2').addEventListener('input', withHistory((el,e)=>{ if(el.gradient) el.gradient=[el.gradient[0], e.target.value]; }));
+  $('#elRadius').addEventListener('input', withHistory((el,e)=>{ el.radiusPct = parseInt(e.target.value,10)/100; $('#elRadiusVal').textContent = e.target.value+'%'; }));
+
+  $('#elIconKey').addEventListener('change', withHistory((el,e)=>{ el.key = e.target.value; }));
+  $('#elIconColor').addEventListener('input', withHistory((el,e)=>{ el.color = e.target.value; }));
+  $('#elIconBgToggle').addEventListener('change', withHistory((el,e)=>{ el.bg = e.target.checked ? $('#elIconBg').value : null; }));
+  $('#elIconBg').addEventListener('input', withHistory((el,e)=>{ if(el.bg) el.bg = e.target.value; }));
+
+  $('#elImageFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; const el = currentEl();
+    if(!file || !el) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ pushHistory(); el.src = reader.result; draw(); };
+    reader.readAsDataURL(file);
+  });
+  $('#elImageRound').addEventListener('change', withHistory((el,e)=>{ el.round = e.target.checked; }));
+
+  $('#elOpacity').addEventListener('input', withHistory((el,e)=>{ el.opacity = parseInt(e.target.value,10)/100; $('#elOpacityVal').textContent = e.target.value+'%'; }));
+  $('#elRotation').addEventListener('input', withHistory((el,e)=>{ el.rotation = parseInt(e.target.value,10); $('#elRotVal').textContent = e.target.value+'°'; }));
+
+  $('#elDuplicate').addEventListener('click', duplicateSelected);
+  $('#elDelete').addEventListener('click', deleteSelected);
+  $('#elFront').addEventListener('click', ()=>layerMove('front'));
+  $('#elBack').addEventListener('click', ()=>layerMove('back'));
+
+  window.addEventListener('mouseup', ()=>{ editingFlag=false; });
+}
+
+function wireToolbar(){
+  const fmt = ()=>FORMATS[currentFormat];
+
+  $('#addText').addEventListener('click', ()=>{
+    const f = fmt();
+    addElement(newTextEl(f.w*0.3, f.h*0.45, f.w*0.4, 'Novo texto', {fontSize:f.w*0.035, fontWeight:600, color:'#2a2a2e', align:'left'}));
+  });
+  $('#addRect').addEventListener('click', ()=>{
+    const f = fmt();
+    addElement(newRectEl(f.w*0.35, f.h*0.4, f.w*0.3, f.h*0.15, {fill:'#1f3a5f', radiusPct:0.12}));
+  });
+  $('#addEllipse').addEventListener('click', ()=>{
+    const f = fmt();
+    addElement(newEllipseEl(f.w*0.4, f.h*0.4, f.w*0.2, f.w*0.2, {fill:'#8ed1b2'}));
+  });
+  $('#addIcon').addEventListener('click', ()=>{
+    const f = fmt();
+    addElement(newIconEl(f.w*0.4, f.h*0.4, f.w*0.2, f.w*0.2, 'generico', '#ffffff', {bg:'#1f3a5f'}));
+  });
+  $('#addImageBtn').addEventListener('click', ()=> $('#addImageFile').click());
+  $('#addImageFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const f = fmt();
+      const ratio = 1;
+      addElement(newImageEl(f.w*0.3, f.h*0.35, f.w*0.4, f.w*0.4, reader.result));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  $('#btnUndo').addEventListener('click', doUndo);
+  $('#btnRedo').addEventListener('click', doRedo);
+
+  $('#generateLayout').addEventListener('click', ()=> confirmAndGenerate(currentFormat));
+}
+
+/* ---------------------------------------------------------
+   PERSISTÊNCIA (localStorage — por navegador)
+--------------------------------------------------------- */
 function saveState(){
   const state = {
     companyId: currentCompany ? currentCompany.id : null,
@@ -1790,16 +1758,7 @@ function saveState(){
     cta: $('#cta').value,
     contato: $('#contato').value,
     banner: $('#banner').value,
-    bannerOffsets: bannerOffsets,
-    logoOffsets: logoOffsets,
-    rowsOffsets: rowsOffsets,
-    bensOffsets: bensOffsets,
-    titleOffsets: titleOffsets,
-    badgeOffsets: badgeOffsets,
-    photoOffsets: photoOffsets,
-    salaryOffsets: salaryOffsets,
-    footerOffsets: footerOffsets,
-    blockExtra: blockExtra
+    layouts: layouts
   };
   try{ localStorage.setItem(STORAGE_STATE, JSON.stringify(state)); }catch(e){}
 }
@@ -1821,29 +1780,7 @@ function loadState(){
   $('#cta').value = state.cta||'';
   $('#contato').value = state.contato||'';
   $('#banner').value = state.banner||'';
-  if(state.bannerOffsets && typeof state.bannerOffsets==='object') bannerOffsets = state.bannerOffsets;
-  if(state.logoOffsets && typeof state.logoOffsets==='object') logoOffsets = state.logoOffsets;
-  if(state.rowsOffsets && typeof state.rowsOffsets==='object') rowsOffsets = state.rowsOffsets;
-  if(state.bensOffsets && typeof state.bensOffsets==='object') bensOffsets = state.bensOffsets;
-  if(state.titleOffsets && typeof state.titleOffsets==='object') titleOffsets = state.titleOffsets;
-  if(state.badgeOffsets && typeof state.badgeOffsets==='object') badgeOffsets = state.badgeOffsets;
-  if(state.photoOffsets && typeof state.photoOffsets==='object') photoOffsets = state.photoOffsets;
-  if(state.salaryOffsets && typeof state.salaryOffsets==='object') salaryOffsets = state.salaryOffsets;
-  if(state.footerOffsets && typeof state.footerOffsets==='object') footerOffsets = state.footerOffsets;
-  if(state.blockExtra && typeof state.blockExtra==='object'){
-    blockExtra = state.blockExtra;
-    // Migração: versões antigas usavam um único "bodyFontSize" compartilhado entre
-    // Informações e Benefícios. Aplica o valor salvo às duas novas fontes independentes,
-    // preservando a aparência de artes já criadas.
-    Object.keys(blockExtra).forEach(fmtKey=>{
-      const be = blockExtra[fmtKey];
-      if(be && be.bodyFontSize!=null){
-        if(be.rowsFontSize==null) be.rowsFontSize = be.bodyFontSize;
-        if(be.bensFontSize==null) be.bensFontSize = be.bodyFontSize;
-        delete be.bodyFontSize;
-      }
-    });
-  }
+  if(state.layouts && typeof state.layouts==='object') layouts = state.layouts;
   if(state.companyId){
     const c = companies.find(x=>x.id===state.companyId);
     if(c) currentCompany=c;
@@ -1869,11 +1806,12 @@ function downloadCanvas(canvas, filename){
    INICIALIZAÇÃO DA UI
 --------------------------------------------------------- */
 function initCategorySelect(){
-  const sel = $('#categoria');
-  CATEGORIES.forEach(c=>{
-    const opt=document.createElement('option');
-    opt.value=c.v; opt.textContent=c.l;
-    sel.appendChild(opt);
+  [ $('#categoria'), $('#elIconKey') ].forEach(sel=>{
+    CATEGORIES.forEach(c=>{
+      const opt=document.createElement('option');
+      opt.value=c.v; opt.textContent=c.l;
+      sel.appendChild(opt);
+    });
   });
 }
 
@@ -1886,10 +1824,13 @@ function initFormatTabs(){
     btn.dataset.key=key;
     btn.addEventListener('click',()=>{
       currentFormat=key;
-      selectedTarget=null;
+      selectedId=null;
       wrap.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      draw();
+      if(!getElements(currentFormat).length){
+        layouts[currentFormat] = generateDefaultLayout(currentFormat);
+      }
+      draw(); syncElPanel();
     });
     wrap.appendChild(btn);
   });
@@ -2017,8 +1958,8 @@ function wireJobFields(){
   ['cargo','categoria','contratacao','regime','horario','cidade','salario','requisitos','beneficios','cta','contato','banner']
   .forEach(id=>{
     const el = $('#'+id);
-    el.addEventListener('input', draw);
-    el.addEventListener('change', draw);
+    el.addEventListener('input', saveState);
+    el.addEventListener('change', saveState);
   });
 }
 
@@ -2030,7 +1971,7 @@ function wireJobPhoto(){
     reader.onload = ()=>{
       jobPhotoDataUrl = reader.result;
       $('#jobPhotoPreview').innerHTML = `<img src="${reader.result}">`;
-      draw();
+      saveState();
     };
     reader.readAsDataURL(file);
   });
@@ -2038,304 +1979,26 @@ function wireJobPhoto(){
   $('#removeJobPhoto').addEventListener('click', ()=>{
     jobPhotoDataUrl = null;
     $('#jobPhotoPreview').innerHTML = '—';
-    draw();
-  });
-}
-
-let activeDrag = null;
-
-function canvasPointFromEvent(e){
-  const canvas = $('#preview');
-  const rect = canvas.getBoundingClientRect();
-  const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-  const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
-  return { x: (t.clientX-rect.left)*scaleX, y: (t.clientY-rect.top)*scaleY };
-}
-
-function pointInRect(pt, r){
-  return !!r && pt.x>=r.x && pt.x<=r.x+r.w && pt.y>=r.y && pt.y<=r.y+r.h;
-}
-
-function findDragTarget(pt){
-  if(pointInRect(pt, lastLogoResizeHandleRect)) return 'logoSize';
-  if(pointInRect(pt, lastBannerSizeHandleRect)) return 'bannerSize';
-  if(pointInRect(pt, lastRowsFontHandleRect)) return 'rowsFontSize';
-  if(pointInRect(pt, lastBensFontHandleRect)) return 'bensFontSize';
-  if(pointInRect(pt, lastLogoRect)) return 'logo';
-  if(pointInRect(pt, lastBannerRect)) return 'banner';
-  if(pointInRect(pt, lastRowsHandleRect)) return 'rows';
-  if(pointInRect(pt, lastBenHandleRect)) return 'ben';
-  if(pointInRect(pt, lastColSplitHandleRect)) return 'colsplit';
-  if(pointInRect(pt, lastTopSplitHandleRect)) return 'topsplit';
-  if(pointInRect(pt, lastTitleHandleRect)) return 'titlesize';
-  if(pointInRect(pt, lastRowsBlockRect)) return 'rowsBlock';
-  if(pointInRect(pt, lastBensBlockRect)) return 'bensBlock';
-  if(pointInRect(pt, lastTitleBlockRect)) return 'titleBlock';
-  if(pointInRect(pt, lastBadgeBlockRect)) return 'badgeBlock';
-  if(pointInRect(pt, lastSalaryBlockRect)) return 'salaryBlock';
-  if(pointInRect(pt, lastFooterBlockRect)) return 'footerBlock';
-  if(pointInRect(pt, lastPhotoBlockRect)) return 'photoBlock';
-  return null;
-}
-
-function wireCanvasDrag(){
-  const canvas = $('#preview');
-
-  const MOVABLE = ['banner','logo','rowsBlock','bensBlock','titleBlock','badgeBlock','salaryBlock','footerBlock','photoBlock'];
-  const OFFSET_GETTERS = {
-    banner:getBannerOffset, logo:getLogoOffset, rowsBlock:getRowsOffset, bensBlock:getBensOffset,
-    titleBlock:getTitleOffset, badgeBlock:getBadgeOffset, salaryBlock:getSalaryOffset,
-    footerBlock:getFooterOffset, photoBlock:getPhotoOffset
-  };
-
-  const onDown = (e)=>{
-    const pt = canvasPointFromEvent(e);
-    const target = findDragTarget(pt);
-    if(!target){
-      if(selectedTarget){ selectedTarget = null; draw(); }
-      return;
-    }
-    if(MOVABLE.includes(target)) selectedTarget = target;
-    if(MOVABLE.includes(target)){
-      const off = OFFSET_GETTERS[target](currentFormat);
-      activeDrag = {type:target, startPt:pt, startX:off.x, startY:off.y};
-    } else if(target==='colsplit'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'colsplit', startPt:pt, startVal: be.col||0};
-    } else if(target==='topsplit'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'topsplit', startPt:pt, startVal: be.top||0};
-    } else if(target==='titlesize'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'titlesize', startPt:pt, startVal: be.titleSize!=null ? be.titleSize : (lastTitleFitSize||0)};
-    } else if(target==='bannerSize'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'bannerSize', startPt:pt, startVal: be.bannerSize!=null ? be.bannerSize : (lastBannerFitSize||0)};
-    } else if(target==='logoSize'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'logoSize', startPt:pt, startVal: be.logoSize!=null ? be.logoSize : (lastLogoFitSize||0)};
-    } else if(target==='rowsFontSize'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'rowsFontSize', startPt:pt, startVal: be.rowsFontSize!=null ? be.rowsFontSize : (lastRowsFontFitSize||0)};
-    } else if(target==='bensFontSize'){
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:'bensFontSize', startPt:pt, startVal: be.bensFontSize!=null ? be.bensFontSize : (lastBensFontFitSize||0)};
-    } else {
-      const be = getBlockExtra(currentFormat);
-      activeDrag = {type:target, startPt:pt, startVal: be[target]||0};
-    }
-    canvas.style.cursor = 'grabbing';
-    draw();
-    e.preventDefault();
-  };
-  const onMove = (e)=>{
-    const pt = canvasPointFromEvent(e);
-    if(activeDrag){
-      if(MOVABLE.includes(activeDrag.type)){
-        const off = OFFSET_GETTERS[activeDrag.type](currentFormat);
-        off.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
-        off.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='colsplit'){
-        const be = getBlockExtra(currentFormat);
-        be.col = activeDrag.startVal + (pt.x-activeDrag.startPt.x);
-      } else if(activeDrag.type==='topsplit'){
-        const be = getBlockExtra(currentFormat);
-        be.top = activeDrag.startVal + (pt.x-activeDrag.startPt.x);
-      } else if(activeDrag.type==='titlesize'){
-        const be = getBlockExtra(currentFormat);
-        be.titleSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='bannerSize'){
-        const be = getBlockExtra(currentFormat);
-        be.bannerSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='logoSize'){
-        const be = getBlockExtra(currentFormat);
-        be.logoSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='rowsFontSize'){
-        const be = getBlockExtra(currentFormat);
-        be.rowsFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.type==='bensFontSize'){
-        const be = getBlockExtra(currentFormat);
-        be.bensFontSize = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      } else {
-        const be = getBlockExtra(currentFormat);
-        be[activeDrag.type] = activeDrag.startVal + (pt.y-activeDrag.startPt.y);
-      }
-      draw();
-      e.preventDefault();
-    } else {
-      canvas.style.cursor = findDragTarget(pt) ? 'grab' : 'default';
-    }
-  };
-  const onUp = ()=>{
-    if(activeDrag){
-      activeDrag = null;
-      canvas.style.cursor = 'grab';
-      saveState();
-    }
-  };
-
-  canvas.addEventListener('mousedown', onDown);
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('mouseup', onUp);
-  canvas.addEventListener('touchstart', onDown, {passive:false});
-  canvas.addEventListener('touchmove', onMove, {passive:false});
-  window.addEventListener('touchend', onUp);
-
-  window.addEventListener('keydown', (e)=>{
-    if(!selectedTarget || !MOVABLE.includes(selectedTarget)) return;
-    const tag = (document.activeElement && document.activeElement.tagName) || '';
-    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
-    const dirMap = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0]};
-    const dir = dirMap[e.key];
-    if(!dir) return;
-    e.preventDefault();
-    const step = e.shiftKey ? 16 : 4;
-    const off = OFFSET_GETTERS[selectedTarget](currentFormat);
-    off.x += dir[0]*step;
-    off.y += dir[1]*step;
-    draw();
-  });
-
-  $('#resetBannerPos').addEventListener('click', (e)=>{
-    e.preventDefault();
-    bannerOffsets[currentFormat] = {x:0, y:0};
-    logoOffsets[currentFormat] = {x:0, y:0};
-    const be = getBlockExtra(currentFormat);
-    be.bannerSize = null; be.logoSize = null;
-    draw();
-  });
-  $('#resetBlockSpacing').addEventListener('click', (e)=>{
-    e.preventDefault();
-    const be = getBlockExtra(currentFormat);
-    blockExtra[currentFormat] = {rows:null, ben:null, col:0, top:0, titleSize:null, rowsFontSize:null, bensFontSize:null, titleLineH:null, rowsLineH:null, bensLineH:null, rowsBold:false, bensBold:false, badgeScale:null, salaryScale:null, footerScale:null, bannerSize: be.bannerSize!=null?be.bannerSize:null, logoSize: be.logoSize!=null?be.logoSize:null};
-    rowsOffsets[currentFormat] = {x:0, y:0};
-    bensOffsets[currentFormat] = {x:0, y:0};
-    titleOffsets[currentFormat] = {x:0, y:0};
-    badgeOffsets[currentFormat] = {x:0, y:0};
-    photoOffsets[currentFormat] = {x:0, y:0};
-    salaryOffsets[currentFormat] = {x:0, y:0};
-    footerOffsets[currentFormat] = {x:0, y:0};
-    draw();
-  });
-}
-
-/* ---------------------------------------------------------
-   PAINEL DE FORMATAÇÃO DE TEXTO (tamanho, espaçamento, negrito)
---------------------------------------------------------- */
-const FMT_BLOCKS = {
-  title:  { sizeKey:'titleSize',    isScale:false, lineHKey:'titleLineH', boldKey:null,       fitVar:()=>lastTitleFitSize },
-  rows:   { sizeKey:'rowsFontSize', isScale:false, lineHKey:'rowsLineH',  boldKey:'rowsBold',  fitVar:()=>lastRowsFontFitSize },
-  bens:   { sizeKey:'bensFontSize', isScale:false, lineHKey:'bensLineH',  boldKey:'bensBold',  fitVar:()=>lastBensFontFitSize },
-  badge:  { sizeKey:'badgeScale',   isScale:true,  lineHKey:null,         boldKey:null },
-  salary: { sizeKey:'salaryScale',  isScale:true,  lineHKey:null,         boldKey:null },
-  footer: { sizeKey:'footerScale',  isScale:true,  lineHKey:null,         boldKey:null },
-};
-
-function fmtSizeToPct(cfg, be){
-  const raw = be[cfg.sizeKey];
-  if(cfg.isScale) return raw!=null ? Math.round(raw*100) : 100;
-  const ref = cfg.fitVar ? cfg.fitVar() : null;
-  if(!ref) return 100;
-  return Math.round((raw!=null ? raw : ref)/ref*100);
-}
-
-function fmtPctToSize(cfg, be, pct){
-  if(cfg.isScale) return Math.min(Math.max(pct/100, 0.55), 1.8);
-  const ref = cfg.fitVar ? cfg.fitVar() : null;
-  if(!ref) return null;
-  return ref*(pct/100);
-}
-
-function syncFmtPanel(){
-  const blockSel = $('#fmtBlock');
-  if(!blockSel) return;
-  const key = blockSel.value;
-  const cfg = FMT_BLOCKS[key];
-  const be = getBlockExtra(currentFormat);
-
-  const pct = fmtSizeToPct(cfg, be);
-  $('#fmtSize').value = pct;
-  $('#fmtSizeVal').textContent = pct+'%';
-
-  const lineHRow = $('#fmtLineHRow');
-  if(cfg.lineHKey){
-    lineHRow.style.display = '';
-    const lhPct = Math.round((be[cfg.lineHKey]!=null ? be[cfg.lineHKey] : 1)*100);
-    $('#fmtLineH').value = lhPct;
-    $('#fmtLineHVal').textContent = lhPct+'%';
-  } else {
-    lineHRow.style.display = 'none';
-  }
-
-  const boldRow = $('#fmtBoldRow');
-  if(cfg.boldKey){
-    boldRow.style.display = '';
-    $('#fmtBold').checked = !!be[cfg.boldKey];
-  } else {
-    boldRow.style.display = 'none';
-  }
-}
-
-function wireFmtPanel(){
-  const blockSel = $('#fmtBlock');
-  blockSel.addEventListener('change', syncFmtPanel);
-
-  $('#fmtSize').addEventListener('input', (e)=>{
-    const cfg = FMT_BLOCKS[blockSel.value];
-    const be = getBlockExtra(currentFormat);
-    const pct = parseInt(e.target.value, 10);
-    $('#fmtSizeVal').textContent = pct+'%';
-    const val = fmtPctToSize(cfg, be, pct);
-    if(val!=null) be[cfg.sizeKey] = val;
-    draw();
-  });
-
-  $('#fmtLineH').addEventListener('input', (e)=>{
-    const cfg = FMT_BLOCKS[blockSel.value];
-    if(!cfg.lineHKey) return;
-    const be = getBlockExtra(currentFormat);
-    const pct = parseInt(e.target.value, 10);
-    $('#fmtLineHVal').textContent = pct+'%';
-    be[cfg.lineHKey] = Math.min(Math.max(pct/100, 0.85), 1.6);
-    draw();
-  });
-
-  $('#fmtBold').addEventListener('change', (e)=>{
-    const cfg = FMT_BLOCKS[blockSel.value];
-    if(!cfg.boldKey) return;
-    const be = getBlockExtra(currentFormat);
-    be[cfg.boldKey] = e.target.checked;
-    draw();
-  });
-
-  $('#fmtReset').addEventListener('click', ()=>{
-    const cfg = FMT_BLOCKS[blockSel.value];
-    const be = getBlockExtra(currentFormat);
-    be[cfg.sizeKey] = null;
-    if(cfg.lineHKey) be[cfg.lineHKey] = null;
-    if(cfg.boldKey) be[cfg.boldKey] = false;
-    draw();
+    saveState();
   });
 }
 
 function wireDownloads(){
   $('#downloadCurrent').addEventListener('click', ()=>{
     const data = getData();
-    const col = getColors();
     const tmp = document.createElement('canvas');
-    renderToCanvas(tmp, currentFormat, data, col);
+    renderFormat(tmp, currentFormat, false);
     downloadCanvas(tmp, `vaga-${slug(data.cargo)}-${currentFormat}.png`);
-    draw(); // restaura os tamanhos "naturais" do formato atual (usados no painel de formatação)
   });
 
   $('#downloadAll').addEventListener('click', async ()=>{
     const data = getData();
-    const col = getColors();
     const keys = Object.keys(FORMATS);
     for(let i=0;i<keys.length;i++){
       const key = keys[i];
+      if(!getElements(key).length) layouts[key] = generateDefaultLayout(key);
       const tmp = document.createElement('canvas');
-      renderToCanvas(tmp, key, data, col);
+      renderFormat(tmp, key, false);
       await new Promise(res=>{
         tmp.toBlob(blob=>{
           const url = URL.createObjectURL(blob);
@@ -2346,7 +2009,6 @@ function wireDownloads(){
         }, 'image/png');
       });
     }
-    draw(); // restaura os tamanhos "naturais" do formato atual (usados no painel de formatação)
   });
 }
 
@@ -2364,8 +2026,9 @@ async function init(){
   wireJobFields();
   wireJobPhoto();
   wireDownloads();
-  wireCanvasDrag();
-  wireFmtPanel();
+  wireCanvasInteraction();
+  wireElPanel();
+  wireToolbar();
 
   loadState();
 
@@ -2380,7 +2043,12 @@ async function init(){
 
   $('#companySelect').addEventListener('change', onCompanySelectChange);
 
+  if(!getElements(currentFormat).length){
+    layouts[currentFormat] = generateDefaultLayout(currentFormat);
+  }
+
   draw();
+  syncElPanel();
 }
 
 document.addEventListener('DOMContentLoaded', init);
