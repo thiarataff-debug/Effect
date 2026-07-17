@@ -369,6 +369,15 @@
         <label class="first">Texto</label>
         <textarea id="elText" rows="3"></textarea>
 
+        <div class="row2" style="margin-top:6px;">
+          <button type="button" class="btn btn-outline btn-sm" id="elBoldSel" title="Selecione um trecho no texto acima e clique aqui"><b>B</b> Negrito na seleção</button>
+          <label class="colitem" style="flex-direction:row; align-items:center; gap:6px;">
+            <input type="color" id="elColorSel" title="Cor só da seleção">
+            <span style="font-size:12px;">Cor da seleção</span>
+          </label>
+        </div>
+        <div class="hint">Arraste o mouse sobre uma palavra ou trecho no campo "Texto" acima e clique em "Negrito na seleção" ou escolha uma cor — só aquele trecho muda, igual no Canva/Word.</div>
+
         <label>Tamanho da fonte <span id="elFontSizeVal" style="color:var(--gray); font-weight:500;"></span></label>
         <input type="range" id="elFontSize" min="10" max="260" step="1">
 
@@ -969,16 +978,197 @@ function fontString(el){
   return `${el.italic?'italic ':''}${el.fontWeight||500} ${Math.round(el.fontSize)}px 'Poppins', Arial, sans-serif`;
 }
 
+/* ---------- Formatação parcial (negrito/cor só de um trecho, dentro do mesmo texto) ----------
+   el.runs (opcional): lista de {start, end, bold, color} com índices de caractere sobre el.text.
+   bold/color = null significa "herdar o estilo base do elemento" (fontWeight/color). Não precisa
+   cobrir o texto inteiro nem ser contínua — normalizeRuns() preenche qualquer buraco em tempo de
+   desenho, então nunca perde texto mesmo que a edição desalinhe os índices. */
+function normalizeRuns(text, runs){
+  const len = text.length;
+  if(!runs || !runs.length) return [{start:0, end:len, bold:null, color:null}];
+  const sorted = runs.map(r=>({...r})).sort((a,b)=>a.start-b.start);
+  const out = []; let pos = 0;
+  sorted.forEach(r=>{
+    const rs = Math.max(0, Math.min(r.start, len));
+    const re = Math.max(rs, Math.min(r.end, len));
+    if(rs>pos) out.push({start:pos, end:rs, bold:null, color:null});
+    if(re>rs) out.push({start:rs, end:re, bold: r.bold!=null?r.bold:null, color: r.color||null});
+    pos = Math.max(pos, re);
+  });
+  if(pos<len) out.push({start:pos, end:len, bold:null, color:null});
+  return out.length ? out : [{start:0, end:len, bold:null, color:null}];
+}
+
+function sameRunStyle(a,b){ return a.bold===b.bold && a.color===b.color; }
+
+function mergeRuns(el){
+  if(!el.runs || !el.runs.length) return;
+  const sorted = el.runs.slice().sort((a,b)=>a.start-b.start);
+  const out = [];
+  sorted.forEach(r=>{
+    const last = out[out.length-1];
+    if(last && last.end===r.start && sameRunStyle(last,r)) last.end = r.end;
+    else out.push({...r});
+  });
+  el.runs = out.filter(r=>r.end>r.start);
+  const isTrivial = el.runs.length<=1 && el.runs.every(r=>r.bold==null && r.color==null);
+  if(!el.runs.length || isTrivial) el.runs = null;
+}
+
+function ensureRuns(el){
+  if(!el.runs || !el.runs.length) el.runs = [{start:0, end:(el.text||'').length, bold:null, color:null}];
+  return el.runs;
+}
+
+function splitRunsAt(el, pos){
+  const runs = ensureRuns(el);
+  for(let i=0;i<runs.length;i++){
+    const r = runs[i];
+    if(pos>r.start && pos<r.end){
+      runs.splice(i+1, 0, {start:pos, end:r.end, bold:r.bold, color:r.color});
+      r.end = pos;
+      return;
+    }
+  }
+}
+
+// Aplica bold/cor só ao intervalo [start,end) do texto do elemento (usado pelo picker de
+// negrito/cor da seleção no painel lateral).
+function applyRunStyle(el, start, end, mutateFn){
+  const len = (el.text||'').length;
+  start = Math.max(0, Math.min(start, len));
+  end = Math.max(0, Math.min(end, len));
+  if(start>=end) return false;
+  ensureRuns(el);
+  splitRunsAt(el, start);
+  splitRunsAt(el, end);
+  el.runs.forEach(r=>{ if(r.start>=start && r.end<=end) mutateFn(r); });
+  mergeRuns(el);
+  return true;
+}
+
+// Mantém as marcações de negrito/cor no lugar certo quando o texto é editado (digitado) depois
+// de já ter formatação parcial aplicada. Detecta a região que mudou (prefixo/sufixo comuns) e
+// desloca os índices dos runs de acordo.
+function shiftRunsForEdit(el, oldVal, newVal){
+  if(!el.runs || !el.runs.length || oldVal===newVal) return;
+  let p=0; const maxP = Math.min(oldVal.length, newVal.length);
+  while(p<maxP && oldVal[p]===newVal[p]) p++;
+  let s=0; const maxS = Math.min(oldVal.length-p, newVal.length-p);
+  while(s<maxS && oldVal[oldVal.length-1-s]===newVal[newVal.length-1-s]) s++;
+  const oldEnd = oldVal.length-s, newEnd = newVal.length-s;
+  const delta = newEnd-oldEnd;
+  function remap(pos){
+    if(pos<=p) return pos;
+    if(pos>=oldEnd) return pos+delta;
+    return p;
+  }
+  el.runs.forEach(r=>{ r.start = remap(r.start); r.end = remap(r.end); });
+  el.runs = el.runs.filter(r=>r.end>r.start);
+  mergeRuns(el);
+}
+
+// Quebra o texto de um parágrafo em "grupos" (palavra ou espaço), cada palavra podendo conter
+// vários pedaços com estilos diferentes (ex: metade em negrito). Preserva os índices exatos do
+// texto original, então funciona junto com applyRunStyle/shiftRunsForEdit sem perder alinhamento.
+function splitParagraphIntoGroups(text, runs){
+  const norm = normalizeRuns(text, runs);
+  const atoms = [];
+  norm.forEach(r=>{
+    const piece = text.slice(r.start, r.end);
+    const re = /\S+|\s+/g; let m;
+    while((m = re.exec(piece))){
+      atoms.push({text:m[0], isSpace:/^\s/.test(m[0]), bold:r.bold, color:r.color});
+    }
+  });
+  const groups = []; let cur = null;
+  atoms.forEach(a=>{
+    if(a.isSpace){ if(cur){ groups.push(cur); cur=null; } groups.push({space:true, text:a.text}); }
+    else { if(!cur) cur = {space:false, chunks:[]}; cur.chunks.push(a); }
+  });
+  if(cur) groups.push(cur);
+  return groups;
+}
+
+function fontForChunk(bold, fontPx, family){ return `${bold?800:500} ${Math.round(fontPx)}px ${family}`; }
+
+function measureGroupWidth(ctx, g, fontPx, family, baseBold){
+  if(g.space){ ctx.font = fontForChunk(baseBold, fontPx, family); return ctx.measureText(g.text).width; }
+  let w=0;
+  g.chunks.forEach(c=>{
+    ctx.font = fontForChunk(c.bold!=null?c.bold:baseBold, fontPx, family);
+    w += ctx.measureText(c.text).width;
+  });
+  return w;
+}
+
+function wrapRichGroups(ctx, text, runs, maxWidth, fontPx, family, baseBold){
+  const groups = splitParagraphIntoGroups(text, runs);
+  const lines = []; let cur = []; let curW = 0;
+  groups.forEach(g=>{
+    if(g.space){
+      if(cur.length){ cur.push(g); curW += measureGroupWidth(ctx,g,fontPx,family,baseBold); }
+      return;
+    }
+    const gw = measureGroupWidth(ctx,g,fontPx,family,baseBold);
+    const hasWord = cur.some(x=>!x.space);
+    if(curW+gw>maxWidth && hasWord){
+      while(cur.length && cur[cur.length-1].space) cur.pop();
+      lines.push(cur);
+      cur = [g]; curW = gw;
+    } else { cur.push(g); curW += gw; }
+  });
+  while(cur.length && cur[cur.length-1].space) cur.pop();
+  lines.push(cur);
+  return lines;
+}
+
+function lineGroupsWidth(ctx, groups, fontPx, family, baseBold){
+  return groups.reduce((acc,g)=> acc+measureGroupWidth(ctx,g,fontPx,family,baseBold), 0);
+}
+
+function drawRichLine(ctx, groups, startX, baselineY, fontPx, family, baseBold, baseColor){
+  let x = startX;
+  groups.forEach(g=>{
+    if(g.space){ ctx.font = fontForChunk(baseBold, fontPx, family); x += ctx.measureText(g.text).width; return; }
+    g.chunks.forEach(c=>{
+      const bold = c.bold!=null ? c.bold : baseBold;
+      const color = c.color || baseColor;
+      ctx.font = fontForChunk(bold, fontPx, family);
+      ctx.fillStyle = color;
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      ctx.fillText(c.text, x, baselineY);
+      x += ctx.measureText(c.text).width;
+    });
+  });
+}
+
 function drawTextElement(ctx, el){
+  const family = "'Poppins', Arial, sans-serif";
   ctx.font = fontString(el);
   const lineH = el.fontSize*(el.lineHeight||1.25);
   const padX = el.bg ? el.fontSize*0.55 : 0;
   const padY = el.bg ? el.fontSize*0.3 : 0;
   const wrapW = Math.max(10, el.w - padX*2);
-  const raw = String(el.text||'');
-  let lines = [];
-  raw.split('\n').forEach(p=>{ lines.push(...wrapLines(ctx, p, wrapW)); });
-  if(!lines.length) lines=[''];
+  const text = String(el.text||'');
+  const baseBold = (el.fontWeight||500)>=700;
+  const baseColor = el.color||'#2a2a2e';
+
+  // divide o texto em parágrafos (respeitando quebras manuais \n), mantendo o índice de cada
+  // um dentro do texto completo pra recortar os runs corretamente.
+  const paraLines = []; // cada item: {groups}
+  let offset = 0;
+  text.split('\n').forEach(p=>{
+    const localRuns = (el.runs||[]).map(r=>({
+      start: Math.max(0, Math.min(r.start-offset, p.length)),
+      end: Math.max(0, Math.min(r.end-offset, p.length)),
+      bold:r.bold, color:r.color
+    })).filter(r=>r.end>r.start);
+    const wrapped = wrapRichGroups(ctx, p, localRuns, wrapW, el.fontSize, family, baseBold);
+    wrapped.forEach(g=> paraLines.push(g));
+    offset += p.length+1;
+  });
+  const lines = paraLines.length ? paraLines : [[]];
   el.h = lines.length*lineH + padY*2;
 
   withTransform(ctx, el, ()=>{
@@ -987,14 +1177,12 @@ function drawTextElement(ctx, el){
       roundRectPath(ctx, el.x, el.y, el.w, el.h, r);
       ctx.fillStyle = el.bg; ctx.fill();
     }
-    ctx.fillStyle = el.color||'#2a2a2e';
-    ctx.textBaseline='alphabetic';
-    ctx.textAlign = el.align||'left';
-    let tx = el.x+padX;
-    if(el.align==='center') tx = el.x+el.w/2;
-    else if(el.align==='right') tx = el.x+el.w-padX;
-    lines.forEach((ln,i)=>{
-      ctx.fillText(ln, tx, el.y+padY+el.fontSize*0.85+i*lineH);
+    lines.forEach((groups,i)=>{
+      const lw = lineGroupsWidth(ctx, groups, el.fontSize, family, baseBold);
+      let tx = el.x+padX;
+      if(el.align==='center') tx = el.x+el.w/2-lw/2;
+      else if(el.align==='right') tx = el.x+el.w-padX-lw;
+      drawRichLine(ctx, groups, tx, el.y+padY+el.fontSize*0.85+i*lineH, el.fontSize, family, baseBold, baseColor);
     });
   });
 }
@@ -1673,13 +1861,50 @@ function wireElPanel(){
   }
   ['#elText','#elFontSize','#elBold','#elItalic','#elColor','#elBgToggle','#elBgColor','#elLineH',
    '#elFill','#elGradToggle','#elGrad1','#elGrad2','#elRadius','#elIconKey','#elIconColor','#elIconBgToggle','#elIconBg',
-   '#elImageRound','#elOpacity','#elRotation'].forEach(sel=>{
+   '#elImageRound','#elOpacity','#elRotation','#elColorSel'].forEach(sel=>{
     const node = $(sel);
     node.addEventListener('focus', ()=>{ editingFlag=false; });
     node.addEventListener('mousedown', ()=>{ editingFlag=false; });
   });
 
-  $('#elText').addEventListener('input', withHistory((el,e)=>{ el.text = e.target.value; }));
+  $('#elText').addEventListener('input', withHistory((el,e)=>{
+    const oldVal = el.text||'';
+    const newVal = e.target.value;
+    if(el.runs && el.runs.length) shiftRunsForEdit(el, oldVal, newVal);
+    el.text = newVal;
+  }));
+
+  $('#elBoldSel').addEventListener('click', ()=>{
+    const el = currentEl(); const ta = $('#elText');
+    if(!el || el.type!=='text') return;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    if(start==null || end==null || start===end){
+      alert('Selecione um trecho do texto (arraste o mouse sobre as palavras no campo "Texto") antes de clicar aqui.');
+      return;
+    }
+    pushHistory();
+    const baseBold = (el.fontWeight||500)>=700;
+    applyRunStyle(el, start, end, (r)=>{ const cur = r.bold!=null ? r.bold : baseBold; r.bold = !cur; });
+    draw();
+    ta.focus(); ta.setSelectionRange(start,end);
+  });
+
+  let colorSelRange = null;
+  $('#elColorSel').addEventListener('mousedown', ()=>{
+    const ta = $('#elText');
+    if(ta.selectionStart!=null && ta.selectionStart!==ta.selectionEnd) colorSelRange = {start:ta.selectionStart, end:ta.selectionEnd};
+  });
+  $('#elColorSel').addEventListener('input', (e)=>{
+    const el = currentEl(); const ta = $('#elText');
+    if(!el || el.type!=='text') return;
+    const range = colorSelRange || (ta.selectionStart!==ta.selectionEnd ? {start:ta.selectionStart,end:ta.selectionEnd} : null);
+    if(!range) return;
+    if(!editingFlag){ pushHistory(); editingFlag=true; }
+    const color = e.target.value;
+    applyRunStyle(el, range.start, range.end, (r)=>{ r.color = color; });
+    draw();
+    ta.focus(); ta.setSelectionRange(range.start, range.end);
+  });
   $('#elFontSize').addEventListener('input', withHistory((el,e)=>{ el.fontSize = parseInt(e.target.value,10); $('#elFontSizeVal').textContent = e.target.value+'px'; }));
   $('#elBold').addEventListener('change', withHistory((el,e)=>{ el.fontWeight = e.target.checked ? 800 : 500; }));
   $('#elItalic').addEventListener('change', withHistory((el,e)=>{ el.italic = e.target.checked; }));
