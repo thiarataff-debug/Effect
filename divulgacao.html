@@ -1244,7 +1244,7 @@ function buildTallLayout(fmt, data, col){
       const t = newTextEl(lx, y, lw, r, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
       els.push(t);
       const lines = wrapLines(ctx, r, lw);
-      y += lines.length*rowsFont*1.3*1.3 + rowsFont*0.35;
+      y += lines.length*rowsFont*1.3 + rowsFont*0.35;
     });
     y += cardH*0.01;
   }
@@ -1351,7 +1351,7 @@ function buildWideLayout(fmt, data, col){
   ];
   combined.forEach(t=>{
     els.push(newTextEl(innerX, y, innerW, t, {fontSize:cardW*0.0145, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4}));
-    y += cardW*0.0145*1.4*1.35;
+    y += cardW*0.0145*1.4 + cardW*0.0145*0.3;
   });
 
   const footerH = cardH*0.14, footerY=cardY+cardH-footerH;
