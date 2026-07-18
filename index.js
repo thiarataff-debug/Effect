@@ -1886,16 +1886,18 @@ app.post("/disc/submit", async (req, res) => {
     const telefone = limparTelefone(req.body.telefone || '');
     const nome = String(req.body.nome || '').trim();
     const vaga = String(req.body.vaga || '').trim();
+    const nivel = String(req.body.nivel || 'administrativo').trim().toLowerCase();
     const percentuaisNatural = req.body.percentuaisNatural || {};
     const percentuaisAdaptado = req.body.percentuaisAdaptado || {};
     const primarioNatural = req.body.primarioNatural || '';
     const primarioAdaptado = req.body.primarioAdaptado || '';
     const secundarioNatural = req.body.secundarioNatural || null;
     const relatorioRH = req.body.relatorioRH || null;
+    const relatorioGestor = req.body.relatorioGestor || null;
 
     const resultado = {
       respondidoEm: new Date().toISOString(),
-      nome, vaga,
+      nome, vaga, nivel,
       percentuaisNatural,
       percentuaisAdaptado,
       primario: primarioNatural,          // compatibilidade com inbox
@@ -1903,7 +1905,8 @@ app.post("/disc/submit", async (req, res) => {
       primarioAdaptado,
       secundario: secundarioNatural,
       secundarioNatural,
-      relatorioRH
+      relatorioRH,
+      relatorioGestor
     };
 
     if (telefone && sessoes[telefone]) {
@@ -1954,6 +1957,8 @@ app.get("/disc/resultado-view/:telefone", (req, res) => {
   const pctN = d.percentuaisNatural || d.percentuais || {};
   const pctA = d.percentuaisAdaptado || {};
   const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
+  const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+  const nivelLabel = NIVEL_LABEL[d.nivel || rh?.nivel] || '';
 
   function barras(pct) {
     return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
@@ -1977,15 +1982,30 @@ app.get("/disc/resultado-view/:telefone", (req, res) => {
     const m = rh.match;
     const cor = m.score >= 70 ? '#16a34a' : m.score >= 45 ? '#d97706' : '#dc2626';
     const emoji = m.score >= 70 ? '✅' : m.score >= 45 ? '⚠️' : '❌';
+    const insights = [m.nota, m.tend].filter(Boolean);
     return `<div style="background:#f0fdf4;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
         <div style="font-size:28px;font-weight:800;color:${cor}">${m.score}%</div>
         <div>
-          <div style="font-size:13px;font-weight:700;color:${cor}">${emoji} ${m.nivel} para a vaga</div>
+          <div style="font-size:13px;font-weight:700;color:${cor}">${emoji} ${m.lbl||'Compatibilidade'} com a vaga</div>
           <div style="font-size:11px;color:#6b7280">${rh.vaga||'vaga não especificada'}</div>
         </div>
       </div>
-      ${m.insights&&m.insights.length?m.insights.map(i=>`<div style="font-size:12px;color:#374151;margin-bottom:4px">• ${i}</div>`).join(''):''}
+      ${insights.length?insights.map(i=>`<div style="font-size:12px;color:#374151;margin-bottom:4px">• ${i}</div>`).join(''):''}
+    </div>`;
+  })() : '';
+
+  const aderenciaBloco = rh?.aderenciaNivel ? (() => {
+    const a = rh.aderenciaNivel;
+    const cor = a.score >= 80 ? '#16a34a' : a.score >= 60 ? '#1fa5f0' : a.score >= 40 ? '#d97706' : '#dc2626';
+    return `<div style="background:#f8fafc;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px;font-weight:800;color:${cor}">${a.score}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${cor}">${a.label} ao nível ${a.nivelLabel||''}</div>
+          <div style="font-size:11px;color:#6b7280">Leitura auxiliar comparando o perfil natural com o perfil DISC típico esperado para cargos deste nível — não substitui a avaliação da vaga específica.</div>
+        </div>
+      </div>
     </div>`;
   })() : '';
 
@@ -2060,7 +2080,7 @@ app.get("/disc/resultado-view/:telefone", (req, res) => {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div>
         <div style="font-size:18px;font-weight:800;color:#2a2a2b">${EMOJIS[d.primarioNatural||d.primario]||''} ${nome}</div>
-        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}</div>
+        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}${nivelLabel?' · Nível '+nivelLabel:''}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:13px;font-weight:700;color:${CORES[d.primarioNatural||d.primario]||'#374151'}">${NOMES[d.primarioNatural||d.primario]||''}${d.secundarioNatural?' / '+NOMES[d.secundarioNatural]:''}</div>
@@ -2080,10 +2100,110 @@ app.get("/disc/resultado-view/:telefone", (req, res) => {
     </div>
   </div>
 
+  ${aderenciaBloco}
   ${matchBloco}
   ${tensaoBloco}
   ${comboBloco}
   ${rhBloco}
+
+  <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
+  </body></html>`;
+  res.send(html);
+});
+
+// Relatório para o GESTOR — diferente do relatório de RH: aqui o foco é
+// "como gerenciar essa pessoa no dia a dia" (comunicação, delegação,
+// onboarding, motivação, sinais de alerta), não critérios de contratação.
+app.get("/disc/resultado-gestor/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discResult) return res.send('<h3>Sem resultado DISC para este candidato.</h3>');
+  const d = sessao.discResult;
+  const g = d.relatorioGestor || null;
+  const nome = d.nome || sessao.nome || tel;
+  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
+  const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Criterioso'};
+  const EMOJIS = {D:'🔴',I:'🟡',S:'🟢',C:'🔵'};
+  const pctN = d.percentuaisNatural || d.percentuais || {};
+  const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
+  const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+  const nivelLabel = NIVEL_LABEL[d.nivel || g?.nivel] || '';
+
+  if (!g) {
+    return res.send('<h3>Este candidato respondeu o teste antes da versão com relatório do gestor. Peça para refazer o teste para gerar esta visão.</h3>');
+  }
+
+  function barras(pct) {
+    return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;font-weight:800;color:${CORES[k]};width:12px">${k}</div>
+      <div style="flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden">
+        <div style="width:${pct[k]||0}%;height:100%;background:${CORES[k]};border-radius:999px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;width:28px;text-align:right">${pct[k]||0}%</div>
+    </div>`).join('');
+  }
+
+  function bloco(emoji, titulo, texto, cor='#1e3a5f') {
+    if (!texto) return '';
+    return `<div class="card">
+      <div style="font-size:12.5px;font-weight:800;color:${cor};margin-bottom:8px">${emoji} ${titulo}</div>
+      <p style="font-size:12.5px;color:#374151;line-height:1.6">${texto}</p>
+    </div>`;
+  }
+
+  const aderenciaBloco = g.aderenciaNivel ? (() => {
+    const a = g.aderenciaNivel;
+    const cor = a.score >= 80 ? '#16a34a' : a.score >= 60 ? '#1fa5f0' : a.score >= 40 ? '#d97706' : '#dc2626';
+    return `<div style="background:#f8fafc;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px;font-weight:800;color:${cor}">${a.score}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${cor}">${a.label} ao nível ${a.nivelLabel||''}</div>
+          <div style="font-size:11px;color:#6b7280">Comparação do perfil natural com o perfil DISC típico esperado para cargos deste nível.</div>
+        </div>
+      </div>
+    </div>`;
+  })() : '';
+
+  const perguntasBloco = (g.perguntasAlinhamento||[]).length ? `
+    <div class="card">
+      <div style="font-size:12.5px;font-weight:800;color:#1e3a5f;margin-bottom:10px">💬 Perguntas para usar nas primeiras conversas 1:1</div>
+      ${g.perguntasAlinhamento.map((p,i)=>`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:#a1a1aa;margin-bottom:3px">PERGUNTA ${i+1}</div><p style="font-size:12.5px;color:#374151;line-height:1.5">${p}</p></div>`).join('')}
+    </div>` : '';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>DISC Gestor — ${nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Montserrat',sans-serif;background:#f5f7fa;padding:24px 16px;max-width:680px;margin:0 auto}
+    .card{background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 1px 5px rgba(0,0,0,.08);margin-bottom:14px}
+    .logo{font-size:14px;font-weight:800;color:#2a2a2b;margin-bottom:18px}.logo span{color:#8ed1b2}
+    @media print{body{background:#fff;padding:10px}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
+  </style></head><body>
+  <div class="logo">Effect <span>Pessoas</span> · Guia para o Gestor</div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#2a2a2b">${EMOJIS[d.primarioNatural||d.primario]||''} ${nome}</div>
+        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}${nivelLabel?' · Nível '+nivelLabel:''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${CORES[d.primarioNatural||d.primario]||'#374151'}">${NOMES[d.primarioNatural||d.primario]||''}${d.secundarioNatural?' / '+NOMES[d.secundarioNatural]:''}</div>
+        <div style="font-size:11px;color:#a1a1aa">Perfil predominante</div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">${barras(pctN)}</div>
+    <p style="font-size:12.5px;color:#374151;line-height:1.6">${g.resumo||''}</p>
+  </div>
+
+  ${aderenciaBloco}
+  ${bloco('👔','Como gerenciar no dia a dia', g.comoGerenciar)}
+  ${bloco('💬','Como se comunicar melhor com essa pessoa', g.comoComunicar)}
+  ${bloco('📋','Como delegar tarefas', g.comoDelegar)}
+  ${bloco('🚀','Primeiros dias / onboarding', g.primeirosDias)}
+  ${bloco('🎯','O que motiva essa pessoa', g.gatilhosMotivacao,'#16a34a')}
+  ${bloco('⚠️','Sinais de alerta para acompanhar', g.sinaisAlerta,'#dc2626')}
+  ${perguntasBloco}
 
   <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
   </body></html>`;
