@@ -327,8 +327,12 @@
       <label>Requisitos (um por linha)</label>
       <textarea id="requisitos" placeholder="Ensino médio completo&#10;Experiência mínima de 1 ano&#10;Disponibilidade de horário"></textarea>
 
+      <label>Atividades (um por linha)</label>
+      <textarea id="atividades" placeholder="Atender clientes&#10;Organizar estoque&#10;Fechar caixa"></textarea>
+
       <label>Benefícios (um por linha)</label>
       <textarea id="beneficios" placeholder="Vale transporte&#10;Vale refeição&#10;Plano de saúde"></textarea>
+      <div class="hint">Requisitos, Atividades e Benefícios viram 3 caixas de texto separadas na arte — só com o que você digitar aqui, sem título nem ícone automático. Se quiser um título, adicione um texto novo (+ Texto) do jeito que preferir.</div>
 
       <label>Texto de chamada (CTA)</label>
       <input type="text" id="cta" placeholder="Preenchido pela empresa (editável)">
@@ -604,6 +608,17 @@ function hexToRgba(hex,a){
   if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
   const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
   return `rgba(${r},${g},${b},${a})`;
+}
+
+// Clareia uma cor misturando com branco (equivalente visual a hexToRgba sobre fundo branco),
+// mas devolve hex sólido — assim o seletor de cor <input type=color> consegue ler e editar.
+function tint(hex, amount){
+  hex=(hex||'#1f3a5f').replace('#','');
+  if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const mix = c => Math.round(c+(255-c)*amount);
+  const toHex = n => Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0');
+  return '#'+toHex(mix(r))+toHex(mix(g))+toHex(mix(b));
 }
 
 function textColorOn(hex){
@@ -892,6 +907,7 @@ function getData(){
     horario: $('#horario').value.trim(),
     salario: $('#salario').value.trim(),
     requisitos: $('#requisitos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    atividades: $('#atividades').value.split('\n').map(s=>s.trim()).filter(Boolean),
     beneficios: $('#beneficios').value.split('\n').map(s=>s.trim()).filter(Boolean),
     cta: $('#cta').value.trim() || 'Envie seu currículo',
     contato: $('#contato').value.trim(),
@@ -1427,13 +1443,157 @@ function applySnap(el, els, fmt, disabled){
 }
 
 function drawGuides(ctx, fmt, guides){
-  if(!guides || (!guides.v.length && !guides.h.length)) return;
+  if(!guides) return;
+  const hasLines = guides.v.length || guides.h.length;
+  const hasSpacing = guides.spacing && guides.spacing.length;
+  if(!hasLines && !hasSpacing) return;
   ctx.save();
   ctx.strokeStyle = '#ff2d95';
+  ctx.fillStyle = '#ff2d95';
   ctx.lineWidth = Math.max(1.5, fmt.w*0.0012);
   guides.v.forEach(x=>{ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,fmt.h); ctx.stroke(); });
   guides.h.forEach(y=>{ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(fmt.w,y); ctx.stroke(); });
+  if(hasSpacing){
+    const tick = Math.max(5, fmt.w*0.007);
+    guides.spacing.forEach(s=>{
+      ctx.beginPath();
+      if(s.vertical){
+        ctx.moveTo(s.x, s.y1); ctx.lineTo(s.x, s.y2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(s.x-tick/2, s.y1); ctx.lineTo(s.x+tick/2, s.y1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(s.x-tick/2, s.y2); ctx.lineTo(s.x+tick/2, s.y2); ctx.stroke();
+      } else {
+        ctx.moveTo(s.x1, s.y); ctx.lineTo(s.x2, s.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(s.x1, s.y-tick/2); ctx.lineTo(s.x1, s.y+tick/2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(s.x2, s.y-tick/2); ctx.lineTo(s.x2, s.y+tick/2); ctx.stroke();
+      }
+    });
+  }
   ctx.restore();
+}
+
+/* ---------- Guias de espaçamento igual (estilo Canva) ----------
+   Enquanto arrasta uma peça entre outras já alinhadas em linha/coluna, se a distância
+   fica igual à distância entre as outras peças vizinhas, encaixa e mostra os traços
+   de medida (como o Canva faz ao equalizar o espaço entre 3+ elementos). */
+function verticalOverlap(a,b){
+  const top=Math.max(a.y,b.y), bottom=Math.min(a.y+a.h,b.y+b.h);
+  return Math.max(0, bottom-top);
+}
+function horizontalOverlap(a,b){
+  const left=Math.max(a.x,b.x), right=Math.min(a.x+a.w,b.x+b.w);
+  return Math.max(0, right-left);
+}
+function findRowNeighbors(el, els){
+  const rowEls = els.filter(e=> e.id!==el.id && !e.hidden && verticalOverlap(el,e) > Math.min(el.h,e.h)*0.4);
+  let left=null, right=null, leftGap=Infinity, rightGap=Infinity;
+  const midX = el.x+el.w/2;
+  rowEls.forEach(e=>{
+    if(e.x+e.w <= midX){
+      const g = el.x-(e.x+e.w);
+      if(g<leftGap){ leftGap=g; left=e; }
+    }
+    if(e.x >= midX){
+      const g = e.x-(el.x+el.w);
+      if(g<rightGap){ rightGap=g; right=e; }
+    }
+  });
+  return {left, right};
+}
+function findColNeighbors(el, els){
+  const colEls = els.filter(e=> e.id!==el.id && !e.hidden && horizontalOverlap(el,e) > Math.min(el.w,e.w)*0.4);
+  let top=null, bottom=null, topGap=Infinity, bottomGap=Infinity;
+  const midY = el.y+el.h/2;
+  colEls.forEach(e=>{
+    if(e.y+e.h <= midY){
+      const g = el.y-(e.y+e.h);
+      if(g<topGap){ topGap=g; top=e; }
+    }
+    if(e.y >= midY){
+      const g = e.y-(el.y+el.h);
+      if(g<bottomGap){ bottomGap=g; bottom=e; }
+    }
+  });
+  return {top, bottom};
+}
+
+function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
+  const spacing = [];
+  if(disabled) return spacing;
+  const threshold = Math.max(5, fmt.w*0.006);
+
+  if(!skipX){
+    const {left, right} = findRowNeighbors(el, els);
+    if(left && right){
+      const leftGap = el.x-(left.x+left.w), rightGap = right.x-(el.x+el.w);
+      if(leftGap>=-1 && rightGap>=-1 && Math.abs(leftGap-rightGap)<=threshold){
+        const avg = (leftGap+rightGap)/2;
+        el.x = left.x+left.w+avg;
+        const iy = el.y+el.h/2;
+        spacing.push({x1:left.x+left.w, x2:el.x, y:iy});
+        spacing.push({x1:el.x+el.w, x2:right.x, y:iy});
+      }
+    } else if(left && !right){
+      const {left:leftLeft} = findRowNeighbors(left, els.filter(e=>e.id!==el.id));
+      if(leftLeft){
+        const refGap = left.x-(leftLeft.x+leftLeft.w), curGap = el.x-(left.x+left.w);
+        if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
+          el.x = left.x+left.w+refGap;
+          const iy = el.y+el.h/2;
+          spacing.push({x1:leftLeft.x+leftLeft.w, x2:left.x, y:iy});
+          spacing.push({x1:left.x+left.w, x2:el.x, y:iy});
+        }
+      }
+    } else if(right && !left){
+      const {right:rightRight} = findRowNeighbors(right, els.filter(e=>e.id!==el.id));
+      if(rightRight){
+        const refGap = rightRight.x-(right.x+right.w), curGap = right.x-(el.x+el.w);
+        if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
+          el.x = right.x-refGap-el.w;
+          const iy = el.y+el.h/2;
+          spacing.push({x1:el.x+el.w, x2:right.x, y:iy});
+          spacing.push({x1:right.x+right.w, x2:rightRight.x, y:iy});
+        }
+      }
+    }
+  }
+
+  if(!skipY){
+    const {top, bottom} = findColNeighbors(el, els);
+    if(top && bottom){
+      const topGap = el.y-(top.y+top.h), bottomGap = bottom.y-(el.y+el.h);
+      if(topGap>=-1 && bottomGap>=-1 && Math.abs(topGap-bottomGap)<=threshold){
+        const avg = (topGap+bottomGap)/2;
+        el.y = top.y+top.h+avg;
+        const ix = el.x+el.w/2;
+        spacing.push({y1:top.y+top.h, y2:el.y, x:ix, vertical:true});
+        spacing.push({y1:el.y+el.h, y2:bottom.y, x:ix, vertical:true});
+      }
+    } else if(top && !bottom){
+      const {top:topTop} = findColNeighbors(top, els.filter(e=>e.id!==el.id));
+      if(topTop){
+        const refGap = top.y-(topTop.y+topTop.h), curGap = el.y-(top.y+top.h);
+        if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
+          el.y = top.y+top.h+refGap;
+          const ix = el.x+el.w/2;
+          spacing.push({y1:topTop.y+topTop.h, y2:top.y, x:ix, vertical:true});
+          spacing.push({y1:top.y+top.h, y2:el.y, x:ix, vertical:true});
+        }
+      }
+    } else if(bottom && !top){
+      const {bottom:bottomBottom} = findColNeighbors(bottom, els.filter(e=>e.id!==el.id));
+      if(bottomBottom){
+        const refGap = bottomBottom.y-(bottom.y+bottom.h), curGap = bottom.y-(el.y+el.h);
+        if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
+          el.y = bottom.y-refGap-el.h;
+          const ix = el.x+el.w/2;
+          spacing.push({y1:el.y+el.h, y2:bottom.y, x:ix, vertical:true});
+          spacing.push({y1:bottom.y+bottom.h, y2:bottomBottom.y, x:ix, vertical:true});
+        }
+      }
+    }
+  }
+
+  return spacing;
 }
 
 function renderFormat(canvas, fmtKey, interactive){
@@ -1499,7 +1659,7 @@ function buildTallLayout(fmt, data, col){
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
   if(bannerText){
     const bt = newTextEl(cardX+leftW+rightW*0.06, cardY+cardW*0.03, rightW*0.74, `📍 ${bannerText.toUpperCase()}`, {
-      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'rgba(20,20,20,0.82)', align:'left', radius:cardW*0.012
+      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius:cardW*0.012
     });
     els.push(bt);
   }
@@ -1513,7 +1673,11 @@ function buildTallLayout(fmt, data, col){
   const lx = cardX+pad, lw = leftW-pad-cardW*0.055;
   let y = cardY+cardH*0.035;
 
-  els.push(newTextEl(lx, y, lw*0.7, '📣 VAGA ABERTA', {fontSize:cardW*0.023, fontWeight:700, color:'#ffffff', bg:col.primary, align:'left'}));
+  const badgeText = '📣 VAGA ABERTA';
+  const badgeFontSize = cardW*0.023;
+  const badgeFont = `700 ${Math.round(badgeFontSize)}px 'Poppins', Arial, sans-serif`;
+  const badgeW = measureChipWidth(ctx, badgeText, badgeFont, badgeFontSize*0.55);
+  els.push(newTextEl(lx, y, badgeW, badgeText, {fontSize:badgeFontSize, fontWeight:700, color:'#ffffff', bg:col.primary, align:'left'}));
   y += cardW*0.05 + cardH*0.02;
 
   const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.07, cardW*0.044, 800, "'Poppins', Arial, sans-serif");
@@ -1529,7 +1693,7 @@ function buildTallLayout(fmt, data, col){
     tags.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, tagPadX);
       if(usedW+w > lw && usedW>0){ tx = lx; ty += tagH+cardH*0.011; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.021, fontWeight:600, color:col.primary, bg:hexToRgba(i%2? col.tertiary: col.secondary,0.35), align:'center', radius:tagH/2}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.021, fontWeight:600, color:col.primary, bg:tint(i%2? col.tertiary: col.secondary,0.65), align:'center', radius:tagH/2}));
       tx += w+gapX; usedW += w+gapX;
     });
     y = ty+tagH+cardH*0.018;
@@ -1537,46 +1701,44 @@ function buildTallLayout(fmt, data, col){
 
   if(data.requisitos.length){
     const rowsFont = cardW*0.026;
-    data.requisitos.forEach((r,i)=>{
-      const t = newTextEl(lx, y, lw, r, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3});
-      els.push(t);
-      ctx.font = `500 ${Math.round(rowsFont)}px 'Poppins', Arial, sans-serif`;
-      const lines = wrapLines(ctx, r, lw);
-      y += lines.length*rowsFont*1.3 + rowsFont*0.35;
-    });
-    y += cardH*0.01;
+    const reqText = data.requisitos.join('\n');
+    els.push(newTextEl(lx, y, lw, reqText, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3}));
+    ctx.font = `500 ${Math.round(rowsFont)}px 'Poppins', Arial, sans-serif`;
+    let totalLines = 0;
+    data.requisitos.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
+    y += totalLines*rowsFont*1.3 + rowsFont*0.6;
+  }
+
+  if(data.atividades.length){
+    const actFont = cardW*0.026;
+    const actText = data.atividades.join('\n');
+    els.push(newTextEl(lx, y, lw, actText, {fontSize:actFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3}));
+    ctx.font = `500 ${Math.round(actFont)}px 'Poppins', Arial, sans-serif`;
+    let totalLines = 0;
+    data.atividades.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
+    y += totalLines*actFont*1.3 + actFont*0.6;
   }
 
   const footerH = cardH*0.11;
   let by = y;
   if(data.salario && by+cardH*0.088 < cardY+cardH-footerH){
     const salH = cardH*0.088;
+    const salFont = cardW*0.026;
+    const salLineH = salFont*1.25;
+    const salTextY = by + (salH-salLineH)/2;
     els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:col.primary, radiusPct:0.24}));
-    els.push(newTextEl(cardX+pad+salH*0.22, by, cardW-pad*2-salH*0.4, `💰 SALÁRIO\n${data.salario}`, {fontSize:cardW*0.026, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
+    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, `💰 ${data.salario}`, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
     by += salH+cardH*0.022;
   }
 
   if(data.beneficios.length){
-    const headerFont = `700 ${Math.round(cardW*0.023)}px 'Poppins', Arial, sans-serif`;
-    const headerH = cardW*0.05;
-    const hw = measureChipWidth(ctx, '🎁 BENEFÍCIOS', headerFont, cardW*0.02);
-    els.push(newTextEl(cardX+pad, by, hw, '🎁 BENEFÍCIOS', {fontSize:cardW*0.023, fontWeight:700, color:textColorOn(col.tertiary), bg:col.tertiary, align:'left'}));
-    by += headerH+cardH*0.014;
-    const colGap = cardW*0.03;
-    const colW = (cardW-pad*2-colGap)/2;
     const benFont = cardW*0.02;
-    let leftY=by, rightY=by;
-    data.beneficios.forEach((b,i)=>{
-      const isLeft = i%2===0;
-      const bx = isLeft ? cardX+pad : cardX+pad+colW+colGap;
-      const byy = isLeft ? leftY : rightY;
-      const t = newTextEl(bx, byy, colW, `✅ ${b}`, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28});
-      els.push(t);
-      ctx.font = `500 ${Math.round(benFont)}px 'Poppins', Arial, sans-serif`;
-      const lines = wrapLines(ctx, `✅ ${b}`, colW);
-      const h = lines.length*benFont*1.28+benFont*0.4;
-      if(isLeft) leftY += h; else rightY += h;
-    });
+    const benText = data.beneficios.join('\n');
+    els.push(newTextEl(cardX+pad, by, cardW-pad*2, benText, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28}));
+    ctx.font = `500 ${Math.round(benFont)}px 'Poppins', Arial, sans-serif`;
+    let totalLines = 0;
+    data.beneficios.forEach(b=> totalLines += wrapLines(ctx, b, cardW-pad*2).length);
+    by += totalLines*benFont*1.28 + benFont*0.4;
   }
 
   // rodapé
@@ -1633,24 +1795,25 @@ function buildWideLayout(fmt, data, col){
     tags.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, padX);
       if(tx+w>innerX+innerW && tx>innerX){ tx=innerX; ty+=tagH+cardH*0.014; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.015, fontWeight:600, color:col.primary, bg:hexToRgba(i%2?col.tertiary:col.secondary,0.35), align:'center', radius:tagH/2}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.015, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2}));
       tx += w+gapX;
     });
     y = ty+tagH+cardH*0.02;
   }
 
   if(data.salario){
-    els.push(newTextEl(innerX, y, innerW, `SALÁRIO: ${data.salario}`, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
+    els.push(newTextEl(innerX, y, innerW, `💰 ${data.salario}`, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
     y += cardH*0.06;
   }
 
-  const combined = [
-    ...data.requisitos.slice(0,3).map(r=>'✓  '+r),
-    ...data.beneficios.slice(0,2).map(b=>'★  '+b)
-  ];
-  combined.forEach(t=>{
-    els.push(newTextEl(innerX, y, innerW, t, {fontSize:cardW*0.0145, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4}));
-    y += cardW*0.0145*1.4 + cardW*0.0145*0.3;
+  const combinedFont = cardW*0.0145;
+  [data.requisitos, data.atividades, data.beneficios].forEach(arr=>{
+    if(!arr.length) return;
+    els.push(newTextEl(innerX, y, innerW, arr.join('\n'), {fontSize:combinedFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4}));
+    ctx.font = `500 ${Math.round(combinedFont)}px 'Poppins', Arial, sans-serif`;
+    let totalLines = 0;
+    arr.forEach(s=> totalLines += wrapLines(ctx, s, innerW).length);
+    y += totalLines*combinedFont*1.4 + combinedFont*0.6;
   });
 
   const footerH = cardH*0.14, footerY=cardY+cardH-footerH;
@@ -1785,7 +1948,9 @@ function wireCanvasInteraction(){
           const before = {x:activeDrag.primaryEl.x, y:activeDrag.primaryEl.y};
           const groupIds = activeDrag.items.map(it=>it.el.id);
           const others = getElements(currentFormat).filter(o=>!groupIds.includes(o.id));
-          activeGuides = applySnap(activeDrag.primaryEl, others, fmt, e.altKey);
+          const guides = applySnap(activeDrag.primaryEl, others, fmt, e.altKey);
+          guides.spacing = applyEqualSpacing(activeDrag.primaryEl, others, fmt, e.altKey, guides.v.length>0, guides.h.length>0);
+          activeGuides = guides;
           const corrX = activeDrag.primaryEl.x-before.x, corrY = activeDrag.primaryEl.y-before.y;
           if(corrX||corrY){
             activeDrag.items.forEach(it=>{ if(it.el!==activeDrag.primaryEl){ it.el.x+=corrX; it.el.y+=corrY; } });
@@ -2104,7 +2269,12 @@ function syncElPanel(){
 function toHexColor(v){
   if(!v) return null;
   if(v.startsWith('#')) return v;
-  return null; // rgba() não é suportado pelo <input type=color>; ignora e mantém cor anterior
+  const m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(v);
+  if(m){
+    const toHex = n => Math.max(0,Math.min(255,+n)).toString(16).padStart(2,'0');
+    return '#'+toHex(m[1])+toHex(m[2])+toHex(m[3]);
+  }
+  return null;
 }
 
 function currentEl(){ return selectedIds.length===1 ? findElement(currentFormat, primaryId()) : null; }
@@ -2381,6 +2551,7 @@ function saveState(){
     cidade: $('#cidade').value,
     salario: $('#salario').value,
     requisitos: $('#requisitos').value,
+    atividades: $('#atividades').value,
     beneficios: $('#beneficios').value,
     cta: $('#cta').value,
     contato: $('#contato').value,
@@ -2403,6 +2574,7 @@ function loadState(){
   $('#cidade').value = state.cidade||'';
   $('#salario').value = state.salario||'';
   $('#requisitos').value = state.requisitos||'';
+  $('#atividades').value = state.atividades||'';
   $('#beneficios').value = state.beneficios||'';
   $('#cta').value = state.cta||'';
   $('#contato').value = state.contato||'';
@@ -2582,7 +2754,7 @@ function wireCargoAutoCategory(){
 }
 
 function wireJobFields(){
-  ['cargo','categoria','contratacao','regime','horario','cidade','salario','requisitos','beneficios','cta','contato','banner']
+  ['cargo','categoria','contratacao','regime','horario','cidade','salario','requisitos','atividades','beneficios','cta','contato','banner']
   .forEach(id=>{
     const el = $('#'+id);
     el.addEventListener('input', saveState);
