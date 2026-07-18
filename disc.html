@@ -377,55 +377,29 @@ input[type=text]:focus{border-color:var(--blue)}
 // ══════════════════════════════════════════
 // QUESTÕES — 12 GRUPOS  [D, I, S, C]  ·  3 bancos por nível de público
 // ══════════════════════════════════════════
+// IMPORTANTE: o questionário usa a MESMA lista de palavras para os 3
+// níveis (operacional, administrativo, estratégico) — isso garante que
+// os resultados de candidatos de níveis diferentes sejam comparáveis
+// entre si. O que muda por nível é o texto de introdução, o relatório
+// e o match de vaga — nunca as perguntas em si.
+const QUESTOES_ORIGINAL = [
+  ["Decidido","Entusiasmado","Paciente","Preciso"],
+  ["Competitivo","Sociável","Leal","Analítico"],
+  ["Direto","Otimista","Calmo","Cauteloso"],
+  ["Ousado","Expressivo","Cooperativo","Sistemático"],
+  ["Determinado","Animado","Estável","Organizado"],
+  ["Assertivo","Comunicativo","Dedicado","Detalhista"],
+  ["Exigente","Persuasivo","Confiável","Lógico"],
+  ["Independente","Inspirador","Harmonioso","Cuidadoso"],
+  ["Resoluto","Criativo","Atencioso","Criterioso"],
+  ["Objetivo","Espontâneo","Consistente","Exato"],
+  ["Audacioso","Divertido","Tranquilo","Meticuloso"],
+  ["Ambicioso","Popular","Gentil","Rigoroso"]
+];
 const QUESTOES_POR_NIVEL = {
-  // Vocabulário simples e concreto — para candidatos operacionais
-  // (garçom, cozinheiro, auxiliar, caixa, porteiro, motorista etc.)
-  operacional: [
-    ["Corajoso","Alegre","Paciente","Cuidadoso"],
-    ["Rápido","Falante","Fiel","Caprichoso"],
-    ["Direto","Simpático","Calmo","Atento"],
-    ["Firme","Animado","Prestativo","Organizado"],
-    ["Decidido","Engraçado","Tranquilo","Detalhista"],
-    ["Competitivo","Sociável","Dedicado","Prudente"],
-    ["Exigente","Comunicativo","Confiável","Cauteloso"],
-    ["Independente","Divertido","Gentil","Certinho"],
-    ["Ousado","Espontâneo","Constante","Exato"],
-    ["Objetivo","Popular","Colaborador","Correto"],
-    ["Enérgico","Entusiasmado","Amigável","Metódico"],
-    ["Ambicioso","Extrovertido","Bondoso","Rigoroso"]
-  ],
-  // Vocabulário de negócios — para candidatos administrativos
-  // (assistente, analista, atendente, financeiro etc.) — banco original
-  administrativo: [
-    ["Decidido","Entusiasmado","Paciente","Preciso"],
-    ["Competitivo","Sociável","Leal","Analítico"],
-    ["Direto","Otimista","Calmo","Cauteloso"],
-    ["Ousado","Expressivo","Cooperativo","Sistemático"],
-    ["Determinado","Animado","Estável","Organizado"],
-    ["Assertivo","Comunicativo","Dedicado","Detalhista"],
-    ["Exigente","Persuasivo","Confiável","Lógico"],
-    ["Independente","Inspirador","Harmonioso","Cuidadoso"],
-    ["Resoluto","Criativo","Atencioso","Criterioso"],
-    ["Objetivo","Espontâneo","Consistente","Exato"],
-    ["Audacioso","Divertido","Tranquilo","Meticuloso"],
-    ["Ambicioso","Popular","Gentil","Rigoroso"]
-  ],
-  // Vocabulário de liderança e visão — para candidatos a cargos
-  // estratégicos (gestores, coordenadores, diretores, head's)
-  estrategico: [
-    ["Decisivo","Carismático","Confiável","Analítico"],
-    ["Assertivo","Persuasivo","Consistente","Criterioso"],
-    ["Visionário","Articulado","Colaborativo","Meticuloso"],
-    ["Empreendedor","Inspirador","Empático","Sistemático"],
-    ["Resoluto","Influente","Paciente","Rigoroso"],
-    ["Audacioso","Comunicativo","Leal","Metódico"],
-    ["Pragmático","Diplomático","Ponderado","Racional"],
-    ["Competitivo","Envolvente","Conciliador","Perfeccionista"],
-    ["Dominante","Sociável","Estável","Cauteloso"],
-    ["Proativo","Motivador","Receptivo","Técnico"],
-    ["Desafiador","Extrovertido","Solidário","Disciplinado"],
-    ["Ambicioso","Cativante","Prudente","Investigativo"]
-  ]
+  operacional:    QUESTOES_ORIGINAL,
+  administrativo: QUESTOES_ORIGINAL,
+  estrategico:    QUESTOES_ORIGINAL
 };
 const NIVEIS_VALIDOS = ['operacional','administrativo','estrategico'];
 const NIVEL = (() => {
