@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Profiler Comportamental · Effect Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --roxo:#6d28d9;
+  --roxo2:#4c1d95;
+  --bg:#f5f3ff;
+  --white:#ffffff;
+  --muted:#8b8b9a;
+  --exec:#dc2626;
+  --com:#d97706;
+  --plan:#16a34a;
+  --anal:#2563eb;
+  --text:#2a2a2b;
+  --shadow:0 1px 6px rgba(0,0,0,.09);
+}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+
+.header{background:var(--roxo2);width:100%;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.22)}
+.logo{font-size:17px;font-weight:800;color:#fff}.logo span{color:#c4b5fd}
+.logo-sub{display:block;font-size:9px;font-weight:700;color:rgba(255,255,255,.6);margin-top:1px;text-transform:uppercase;letter-spacing:.06em}
+.prog-wrap{display:none;align-items:center;gap:8px}
+.prog-track{width:100px;height:4px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:#c4b5fd;border-radius:99px;transition:width .35s ease}
+.prog-txt{font-size:10px;color:rgba(255,255,255,.7);font-weight:700;white-space:nowrap}
+
+.container{width:100%;max-width:720px;padding:18px 14px 70px}
+.card{background:var(--white);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card h2{font-size:16px;font-weight:800;color:var(--roxo2);margin-bottom:10px}
+.card p{font-size:12.5px;color:#374151;line-height:1.65;margin-bottom:6px}
+
+.dica{background:#faf5ff;border-left:3px solid var(--roxo);padding:10px 14px;border-radius:8px;font-size:11.5px;color:#5b21b6;margin-top:10px;line-height:1.5}
+.fl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+input[type=text]{width:100%;padding:12px 14px;border:2px solid #e4defb;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
+input[type=text]:focus{border-color:var(--roxo)}
+
+.btn{width:100%;border:none;border-radius:10px;padding:13px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s,opacity .15s;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--roxo2);color:#fff}.btn-primary:hover:not(:disabled){background:var(--roxo)}
+.btn-green{background:#16a34a;color:#fff}.btn-green:hover:not(:disabled){background:#15803d}
+.btn:disabled{background:#d8d2ee;cursor:not-allowed;color:#9a92c2}
+
+.alerta{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 13px;font-size:11.5px;color:#991b1b;margin-bottom:10px;display:none}
+
+.lock-box{text-align:center;padding:28px 10px}
+.lock-box .icon{font-size:52px;margin-bottom:14px}
+.lock-box h2{font-size:16px;font-weight:800;color:var(--roxo2);margin-bottom:8px}
+.lock-box p{font-size:12.5px;color:#4b5563;line-height:1.65}
+
+.calc-box{text-align:center;padding:44px 20px}
+
+/* ── MARCAÇÃO DE ADJETIVOS ── */
+.marc-instrucao{font-size:12.5px;color:#374151;line-height:1.55;margin-bottom:4px}
+.marc-instrucao strong{color:var(--roxo2)}
+.marc-regras{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.word-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:10px 0}
+.word-btn{background:var(--white);border:2px solid #e4defb;border-radius:10px;padding:10px 6px;text-align:center;font-family:'Montserrat',sans-serif;font-size:11.5px;font-weight:700;color:var(--text);cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;user-select:none}
+.word-btn:hover{border-color:var(--roxo)}
+.word-btn.sel{background:var(--roxo2);border-color:var(--roxo2);color:#fff}
+.word-count{position:sticky;bottom:10px;background:#fff;border:2px solid var(--roxo2);border-radius:99px;padding:9px 16px;font-size:12px;font-weight:800;color:var(--roxo2);text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15);margin:14px auto 0;max-width:260px}
+
+/* ── RESULTADO ── */
+.res-top{text-align:center;padding:6px 0 16px}
+.res-nome{font-size:13px;color:var(--muted)}
+.res-titulo{font-size:12.5px;color:#374151;margin-top:8px;line-height:1.6}
+.res-titulo strong{color:var(--roxo2);font-size:22px;display:block;margin-top:4px}
+.res-data{font-size:11px;color:var(--muted);margin-top:6px}
+
+.faixa-perfil{display:flex;border-radius:10px;overflow:hidden;height:46px;margin:16px 0 10px}
+.faixa-seg{display:flex;align-items:center;justify-content:center;position:relative}
+.faixa-dot{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.15)}
+.perfis-legenda{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:6px}
+.pl-pct{font-size:19px;font-weight:800}
+.pl-nome{font-size:12px;font-weight:700;color:var(--text)}
+.pl-tag{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+
+.sec-titulo{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;margin-top:16px}
+.res-texto{font-size:12.5px;color:#374151;line-height:1.7}
+
+.fatores-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0}
+.fator-col{text-align:center}
+.fator-pos{font-size:12px;font-weight:800}
+.fator-neg{font-size:10px;font-weight:700;color:#cbb7c9;margin-left:4px}
+.fator-pill{width:34px;height:34px;border-radius:50%;margin:4px auto;display:flex;align-items:center;justify-content:center}
+
+.indicador-row{margin-bottom:14px}
+.indicador-lbl{font-size:12px;font-weight:800;color:var(--roxo2);margin-bottom:4px}
+.indicador-faixa{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.indicador-track{background:#ece7fb;border-radius:99px;height:8px;overflow:hidden}
+.indicador-fill{height:100%;background:var(--roxo2);border-radius:99px;width:0;transition:width 1s ease}
+
+.chart-wrap{width:100%;overflow-x:auto}
+.chart-legenda{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#374151}
+.chart-legenda span{display:inline-flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.leg-sq{width:10px;height:10px;display:inline-block}
+.leg-tri{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid #2a2a2b;display:inline-block}
+
+.comp-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.comp-num{font-size:10px;font-weight:800;color:#fff;background:var(--roxo2);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.comp-nome{font-size:12px;font-weight:700;color:var(--text);flex:1}
+.comp-faixa{font-size:10px;font-weight:800;color:var(--roxo2);text-transform:uppercase;width:90px;text-align:right;flex-shrink:0}
+
+.talento-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.talento-num{font-size:10px;font-weight:800;color:#fff;background:#a78bfa;border-radius:6px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.talento-nome{font-size:12px;font-weight:700;color:var(--text);flex:1}
+.talento-faixa{font-size:10px;font-weight:800;color:var(--roxo2);text-transform:uppercase}
+
+.aderencia-box{background:#faf5ff;border:1.5px solid var(--roxo);border-radius:12px;padding:14px 16px;margin:14px 0;display:flex;align-items:center;gap:14px}
+.aderencia-pct{font-size:26px;font-weight:800;color:var(--roxo2)}
+
+.item-lista{display:flex;gap:7px;margin-bottom:6px;font-size:12px;line-height:1.55;color:#374151}
+.item-lista::before{content:'•';font-weight:900;flex-shrink:0;color:var(--roxo)}
+
+.btn-print{background:var(--bg);border:1px solid #e4defb;border-radius:10px;padding:11px;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:var(--roxo2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px}
+
+.hidden{display:none!important}
+@media(max-width:420px){.word-grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}}
+@media print{
+  .header,.btn,.btn-print{display:none!important}
+  body{background:#fff}
+  .container{max-width:100%;padding:10px}
+  .card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Effect <span>Pessoas</span><span class="logo-sub" id="nivel-badge"></span></div>
+  <div class="prog-wrap" id="prog-wrap">
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <span class="prog-txt" id="prog-txt">0%</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div id="tela-concluido" class="hidden">
+    <div class="card">
+      <div class="lock-box">
+        <div class="icon">✅</div>
+        <h2>Questionário já preenchido</h2>
+        <p>Você já respondeu este questionário anteriormente. Seu perfil comportamental foi registrado com sucesso.<br><br>Entre em contato com a equipe Effect para mais informações.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="tela-intro">
+    <div class="card">
+      <h2>📊 Profiler Comportamental</h2>
+      <p>É um questionário preciso e rápido de responder, pensado para identificar o seu perfil com Inteligência Comportamental. <strong>Não há respostas corretas</strong> — responda com sinceridade.</p>
+      <div class="dica" id="intro-dica">💡 Reserve de 7 a 10 minutos, sem interrupções. Tempo estimado: <strong>7 a 10 minutos</strong>.</div>
+    </div>
+    <div class="alerta" id="alerta-nome">Por favor, informe seu nome para continuar.</div>
+    <div class="card">
+      <div class="fl">Seu nome completo</div>
+      <input type="text" id="nome-input" placeholder="Digite seu nome..." autocomplete="name" onkeydown="if(event.key==='Enter')iniciar()">
+      <div class="fl" style="margin-top:14px">Vaga de interesse <span style="font-weight:400;text-transform:none">(opcional)</span></div>
+      <input type="text" id="vaga-input" placeholder="Ex: Garçom, Analista Financeiro, Gerente..." autocomplete="off">
+    </div>
+    <button class="btn btn-primary" onclick="iniciar()">Começar questionário →</button>
+  </div>
+
+  <div id="tela-marcacao" class="hidden">
+    <div class="card">
+      <div class="marc-instrucao" id="marc-instrucao">Marque abaixo os adjetivos que <strong>melhor te representam</strong>.</div>
+      <div class="marc-regras">Responda sozinho, sem ajuda de terceiros. Não interrompa o questionário com distrações ou conversas.</div>
+      <div class="word-grid" id="word-grid"></div>
+      <div class="word-count" id="word-count">0 palavras marcadas</div>
+    </div>
+    <button class="btn btn-primary" id="btn-continuar-marcacao" onclick="proximaEtapaMarcacao()" disabled>Continuar →</button>
+  </div>
+
+  <div id="tela-calc" class="hidden">
+    <div class="card">
+      <div class="calc-box">
+        <div style="font-size:38px;margin-bottom:14px">⏳</div>
+        <div style="font-size:14px;font-weight:700;color:var(--roxo2)">Calculando seu perfil…</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Processando suas respostas</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tela-resultado" class="hidden">
+    <div id="resultado-conteudo"></div>
+  </div>
+
+</div>
+<script id="disc-solides-data">
+// ══════════════════════════════════════════════════════════════
+// BANCO DE PALAVRAS — cada palavra tem uma categoria (D/I/S/C) e
+// uma polaridade (+1 = expressão positiva do traço, -1 = expressão
+// negativa do mesmo traço). Categorias exibidas como:
+//   D = Executor · I = Comunicador · S = Planejador · C = Analista
+// (mantemos as siglas D/I/S/C internamente para reaproveitar a
+// mesma lógica de relatório/aderência já usada no disc.html)
+// ══════════════════════════════════════════════════════════════
+const BANCO_PALAVRAS = [
+  {p:'Ativo',c:'D',s:1},{p:'Audacioso (Ousado)',c:'D',s:1},{p:'Corajoso',c:'D',s:1},{p:'Decidido',c:'D',s:1},
+  {p:'Enérgico',c:'D',s:1},{p:'Firme',c:'D',s:1},{p:'Independente',c:'D',s:1},{p:'Líder',c:'D',s:1},
+  {p:'Persistente',c:'D',s:1},{p:'Resoluto (Decidido)',c:'D',s:1},{p:'Prático',c:'D',s:1},{p:'Auto-Suficiente',c:'D',s:1},
+  {p:'Arrogante',c:'D',s:-1},{p:'Calculista',c:'D',s:-1},{p:'Egocêntrico',c:'D',s:-1},{p:'Egoísta',c:'D',s:-1},
+  {p:'Exigente',c:'D',s:-1},{p:'Impaciente',c:'D',s:-1},{p:'Inflexível',c:'D',s:-1},{p:'Insensível',c:'D',s:-1},
+  {p:'Intolerante',c:'D',s:-1},{p:'Sarcástico',c:'D',s:-1},{p:'Vaidoso',c:'D',s:-1},{p:'Vingativo',c:'D',s:-1},
+  {p:'Frio',c:'D',s:-1},{p:'Indisciplinado',c:'D',s:-1},{p:'Orgulhoso',c:'D',s:-1},
+
+  {p:'Alegre',c:'I',s:1},{p:'Animado',c:'I',s:1},{p:'Bem-Humorado',c:'I',s:1},{p:'Bem-Quisto',c:'I',s:1},
+  {p:'Bom Companheiro',c:'I',s:1},{p:'Comunicativo',c:'I',s:1},{p:'Contagiante',c:'I',s:1},{p:'Empolgante',c:'I',s:1},
+  {p:'Entusiasta',c:'I',s:1},{p:'Estimulante',c:'I',s:1},{p:'Extrovertido',c:'I',s:1},{p:'Influenciador',c:'I',s:1},
+  {p:'Otimista',c:'I',s:1},{p:'Popular',c:'I',s:1},{p:'Simpático',c:'I',s:1},{p:'Destacado',c:'I',s:1},
+  {p:'Habilidoso',c:'I',s:1},
+  {p:'Barulhento',c:'I',s:-1},{p:'Espalhafatoso',c:'I',s:-1},{p:'Exagerado',c:'I',s:-1},{p:'Ingênuo',c:'I',s:-1},
+  {p:'Pretensioso',c:'I',s:-1},{p:'Desorganizado',c:'I',s:-1},
+
+  {p:'Calmo',c:'S',s:1},{p:'Compreensivo',c:'S',s:1},{p:'Conservador',c:'S',s:1},{p:'Cumpridor',c:'S',s:1},
+  {p:'Dedicado',c:'S',s:1},{p:'Discreto',c:'S',s:1},{p:'Equilibrado',c:'S',s:1},{p:'Leal',c:'S',s:1},
+  {p:'Modesto',c:'S',s:1},{p:'Paciente',c:'S',s:1},{p:'Sensível',c:'S',s:1},{p:'Sentimental',c:'S',s:1},
+  {p:'Sincero',c:'S',s:1},{p:'Tranquilo',c:'S',s:1},
+  {p:'Depressivo',c:'S',s:-1},{p:'Desconfiado',c:'S',s:-1},{p:'Desmotivado',c:'S',s:-1},{p:'Indeciso',c:'S',s:-1},
+  {p:'Inseguro',c:'S',s:-1},{p:'Introvertido',c:'S',s:-1},{p:'Medroso',c:'S',s:-1},{p:'Pessimista',c:'S',s:-1},
+  {p:'Procrastinador',c:'S',s:-1},{p:'Reservado',c:'S',s:-1},{p:'Rotineiro',c:'S',s:-1},{p:'Temeroso',c:'S',s:-1},
+
+  {p:'Auto-Disciplinado',c:'C',s:1},{p:'Crítico',c:'C',s:1},{p:'Eficiente',c:'C',s:1},{p:'Idealista',c:'C',s:1},
+  {p:'Metódico',c:'C',s:1},{p:'Minucioso',c:'C',s:1},{p:'Perfeccionista',c:'C',s:1},{p:'Racional',c:'C',s:1},
+  {p:'Teórico',c:'C',s:1},
+  {p:'Anti-Social',c:'C',s:-1}
+];
+
+const NOMES_PERFIL = {D:'Executor', I:'Comunicador', S:'Planejador', C:'Analista'};
+const CORES = {D:'#dc2626', I:'#d97706', S:'#16a34a', C:'#2563eb'};
+const KEYS = ['D','I','S','C'];
+
+// Perfil DISC de referência esperado por nível de cargo (leitura auxiliar)
+const NIVEL_PERFIL_IDEAL = {
+  operacional:    {D:20, I:25, S:35, C:20},
+  administrativo: {D:20, I:20, S:30, C:30},
+  estrategico:    {D:35, I:30, S:15, C:20}
+};
+const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+const NIVEIS_VALIDOS = ['operacional','administrativo','estrategico'];
+const NIVEL = (() => {
+  const p = (new URLSearchParams(location.search).get('nivel') || '').toLowerCase().trim();
+  return NIVEIS_VALIDOS.includes(p) ? p : 'administrativo';
+})();
+
+const TEXTOS_NIVEL = {
+  operacional: {
+    instr: 'Marque abaixo as palavras que <strong>mais combinam com você</strong>, pensando em como você é no dia a dia.',
+    dica: '💡 Não pense demais em cada palavra — marque pelo primeiro instinto.'
+  },
+  administrativo: {
+    instr: 'Marque abaixo os adjetivos que <strong>melhor te representam</strong>.',
+    dica: '💡 Reserve de 7 a 10 minutos, sem interrupções.'
+  },
+  estrategico: {
+    instr: 'Marque abaixo os adjetivos que <strong>melhor representam seu estilo</strong>, incluindo como isso aparece em contextos de liderança e gestão.',
+    dica: '💡 Responda pelo primeiro instinto, sem tentar prever "a resposta ideal" para um cargo de liderança.'
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+// PERFIS — textos descritivos por categoria primária
+// ══════════════════════════════════════════════════════════════
+const PERFIS = {
+  D:{nome:'Executor', emoji:'🔴',
+     resumo:'Seu estilo natural é agir com rapidez e foco em resultados. Você não espera as coisas acontecerem — toma a frente, decide e executa. Em situações de pressão ou desafio, você tende a se destacar porque não tem medo de assumir responsabilidade e correr riscos calculados.',
+     forcas:['Toma decisões com agilidade, mesmo sob pressão','Assume a liderança naturalmente, sem precisar ser empurrado','Foco forte em entregar resultados concretos'],
+     atencao:['Pode parecer impaciente ou brusco para pessoas mais sensíveis','Às vezes age antes de ouvir quem está ao redor — o que pode gerar atritos']},
+  I:{nome:'Comunicador', emoji:'🟡',
+     resumo:'Você tem um jeito naturalmente comunicativo e contagiante. As pessoas se sentem bem perto de você — você anima o ambiente, cria conexões com facilidade e convence sem parecer forçado. Funciona muito bem em funções que envolvem atendimento, vendas, liderança de pessoas ou trabalho em equipe.',
+     forcas:['Comunica ideias com clareza e entusiasmo','Cria vínculos de confiança com facilidade — com clientes, colegas e líderes','Motiva e anima as pessoas ao redor naturalmente'],
+     atencao:['Pode ter dificuldade com rotinas repetitivas e detalhes técnicos','Às vezes o otimismo excessivo faz subestimar dificuldades reais']},
+  S:{nome:'Planejador', emoji:'🟢',
+     resumo:'Você é o tipo de pessoa em quem se pode confiar. Constante, paciente e dedicada, você não abandona o que começou e cuida genuinamente das pessoas ao redor. É um pilar de equilíbrio em qualquer equipe — não entra em pânico diante de pressão e prefere resolver as coisas com calma e cooperação.',
+     forcas:['Comprometimento real — entrega o que promete','Excelente em trabalhar em equipe e apoiar os colegas','Ouve com atenção e gera um ambiente de confiança ao redor'],
+     atencao:['Mudanças repentinas e imprevistos podem gerar desconforto','Tende a evitar conflitos mesmo quando é necessário se posicionar']},
+  C:{nome:'Analista', emoji:'🔵',
+     resumo:'Você tem um padrão alto de qualidade — e não abre mão dele. Meticuloso, organizado e cuidadoso, você prefere fazer certo a fazer rápido. Antes de decidir, analisa, pesquisa e verifica. É exatamente o tipo de pessoa que garante que os detalhes não escapem e que os processos sejam seguidos corretamente.',
+     forcas:['Atenção aos detalhes que outros normalmente deixam passar','Raciocínio lógico e analítico — pensa antes de agir','Entrega um trabalho de alta qualidade e confiabilidade'],
+     atencao:['A busca pela perfeição pode tornar as decisões mais lentas','Pode ser percebido como distante ou excessivamente crítico em situações de pressão']}
+};
+
+const COMBOS = {
+  DI:'Você une resultado e relacionamento — age rápido e ainda consegue engajar as pessoas. Perfil valorizado em liderança, vendas e funções que exigem iniciativa com boa comunicação.',
+  DS:'Você combina determinação com responsabilidade. Age com firmeza mas sem atropelar — entrega o que promete e mantém a equipe unida.',
+  DC:'Você quer resultado E qualidade. Exigente consigo e com os outros, não aceita entrega pela metade.',
+  ID:'Você tem o entusiasmo de quem inspira e a objetividade de quem entrega. Perfil forte para liderança e comercial.',
+  IS:'Você constrói relacionamentos duradouros com leveza e cuidado genuíno. Ideal para funções de atendimento, RH, educação e trabalho com pessoas.',
+  IC:'Você se comunica bem e ainda cuida dos detalhes. Bom para funções que exigem clareza, organização e contato com o público.',
+  SD:'Você é confiável e ainda sabe quando precisa assumir o comando. Perfil sólido para cargos operacionais e de supervisão.',
+  SI:'Você é parceiro de equipe por excelência — colaborativo, comunicativo e presente.',
+  SC:'Você entrega com qualidade e constância — sem alardes, mas sem erros.',
+  CD:'Você analisa antes de agir — e quando age, entrega com precisão e foco.',
+  CI:'Você explica bem, detalha sem perder o fio e ainda mantém o clima leve.',
+  CS:'Você é metódico e paciente — faz o processo funcionar e ainda cuida das pessoas dentro dele.'
+};
+
+// ══════════════════════════════════════════════════════════════
+// RELATÓRIO RH — dados por perfil primário (seleção/contratação)
+// ══════════════════════════════════════════════════════════════
+const RECRUTA = {
+  D:{resumoRH:'Perfil assertivo e orientado a resultados. Toma decisões rápidas, assume responsabilidade e não espera ser convocado — lidera naturalmente.',
+     ambientesFit:['Dinâmico e desafiador','Alta pressão e urgência','Autonomia real para decidir','Metas claras e mensuráveis'],
+     ambientesRisco:['Muito burocrático ou controlado','Ritmo lento sem novidades','Microgerenciamento'],
+     liderancaFit:'Diretiva com autonomia — define objetivos claros e dá espaço para executar.',
+     liderancaRisco:'Microgerenciamento ou liderança passiva sem direção geram frustração rápida.',
+     conflito:'Confronta diretamente quando discorda. Pode escalar conflitos com pares.',
+     motivacao:'Resultados concretos, autonomia real, progressão rápida, reconhecimento por performance.',
+     retencao:'Alto risco de saída se não houver crescimento ou desafio.',
+     autonomia:'Alta. Funciona com objetivos definidos e liberdade de método.',
+     sinaisVerde:['Proatividade e iniciativa mesmo sem cargo formal','Alta entrega em situações de pressão e urgência'],
+     alertas:['Pode atropelar processos e pessoas na busca por resultados','Impaciência com burocracia ou ritmo lento'],
+     perguntas:['Me conte de uma situação em que discordou de uma decisão do seu líder. O que fez?','O que te faria sair de um emprego mesmo gostando da função?']},
+  I:{resumoRH:'Perfil comunicativo e orientado a pessoas. Cria vínculos com facilidade, engaja equipes e clientes naturalmente.',
+     ambientesFit:['Alto contato humano','Dinâmico e variado','Com reconhecimento frequente','Trabalho em equipe colaborativa'],
+     ambientesRisco:['Isolado ou solitário','Muito técnico e sem interação','Rotineiro e repetitivo por longo período'],
+     liderancaFit:'Valorizadora e positiva — reconhece o esforço e cria ambiente de confiança.',
+     liderancaRisco:'Liderança fria, punitiva ou que ignora a contribuição individual gera desmotivação rápida.',
+     conflito:'Evita conflito e tende a suavizar situações. Pode não reportar problemas.',
+     motivacao:'Reconhecimento público, relacionamentos positivos, variedade de tarefas.',
+     retencao:'Fidelidade ao clima e às pessoas, não necessariamente à empresa.',
+     autonomia:'Moderada — precisa de validação e contato frequentes.',
+     sinaisVerde:['Facilidade de criar rapport imediato com clientes e colegas','Alta adaptabilidade social em contextos diferentes'],
+     alertas:['Pode superestimar entregas por otimismo excessivo','Dificuldade com tarefas técnicas isoladas'],
+     perguntas:['Como você lida com metas apertadas sem apoio da equipe?','Já deixou de falar algo importante para não prejudicar o clima?']},
+  S:{resumoRH:'Perfil estável, leal e orientado à equipe. Confiável, consistente e paciente.',
+     ambientesFit:['Estável e previsível','Com processos claros e definidos','Trabalho em equipe com suporte mútuo'],
+     ambientesRisco:['Muito instável com mudanças frequentes','Conflituoso e sem gestão','Alta pressão por performance individual'],
+     liderancaFit:'Consistente, justa e próxima — valoriza a lealdade e dá direção clara.',
+     liderancaRisco:'Liderança imprevisível ou que ignora o esforço da equipe gera insegurança.',
+     conflito:'Evita conflito ao máximo — pode ser sinal de passividade ou de problemas não reportados.',
+     motivacao:'Segurança, harmonia no ambiente, sentimento de pertencimento.',
+     retencao:'Alta fidelidade se tratado com respeito e consistência.',
+     autonomia:'Moderada a baixa — funciona melhor com direção clara.',
+     sinaisVerde:['Alta confiabilidade — entrega o que promete','Baixo risco de comportamentos impulsivos ou conflituosos'],
+     alertas:['Dificuldade em ambientes de alta mudança','Tende a não reportar insatisfação'],
+     perguntas:['Como você se sente quando as regras mudam com frequência?','O que te deixa mais desconfortável em um ambiente de trabalho?']},
+  C:{resumoRH:'Perfil analítico e orientado à qualidade. Meticuloso, organizado e criterioso.',
+     ambientesFit:['Estruturado com processos claros','Qualidade valorizada acima do volume','Com tempo adequado para análise'],
+     ambientesRisco:['Caótico e sem processos','Pressão por volume sobre qualidade','Decisões impulsivas e sem dados'],
+     liderancaFit:'Competente e baseada em dados — explica decisões com lógica.',
+     liderancaRisco:'Liderança impulsiva que decide sem dados ou não valoriza a qualidade da entrega.',
+     conflito:'Prefere debate intelectual ao emocional. Pode parecer frio ou excessivamente crítico.',
+     motivacao:'Fazer o trabalho com qualidade, aprofundar expertise, ambiente competente.',
+     retencao:'Permanece se perceber competência e qualidade ao redor.',
+     autonomia:'Alta para execução técnica — precisa de critérios e objetivos claros para começar.',
+     sinaisVerde:['Atenção aos detalhes que outros normalmente deixam passar','Entrega consistente com alta qualidade'],
+     alertas:['Pode ser lento em decisões urgentes sem dados completos','Dificuldade em ambientes caóticos'],
+     perguntas:['Como você reage quando precisa decidir sem ter todas as informações?','O que te incomoda mais em um ambiente de trabalho?']}
+};
+
+// ══════════════════════════════════════════════════════════════
+// RELATÓRIO DO GESTOR — como gerenciar essa pessoa no dia a dia
+// ══════════════════════════════════════════════════════════════
+const GESTOR = {
+  D:{resumo:'Um profissional que gosta de assumir a frente e decidir rápido. Rende mais quando tem espaço para agir e resultados concretos para perseguir.',
+     comoGerenciar:'Dê autonomia e metas claras. Cobre resultado, não o método passo a passo.',
+     comoComunicar:'Seja direto e objetivo. Explique o "porquê" das decisões em vez de apenas dar ordens.',
+     comoDelegar:'Delegue com o objetivo final claro e liberdade para escolher o caminho.',
+     primeirosDias:'Defina metas e prazos claros já nas primeiras semanas. Mostre o caminho de crescimento.',
+     gatilhosMotivacao:'Reconhecimento por resultado, autonomia real, desafios novos.',
+     sinaisAlerta:'Impaciência crescente ou questionamento constante de decisões podem indicar falta de desafio.',
+     perguntasAlinhamento:['Quais resultados você espera de mim nos primeiros 90 dias?','Até onde posso decidir sozinho(a) sem precisar te consultar antes?']},
+  I:{resumo:'Um profissional comunicativo que energiza o ambiente e cria conexão fácil com o time e com clientes.',
+     comoGerenciar:'Dê reconhecimento com frequência e mantenha contato próximo.',
+     comoComunicar:'Elogie em público, corrija em particular.',
+     comoDelegar:'Delegue tarefas com contato humano e variedade.',
+     primeirosDias:'Apresente à equipe logo nos primeiros dias e crie oportunidades de socialização.',
+     gatilhosMotivacao:'Reconhecimento público, relações positivas no time, variedade de tarefas.',
+     sinaisAlerta:'Otimismo que ignora riscos reais, ou queda repentina de humor/energia.',
+     perguntasAlinhamento:['O que te deixaria animado(a) para vir trabalhar todos os dias?','Como você prefere receber um feedback de melhoria?']},
+  S:{resumo:'Um profissional constante e leal, em quem se pode confiar para entregar o combinado.',
+     comoGerenciar:'Dê direção clara e seja consistente. Evite mudanças bruscas sem explicação.',
+     comoComunicar:'Fale com calma e dê tempo para processar mudanças.',
+     comoDelegar:'Delegue com processo definido e suporte disponível.',
+     primeirosDias:'Explique bem os processos e a rotina esperada.',
+     gatilhosMotivacao:'Estabilidade, ambiente sem conflito, sentir-se parte do time.',
+     sinaisAlerta:'Silêncio excessivo ou concordância sem convicção podem esconder insatisfação.',
+     perguntasAlinhamento:['Existe algo no seu dia a dia que você mudaria se pudesse?','Como prefere ser avisado(a) quando uma prioridade muda de repente?']},
+  C:{resumo:'Um profissional detalhista que garante qualidade e precisão.',
+     comoGerenciar:'Dê critérios e dados claros. Explique a lógica por trás das decisões.',
+     comoComunicar:'Seja preciso e evite decisões de última hora sem explicação.',
+     comoDelegar:'Delegue com critérios de qualidade bem definidos e tempo adequado de análise.',
+     primeirosDias:'Apresente processos, documentação e os padrões de qualidade esperados.',
+     gatilhosMotivacao:'Qualidade reconhecida, ambiente competente, aprofundar conhecimento técnico.',
+     sinaisAlerta:'Perfeccionismo travando entregas, ou resistência silenciosa a decisões que considera erradas.',
+     perguntasAlinhamento:['O que você precisa ter em mãos para tomar essa decisão com confiança?','Existe algum processo atual que você mudaria?']}
+};
+
+// ══════════════════════════════════════════════════════════════
+// MATCH COM VAGAS
+// ══════════════════════════════════════════════════════════════
+const VAGAS_MATCH = [
+  {kw:['garçom','garconete','garçonete'],lbl:'Garçom/Garçonete',perfil:{D:15,I:35,S:35,C:15},nota:'Requer boa comunicação, paciência com clientes e trabalho em equipe.',tend:'Tende a se destacar no atendimento. O desafio é a consistência em picos de movimento.'},
+  {kw:['gerente','gestor','gestora'],lbl:'Gerente',perfil:{D:40,I:20,S:20,C:20},nota:'Exige liderança firme e gestão de pessoas e processos.',tend:'Avalie a relação com equipes de perfil mais passivo.'},
+  {kw:['caixa','operador de caixa'],lbl:'Operador(a) de Caixa',perfil:{D:10,I:20,S:30,C:40},nota:'Exige precisão e paciência com alto volume.',tend:'Avalie tolerância a rotina repetitiva.'},
+  {kw:['cozinheiro','cozinheira','auxiliar de cozinha'],lbl:'Cozinheiro(a)',perfil:{D:20,I:10,S:35,C:35},nota:'Requer consistência e trabalho sob pressão de tempo.',tend:'Tende a seguir processos com cuidado.'},
+  {kw:['auxiliar','assistente'],lbl:'Auxiliar/Assistente',perfil:{D:15,I:15,S:45,C:25},nota:'Requer constância e foco na execução.',tend:'Pode ter dificuldade com decisões rápidas sem orientação.'},
+  {kw:['recepcionista','atendente'],lbl:'Recepcionista/Atendente',perfil:{D:15,I:40,S:30,C:15},nota:'Exige boa comunicação e organização.',tend:'Avalie capacidade de lidar com múltiplas demandas.'},
+  {kw:['vendedor','vendedora','vendas','comercial'],lbl:'Vendedor(a)',perfil:{D:30,I:40,S:20,C:10},nota:'Combina assertividade com comunicação e persuasão.',tend:'Avalie disciplina de follow-up.'},
+  {kw:['assistente administrativo','auxiliar administrativo'],lbl:'Assistente Administrativo(a)',perfil:{D:10,I:20,S:35,C:35},nota:'Exige organização de rotinas e atenção a prazos.',tend:'Avalie autonomia para resolver imprevistos.'},
+  {kw:['analista financeiro','financeiro','contas a pagar','contas a receber'],lbl:'Analista Financeiro',perfil:{D:15,I:10,S:30,C:45},nota:'Exige precisão numérica e baixa tolerância a erro.',tend:'Avalie agilidade com dados incompletos.'},
+  {kw:['analista de rh','recursos humanos'],lbl:'Analista de RH',perfil:{D:20,I:30,S:25,C:25},nota:'Equilibra relacionamento e execução de processos.',tend:'Avalie autonomia com múltiplos processos simultâneos.'},
+  {kw:['diretor','diretora','ceo','head'],lbl:'Diretor(a)/Head',perfil:{D:45,I:25,S:10,C:20},nota:'Exige visão estratégica e decisão sob incerteza.',tend:'Avalie como constrói consenso sem perder ritmo de execução.'},
+  {kw:['gerente-geral','gerente geral','gerente de operações'],lbl:'Gerente Geral',perfil:{D:40,I:25,S:15,C:20},nota:'Exige gestão de pessoas e processos simultaneamente.',tend:'Avalie delegação de decisões à equipe.'},
+  {kw:['lider','líder','coordenador','coordenadora'],lbl:'Liderança/Coordenação',perfil:{D:40,I:25,S:20,C:15},nota:'Requer tomada de decisão e visão estratégica.',tend:'Equilíbrio com escuta é fundamental.'},
+];
+
+function calcularMatch(vaga, pctNatural) {
+  if (!vaga) return null;
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const vagaN = norm(vaga);
+  let found = null;
+  for (const v of VAGAS_MATCH) { if (v.kw.some(k => vagaN.includes(norm(k)))) { found = v; break; } }
+  if (!found) return null;
+  const total = KEYS.reduce((s,k) => s + (pctNatural[k]||0), 0) || 1;
+  let dist = 0;
+  KEYS.forEach(k => dist += Math.abs((pctNatural[k]/total*100) - found.perfil[k]));
+  const score = Math.max(0, Math.min(100, Math.round(100 - dist/2)));
+  let lbl;
+  if      (score >= 80) lbl = 'Excelente compatibilidade';
+  else if (score >= 65) lbl = 'Boa compatibilidade';
+  else if (score >= 50) lbl = 'Compatibilidade parcial';
+  else                  lbl = 'Baixa compatibilidade';
+  return { ...found, vagaLbl: found.lbl, score, lbl };
+}
+
+function calcularAderenciaNivel(naturalPct) {
+  const ideal = NIVEL_PERFIL_IDEAL[NIVEL] || NIVEL_PERFIL_IDEAL.administrativo;
+  const total = KEYS.reduce((s,k) => s + (naturalPct[k]||0), 0) || 1;
+  let dist = 0;
+  KEYS.forEach(k => dist += Math.abs((naturalPct[k]/total*100) - ideal[k]));
+  const score = Math.max(0, Math.min(100, Math.round(100 - dist/2)));
+  let label;
+  if      (score >= 80) label = 'Alta aderência';
+  else if (score >= 60) label = 'Boa aderência';
+  else if (score >= 40) label = 'Aderência parcial';
+  else                  label = 'Baixa aderência';
+  return { nivel: NIVEL, nivelLabel: NIVEL_LABEL[NIVEL], score, label };
+}
+</script>
+<script id="disc-solides-logic">
+// ══════════════════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════════════════
+let etapaAtual = 1;
+let nomeCandidata = '';
+let vagaCandidato = '';
+let telefone = '';
+const selecionadas = { 1: new Set(), 2: new Set() };
+const MIN_PALAVRAS = 15;
+
+function mostrarTela(id) {
+  ['tela-concluido','tela-intro','tela-marcacao','tela-calc','tela-resultado']
+    .forEach(t => document.getElementById(t).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const badge = document.getElementById('nivel-badge');
+  if (badge) badge.textContent = 'Nível ' + (NIVEL_LABEL[NIVEL] || '');
+  const dica = document.getElementById('intro-dica');
+  if (dica) dica.innerHTML = (TEXTOS_NIVEL[NIVEL] || TEXTOS_NIVEL.administrativo).dica;
+
+  const segs = location.pathname.split('/');
+  telefone = segs[segs.length - 1] || '';
+  const isInterno = (telefone === 'interno');
+  if (!isInterno && telefone && location.protocol !== 'file:') {
+    try {
+      const r = await fetch('/disc-solides/resultado/' + encodeURIComponent(telefone));
+      const data = await r.json();
+      if (data.ok && data.resultado) { mostrarTela('tela-concluido'); return; }
+    } catch(e) {/* servidor offline — continua normalmente */}
+  }
+  document.getElementById('nome-input').focus();
+});
+
+function iniciar() {
+  const inp = document.getElementById('nome-input');
+  nomeCandidata = inp.value.trim();
+  vagaCandidato = document.getElementById('vaga-input').value.trim();
+  if (!nomeCandidata) {
+    const al = document.getElementById('alerta-nome');
+    al.style.display = 'block';
+    inp.style.borderColor = '#f4afa1'; inp.focus();
+    setTimeout(() => { al.style.display='none'; inp.style.borderColor='#e4defb'; }, 2500);
+    return;
+  }
+  etapaAtual = 1;
+  renderMarcacao();
+  mostrarTela('tela-marcacao');
+}
+
+// ══════════════════════════════════════════════════════════════
+// TELA DE MARCAÇÃO
+// ══════════════════════════════════════════════════════════════
+function renderMarcacao() {
+  const t = TEXTOS_NIVEL[NIVEL] || TEXTOS_NIVEL.administrativo;
+  const instr = document.getElementById('marc-instrucao');
+  if (etapaAtual === 1) {
+    instr.innerHTML = t.instr;
+  } else {
+    instr.innerHTML = 'Usando a mesma lista, marque agora as palavras que representam <strong>o que o trabalho espera que você seja</strong>.';
+  }
+
+  const grid = document.getElementById('word-grid');
+  grid.innerHTML = '';
+  BANCO_PALAVRAS.forEach((item, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'word-btn' + (selecionadas[etapaAtual].has(i) ? ' sel' : '');
+    btn.textContent = item.p;
+    btn.setAttribute('data-idx', i);
+    btn.addEventListener('click', () => toggleWord(i, btn));
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('prog-wrap').style.display = 'flex';
+  document.getElementById('prog-fill').style.width = (etapaAtual===1?0:50) + '%';
+  document.getElementById('prog-txt').textContent = 'Etapa ' + etapaAtual + ' de 2';
+
+  atualizarContagem();
+  const btnCont = document.getElementById('btn-continuar-marcacao');
+  btnCont.textContent = etapaAtual === 1 ? 'Continuar →' : 'Finalizar →';
+  btnCont.onclick = etapaAtual === 1 ? proximaEtapaMarcacao : finalizarQuestionario;
+}
+
+function toggleWord(i, el) {
+  const set = selecionadas[etapaAtual];
+  if (set.has(i)) { set.delete(i); el.classList.remove('sel'); }
+  else { set.add(i); el.classList.add('sel'); }
+  atualizarContagem();
+}
+
+function atualizarContagem() {
+  const n = selecionadas[etapaAtual].size;
+  document.getElementById('word-count').textContent = n + ' palavra' + (n===1?'':'s') + ' marcada' + (n===1?'':'s');
+  document.getElementById('btn-continuar-marcacao').disabled = n < MIN_PALAVRAS;
+  document.getElementById('word-count').style.borderColor = n < MIN_PALAVRAS ? '#f4afa1' : 'var(--roxo2)';
+}
+
+function proximaEtapaMarcacao() {
+  if (selecionadas[1].size < MIN_PALAVRAS) return;
+  etapaAtual = 2;
+  renderMarcacao();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ══════════════════════════════════════════════════════════════
+// CÁLCULO — percentuais, fatores +/-, indicadores, competências,
+// área de talentos, perfil isolado / liderança
+// ══════════════════════════════════════════════════════════════
+function calcularPerfil(etapa) {
+  const set = selecionadas[etapa];
+  const raw = {D:0,I:0,S:0,C:0};
+  set.forEach(i => raw[BANCO_PALAVRAS[i].c]++);
+  const total = KEYS.reduce((s,k)=>s+raw[k],0) || 1;
+  const pct = {};
+  KEYS.forEach(k => pct[k] = Math.round(raw[k]/total*100));
+  // ajusta arredondamento pra somar exatamente 100
+  const soma = KEYS.reduce((s,k)=>s+pct[k],0);
+  if (soma !== 100 && total>0) {
+    const maiorK = KEYS.reduce((a,b)=>pct[a]>=pct[b]?a:b);
+    pct[maiorK] += (100 - soma);
+  }
+  return pct;
+}
+
+function calcularFatores(etapa) {
+  const set = selecionadas[etapa];
+  const totCat = {D:{pos:0,neg:0},I:{pos:0,neg:0},S:{pos:0,neg:0},C:{pos:0,neg:0}};
+  BANCO_PALAVRAS.forEach(w => { totCat[w.c][w.s>0?'pos':'neg']++; });
+  const marc = {D:{pos:0,neg:0},I:{pos:0,neg:0},S:{pos:0,neg:0},C:{pos:0,neg:0}};
+  set.forEach(i => { const w = BANCO_PALAVRAS[i]; marc[w.c][w.s>0?'pos':'neg']++; });
+  const out = {};
+  KEYS.forEach(k => {
+    out[k] = {
+      fatorPos: totCat[k].pos ? Math.round(marc[k].pos/totCat[k].pos*100) : 0,
+      fatorNeg: totCat[k].neg ? Math.round(marc[k].neg/totCat[k].neg*100) : 0
+    };
+  });
+  return out;
+}
+
+function banda(score, generoFeminino) {
+  const f = generoFeminino;
+  if (score < 30) return f ? 'BAIXA' : 'BAIXO';
+  if (score < 47) return f ? 'NORMAL BAIXA' : 'NORMAL BAIXO';
+  if (score < 63) return f ? 'NORMAL ALTA' : 'NORMAL ALTO';
+  return f ? 'ALTA' : 'ALTO';
+}
+
+function calcularIndicadores(pctAtual, fatores, aderencia) {
+  const D=pctAtual.D, I=pctAtual.I, S=pctAtual.S, C=pctAtual.C;
+  const mediaFatorPos = KEYS.reduce((s,k)=>s+fatores[k].fatorPos,0)/4;
+  const mediaFatorNeg = KEYS.reduce((s,k)=>s+fatores[k].fatorNeg,0)/4;
+  const spread = Math.max(D,I,S,C) - Math.min(D,I,S,C);
+  const itens = [
+    {nome:'Energia', fem:true,  score: Math.min(100, (D+I)) },
+    {nome:'Exigência do meio', fem:true, score: Math.max(0,100-aderencia.score) },
+    {nome:'Aproveitamento', fem:false, score: mediaFatorPos },
+    {nome:'Autoconfiança', fem:false, score: Math.max(0, fatores.D.fatorPos - fatores.D.fatorNeg + 40) },
+    {nome:'Autoestima', fem:false, score: Math.max(0, (fatores.I.fatorPos+fatores.S.fatorPos)/2 - (fatores.I.fatorNeg+fatores.S.fatorNeg)/2 + 30) },
+    {nome:'Flexibilidade', fem:false, score: Math.min(100, (I+S)) },
+    {nome:'Amplitude', fem:false, score: Math.max(0, 100 - spread*1.5) },
+    {nome:'Automotivação', fem:false, score: Math.min(100, (D+C)) },
+    {nome:'Incitabilidade', fem:false, score: mediaFatorNeg }
+  ];
+  itens.forEach(it => { it.score = Math.round(Math.max(0,Math.min(100,it.score))); it.faixa = banda(it.score, it.fem); });
+  return itens;
+}
+
+const COMPETENCIAS_DEF = [
+  {nome:'Tolerância', fem:true,  w:{S:.7,I:.3}},
+  {nome:'Planejamento', fem:false, w:{C:.8,D:.2}},
+  {nome:'Empatia', fem:true, w:{S:.6,I:.4}},
+  {nome:'Capacidade de ouvir', fem:false, w:{S:.7,C:.3}},
+  {nome:'Concentração', fem:true, w:{C:.7,S:.3}},
+  {nome:'Condescendência', fem:true, w:{S:.8,I:.2}},
+  {nome:'Perfil Técnico', fem:false, w:{C:.9,D:.1}},
+  {nome:'Organização', fem:true, w:{C:.8,S:.2}},
+  {nome:'Detalhismo', fem:false, w:{C:.9,S:.1}},
+  {nome:'Rigorosidade', fem:true, w:{C:.8,D:.2}},
+  {nome:'Orientado por resultado', fem:false, w:{D:.8,C:.2}},
+  {nome:'Multitarefas', fem:false, w:{D:.5,I:.5}},
+  {nome:'Automotivação', fem:true, w:{D:.6,I:.4}},
+  {nome:'Proatividade', fem:true, w:{D:.7,I:.3}},
+  {nome:'Dinamismo', fem:false, w:{D:.6,I:.4}},
+  {nome:'Dominância', fem:true, w:{D:.9,I:.1}},
+  {nome:'Extroversão', fem:true, w:{I:.9,D:.1}},
+  {nome:'Relacionamento interpessoal', fem:false, w:{I:.6,S:.4}},
+  {nome:'Sociabilidade', fem:true, w:{I:.8,S:.2}},
+  {nome:'Orientado por relacionamento', fem:false, w:{I:.5,S:.5}}
+];
+
+function calcularCompetencias(pct) {
+  return COMPETENCIAS_DEF.map((def,i) => {
+    let raw = 0;
+    Object.entries(def.w).forEach(([k,peso]) => raw += (pct[k]||0)*peso);
+    const score = Math.round(Math.max(0,Math.min(100, raw*2)));
+    return { num:i+1, nome:def.nome, score, faixa: banda(score, def.fem) };
+  });
+}
+
+const TALENTOS_DEF = [
+  {nome:'Comandante', w:{D:.8,C:.2}, quad:[1,1]},
+  {nome:'Competidor', w:{D:.6,I:.4}, quad:[2,1]},
+  {nome:'Administrador', w:{C:.6,D:.4}, quad:[3,1]},
+  {nome:'Motivador', w:{I:.6,D:.4}, quad:[1,2]},
+  {nome:'Vendedor', w:{I:.8,D:.2}, quad:[2,2]},
+  {nome:'Diplomata', w:{I:.6,S:.4}, quad:[3,2]},
+  {nome:'Aconselhador', w:{S:.6,I:.4}, quad:[4,2]},
+  {nome:'Atendente', w:{S:.8,I:.2}, quad:[4,3]},
+  {nome:'Professoral', w:{C:.5,S:.5}, quad:[2,3]},
+  {nome:'Técnico', w:{C:.8,S:.2}, quad:[3,3]},
+  {nome:'Especialista', w:{C:.9,S:.1}, quad:[3,4]},
+  {nome:'Estrategista', w:{C:.6,D:.4}, quad:[2,4]},
+  {nome:'Controlador', w:{C:.7,D:.3}, quad:[1,4]}
+];
+const FAIXAS_TALENTO = ['EXTREMAMENTE BAIXO','MUITO BAIXO','BAIXO','NORMAL BAIXO','NORMAL ALTO','ALTO','MUITO ALTO','EXTREMAMENTE ALTO'];
+
+function calcularAreaTalentos(pct) {
+  return TALENTOS_DEF.map((def,i) => {
+    let raw = 0;
+    Object.entries(def.w).forEach(([k,peso]) => raw += (pct[k]||0)*peso);
+    const score = Math.max(0,Math.min(100, raw*2));
+    const idx = Math.min(7, Math.floor(score/12.5));
+    return { num:i+1, nome:def.nome, score:Math.round(score), faixa: FAIXAS_TALENTO[idx], quad:def.quad };
+  });
+}
+
+function gerarTendencias() { return null; } // reservado
+
+function finalizarQuestionario() {
+  if (selecionadas[2].size < MIN_PALAVRAS) return;
+  document.getElementById('prog-wrap').style.display = 'none';
+  mostrarTela('tela-calc');
+
+  setTimeout(() => {
+    const pctAtual = calcularPerfil(1);
+    const pctMeio  = calcularPerfil(2);
+    const fatores  = calcularFatores(1);
+    const sortedNat = Object.entries(pctAtual).sort((a,b)=>b[1]-a[1]);
+    const primario = sortedNat[0][0];
+    const secundario = sortedNat[1][1] >= 17 ? sortedNat[1][0] : null;
+    const aderencia = calcularAderenciaNivel(pctAtual);
+    const indicadores = calcularIndicadores(pctAtual, fatores, aderencia);
+    const competencias = calcularCompetencias(pctAtual);
+    const talentos = calcularAreaTalentos(pctAtual);
+    const match = calcularMatch(vagaCandidato, pctAtual);
+
+    const relatorio = { primario, secundario, pctAtual, pctMeio, fatores, aderencia, indicadores, competencias, talentos, match };
+    renderizarResultado(relatorio);
+    mostrarTela('tela-resultado');
+
+    // Envio ao servidor em background
+    try {
+      const relatorioRH = gerarRelatorioRH(relatorio);
+      const relatorioGestor = gerarRelatorioGestor(relatorio);
+      fetch('/disc-solides/submit', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          telefone, nome: nomeCandidata, vaga: vagaCandidato, nivel: NIVEL,
+          palavrasNatural: Array.from(selecionadas[1]).map(i=>BANCO_PALAVRAS[i].p),
+          palavrasMeio: Array.from(selecionadas[2]).map(i=>BANCO_PALAVRAS[i].p),
+          percentuaisNatural: pctAtual, percentuaisMeio: pctMeio,
+          primario, secundario, relatorioRH, relatorioGestor
+        })
+      }).catch(e => console.warn('Servidor offline — resultado calculado localmente.'));
+    } catch(e) { console.warn('Erro ao preparar envio:', e); }
+  }, 900);
+}
+
+function gerarRelatorioRH(rel) {
+  const r = RECRUTA[rel.primario];
+  return {
+    nivel: NIVEL, nivelLabel: NIVEL_LABEL[NIVEL], aderenciaNivel: rel.aderencia,
+    perfilNatural: rel.primario + (rel.secundario ? '/' + rel.secundario : ''),
+    percentuaisNatural: rel.pctAtual, percentuaisMeio: rel.pctMeio,
+    vaga: vagaCandidato || '', match: rel.match,
+    indicadores: rel.indicadores, competencias: rel.competencias, talentos: rel.talentos,
+    resumoRH:r.resumoRH, ambientesFit:r.ambientesFit, ambientesRisco:r.ambientesRisco,
+    liderancaFit:r.liderancaFit, liderancaRisco:r.liderancaRisco, conflito:r.conflito,
+    motivacao:r.motivacao, retencao:r.retencao, autonomia:r.autonomia,
+    sinaisVerde:r.sinaisVerde, alertas:r.alertas, perguntasEntrevista:r.perguntas,
+    combo: rel.secundario ? (COMBOS[rel.primario+rel.secundario] || COMBOS[rel.secundario+rel.primario] || null) : null
+  };
+}
+function gerarRelatorioGestor(rel) {
+  const g = GESTOR[rel.primario];
+  return {
+    nivel: NIVEL, nivelLabel: NIVEL_LABEL[NIVEL], aderenciaNivel: rel.aderencia,
+    perfilNatural: rel.primario + (rel.secundario ? '/' + rel.secundario : ''),
+    percentuaisNatural: rel.pctAtual, vaga: vagaCandidato || '',
+    resumo:g.resumo, comoGerenciar:g.comoGerenciar, comoComunicar:g.comoComunicar, comoDelegar:g.comoDelegar,
+    primeirosDias:g.primeirosDias, gatilhosMotivacao:g.gatilhosMotivacao, sinaisAlerta:g.sinaisAlerta,
+    perguntasAlinhamento:g.perguntasAlinhamento,
+    combo: rel.secundario ? (COMBOS[rel.primario+rel.secundario] || COMBOS[rel.secundario+rel.primario] || null) : null
+  };
+}
+</script>
+<script id="disc-solides-render">
+// ══════════════════════════════════════════════════════════════
+// GRÁFICOS (SVG inline, sem dependência externa)
+// ══════════════════════════════════════════════════════════════
+function svgLineChart(series, categorias) {
+  const W=560, H=260, padL=40, padR=20, padT=16, padB=30;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const yMin=-25, yMax=25;
+  const yToPx = v => padT + plotH - ((v-yMin)/(yMax-yMin))*plotH;
+  const xToPx = i => padL + (i/(categorias.length-1))*plotW;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px" xmlns="http://www.w3.org/2000/svg">`;
+  // grid horizontal
+  for (let v=yMax; v>=yMin; v-=5) {
+    const y = yToPx(v);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eee" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${y+3}" font-size="9" fill="#9ca3af" text-anchor="end">${v}</text>`;
+  }
+  // eixo X labels
+  categorias.forEach((c,i) => {
+    svg += `<text x="${xToPx(i)}" y="${H-8}" font-size="10" fill="#374151" text-anchor="middle" font-weight="700">${c}</text>`;
+  });
+  // linhas + marcadores
+  series.forEach(s => {
+    let pontos = s.valores.map((v,i) => `${xToPx(i)},${yToPx(v)}`).join(' ');
+    svg += `<polyline points="${pontos}" fill="none" stroke="${s.cor}" stroke-width="2" opacity=".85"/>`;
+    s.valores.forEach((v,i) => {
+      const x=xToPx(i), y=yToPx(v);
+      if (s.tipo==='circle') svg += `<circle cx="${x}" cy="${y}" r="5" fill="${s.cor}"/>`;
+      else if (s.tipo==='square') svg += `<rect x="${x-4}" y="${y-4}" width="8" height="8" fill="${s.cor}"/>`;
+      else svg += `<polygon points="${x},${y-6} ${x-6},${y+5} ${x+6},${y+5}" fill="${s.cor}"/>`;
+    });
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function svgRadar(itens) {
+  const W=340,H=340,cx=W/2,cy=H/2,R=118;
+  const n = itens.length;
+  const angulo = i => (Math.PI*2*i/n) - Math.PI/2;
+  const ptoRaio = (i,r) => [cx + r*Math.cos(angulo(i)), cy + r*Math.sin(angulo(i))];
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:380px" xmlns="http://www.w3.org/2000/svg">`;
+  // anéis de fundo
+  [0.25,0.5,0.75,1].forEach(f => {
+    let pts = itens.map((_,i)=>ptoRaio(i,R*f).join(',')).join(' ');
+    svg += `<polygon points="${pts}" fill="none" stroke="#ece7fb" stroke-width="1"/>`;
+  });
+  // eixos + labels
+  itens.forEach((it,i) => {
+    const [x,y] = ptoRaio(i,R);
+    svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#ece7fb" stroke-width="1"/>`;
+    const [lx,ly] = ptoRaio(i,R+22);
+    svg += `<text x="${lx}" y="${ly}" font-size="8.5" fill="#6d28d9" text-anchor="middle" font-weight="700">${it.num}</text>`;
+  });
+  // polígono de dados
+  let dataPts = itens.map((it,i) => ptoRaio(i, R*(it.score/100)).join(',')).join(' ');
+  svg += `<polygon points="${dataPts}" fill="#7c3aed" fill-opacity=".35" stroke="#6d28d9" stroke-width="2"/>`;
+  itens.forEach((it,i) => { const [x,y]=ptoRaio(i,R*(it.score/100)); svg += `<circle cx="${x}" cy="${y}" r="2.5" fill="#4c1d95"/>`; });
+  svg += `</svg>`;
+  return svg;
+}
+
+function svgQuadrante(areas) {
+  const W=320,H=320;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:340px" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect x="0" y="0" width="${W/2}" height="${H/2}" fill="#fef9c3"/>`;
+  svg += `<rect x="${W/2}" y="0" width="${W/2}" height="${H/2}" fill="#dcfce7"/>`;
+  svg += `<rect x="0" y="${H/2}" width="${W/2}" height="${H/2}" fill="#fde2e2"/>`;
+  svg += `<rect x="${W/2}" y="${H/2}" width="${W/2}" height="${H/2}" fill="#dbeafe"/>`;
+  svg += `<line x1="${W/2}" y1="0" x2="${W/2}" y2="${H}" stroke="#fff" stroke-width="3"/>`;
+  svg += `<line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="#fff" stroke-width="3"/>`;
+  svg += `<text x="6" y="14" font-size="9" fill="#78350f" font-weight="700">EMOÇÃO</text>`;
+  svg += `<text x="6" y="${H-6}" font-size="9" fill="#78350f" font-weight="700">RAZÃO</text>`;
+  svg += `<text x="${W-58}" y="14" font-size="9" fill="#166534" font-weight="700">INTROVERSÃO →</text>`;
+  areas.forEach(a => {
+    const x = (a.quad[0]-0.5)/4*W;
+    const y = (a.quad[1]-0.5)/4*H;
+    svg += `<circle cx="${x}" cy="${y}" r="12" fill="#fff" stroke="#4c1d95" stroke-width="2"/>`;
+    svg += `<text x="${x}" y="${y+4}" font-size="10" fill="#4c1d95" font-weight="800" text-anchor="middle">${a.num}</text>`;
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER — resultado do candidato
+// ══════════════════════════════════════════════════════════════
+function renderizarResultado(rel) {
+  const pN = PERFIS[rel.primario];
+  const el = document.getElementById('resultado-conteudo');
+  const dataStr = new Date().toLocaleDateString('pt-BR');
+
+  const faixaHtml = KEYS.map(k => `<div class="faixa-seg" style="flex:${rel.pctAtual[k]||1};background:${CORES[k]}"></div>`).join('');
+  const legendaHtml = KEYS.map(k => `
+    <div>
+      <div class="pl-pct" style="color:${CORES[k]}">${rel.pctAtual[k]}%</div>
+      <div class="pl-nome">${NOMES_PERFIL[k]}</div>
+      <div class="pl-tag">${rel.pctAtual[k]>=25?'ALTO':'BAIXO'}</div>
+    </div>`).join('');
+
+  const fatoresHtml = KEYS.map(k => `
+    <div class="fator-col">
+      <div class="fator-pos" style="color:${CORES[k]}">+${rel.fatores[k].fatorPos}%</div>
+      <div class="fator-neg">-${rel.fatores[k].fatorNeg}%</div>
+    </div>`).join('');
+
+  const indicadoresHtml = rel.indicadores.map(it => `
+    <div class="indicador-row">
+      <div class="indicador-lbl">${it.nome}</div>
+      <div class="indicador-faixa">${it.faixa}</div>
+      <div class="indicador-track"><div class="indicador-fill" style="width:${it.score}%"></div></div>
+    </div>`).join('');
+
+  const perfilIsoladoChart = svgLineChart([
+    {nome:'Perfil Atual', cor:'#6d28d9', tipo:'circle', valores: KEYS.map(k=>rel.pctAtual[k]-25)},
+    {nome:'Exigência do Meio', cor:'#dc2626', tipo:'square', valores: KEYS.map(k=>rel.pctMeio[k]-25)},
+    {nome:'Força de Adaptação', cor:'#1f2937', tipo:'triangle', valores: KEYS.map(k=>(rel.pctAtual[k]+rel.pctMeio[k])/2-25)}
+  ], KEYS.map(k=>NOMES_PERFIL[k]));
+
+  const LIDERANCA_LBL = {D:'Dominante', I:'Informal', S:'Condescendente', C:'Formal'};
+  const liderancaChart = svgLineChart([
+    {nome:'Perfil Atual', cor:'#6d28d9', tipo:'circle', valores: KEYS.map(k=>rel.pctAtual[k]-25)},
+    {nome:'Exigência do Meio', cor:'#dc2626', tipo:'square', valores: KEYS.map(k=>rel.pctMeio[k]-25)},
+    {nome:'Força de Adaptação', cor:'#1f2937', tipo:'triangle', valores: KEYS.map(k=>(rel.pctAtual[k]+rel.pctMeio[k])/2-25)}
+  ], KEYS.map(k=>LIDERANCA_LBL[k]));
+
+  const radarChart = svgRadar(rel.competencias);
+  const compListaHtml = rel.competencias.map(c => `
+    <div class="comp-row">
+      <div class="comp-num">${c.num}</div>
+      <div class="comp-nome">${c.nome}</div>
+      <div class="comp-faixa">${c.faixa}</div>
+    </div>`).join('');
+
+  const quadranteChart = svgQuadrante(rel.talentos);
+  const talentosListaHtml = rel.talentos.map(t => `
+    <div class="talento-row">
+      <div class="talento-num">${t.num}</div>
+      <div class="talento-nome">${t.num}. ${t.nome}</div>
+      <div class="talento-faixa">${t.faixa}</div>
+    </div>`).join('');
+
+  const comboHtml = rel.secundario && COMBOS[rel.primario+rel.secundario]
+    ? `<div class="dica" style="margin-top:10px">🔗 ${COMBOS[rel.primario+rel.secundario]}</div>` : '';
+
+  const matchHtml = rel.match ? `
+    <div class="aderencia-box">
+      <div class="aderencia-pct">${rel.match.score}%</div>
+      <div>
+        <div style="font-size:12.5px;font-weight:800;color:var(--roxo2)">${rel.match.lbl} — ${rel.match.vagaLbl||vagaCandidato}</div>
+        <div style="font-size:11.5px;color:#6b7280;margin-top:2px">${rel.match.nota||''}</div>
+      </div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="res-top">
+        <span style="font-size:40px">${pN.emoji}</span>
+        <div class="res-titulo">Neste momento, ${nomeCandidata.split(' ')[0]} está:<strong>${pN.nome}${rel.secundario?' '+PERFIS[rel.secundario].nome:''}</strong></div>
+        <div class="res-data">${dataStr}${vagaCandidato?' · '+vagaCandidato:''} · Nível ${NIVEL_LABEL[NIVEL]}</div>
+      </div>
+      <div class="faixa-perfil">${faixaHtml}</div>
+      <div class="perfis-legenda">${legendaHtml}</div>
+      <p class="res-texto" style="margin-top:12px">${pN.resumo}</p>
+      ${comboHtml}
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Distribuição de fatores positivos e negativos por perfil</div>
+      <div class="fatores-row">${fatoresHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">🌟 O que você traz de melhor</div>
+      ${pN.forcas.map(f=>`<div class="item-lista">${f}</div>`).join('')}
+      <div class="sec-titulo" style="margin-top:14px">🌱 Para ficar de olho</div>
+      ${pN.atencao.map(a=>`<div class="item-lista">${a}</div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Indicadores situacionais</div>
+      ${indicadoresHtml}
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Perfil isolado</div>
+      <div class="chart-wrap">${perfilIsoladoChart}</div>
+      <div class="chart-legenda">
+        <span><span class="leg-dot" style="background:#6d28d9"></span>Perfil Atual</span>
+        <span><span class="leg-sq" style="background:#dc2626"></span>Exigência do Meio</span>
+        <span><span class="leg-tri"></span>Força de Adaptação</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Estilo de liderança x liderança atual</div>
+      <div class="chart-wrap">${liderancaChart}</div>
+      <div class="chart-legenda">
+        <span><span class="leg-dot" style="background:#6d28d9"></span>Perfil Atual</span>
+        <span><span class="leg-sq" style="background:#dc2626"></span>Exigência do Meio</span>
+        <span><span class="leg-tri"></span>Força de Adaptação</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Competências</div>
+      <div class="chart-wrap" style="text-align:center">${radarChart}</div>
+      ${compListaHtml}
+    </div>
+
+    <div class="card">
+      <div class="sec-titulo">Área de talentos</div>
+      <div class="chart-wrap" style="text-align:center">${quadranteChart}</div>
+      ${talentosListaHtml}
+    </div>
+
+    ${matchHtml ? `<div class="card"><div class="sec-titulo">Aderência à vaga informada</div>${matchHtml}</div>` : ''}
+
+    <button class="btn-print" onclick="window.print()">🖨️ Salvar meu resultado</button>
+    <div class="card" style="margin-top:14px;padding:20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">💜</div>
+      <div style="font-size:13px;font-weight:800;color:var(--roxo2);margin-bottom:6px">Obrigado por responder!</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Seu perfil foi registrado pela equipe Effect Pessoas.<br>Em breve entraremos em contato.</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:10px">Este é um resumo simplificado do seu resultado. Uma leitura mais detalhada foi enviada à equipe de recrutamento.</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
