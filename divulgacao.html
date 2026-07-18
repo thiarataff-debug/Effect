@@ -191,6 +191,19 @@
     border:none; background:none; font-size:20px; line-height:1; padding:5px 0; border-radius:6px; cursor:pointer;
   }
   .emoji-grid button:hover{background:#eef1f5;}
+  .layer-row{
+    display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:8px; cursor:pointer;
+    font-size:12.5px; border:1px solid transparent;
+  }
+  .layer-row:hover{background:#f5f7fa;}
+  .layer-row.active{background:#eaf0fb; border-color:var(--navy);}
+  .layer-row .layer-icon{width:18px; text-align:center; flex-shrink:0; color:var(--gray);}
+  .layer-row .layer-label{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dark);}
+  .layer-row button{
+    border:none; background:none; cursor:pointer; color:var(--gray); font-size:13px; padding:2px 4px; flex-shrink:0;
+  }
+  .layer-row button.on{color:var(--navy);}
+  .layer-empty{font-size:12px; color:var(--gray); text-align:center; padding:8px 0;}
   .align-row{display:flex; gap:6px;}
   .align-row button{flex:1; padding:8px 0; border-radius:6px; border:1px solid #d7dbe0; background:#fff; cursor:pointer; font-size:13px;}
   .align-row button.active{background:var(--navy); color:#fff; border-color:var(--navy);}
@@ -203,7 +216,7 @@
 <div class="topbar">
   <i class="fas fa-bullhorn"></i>
   <h1>DIVULGAÇÃO DE VAGAS — LIA</h1>
-  <a class="voltar" href="/dashboard"><i class="fas fa-arrow-left"></i> Painel</a>
+  <a class="voltar" href="/inbox"><i class="fas fa-arrow-left"></i> Lia</a>
   <div class="sub">Effect Pessoas &amp; Performance</div>
 </div>
 
@@ -350,7 +363,7 @@
         <button type="button" class="btn btn-toggle btn-sm" id="btnUndo">↶ Desfazer</button>
         <button type="button" class="btn btn-toggle btn-sm" id="btnRedo">↷ Refazer</button>
       </div>
-      <div class="hint">Clique numa peça na prévia (ou adicione uma nova aqui) pra selecionar e editar no painel abaixo. Tecla Delete/Backspace apaga a peça selecionada (fora de campos de texto). Ctrl+Z desfaz, Ctrl+Shift+Z refaz.</div>
+      <div class="hint">Clique numa peça na prévia (ou adicione uma nova aqui) pra selecionar e editar no painel abaixo. Ao arrastar, linhas rosa aparecem quando a peça encaixa no centro do formato ou alinha com outra peça (segure Alt pra mover livre, sem encaixar). Tecla Delete/Backspace apaga, Ctrl+D duplica a peça selecionada (fora de campos de texto). Ctrl+Z desfaz, Ctrl+Shift+Z refaz.</div>
 
       <div style="position:relative; margin-top:10px;">
         <button type="button" class="btn btn-outline btn-block btn-sm" id="emojiToggle">😀 Inserir emoji</button>
@@ -362,8 +375,35 @@
       <div class="hint">Com um texto selecionado, clique num emoji pra inserir no cursor (ou no final do texto). Sem nada selecionado, o emoji vira uma peça nova solta na arte — como um sticker.</div>
     </div>
 
+    <div class="card">
+      <h2>Camadas</h2>
+      <div id="layersList"></div>
+      <div class="hint">De cima pra baixo = da frente pra trás. Clique pra selecionar (Shift+clique soma à seleção) mesmo se a peça estiver bloqueada ou escondida — é o único jeito de reselecionar uma peça bloqueada.</div>
+    </div>
+
     <div class="card" id="elPanel" style="display:none;">
       <h2>Elemento selecionado <span id="elTypeLabel" style="text-transform:none; color:var(--gray); font-weight:500;"></span></h2>
+
+      <div class="company-actions" style="margin-top:0;">
+        <button type="button" class="btn btn-outline btn-sm" id="elDuplicateTop" title="Ctrl+D">⧉ Duplicar</button>
+        <button type="button" class="btn btn-danger btn-sm" id="elDeleteTop" title="Delete">🗑 Excluir</button>
+        <button type="button" class="btn btn-outline btn-sm" id="elFrontTop" title="Trazer para frente">⬆</button>
+        <button type="button" class="btn btn-outline btn-sm" id="elBackTop" title="Enviar para trás">⬇</button>
+        <button type="button" class="btn btn-toggle btn-sm" id="elLockToggle" title="Bloquear/desbloquear">🔒</button>
+      </div>
+      <div class="hint" style="margin-bottom:6px;">Atalhos: Ctrl+D duplica, Ctrl+C/Ctrl+V copia e cola (inclusive entre formatos), Delete apaga, setas movem (Shift+seta move mais rápido). Shift+clique numa peça soma à seleção pra mexer em várias juntas.</div>
+
+      <label class="first">Alinhar ao formato</label>
+      <div class="align-row" id="elAlignCanvasRow">
+        <button type="button" data-align-canvas="left" title="Esquerda">⯇</button>
+        <button type="button" data-align-canvas="centerX" title="Centralizar horizontal">↔</button>
+        <button type="button" data-align-canvas="right" title="Direita">⯈</button>
+      </div>
+      <div class="align-row" style="margin-top:6px;" id="elAlignCanvasRow2">
+        <button type="button" data-align-canvas="top" title="Topo">⯅</button>
+        <button type="button" data-align-canvas="centerY" title="Centralizar vertical">↕</button>
+        <button type="button" data-align-canvas="bottom" title="Base">⯆</button>
+      </div>
 
       <div id="elTextControls">
         <label class="first">Texto</label>
@@ -429,11 +469,13 @@
         <label style="display:flex; align-items:center; gap:6px; margin-top:10px;"><input type="checkbox" id="elImageRound" style="width:auto;"> Recorte circular</label>
       </div>
 
-      <label style="margin-top:12px;">Opacidade <span id="elOpacityVal" style="color:var(--gray); font-weight:500;"></span></label>
-      <input type="range" id="elOpacity" min="10" max="100" step="1">
+      <div id="elCommonControls">
+        <label style="margin-top:12px;">Opacidade <span id="elOpacityVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elOpacity" min="10" max="100" step="1">
 
-      <label>Rotação <span id="elRotVal" style="color:var(--gray); font-weight:500;"></span></label>
-      <input type="range" id="elRotation" min="-180" max="180" step="1">
+        <label>Rotação <span id="elRotVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elRotation" min="-180" max="180" step="1">
+      </div>
 
       <div class="company-actions">
         <button type="button" class="btn btn-outline btn-sm" id="elDuplicate">⧉ Duplicar</button>
@@ -877,9 +919,18 @@ function getColors(){
 // layouts[formatKey] = array de elementos (ordem = ordem de camadas, último = frente)
 let layouts = {};
 let currentFormat = 'feed';
-let selectedId = null;
+let selectedIds = []; // ordem = ordem de seleção; o último é o "principal" (o que aparece no painel)
 let activeDrag = null;
 let history = {}; // formatKey -> {undo:[...], redo:[...]}
+let clipboard = null; // array de elementos copiados (Ctrl+C), independente do formato
+
+function primaryId(){ return selectedIds.length ? selectedIds[selectedIds.length-1] : null; }
+function isSelected(id){ return selectedIds.includes(id); }
+function clearSelection(){ selectedIds = []; }
+function setSelection(id){ selectedIds = id ? [id] : []; }
+function addToSelection(id){ if(id && !selectedIds.includes(id)) selectedIds.push(id); }
+function toggleSelection(id){ const i=selectedIds.indexOf(id); if(i>=0) selectedIds.splice(i,1); else selectedIds.push(id); }
+function selectedElements(){ return selectedIds.map(id=>findElement(currentFormat,id)).filter(Boolean); }
 
 function getElements(fmt){
   return layouts[fmt] || (layouts[fmt] = []);
@@ -907,7 +958,7 @@ function doUndo(){
   if(!h.undo.length) return;
   h.redo.push(cloneEls(getElements(currentFormat)));
   layouts[currentFormat] = h.undo.pop();
-  selectedId = null;
+  clearSelection();
   draw(); syncElPanel();
 }
 function doRedo(){
@@ -915,7 +966,7 @@ function doRedo(){
   if(!h.redo.length) return;
   h.undo.push(cloneEls(getElements(currentFormat)));
   layouts[currentFormat] = h.redo.pop();
-  selectedId = null;
+  clearSelection();
   draw(); syncElPanel();
 }
 
@@ -1292,7 +1343,7 @@ function getHandlePoints(el){
 }
 function handleSize(fmt){ return Math.max(16, fmt.w*0.016); }
 
-function drawSelectionUI(ctx, el, fmt){
+function drawSelectionUI(ctx, el, fmt, showHandles){
   const pts = getHandlePoints(el);
   const hs = handleSize(fmt);
   ctx.save();
@@ -1304,9 +1355,12 @@ function drawSelectionUI(ctx, el, fmt){
   ctx.lineTo(pts.se.x, pts.se.y); ctx.lineTo(pts.sw.x, pts.sw.y); ctx.closePath();
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.beginPath(); ctx.moveTo((pts.nw.x+pts.ne.x)/2, (pts.nw.y+pts.ne.y)/2); ctx.lineTo(pts.rotate.x, pts.rotate.y); ctx.stroke();
+  if(showHandles){
+    ctx.beginPath(); ctx.moveTo((pts.nw.x+pts.ne.x)/2, (pts.nw.y+pts.ne.y)/2); ctx.lineTo(pts.rotate.x, pts.rotate.y); ctx.stroke();
+  }
   ctx.restore();
 
+  if(!showHandles) return;
   const handleNames = el.type==='text' ? ['nw','ne','sw','se'] : ['nw','ne','sw','se','n','s','e','w'];
   handleNames.forEach(name=>{
     const p = pts[name];
@@ -1330,6 +1384,58 @@ function handleAt(pt, el, fmt){
 }
 
 /* ---------- Render principal ---------- */
+/* ---------- Guias inteligentes de alinhamento (estilo Canva) ----------
+   Enquanto uma peça é arrastada, compara suas bordas/centro com o centro/bordas do
+   canvas e com as bordas/centro das outras peças; se ficar perto o suficiente, encaixa
+   (snap) e desenha uma linha guia rosa, igual ao Canva. */
+let activeGuides = null;
+
+function snapCandidatesX(els, excludeId, fmt){
+  const xs = [0, fmt.w/2, fmt.w];
+  els.forEach(e=>{ if(e.id!==excludeId && !e.hidden) xs.push(e.x, e.x+e.w/2, e.x+e.w); });
+  return xs;
+}
+function snapCandidatesY(els, excludeId, fmt){
+  const ys = [0, fmt.h/2, fmt.h];
+  els.forEach(e=>{ if(e.id!==excludeId && !e.hidden) ys.push(e.y, e.y+e.h/2, e.y+e.h); });
+  return ys;
+}
+
+function applySnap(el, els, fmt, disabled){
+  const guidesEmpty = {v:[], h:[]};
+  if(disabled) return guidesEmpty;
+  const threshold = Math.max(5, fmt.w*0.006);
+  const pts = { left:el.x, centerX:el.x+el.w/2, right:el.x+el.w, top:el.y, centerY:el.y+el.h/2, bottom:el.y+el.h };
+  let bestX=null, bestXDelta=threshold+1;
+  snapCandidatesX(els, el.id, fmt).forEach(cx=>{
+    ['left','centerX','right'].forEach(key=>{
+      const d = Math.abs(pts[key]-cx);
+      if(d<bestXDelta){ bestXDelta=d; bestX={key,cx}; }
+    });
+  });
+  let bestY=null, bestYDelta=threshold+1;
+  snapCandidatesY(els, el.id, fmt).forEach(cy=>{
+    ['top','centerY','bottom'].forEach(key=>{
+      const d = Math.abs(pts[key]-cy);
+      if(d<bestYDelta){ bestYDelta=d; bestY={key,cy}; }
+    });
+  });
+  const guides = {v:[], h:[]};
+  if(bestX && bestXDelta<=threshold){ el.x += bestX.cx-pts[bestX.key]; guides.v.push(bestX.cx); }
+  if(bestY && bestYDelta<=threshold){ el.y += bestY.cy-pts[bestY.key]; guides.h.push(bestY.cy); }
+  return guides;
+}
+
+function drawGuides(ctx, fmt, guides){
+  if(!guides || (!guides.v.length && !guides.h.length)) return;
+  ctx.save();
+  ctx.strokeStyle = '#ff2d95';
+  ctx.lineWidth = Math.max(1.5, fmt.w*0.0012);
+  guides.v.forEach(x=>{ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,fmt.h); ctx.stroke(); });
+  guides.h.forEach(y=>{ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(fmt.w,y); ctx.stroke(); });
+  ctx.restore();
+}
+
 function renderFormat(canvas, fmtKey, interactive){
   const fmt = FORMATS[fmtKey];
   canvas.width = fmt.w; canvas.height = fmt.h;
@@ -1337,10 +1443,13 @@ function renderFormat(canvas, fmtKey, interactive){
   ctx.clearRect(0,0,fmt.w,fmt.h);
   const els = getElements(fmtKey);
   els.forEach(el=> drawElement(ctx, el));
-  if(interactive && selectedId){
-    const el = els.find(e=>e.id===selectedId);
-    if(el) drawSelectionUI(ctx, el, fmt);
+  if(interactive && selectedIds.length){
+    selectedIds.forEach(id=>{
+      const el = els.find(e=>e.id===id);
+      if(el) drawSelectionUI(ctx, el, fmt, selectedIds.length===1 && !el.locked);
+    });
   }
+  if(interactive && activeDrag && activeDrag.mode==='move') drawGuides(ctx, fmt, activeGuides);
 }
 
 function draw(){
@@ -1566,7 +1675,7 @@ function confirmAndGenerate(fmtKey){
   const doIt = () => {
     pushHistory();
     layouts[fmtKey] = generateDefaultLayout(fmtKey);
-    selectedId = null;
+    clearSelection();
     draw(); syncElPanel();
   };
   if(els.length){
@@ -1627,10 +1736,11 @@ function wireCanvasInteraction(){
     const pt = canvasPointFromEvent(e);
     const els = getElements(currentFormat);
     const fmt = FORMATS[currentFormat];
+    const shift = !!e.shiftKey;
 
-    if(selectedId){
-      const el = findElement(currentFormat, selectedId);
-      if(el){
+    if(selectedIds.length===1){
+      const el = findElement(currentFormat, primaryId());
+      if(el && !el.locked){
         const h = handleAt(pt, el, fmt);
         if(h==='rotate'){
           pushHistory();
@@ -1647,33 +1757,52 @@ function wireCanvasInteraction(){
 
     const hit = findElementAt(pt, els);
     if(hit){
-      selectedId = hit.id;
+      if(shift) toggleSelection(hit.id);
+      else if(!isSelected(hit.id)) setSelection(hit.id);
       pushHistory();
-      activeDrag = {mode:'move', el:hit, startPt:pt, startX:hit.x, startY:hit.y};
+      const group = selectedElements().filter(g=>!g.locked);
+      activeDrag = {
+        mode:'move', startPt:pt,
+        items: group.map(g=>({el:g, startX:g.x, startY:g.y})),
+        primaryEl: findElement(currentFormat, primaryId())
+      };
       canvas.style.cursor='grabbing';
       draw(); syncElPanel();
       e.preventDefault();
     } else {
-      if(selectedId){ selectedId=null; draw(); syncElPanel(); }
+      if(!shift && selectedIds.length){ clearSelection(); draw(); syncElPanel(); }
     }
   };
 
   const onMove = (e)=>{
     const pt = canvasPointFromEvent(e);
     if(activeDrag){
-      const el = activeDrag.el;
       if(activeDrag.mode==='move'){
-        el.x = activeDrag.startX + (pt.x-activeDrag.startPt.x);
-        el.y = activeDrag.startY + (pt.y-activeDrag.startPt.y);
-      } else if(activeDrag.mode==='resize'){
-        const localPt = toLocal(pt, activeDrag.startEl);
-        if(el.type==='text') applyTextResize(activeDrag.handle, el, activeDrag.startEl, localPt);
-        else applyShapeResize(activeDrag.handle, el, activeDrag.startEl, localPt);
-      } else if(activeDrag.mode==='rotate'){
-        const cx=el.x+el.w/2, cy=el.y+el.h/2;
-        let angle = Math.atan2(pt.y-cy, pt.x-cx)*180/Math.PI + 90;
-        if(e.shiftKey) angle = Math.round(angle/15)*15;
-        el.rotation = Math.round(angle);
+        const dx = pt.x-activeDrag.startPt.x, dy = pt.y-activeDrag.startPt.y;
+        activeDrag.items.forEach(it=>{ it.el.x = it.startX+dx; it.el.y = it.startY+dy; });
+        const fmt = FORMATS[currentFormat];
+        if(activeDrag.primaryEl && !activeDrag.primaryEl.locked){
+          const before = {x:activeDrag.primaryEl.x, y:activeDrag.primaryEl.y};
+          const groupIds = activeDrag.items.map(it=>it.el.id);
+          const others = getElements(currentFormat).filter(o=>!groupIds.includes(o.id));
+          activeGuides = applySnap(activeDrag.primaryEl, others, fmt, e.altKey);
+          const corrX = activeDrag.primaryEl.x-before.x, corrY = activeDrag.primaryEl.y-before.y;
+          if(corrX||corrY){
+            activeDrag.items.forEach(it=>{ if(it.el!==activeDrag.primaryEl){ it.el.x+=corrX; it.el.y+=corrY; } });
+          }
+        }
+      } else {
+        const el = activeDrag.el;
+        if(activeDrag.mode==='resize'){
+          const localPt = toLocal(pt, activeDrag.startEl);
+          if(el.type==='text') applyTextResize(activeDrag.handle, el, activeDrag.startEl, localPt);
+          else applyShapeResize(activeDrag.handle, el, activeDrag.startEl, localPt);
+        } else if(activeDrag.mode==='rotate'){
+          const cx=el.x+el.w/2, cy=el.y+el.h/2;
+          let angle = Math.atan2(pt.y-cy, pt.x-cx)*180/Math.PI + 90;
+          if(e.shiftKey) angle = Math.round(angle/15)*15;
+          el.rotation = Math.round(angle);
+        }
       }
       draw();
       e.preventDefault();
@@ -1681,9 +1810,9 @@ function wireCanvasInteraction(){
       const els = getElements(currentFormat);
       const fmt = FORMATS[currentFormat];
       let cursor='default';
-      if(selectedId){
-        const el = findElement(currentFormat, selectedId);
-        if(el){ const h = handleAt(pt, el, fmt); if(h==='rotate') cursor='grab'; else if(h) cursor='nwse-resize'; }
+      if(selectedIds.length===1){
+        const el = findElement(currentFormat, primaryId());
+        if(el && !el.locked){ const h = handleAt(pt, el, fmt); if(h==='rotate') cursor='grab'; else if(h) cursor='nwse-resize'; }
       }
       if(cursor==='default' && findElementAt(pt, els)) cursor='grab';
       canvas.style.cursor = cursor;
@@ -1693,9 +1822,11 @@ function wireCanvasInteraction(){
   const onUp = ()=>{
     if(activeDrag){
       activeDrag = null;
+      activeGuides = null;
       canvas.style.cursor='grab';
       syncElPanel();
       saveState();
+      draw();
     }
   };
 
@@ -1719,7 +1850,20 @@ function wireCanvasInteraction(){
       e.preventDefault(); doRedo(); return;
     }
 
-    if(!selectedId || inField) return;
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='d' && !inField && selectedIds.length){
+      e.preventDefault(); duplicateSelected(); return;
+    }
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='c' && !inField && selectedIds.length){
+      e.preventDefault(); copySelected(); return;
+    }
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='v' && !inField && clipboard && clipboard.length){
+      e.preventDefault(); pasteClipboard(); return;
+    }
+    if(e.key==='Escape' && !inField && selectedIds.length){
+      clearSelection(); draw(); syncElPanel(); return;
+    }
+
+    if(!selectedIds.length || inField) return;
 
     if(e.key==='Delete' || e.key==='Backspace'){
       e.preventDefault();
@@ -1730,17 +1874,19 @@ function wireCanvasInteraction(){
     const dir = dirMap[e.key];
     if(!dir) return;
     e.preventDefault();
-    const el = findElement(currentFormat, selectedId);
-    if(!el) return;
     const step = e.shiftKey ? 16 : 4;
-    el.x += dir[0]*step; el.y += dir[1]*step;
+    selectedElements().forEach(el=>{
+      if(el.locked) return;
+      el.x += dir[0]*step; el.y += dir[1]*step;
+    });
     draw();
   });
 }
 
-/* ---------- Ações de elemento (adicionar / duplicar / excluir / camadas) ---------- */
-function selectElement(id){
-  selectedId = id;
+/* ---------- Ações de elemento (adicionar / duplicar / excluir / camadas / grupo) ---------- */
+function selectElement(id, additive){
+  if(additive) toggleSelection(id);
+  else setSelection(id);
   draw(); syncElPanel();
 }
 
@@ -1748,52 +1894,166 @@ function addElement(el){
   pushHistory();
   const els = getElements(currentFormat);
   els.push(el);
-  selectedId = el.id;
+  setSelection(el.id);
   draw(); syncElPanel();
 }
 
 function deleteSelected(){
-  if(!selectedId) return;
+  if(!selectedIds.length) return;
   pushHistory();
-  const els = getElements(currentFormat);
-  const idx = els.findIndex(e=>e.id===selectedId);
-  if(idx>=0) els.splice(idx,1);
-  selectedId = null;
+  const idsToDelete = new Set(selectedIds);
+  layouts[currentFormat] = getElements(currentFormat).filter(e=>!idsToDelete.has(e.id));
+  clearSelection();
   draw(); syncElPanel();
 }
 
 function duplicateSelected(){
-  if(!selectedId) return;
+  if(!selectedIds.length) return;
   const els = getElements(currentFormat);
-  const el = els.find(e=>e.id===selectedId);
-  if(!el) return;
+  const group = selectedIds.map(id=>els.find(e=>e.id===id)).filter(Boolean);
+  if(!group.length) return;
   pushHistory();
-  const copy = JSON.parse(JSON.stringify(el));
-  copy.id = uid();
-  copy.x += 24; copy.y += 24;
-  els.push(copy);
-  selectedId = copy.id;
+  const newIds = [];
+  group.forEach(el=>{
+    const copy = JSON.parse(JSON.stringify(el));
+    copy.id = uid();
+    copy.x += 24; copy.y += 24;
+    els.push(copy);
+    newIds.push(copy.id);
+  });
+  selectedIds = newIds;
+  draw(); syncElPanel();
+}
+
+function copySelected(){
+  const group = selectedElements();
+  if(!group.length) return;
+  clipboard = JSON.parse(JSON.stringify(group));
+}
+
+function pasteClipboard(){
+  if(!clipboard || !clipboard.length) return;
+  pushHistory();
+  const els = getElements(currentFormat);
+  const newIds = [];
+  clipboard.forEach(src=>{
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.id = uid();
+    copy.x += 24; copy.y += 24;
+    els.push(copy);
+    newIds.push(copy.id);
+  });
+  selectedIds = newIds;
   draw(); syncElPanel();
 }
 
 function layerMove(dir){
-  if(!selectedId) return;
+  if(!selectedIds.length) return;
   const els = getElements(currentFormat);
-  const idx = els.findIndex(e=>e.id===selectedId);
-  if(idx<0) return;
   pushHistory();
-  const [el] = els.splice(idx,1);
-  if(dir==='front') els.push(el);
-  else els.unshift(el);
+  const idsSet = new Set(selectedIds);
+  const chosen = els.filter(e=>idsSet.has(e.id));
+  const rest = els.filter(e=>!idsSet.has(e.id));
+  layouts[currentFormat] = dir==='front' ? rest.concat(chosen) : chosen.concat(rest);
   draw(); syncElPanel();
+}
+
+function toggleLockSelected(){
+  const group = selectedElements();
+  if(!group.length) return;
+  pushHistory();
+  const allLocked = group.every(el=>el.locked);
+  group.forEach(el=> el.locked = !allLocked);
+  draw(); syncElPanel();
+}
+
+function alignSelectedToCanvas(key){
+  const group = selectedElements();
+  if(!group.length) return;
+  const fmt = FORMATS[currentFormat];
+  pushHistory();
+  group.forEach(el=>{
+    if(el.locked) return;
+    if(key==='left') el.x = 0;
+    else if(key==='right') el.x = fmt.w-el.w;
+    else if(key==='centerX') el.x = fmt.w/2-el.w/2;
+    else if(key==='top') el.y = 0;
+    else if(key==='bottom') el.y = fmt.h-el.h;
+    else if(key==='centerY') el.y = fmt.h/2-el.h/2;
+  });
+  draw(); syncElPanel();
+}
+
+/* ---------- Painel de camadas (lista de elementos do formato atual) ---------- */
+const LAYER_TYPE_ICON = {text:'🔤', rect:'▭', ellipse:'⬤', image:'🖼️', icon:'🔷'};
+function layerLabel(el){
+  if(el.type==='text') return (el.text||'(texto vazio)').replace(/\s+/g,' ').slice(0,28) || '(texto vazio)';
+  if(el.type==='image') return 'Imagem';
+  if(el.type==='icon') return 'Ícone: '+(el.key||'generico');
+  if(el.type==='rect') return 'Retângulo';
+  if(el.type==='ellipse') return 'Círculo';
+  return el.type;
+}
+
+function renderLayersList(){
+  const wrap = $('#layersList');
+  if(!wrap) return;
+  const els = getElements(currentFormat);
+  wrap.innerHTML = '';
+  if(!els.length){
+    wrap.innerHTML = '<div class="layer-empty">Nenhuma peça ainda neste formato.</div>';
+    return;
+  }
+  for(let i=els.length-1;i>=0;i--){
+    const el = els[i];
+    const row = document.createElement('div');
+    row.className = 'layer-row'+(isSelected(el.id)?' active':'');
+    row.innerHTML = `
+      <span class="layer-icon">${LAYER_TYPE_ICON[el.type]||'•'}</span>
+      <span class="layer-label">${layerLabel(el).replace(/</g,'&lt;')}</span>
+      <button type="button" data-act="hide" class="${el.hidden?'on':''}" title="Mostrar/esconder">${el.hidden?'🚫':'👁'}</button>
+      <button type="button" data-act="lock" class="${el.locked?'on':''}" title="Bloquear/desbloquear">${el.locked?'🔒':'🔓'}</button>
+    `;
+    row.addEventListener('click', (e)=>{
+      if(e.target.closest('button')) return;
+      selectElement(el.id, e.shiftKey);
+    });
+    row.querySelector('[data-act="hide"]').addEventListener('click', (e)=>{
+      e.stopPropagation(); pushHistory(); el.hidden = !el.hidden; draw(); syncElPanel();
+    });
+    row.querySelector('[data-act="lock"]').addEventListener('click', (e)=>{
+      e.stopPropagation(); pushHistory(); el.locked = !el.locked; draw(); syncElPanel();
+    });
+    wrap.appendChild(row);
+  }
 }
 
 /* ---------- Painel de propriedades do elemento selecionado ---------- */
 function syncElPanel(){
+  renderLayersList();
   const panel = $('#elPanel');
-  const el = selectedId ? findElement(currentFormat, selectedId) : null;
-  if(!el){ panel.style.display='none'; return; }
+  const count = selectedIds.length;
+  if(count===0){ panel.style.display='none'; return; }
   panel.style.display='block';
+
+  const group = selectedElements();
+  const allLocked = group.length>0 && group.every(e=>e.locked);
+  $('#elLockToggle').classList.toggle('active', allLocked);
+  $('#elLockToggle').textContent = allLocked ? '🔒 Bloqueada' : '🔒';
+
+  if(count>1){
+    $('#elTypeLabel').textContent = `· ${count} peças selecionadas`;
+    $('#elTextControls').style.display='none';
+    $('#elShapeControls').style.display='none';
+    $('#elIconControls').style.display='none';
+    $('#elImageControls').style.display='none';
+    $('#elCommonControls').style.display='none';
+    return;
+  }
+
+  const el = findElement(currentFormat, primaryId());
+  if(!el){ panel.style.display='none'; return; }
+  $('#elCommonControls').style.display='block';
 
   $('#elTypeLabel').textContent = ({text:'· Texto', rect:'· Retângulo', ellipse:'· Círculo', image:'· Imagem', icon:'· Ícone'})[el.type] || '';
 
@@ -1847,7 +2107,7 @@ function toHexColor(v){
   return null; // rgba() não é suportado pelo <input type=color>; ignora e mantém cor anterior
 }
 
-function currentEl(){ return selectedId ? findElement(currentFormat, selectedId) : null; }
+function currentEl(){ return selectedIds.length===1 ? findElement(currentFormat, primaryId()) : null; }
 
 function wireElPanel(){
   let editingFlag = false;
@@ -1950,6 +2210,15 @@ function wireElPanel(){
   $('#elDelete').addEventListener('click', deleteSelected);
   $('#elFront').addEventListener('click', ()=>layerMove('front'));
   $('#elBack').addEventListener('click', ()=>layerMove('back'));
+  $('#elDuplicateTop').addEventListener('click', duplicateSelected);
+  $('#elDeleteTop').addEventListener('click', deleteSelected);
+  $('#elFrontTop').addEventListener('click', ()=>layerMove('front'));
+  $('#elBackTop').addEventListener('click', ()=>layerMove('back'));
+  $('#elLockToggle').addEventListener('click', toggleLockSelected);
+
+  document.querySelectorAll('#elAlignCanvasRow button, #elAlignCanvasRow2 button').forEach(b=>{
+    b.addEventListener('click', ()=> alignSelectedToCanvas(b.dataset.alignCanvas));
+  });
 
   window.addEventListener('mouseup', ()=>{ editingFlag=false; });
 }
@@ -2182,7 +2451,7 @@ function initFormatTabs(){
     btn.dataset.key=key;
     btn.addEventListener('click',()=>{
       currentFormat=key;
-      selectedId=null;
+      clearSelection();
       wrap.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       if(!getElements(currentFormat).length){
