@@ -213,7 +213,7 @@ input[type=text]:focus{border-color:var(--blue)}
 <body>
 
 <div class="header">
-  <div class="logo">Effect <span>Pessoas</span></div>
+  <div class="logo">Effect <span>Pessoas</span><span id="nivel-badge" style="display:block;font-size:9px;font-weight:700;color:rgba(255,255,255,.55);margin-top:1px;text-transform:uppercase;letter-spacing:.05em"></span></div>
   <div class="header-right">
     <div class="etapa-badge" id="etapa-badge"></div>
     <div class="prog-wrap" id="prog-wrap">
@@ -240,7 +240,7 @@ input[type=text]:focus{border-color:var(--blue)}
   <div id="tela-intro">
     <div class="card">
       <h2>📊 Perfil Comportamental DISC</h2>
-      <p>Identifica seu estilo de comportamento natural e como você age no trabalho. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.</p>
+      <p id="intro-p1">Identifica seu estilo de comportamento natural e como você age no trabalho. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.</p>
       <div class="etapas-prev">
         <div class="ep">
           <div class="ep-num">1</div>
@@ -253,8 +253,8 @@ input[type=text]:focus{border-color:var(--blue)}
           <div class="ep-desc">Como as pessoas no trabalho esperam que você seja</div>
         </div>
       </div>
-      <p>São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.</p>
-      <div class="dica">💡 Responda pelo primeiro instinto — a resposta mais espontânea é a mais honesta. Tempo estimado: <strong>5 a 8 minutos</strong>.</div>
+      <p id="intro-p2">São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.</p>
+      <div class="dica" id="intro-dica">💡 Responda pelo primeiro instinto — a resposta mais espontânea é a mais honesta. Tempo estimado: <strong>5 a 8 minutos</strong>.</div>
     </div>
     <div class="alerta" id="alerta-nome">Por favor, informe seu nome para continuar.</div>
     <div class="card">
@@ -329,6 +329,7 @@ input[type=text]:focus{border-color:var(--blue)}
         <span class="res-emoji" id="res-emoji">📊</span>
         <div class="res-titulo" id="res-titulo">Perfil</div>
         <div class="res-sub" id="res-sub"></div>
+        <div class="res-sub" id="res-nivel-sub" style="margin-top:2px"></div>
       </div>
       <div class="perfis-row">
         <div class="pcard" id="pcard-nat">
@@ -366,6 +367,7 @@ input[type=text]:focus{border-color:var(--blue)}
       <div style="font-size:28px;margin-bottom:8px">💙</div>
       <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px">Obrigado por responder!</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.6">Seu perfil foi registrado pela equipe Effect Pessoas.<br>Em breve entraremos em contato.</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:10px">Este é um resumo simplificado do seu resultado. Uma leitura mais detalhada foi enviada à equipe de recrutamento.</div>
     </div>
   </div>
 
@@ -373,25 +375,76 @@ input[type=text]:focus{border-color:var(--blue)}
 
 <script>
 // ══════════════════════════════════════════
-// QUESTÕES — 12 GRUPOS  [D, I, S, C]
+// QUESTÕES — 12 GRUPOS  [D, I, S, C]  ·  3 bancos por nível de público
 // ══════════════════════════════════════════
-const QUESTOES = [
-  ["Decidido","Entusiasmado","Paciente","Preciso"],
-  ["Competitivo","Sociável","Leal","Analítico"],
-  ["Direto","Otimista","Calmo","Cauteloso"],
-  ["Ousado","Expressivo","Cooperativo","Sistemático"],
-  ["Determinado","Animado","Estável","Organizado"],
-  ["Assertivo","Comunicativo","Dedicado","Detalhista"],
-  ["Exigente","Persuasivo","Confiável","Lógico"],
-  ["Independente","Inspirador","Harmonioso","Cuidadoso"],
-  ["Resoluto","Criativo","Atencioso","Criterioso"],
-  ["Objetivo","Espontâneo","Consistente","Exato"],
-  ["Audacioso","Divertido","Tranquilo","Meticuloso"],
-  ["Ambicioso","Popular","Gentil","Rigoroso"]
-];
+const QUESTOES_POR_NIVEL = {
+  // Vocabulário simples e concreto — para candidatos operacionais
+  // (garçom, cozinheiro, auxiliar, caixa, porteiro, motorista etc.)
+  operacional: [
+    ["Corajoso","Alegre","Paciente","Cuidadoso"],
+    ["Rápido","Falante","Fiel","Caprichoso"],
+    ["Direto","Simpático","Calmo","Atento"],
+    ["Firme","Animado","Prestativo","Organizado"],
+    ["Decidido","Engraçado","Tranquilo","Detalhista"],
+    ["Competitivo","Sociável","Dedicado","Prudente"],
+    ["Exigente","Comunicativo","Confiável","Cauteloso"],
+    ["Independente","Divertido","Gentil","Certinho"],
+    ["Ousado","Espontâneo","Constante","Exato"],
+    ["Objetivo","Popular","Colaborador","Correto"],
+    ["Enérgico","Entusiasmado","Amigável","Metódico"],
+    ["Ambicioso","Extrovertido","Bondoso","Rigoroso"]
+  ],
+  // Vocabulário de negócios — para candidatos administrativos
+  // (assistente, analista, atendente, financeiro etc.) — banco original
+  administrativo: [
+    ["Decidido","Entusiasmado","Paciente","Preciso"],
+    ["Competitivo","Sociável","Leal","Analítico"],
+    ["Direto","Otimista","Calmo","Cauteloso"],
+    ["Ousado","Expressivo","Cooperativo","Sistemático"],
+    ["Determinado","Animado","Estável","Organizado"],
+    ["Assertivo","Comunicativo","Dedicado","Detalhista"],
+    ["Exigente","Persuasivo","Confiável","Lógico"],
+    ["Independente","Inspirador","Harmonioso","Cuidadoso"],
+    ["Resoluto","Criativo","Atencioso","Criterioso"],
+    ["Objetivo","Espontâneo","Consistente","Exato"],
+    ["Audacioso","Divertido","Tranquilo","Meticuloso"],
+    ["Ambicioso","Popular","Gentil","Rigoroso"]
+  ],
+  // Vocabulário de liderança e visão — para candidatos a cargos
+  // estratégicos (gestores, coordenadores, diretores, head's)
+  estrategico: [
+    ["Decisivo","Carismático","Confiável","Analítico"],
+    ["Assertivo","Persuasivo","Consistente","Criterioso"],
+    ["Visionário","Articulado","Colaborativo","Meticuloso"],
+    ["Empreendedor","Inspirador","Empático","Sistemático"],
+    ["Resoluto","Influente","Paciente","Rigoroso"],
+    ["Audacioso","Comunicativo","Leal","Metódico"],
+    ["Pragmático","Diplomático","Ponderado","Racional"],
+    ["Competitivo","Envolvente","Conciliador","Perfeccionista"],
+    ["Dominante","Sociável","Estável","Cauteloso"],
+    ["Proativo","Motivador","Receptivo","Técnico"],
+    ["Desafiador","Extrovertido","Solidário","Disciplinado"],
+    ["Ambicioso","Cativante","Prudente","Investigativo"]
+  ]
+};
+const NIVEIS_VALIDOS = ['operacional','administrativo','estrategico'];
+const NIVEL = (() => {
+  const p = (new URLSearchParams(location.search).get('nivel') || '').toLowerCase().trim();
+  return NIVEIS_VALIDOS.includes(p) ? p : 'administrativo';
+})();
+const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+const QUESTOES = QUESTOES_POR_NIVEL[NIVEL] || QUESTOES_POR_NIVEL.administrativo;
 const KEYS = ['D','I','S','C'];
 const TOTAL = 12;
 const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#1fa5f0'};
+
+// Perfil DISC de referência esperado para cada nível de cargo
+// (uso apenas como leitura auxiliar de aderência — não é uma régua rígida)
+const NIVEL_PERFIL_IDEAL = {
+  operacional:    {D:20, I:25, S:35, C:20},
+  administrativo: {D:20, I:20, S:30, C:30},
+  estrategico:    {D:35, I:30, S:15, C:20}
+};
 
 // ══════════════════════════════════════════
 // PERFIS, COMBOS, TENSÃO
@@ -520,14 +573,89 @@ const RECRUTA = {
   }
 };
 
+// ══════════════════════════════════════════
+// RELATÓRIO DO GESTOR — foco em "como gerenciar essa pessoa
+// no dia a dia", diferente do relatório de RH (que foca em
+// decisão de contratação e triagem)
+// ══════════════════════════════════════════
+const GESTOR = {
+  D:{
+    resumo:'Um profissional que gosta de assumir a frente e decidir rápido. Rende mais quando tem espaço para agir e resultados concretos para perseguir.',
+    comoGerenciar:'Dê autonomia e metas claras. Cobre resultado, não o método passo a passo — microgerenciamento tende a frustrar e desmotivar rapidamente.',
+    comoComunicar:'Seja direto e objetivo nas conversas. Explique o "porquê" das decisões em vez de apenas dar ordens — isso evita questionamentos desnecessários.',
+    comoDelegar:'Delegue com o objetivo final claro e liberdade para escolher o caminho. Evite instruções excessivamente detalhadas.',
+    primeirosDias:'Defina metas e prazos claros já nas primeiras semanas. Mostre o caminho de crescimento dentro da empresa desde o início.',
+    gatilhosMotivacao:'Reconhecimento por resultado, autonomia real, desafios novos, possibilidade de crescer rápido.',
+    sinaisAlerta:'Impaciência crescente, atropelamento de colegas ou questionamento constante de decisões podem indicar falta de desafio ou de autonomia.',
+    perguntasAlinhamento:['Quais resultados você espera de mim nos primeiros 90 dias?','Até onde posso decidir sozinho(a) sem precisar te consultar antes?']
+  },
+  I:{
+    resumo:'Um profissional comunicativo que energiza o ambiente e cria conexão fácil com o time e com clientes. Rende mais em contato direto com pessoas.',
+    comoGerenciar:'Dê reconhecimento com frequência e mantenha contato próximo. Funciona melhor com metas que envolvem interação com pessoas.',
+    comoComunicar:'Elogie em público, corrija em particular. Feedback frio, formal ou só por escrito, sem contexto, tende a desmotivar.',
+    comoDelegar:'Delegue tarefas com contato humano e variedade. Evite isolar essa pessoa em tarefas solitárias e repetitivas por muito tempo.',
+    primeirosDias:'Apresente à equipe logo nos primeiros dias e crie oportunidades de socialização. Mostre como o trabalho impacta pessoas.',
+    gatilhosMotivacao:'Reconhecimento público, relações positivas no time, variedade de tarefas, sensação de pertencimento.',
+    sinaisAlerta:'Otimismo que ignora riscos reais, ou queda repentina de humor/energia, podem indicar desmotivação silenciosa.',
+    perguntasAlinhamento:['O que te deixaria animado(a) para vir trabalhar todos os dias?','Como você prefere receber um feedback de melhoria?']
+  },
+  S:{
+    resumo:'Um profissional constante e leal, em quem se pode confiar para entregar o combinado. Rende mais em rotina estável e clara.',
+    comoGerenciar:'Dê direção clara e seja consistente. Evite mudanças bruscas sem explicação — isso gera insegurança silenciosa.',
+    comoComunicar:'Fale com calma e dê tempo para processar mudanças. Não espere posicionamento espontâneo em conflitos — pergunte diretamente o que a pessoa pensa.',
+    comoDelegar:'Delegue com processo definido e suporte disponível. Evite jogar decisões urgentes sem contexto ou orientação.',
+    primeirosDias:'Explique bem os processos e a rotina esperada. Reforce que a pessoa pode contar com você como apoio nas primeiras semanas.',
+    gatilhosMotivacao:'Estabilidade, ambiente sem conflito, sentir-se parte do time, previsibilidade na rotina.',
+    sinaisAlerta:'Silêncio excessivo ou concordância sem convicção podem esconder insatisfação não verbalizada — pergunte ativamente como está se sentindo.',
+    perguntasAlinhamento:['Existe algo no seu dia a dia que você mudaria se pudesse?','Como você prefere ser avisado(a) quando uma prioridade muda de repente?']
+  },
+  C:{
+    resumo:'Um profissional detalhista que garante qualidade e precisão. Rende mais quando tem tempo e critérios claros para analisar antes de agir.',
+    comoGerenciar:'Dê critérios e dados claros. Explique a lógica por trás das decisões — evite pedir para "confiar" sem justificativa.',
+    comoComunicar:'Seja preciso e evite decisões de última hora sem explicação. Aceita bem crítica técnica, mas não crítica vaga ou emocional.',
+    comoDelegar:'Delegue com critérios de qualidade bem definidos e tempo adequado de análise. Evite pressionar por velocidade acima da qualidade.',
+    primeirosDias:'Apresente processos, documentação e os padrões de qualidade esperados logo no início.',
+    gatilhosMotivacao:'Qualidade reconhecida, ambiente competente, possibilidade de aprofundar conhecimento técnico.',
+    sinaisAlerta:'Perfeccionismo travando entregas, ou resistência silenciosa a decisões que a pessoa considera erradas, são sinais para conversar diretamente.',
+    perguntasAlinhamento:['O que você precisa ter em mãos para tomar essa decisão com confiança?','Existe algum processo atual que você mudaria?']
+  }
+};
+
+function gerarRelatorioGestor(primario, secundario, naturalPct, adaptadoPct, vagaCand) {
+  const g = GESTOR[primario];
+  const aderenciaNivel = calcularAderenciaNivel(naturalPct);
+  return {
+    nivel: NIVEL,
+    nivelLabel: NIVEL_LABEL[NIVEL],
+    aderenciaNivel,
+    perfilNatural: primario + (secundario ? '/' + secundario : ''),
+    percentuaisNatural: naturalPct,
+    percentuaisAdaptado: adaptadoPct,
+    vaga: vagaCand || '',
+    resumo: g.resumo,
+    comoGerenciar: g.comoGerenciar,
+    comoComunicar: g.comoComunicar,
+    comoDelegar: g.comoDelegar,
+    primeirosDias: g.primeirosDias,
+    gatilhosMotivacao: g.gatilhosMotivacao,
+    sinaisAlerta: g.sinaisAlerta,
+    perguntasAlinhamento: g.perguntasAlinhamento,
+    combo: secundario ? (COMBOS[primario+secundario] || COMBOS[secundario+primario] || null) : null
+  };
+}
+
 function gerarRelatorioRH(primario, secundario, naturalPct, adaptadoPct, vagaCand, tensoes) {
   const r = RECRUTA[primario];
   const match = calcularMatch(vagaCand, naturalPct);
+  const aderenciaNivel = calcularAderenciaNivel(naturalPct);
   const tensaoAlerta = tensoes.filter(t => Math.abs(t.gap) >= 20).map(t => {
     const dir = t.gap > 0 ? 'subindo' : 'caindo';
     return 'Tensão alta em ' + t.trait + ' (' + (t.gap>0?'+':'') + t.gap + '%): candidato está adaptando seu perfil ' + dir + ' nessa dimensão. ' + TENSAO_MSGS[t.trait][t.gap>0?'up':'down'];
   });
   return {
+    nivel: NIVEL,
+    nivelLabel: NIVEL_LABEL[NIVEL],
+    aderenciaNivel: aderenciaNivel,
     perfilNatural: primario + (secundario ? '/' + secundario : ''),
     perfilAdaptado: Object.entries(adaptadoPct).sort((a,b)=>b[1]-a[1])[0][0],
     percentuaisNatural: naturalPct,
@@ -610,6 +738,18 @@ const VAGAS_MATCH = [
   {kw:['lider','líder','coordenador','coordenadora'],lbl:'Liderança/Coordenação',perfil:{D:40,I:25,S:20,C:15},nota:'Requer tomada de decisão, engajamento de equipe e visão estratégica.',tend:'Avalie o estilo de liderança — excessivamente dominante pode criar resistência em equipes mais estáveis. Equilíbrio com escuta é fundamental.'},
   {kw:['vendedor','vendedora','vendas','comercial'],lbl:'Vendedor(a)',perfil:{D:30,I:40,S:20,C:10},nota:'Combina assertividade com comunicação e capacidade de persuasão.',tend:'Tende a criar rapport com facilidade e a persistir nas negociações. Avalie organização do funil e disciplina com metas e follow-up.'},
   {kw:['segurança','porteiro','porteira'],lbl:'Segurança/Porteiro',perfil:{D:35,I:15,S:35,C:15},nota:'Requer firmeza, atenção ao ambiente e capacidade de agir em situações de risco.',tend:'Tende a ser firme e presente. Avalie equilíbrio entre assertividade e controle emocional em situações de conflito.'},
+
+  // ── Cargos administrativos ──
+  {kw:['assistente administrativo','auxiliar administrativo'],lbl:'Assistente Administrativo(a)',perfil:{D:10,I:20,S:35,C:35},nota:'Exige constância, organização de rotinas e atenção a prazos e processos.',tend:'Tende a manter a rotina em ordem e cumprir prazos. Avalie autonomia para resolver imprevistos sem esperar instrução detalhada.'},
+  {kw:['analista financeiro','financeiro','contas a pagar','contas a receber','controladoria'],lbl:'Analista Financeiro',perfil:{D:15,I:10,S:30,C:45},nota:'Exige precisão numérica, organização e baixa tolerância a erro.',tend:'Tende a ser detalhista e confiável com números. Avalie agilidade em decisões quando os dados ainda não estão completos.'},
+  {kw:['secretári','secretaria executiva'],lbl:'Secretário(a) Executivo(a)',perfil:{D:15,I:25,S:30,C:30},nota:'Combina organização, discrição e boa comunicação com diferentes níveis hierárquicos.',tend:'Tende a equilibrar bem organização e trato interpessoal. Avalie como lida com múltiplas demandas simultâneas de diferentes líderes.'},
+  {kw:['analista administrativo','assistente de rh','analista de dp','departamento pessoal'],lbl:'Analista Administrativo/DP',perfil:{D:15,I:15,S:30,C:40},nota:'Exige conformidade com processos, organização documental e atenção a prazos legais.',tend:'Tende a seguir processos com rigor. Avalie comunicação em situações que exigem cobrança de documentação a terceiros.'},
+
+  // ── Cargos estratégicos / liderança sênior ──
+  {kw:['diretor','diretora','ceo','head','c-level'],lbl:'Diretor(a)/Head',perfil:{D:45,I:25,S:10,C:20},nota:'Exige visão estratégica, tomada de decisão sob incerteza e capacidade de influenciar múltiplos públicos.',tend:'Avalie histórico de decisões estratégicas e como constrói consenso com pares e liderados sem perder o ritmo de execução.'},
+  {kw:['gerente executivo','gerente-geral','gerente geral','gerente de operações'],lbl:'Gerente Geral',perfil:{D:40,I:25,S:15,C:20},nota:'Exige gestão de pessoas e processos simultaneamente, com autonomia para decidir e prestar contas de resultado.',tend:'Tende a equilibrar execução e liderança. Avalie delegação — perfis muito D podem centralizar decisões que deveriam ser passadas à equipe.'},
+  {kw:['diretor comercial','diretora comercial','head comercial','gerente comercial'],lbl:'Diretor(a)/Gerente Comercial',perfil:{D:40,I:35,S:10,C:15},nota:'Exige liderança de equipe comercial, negociação de alto nível e gestão de metas agressivas.',tend:'Tende a liderar pelo exemplo e pela energia. Avalie disciplina de acompanhamento de indicadores além do relacionamento.'},
+  {kw:['head de rh','diretor de rh','diretora de rh','gerente de rh','gerente de pessoas'],lbl:'Head/Gerente de Pessoas',perfil:{D:30,I:35,S:20,C:15},nota:'Combina visão estratégica de pessoas com sensibilidade para conflitos e cultura organizacional.',tend:'Tende a equilibrar bem estratégia e relacionamento. Avalie firmeza para sustentar decisões impopulares quando necessário.'},
 ];
 
 function calcularMatch(vaga, pctNatural) {
@@ -690,9 +830,43 @@ function mostrarTela(id) {
 }
 
 // ══════════════════════════════════════════
+// TEXTOS DE INTRODUÇÃO — ajustados por nível
+// ══════════════════════════════════════════
+const TEXTOS_NIVEL = {
+  operacional: {
+    p1: 'Este teste mostra o seu jeito de ser no trabalho no dia a dia. <strong>Não existe resposta certa ou errada</strong> — responda pensando em como você realmente é.',
+    p2: 'São <strong>12 grupos</strong> de palavras. Em cada grupo, toque na palavra que <strong>mais</strong> combina com você e depois na que <strong>menos</strong> combina. A próxima pergunta já aparece sozinha.',
+    dica: '💡 Não pense demais — a primeira palavra que vier à cabeça é a mais sincera. Tempo estimado: <strong>5 a 8 minutos</strong>.'
+  },
+  administrativo: {
+    p1: 'Identifica seu estilo de comportamento natural e como você age no trabalho. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.',
+    p2: 'São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> te representa e depois na que <strong>menos</strong> te representa. A próxima pergunta aparece automaticamente.',
+    dica: '💡 Responda pelo primeiro instinto — a resposta mais espontânea é a mais honesta. Tempo estimado: <strong>5 a 8 minutos</strong>.'
+  },
+  estrategico: {
+    p1: 'Este questionário identifica seu estilo de comportamento e de tomada de decisão, incluindo como isso se expressa em contextos de liderança e gestão. <strong>Não há respostas certas ou erradas</strong> — responda com sinceridade.',
+    p2: 'São <strong>12 grupos</strong> por etapa. Em cada grupo, toque na palavra que <strong>mais</strong> representa seu estilo e depois na que <strong>menos</strong> representa. A próxima pergunta aparece automaticamente.',
+    dica: '💡 Responda pelo primeiro instinto, sem tentar prever "a resposta ideal" para um cargo de liderança — isso reduz a precisão do resultado. Tempo estimado: <strong>5 a 8 minutos</strong>.'
+  }
+};
+
+function aplicarTextoNivel() {
+  const t = TEXTOS_NIVEL[NIVEL] || TEXTOS_NIVEL.administrativo;
+  const p1 = document.getElementById('intro-p1');
+  const p2 = document.getElementById('intro-p2');
+  const dica = document.getElementById('intro-dica');
+  if (p1) p1.innerHTML = t.p1;
+  if (p2) p2.innerHTML = t.p2;
+  if (dica) dica.innerHTML = t.dica;
+  const badge = document.getElementById('nivel-badge');
+  if (badge) badge.textContent = 'Nível ' + (NIVEL_LABEL[NIVEL] || '');
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
+  aplicarTextoNivel();
   const segs = location.pathname.split('/');
   telefone = segs[segs.length - 1] || '';
 
@@ -911,6 +1085,13 @@ async function finalizarQuestionario() {
       vagaCandidato,
       relatorio.tensoes
     );
+    const relatorioGestor = gerarRelatorioGestor(
+      relatorio.primarioNatural,
+      relatorio.secundarioNatural,
+      naturalPct,
+      adaptadoPct,
+      vagaCandidato
+    );
     fetch('/disc/submit', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -918,6 +1099,7 @@ async function finalizarQuestionario() {
         telefone,
         nome: nomeCandidata,
         vaga: vagaCandidato,
+        nivel: NIVEL,
         referencia,
         respostasNatural:  respostas[1].map(r => ({mais: r.mais, menos: r.menos})),
         respostasAdaptado: respostas[2].map(r => ({mais: r.mais, menos: r.menos})),
@@ -926,7 +1108,8 @@ async function finalizarQuestionario() {
         primarioNatural:    relatorio.primarioNatural,
         primarioAdaptado:   relatorio.primarioAdaptado,
         secundarioNatural:  relatorio.secundarioNatural,
-        relatorioRH
+        relatorioRH,
+        relatorioGestor
       })
     }).catch(e => console.warn('Servidor offline — resultado calculado localmente.'));
   } catch(e) {
@@ -945,6 +1128,24 @@ function calcularPerfil(etapa) {
   const pct = {};
   KEYS.forEach(k => pct[k] = Math.round(scores[k] / TOTAL * 100));
   return pct;
+}
+
+// ══════════════════════════════════════════
+// ADERÊNCIA AO NÍVEL — compara o perfil natural com o perfil
+// DISC de referência esperado para o nível do cargo (leitura auxiliar)
+// ══════════════════════════════════════════
+function calcularAderenciaNivel(naturalPct) {
+  const ideal = NIVEL_PERFIL_IDEAL[NIVEL] || NIVEL_PERFIL_IDEAL.administrativo;
+  const total = KEYS.reduce((s,k) => s + (naturalPct[k]||0), 0) || 1;
+  let dist = 0;
+  KEYS.forEach(k => dist += Math.abs((naturalPct[k]/total*100) - ideal[k]));
+  const score = Math.max(0, Math.min(100, Math.round(100 - dist/2)));
+  let label;
+  if      (score >= 80) label = 'Alta aderência';
+  else if (score >= 60) label = 'Boa aderência';
+  else if (score >= 40) label = 'Aderência parcial';
+  else                  label = 'Baixa aderência';
+  return { nivel: NIVEL, nivelLabel: NIVEL_LABEL[NIVEL], score, label };
 }
 
 function gerarRelatorio(naturalPct, adaptadoPct) {
@@ -973,6 +1174,10 @@ function renderizarResultado(rel, naturalPct, adaptadoPct) {
     pN.nome + (secundarioNatural ? ' / ' + PERFIS[secundarioNatural].nome : '');
   document.getElementById('res-sub').textContent =
     nomeCandidata + (vagaCandidato ? ' · ' + vagaCandidato : '') + ' · Análise DISC';
+
+  const aderencia = calcularAderenciaNivel(naturalPct);
+  const nivelSub = document.getElementById('res-nivel-sub');
+  if (nivelSub) nivelSub.textContent = 'Nível avaliado: ' + aderencia.nivelLabel;
 
   document.getElementById('nat-nome').textContent = pN.emoji + ' ' + pN.nome;
   document.getElementById('nat-bars').innerHTML = renderBars(naturalPct);
