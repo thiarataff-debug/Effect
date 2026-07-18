@@ -36,6 +36,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .card p{font-size:12.5px;color:#374151;line-height:1.65;margin-bottom:6px}
 
 .dica{background:#faf5ff;border-left:3px solid var(--roxo);padding:10px 14px;border-radius:8px;font-size:11.5px;color:#5b21b6;margin-top:10px;line-height:1.5}
+.graf-explica{font-size:11.5px;color:#6b7280;line-height:1.55;margin-bottom:12px}
 .fl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 input[type=text]{width:100%;padding:12px 14px;border:2px solid #e4defb;border-radius:10px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
 input[type=text]:focus{border-color:var(--roxo)}
@@ -201,35 +202,32 @@ input[type=text]:focus{border-color:var(--roxo)}
 // (mantemos as siglas D/I/S/C internamente para reaproveitar a
 // mesma lógica de relatório/aderência já usada no disc.html)
 // ══════════════════════════════════════════════════════════════
+// Lista intercalada de propósito (categorias e polaridades misturadas ao longo
+// de toda a lista) — evita que o candidato marque em bloco só porque uma
+// categoria inteira aparece junta no topo ou porque uma seção tem poucas opções.
 const BANCO_PALAVRAS = [
-  {p:'Ativo',c:'D',s:1},{p:'Audacioso (Ousado)',c:'D',s:1},{p:'Corajoso',c:'D',s:1},{p:'Decidido',c:'D',s:1},
-  {p:'Enérgico',c:'D',s:1},{p:'Firme',c:'D',s:1},{p:'Independente',c:'D',s:1},{p:'Líder',c:'D',s:1},
-  {p:'Persistente',c:'D',s:1},{p:'Resoluto (Decidido)',c:'D',s:1},{p:'Prático',c:'D',s:1},{p:'Auto-Suficiente',c:'D',s:1},
-  {p:'Arrogante',c:'D',s:-1},{p:'Calculista',c:'D',s:-1},{p:'Egocêntrico',c:'D',s:-1},{p:'Egoísta',c:'D',s:-1},
-  {p:'Exigente',c:'D',s:-1},{p:'Impaciente',c:'D',s:-1},{p:'Inflexível',c:'D',s:-1},{p:'Insensível',c:'D',s:-1},
-  {p:'Intolerante',c:'D',s:-1},{p:'Sarcástico',c:'D',s:-1},{p:'Vaidoso',c:'D',s:-1},{p:'Vingativo',c:'D',s:-1},
-  {p:'Frio',c:'D',s:-1},{p:'Indisciplinado',c:'D',s:-1},{p:'Orgulhoso',c:'D',s:-1},
-
-  {p:'Alegre',c:'I',s:1},{p:'Animado',c:'I',s:1},{p:'Bem-Humorado',c:'I',s:1},{p:'Bem-Quisto',c:'I',s:1},
-  {p:'Bom Companheiro',c:'I',s:1},{p:'Comunicativo',c:'I',s:1},{p:'Contagiante',c:'I',s:1},{p:'Empolgante',c:'I',s:1},
-  {p:'Entusiasta',c:'I',s:1},{p:'Estimulante',c:'I',s:1},{p:'Extrovertido',c:'I',s:1},{p:'Influenciador',c:'I',s:1},
-  {p:'Otimista',c:'I',s:1},{p:'Popular',c:'I',s:1},{p:'Simpático',c:'I',s:1},{p:'Destacado',c:'I',s:1},
-  {p:'Habilidoso',c:'I',s:1},
-  {p:'Barulhento',c:'I',s:-1},{p:'Espalhafatoso',c:'I',s:-1},{p:'Exagerado',c:'I',s:-1},{p:'Ingênuo',c:'I',s:-1},
-  {p:'Pretensioso',c:'I',s:-1},{p:'Desorganizado',c:'I',s:-1},
-
-  {p:'Calmo',c:'S',s:1},{p:'Compreensivo',c:'S',s:1},{p:'Conservador',c:'S',s:1},{p:'Cumpridor',c:'S',s:1},
-  {p:'Dedicado',c:'S',s:1},{p:'Discreto',c:'S',s:1},{p:'Equilibrado',c:'S',s:1},{p:'Leal',c:'S',s:1},
-  {p:'Modesto',c:'S',s:1},{p:'Paciente',c:'S',s:1},{p:'Sensível',c:'S',s:1},{p:'Sentimental',c:'S',s:1},
-  {p:'Sincero',c:'S',s:1},{p:'Tranquilo',c:'S',s:1},
-  {p:'Depressivo',c:'S',s:-1},{p:'Desconfiado',c:'S',s:-1},{p:'Desmotivado',c:'S',s:-1},{p:'Indeciso',c:'S',s:-1},
-  {p:'Inseguro',c:'S',s:-1},{p:'Introvertido',c:'S',s:-1},{p:'Medroso',c:'S',s:-1},{p:'Pessimista',c:'S',s:-1},
-  {p:'Procrastinador',c:'S',s:-1},{p:'Reservado',c:'S',s:-1},{p:'Rotineiro',c:'S',s:-1},{p:'Temeroso',c:'S',s:-1},
-
-  {p:'Auto-Disciplinado',c:'C',s:1},{p:'Crítico',c:'C',s:1},{p:'Eficiente',c:'C',s:1},{p:'Idealista',c:'C',s:1},
-  {p:'Metódico',c:'C',s:1},{p:'Minucioso',c:'C',s:1},{p:'Perfeccionista',c:'C',s:1},{p:'Racional',c:'C',s:1},
-  {p:'Teórico',c:'C',s:1},
-  {p:'Anti-Social',c:'C',s:-1}
+  {p:'Resoluto (Decidido)',c:'D',s:1},{p:'Medroso',c:'S',s:-1},{p:'Pretensioso',c:'I',s:-1},{p:'Firme',c:'D',s:1},
+  {p:'Minucioso',c:'C',s:1},{p:'Simpático',c:'I',s:1},{p:'Perfeccionista',c:'C',s:1},{p:'Sentimental',c:'S',s:1},
+  {p:'Sarcástico',c:'D',s:-1},{p:'Pessimista',c:'S',s:-1},{p:'Bem-Quisto',c:'I',s:1},{p:'Auto-Disciplinado',c:'C',s:1},
+  {p:'Influenciador',c:'I',s:1},{p:'Sincero',c:'S',s:1},{p:'Persistente',c:'D',s:1},{p:'Líder',c:'D',s:1},
+  {p:'Comunicativo',c:'I',s:1},{p:'Eficiente',c:'C',s:1},{p:'Racional',c:'C',s:1},{p:'Modesto',c:'S',s:1},
+  {p:'Indisciplinado',c:'D',s:-1},{p:'Extrovertido',c:'I',s:1},{p:'Rotineiro',c:'S',s:-1},{p:'Idealista',c:'C',s:1},
+  {p:'Calmo',c:'S',s:1},{p:'Alegre',c:'I',s:1},{p:'Egocêntrico',c:'D',s:-1},{p:'Inflexível',c:'D',s:-1},
+  {p:'Popular',c:'I',s:1},{p:'Anti-Social',c:'C',s:-1},{p:'Orgulhoso',c:'D',s:-1},{p:'Desmotivado',c:'S',s:-1},
+  {p:'Teórico',c:'C',s:1},{p:'Crítico',c:'C',s:1},{p:'Reservado',c:'S',s:-1},{p:'Ingênuo',c:'I',s:-1},
+  {p:'Insensível',c:'D',s:-1},{p:'Cumpridor',c:'S',s:1},{p:'Habilidoso',c:'I',s:1},{p:'Destacado',c:'I',s:1},
+  {p:'Calculista',c:'D',s:-1},{p:'Metódico',c:'C',s:1},{p:'Barulhento',c:'I',s:-1},{p:'Dedicado',c:'S',s:1},
+  {p:'Frio',c:'D',s:-1},{p:'Discreto',c:'S',s:1},{p:'Entusiasta',c:'I',s:1},{p:'Egoísta',c:'D',s:-1},
+  {p:'Depressivo',c:'S',s:-1},{p:'Vingativo',c:'D',s:-1},{p:'Bem-Humorado',c:'I',s:1},{p:'Paciente',c:'S',s:1},
+  {p:'Contagiante',c:'I',s:1},{p:'Ativo',c:'D',s:1},{p:'Independente',c:'D',s:1},{p:'Leal',c:'S',s:1},
+  {p:'Estimulante',c:'I',s:1},{p:'Sensível',c:'S',s:1},{p:'Bom Companheiro',c:'I',s:1},{p:'Exigente',c:'D',s:-1},
+  {p:'Tranquilo',c:'S',s:1},{p:'Vaidoso',c:'D',s:-1},{p:'Exagerado',c:'I',s:-1},{p:'Auto-Suficiente',c:'D',s:1},
+  {p:'Temeroso',c:'S',s:-1},{p:'Empolgante',c:'I',s:1},{p:'Desconfiado',c:'S',s:-1},{p:'Animado',c:'I',s:1},
+  {p:'Decidido',c:'D',s:1},{p:'Impaciente',c:'D',s:-1},{p:'Equilibrado',c:'S',s:1},{p:'Otimista',c:'I',s:1},
+  {p:'Desorganizado',c:'I',s:-1},{p:'Introvertido',c:'S',s:-1},{p:'Corajoso',c:'D',s:1},{p:'Espalhafatoso',c:'I',s:-1},
+  {p:'Audacioso (Ousado)',c:'D',s:1},{p:'Compreensivo',c:'S',s:1},{p:'Inseguro',c:'S',s:-1},{p:'Conservador',c:'S',s:1},
+  {p:'Intolerante',c:'D',s:-1},{p:'Arrogante',c:'D',s:-1},{p:'Enérgico',c:'D',s:1},{p:'Procrastinador',c:'S',s:-1},
+  {p:'Indeciso',c:'S',s:-1},{p:'Prático',c:'D',s:1}
 ];
 
 const NOMES_PERFIL = {D:'Executor', I:'Comunicador', S:'Planejador', C:'Analista'};
@@ -251,16 +249,16 @@ const NIVEL = (() => {
 
 const TEXTOS_NIVEL = {
   operacional: {
-    instr: 'Marque abaixo as palavras que <strong>mais combinam com você</strong>, pensando em como você é no dia a dia.',
-    dica: '💡 Não pense demais em cada palavra — marque pelo primeiro instinto.'
+    instr: 'Marque abaixo <strong>todas as palavras que tiverem a ver com você</strong>, pensando em como você é no dia a dia. Não existe número certo — pode marcar poucas ou muitas, o importante é ser sincero(a).',
+    dica: '💡 Percorra a lista inteira antes de decidir. Não pense demais em cada palavra — marque pelo primeiro instinto.'
   },
   administrativo: {
-    instr: 'Marque abaixo os adjetivos que <strong>melhor te representam</strong>.',
-    dica: '💡 Reserve de 7 a 10 minutos, sem interrupções.'
+    instr: 'Marque abaixo <strong>todos os adjetivos que tiverem a ver com você</strong>. Não existe uma quantidade ideal — marque quantos fizerem sentido, sem se preocupar em completar um número mínimo.',
+    dica: '💡 Leia a lista até o fim antes de finalizar. Reserve de 7 a 10 minutos, sem interrupções.'
   },
   estrategico: {
-    instr: 'Marque abaixo os adjetivos que <strong>melhor representam seu estilo</strong>, incluindo como isso aparece em contextos de liderança e gestão.',
-    dica: '💡 Responda pelo primeiro instinto, sem tentar prever "a resposta ideal" para um cargo de liderança.'
+    instr: 'Marque abaixo <strong>todos os adjetivos que tiverem a ver com seu estilo</strong>, incluindo como isso aparece em contextos de liderança e gestão. Não existe número certo ou errado.',
+    dica: '💡 Avalie a lista inteira antes de decidir. Responda pelo primeiro instinto, sem tentar prever "a resposta ideal" para um cargo de liderança.'
   }
 };
 
@@ -454,7 +452,10 @@ let nomeCandidata = '';
 let vagaCandidato = '';
 let telefone = '';
 const selecionadas = { 1: new Set(), 2: new Set() };
-const MIN_PALAVRAS = 15;
+// A Sólides não exige uma cota de palavras — a pessoa marca quantas fizerem
+// sentido. Mantemos só um piso técnico baixo (evita enviar um resultado vazio
+// por engano); o restante é reforçado via instrução/dica, não por bloqueio.
+const MIN_PALAVRAS = 6;
 
 function mostrarTela(id) {
   ['tela-concluido','tela-intro','tela-marcacao','tela-calc','tela-resultado']
@@ -507,7 +508,7 @@ function renderMarcacao() {
   if (etapaAtual === 1) {
     instr.innerHTML = t.instr;
   } else {
-    instr.innerHTML = 'Usando a mesma lista, marque agora as palavras que representam <strong>o que o trabalho espera que você seja</strong>.';
+    instr.innerHTML = 'Usando a mesma lista, marque agora as palavras que representam <strong>o que o trabalho espera que você seja</strong>. De novo: não existe quantidade certa — avalie a lista inteira e marque o que fizer sentido.';
   }
 
   const grid = document.getElementById('word-grid');
@@ -928,11 +929,13 @@ function renderizarResultado(rel) {
 
     <div class="card">
       <div class="sec-titulo">Indicadores situacionais</div>
+      <div class="graf-explica">Cada barra mostra o quanto um fator está presente <strong>neste momento</strong> — não é fixo, muda conforme a fase da vida e do trabalho. É a comparação entre suas respostas positivas e negativas dentro de cada perfil (Executor/Comunicador/Planejador/Analista).</div>
       ${indicadoresHtml}
     </div>
 
     <div class="card">
       <div class="sec-titulo">Perfil isolado</div>
+      <div class="graf-explica">Compara três leituras lado a lado: <strong>Perfil Atual</strong> (como você se descreveu naturalmente), <strong>Exigência do Meio</strong> (o que a situação/cargo espera de você) e <strong>Força de Adaptação</strong> (o esforço médio que você faz para atender a essa exigência). Quanto mais afastadas as linhas roxa e vermelha em um perfil, maior o esforço de adaptação nesse ponto — e maior o risco de desgaste se isso for constante.</div>
       <div class="chart-wrap">${perfilIsoladoChart}</div>
       <div class="chart-legenda">
         <span><span class="leg-dot" style="background:#6d28d9"></span>Perfil Atual</span>
@@ -943,6 +946,7 @@ function renderizarResultado(rel) {
 
     <div class="card">
       <div class="sec-titulo">Estilo de liderança x liderança atual</div>
+      <div class="graf-explica">Mesma lógica do gráfico anterior, mas lida sob a ótica de liderança: como você tende a agir ao liderar ou decidir (<strong>Dominante</strong>, <strong>Informal</strong>, <strong>Condescendente</strong> ou <strong>Formal</strong>), comparado ao que o contexto atual está exigindo desse estilo.</div>
       <div class="chart-wrap">${liderancaChart}</div>
       <div class="chart-legenda">
         <span><span class="leg-dot" style="background:#6d28d9"></span>Perfil Atual</span>
@@ -953,12 +957,14 @@ function renderizarResultado(rel) {
 
     <div class="card">
       <div class="sec-titulo">Competências</div>
+      <div class="graf-explica">O radar estima seu nível em 20 competências comportamentais, calculadas a partir da combinação dos seus 4 perfis (não são perguntas separadas). Quanto mais próximo da borda externa, mais forte a competência tende a se expressar no seu dia a dia.</div>
       <div class="chart-wrap" style="text-align:center">${radarChart}</div>
       ${compListaHtml}
     </div>
 
     <div class="card">
       <div class="sec-titulo">Área de talentos</div>
+      <div class="graf-explica">Cada número é uma área de talento posicionada num mapa de 4 quadrantes, que cruza <strong>Emoção x Razão</strong> (eixo vertical) com <strong>Extroversão x Introversão</strong> (eixo horizontal). A posição indica em que tipo de atividade ou ambiente sua energia tende a fluir com mais naturalidade — não é uma nota de "melhor ou pior", é sobre afinidade.</div>
       <div class="chart-wrap" style="text-align:center">${quadranteChart}</div>
       ${talentosListaHtml}
     </div>
