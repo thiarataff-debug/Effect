@@ -1055,21 +1055,32 @@ font-family:'Montserrat',sans-serif
 
 <!-- MODAL: NÍVEL DO TESTE DISC -->
 <div class="modal-overlay" id="modal-nivel-disc">
-  <div class="modal" style="width:420px">
-    <div class="modal-title">📊 Nível do candidato</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Selecione o nível da vaga para adequar o vocabulário e o relatório do teste DISC:</div>
+  <div class="modal" style="width:440px">
+    <div class="modal-title">📊 Configurar teste comportamental</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Qual formato de teste você quer enviar?</div>
+    <div class="nivel-disc-grid" id="formato-disc-opcoes" style="margin-bottom:14px">
+      <div class="nivel-disc-option" onclick="selecionarFormatoDisc(this,'classico')">
+        <div class="ndo-titulo">DISC clássico</div>
+        <div class="ndo-desc">Grupos de 4 palavras — escolhe a que mais e a que menos representa você.</div>
+      </div>
+      <div class="nivel-disc-option" onclick="selecionarFormatoDisc(this,'solides')">
+        <div class="ndo-titulo">DISC Sólides</div>
+        <div class="ndo-desc">Lista única de adjetivos pra marcar — relatório completo com gráficos e competências.</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Selecione o nível da vaga para adequar a introdução e o relatório:</div>
     <div class="nivel-disc-grid" id="nivel-disc-opcoes">
       <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'operacional')">
         <div class="ndo-titulo">Operacional</div>
-        <div class="ndo-desc">Garçom, cozinheiro, auxiliar, caixa, porteiro, motorista etc. Vocabulário simples e concreto.</div>
+        <div class="ndo-desc">Garçom, cozinheiro, auxiliar, caixa, porteiro, motorista etc.</div>
       </div>
       <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'administrativo')">
         <div class="ndo-titulo">Administrativo</div>
-        <div class="ndo-desc">Assistente, analista, atendente, financeiro etc. Vocabulário de negócios padrão.</div>
+        <div class="ndo-desc">Assistente, analista, atendente, financeiro etc.</div>
       </div>
       <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'estrategico')">
         <div class="ndo-titulo">Estratégico</div>
-        <div class="ndo-desc">Coordenador, gerente, diretor, head. Vocabulário de liderança e visão de negócio.</div>
+        <div class="ndo-desc">Coordenador, gerente, diretor, head.</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -3420,38 +3431,49 @@ function abrirSetDiscVaga(idVaga){
   if(!v){delete discPerfilVagas[idVaga];salvarLocal();renderPainelVagas('');toast('Perfil removido','success');return;}
   setDiscPerfilVaga(idVaga,v);renderPainelVagas('');
 }
-// ─── SELEÇÃO DE NÍVEL DO TESTE DISC ───
+// ─── SELEÇÃO DE FORMATO + NÍVEL DO TESTE DISC ───
 let _discNivelSelecionado=null;
+let _discFormatoSelecionado=null;
 let _discNivelCallback=null;
 function abrirModalNivelDisc(callback){
-  document.querySelectorAll('.nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  document.querySelectorAll('#nivel-disc-opcoes .nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  document.querySelectorAll('#formato-disc-opcoes .nivel-disc-option').forEach(o=>o.classList.remove('selected'));
   _discNivelSelecionado=null;
+  _discFormatoSelecionado=null;
   _discNivelCallback=callback;
   document.getElementById('modal-nivel-disc').classList.add('show');
 }
 function selecionarNivelDisc(el,nivel){
-  document.querySelectorAll('.nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  document.querySelectorAll('#nivel-disc-opcoes .nivel-disc-option').forEach(o=>o.classList.remove('selected'));
   el.classList.add('selected');
   _discNivelSelecionado=nivel;
 }
+function selecionarFormatoDisc(el,formato){
+  document.querySelectorAll('#formato-disc-opcoes .nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  _discFormatoSelecionado=formato;
+}
 function confirmarNivelDisc(){
+  if(!_discFormatoSelecionado){toast('Selecione o formato do teste','error');return;}
   if(!_discNivelSelecionado){toast('Selecione o nível do candidato','error');return;}
   const nivel=_discNivelSelecionado;
+  const formato=_discFormatoSelecionado;
   const cb=_discNivelCallback;
   fecharModal('modal-nivel-disc');
   _discNivelCallback=null;
-  if(cb)cb(nivel);
+  if(cb)cb(nivel,formato);
 }
 
 function abrirEnvioDisc(){
   if(!sessaoAtual)return;
   abrirModalNivelDisc(enviarDiscDireto);
 }
-async function enviarDiscDireto(nivel){
+async function enviarDiscDireto(nivel,formato){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
   const nome=(s?.nome||'Candidato').split(' ')[0];
-  const linkDisc=`${API}/disc/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
+  const base=formato==='solides'?'disc-solides':'disc';
+  const linkDisc=`${API}/${base}/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
   const msg=`Olá, ${nome}! Para avançar no processo seletivo, pedimos que responda um breve questionário comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
   try{
     const r=await fetch(`${API}/inbox/enviar-disc`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:msg})});
@@ -5585,19 +5607,20 @@ function abrirDiscCandidato(){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
 
-  if(s?.discResult){
-    // Já tem resultado — mostrar no painel
-    mostrarDiscNoPainel(s.discResult);
+  if(s?.discResult || s?.discSolidesResult){
+    // Já tem resultado — mostrar no painel (prioriza o clássico se houver os dois)
+    mostrarDiscNoPainel(s.discResult, s.discSolidesResult);
     return;
   }
 
-  // Sem resultado — pergunta o nível e insere o link para revisar/enviar
+  // Sem resultado — pergunta o formato/nível e insere o link para revisar/enviar
   abrirModalNivelDisc(inserirLinkDiscComNivel);
 }
-function inserirLinkDiscComNivel(nivel){
+function inserirLinkDiscComNivel(nivel,formato){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
-  const linkDisc=`${API}/disc/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
+  const base=formato==='solides'?'disc-solides':'disc';
+  const linkDisc=`${API}/${base}/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
   const input=document.getElementById('msg-input');
   const nome=s?.nome||'você';
   const msg=`Olá, ${nome.split(' ')[0]}! Para avançar no seu processo seletivo, pedimos que responda um breve questionário de perfil comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
@@ -5607,16 +5630,17 @@ function inserirLinkDiscComNivel(nivel){
   toast('📊 Link DISC inserido — revise e envie','success');
 }
 
-function mostrarDiscNoPainel(disc){
-  if(!disc)return;
-  const p=DISC_PERFIS[disc.primario]||{nome:disc.primario,emoji:'📊',cor:'#1e3a5f'};
-  const ps=disc.secundario?DISC_PERFIS[disc.secundario]:null;
-  const pct=disc.percentuais||{};
+function mostrarDiscNoPainel(disc,discSolides){
+  if(!disc && !discSolides)return;
 
-  const rpBody=document.getElementById('rp-body');
-  rpBody.innerHTML=`
+  let blocoClassico='';
+  if(disc){
+    const p=DISC_PERFIS[disc.primario]||{nome:disc.primario,emoji:'📊',cor:'#1e3a5f'};
+    const ps=disc.secundario?DISC_PERFIS[disc.secundario]:null;
+    const pct=disc.percentuais||{};
+    blocoClassico=`
     <div class="rp-section">
-      <div class="rp-section-title">📊 Perfil DISC</div>
+      <div class="rp-section-title">📊 Perfil DISC (clássico)</div>
       <div style="text-align:center;padding:12px 0 8px">
         <div style="font-size:32px">${p.emoji}${ps?ps.emoji:''}</div>
         <div style="font-size:14px;font-weight:800;color:var(--navy);margin-top:4px">${p.nome}${ps?' / '+ps.nome:''}</div>
@@ -5635,6 +5659,35 @@ function mostrarDiscNoPainel(disc){
       <button class="nota-save" onclick="abrirDiscCompleto('${sessaoAtual}')">🔍 Ver relatório completo (RH)</button>
       <button class="nota-save" style="margin-top:6px;background:#7c3aed" onclick="abrirDiscGestor('${sessaoAtual}')">👔 Ver guia para o Gestor</button>
     </div>`;
+  }
+
+  let blocoSolides='';
+  if(discSolides){
+    const NOMES_S={D:'Executor',I:'Comunicador',S:'Planejador',C:'Analista'};
+    const pctS=discSolides.percentuaisNatural||{};
+    blocoSolides=`
+    <div class="rp-section" style="margin-top:10px">
+      <div class="rp-section-title">📊 Profiler (Sólides)</div>
+      <div style="text-align:center;padding:12px 0 8px">
+        <div style="font-size:14px;font-weight:800;color:#6d28d9">${NOMES_S[discSolides.primario]||discSolides.primario}${discSolides.secundario?' / '+(NOMES_S[discSolides.secundario]||discSolides.secundario):''}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${new Date(discSolides.respondidoEm||Date.now()).toLocaleDateString('pt-BR')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
+        ${['D','I','S','C'].map(k=>{const pp=DISC_PERFIS[k];return`
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:800;width:64px;color:${pp.cor}">${NOMES_S[k]}</span>
+          <div style="flex:1;background:#e8ecf1;border-radius:999px;height:10px;overflow:hidden">
+            <div style="width:${pctS[k]||0}%;height:100%;background:${pp.cor};border-radius:999px;transition:width 1s"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);width:28px;text-align:right">${pctS[k]||0}%</span>
+        </div>`;}).join('')}
+      </div>
+      <button class="nota-save" onclick="abrirDiscSolidesCompleto('${sessaoAtual}')">🔍 Ver relatório completo (RH)</button>
+      <button class="nota-save" style="margin-top:6px;background:#7c3aed" onclick="abrirDiscSolidesGestor('${sessaoAtual}')">👔 Ver guia para o Gestor</button>
+    </div>`;
+  }
+
+  document.getElementById('rp-body').innerHTML = blocoClassico + blocoSolides;
 }
 
 function abrirDiscCompleto(tel){
@@ -5643,9 +5696,15 @@ function abrirDiscCompleto(tel){
 function abrirDiscGestor(tel){
   window.open(`${API}/disc/resultado-gestor/${tel}`,'_blank');
 }
+function abrirDiscSolidesCompleto(tel){
+  window.open(`${API}/disc-solides/resultado-view/${tel}`,'_blank');
+}
+function abrirDiscSolidesGestor(tel){
+  window.open(`${API}/disc-solides/resultado-gestor/${tel}`,'_blank');
+}
 
 function mostrarDiscNoPainelSeTiver(tel,s){
-  if(s?.discResult) mostrarDiscNoPainel(s.discResult);
+  if(s?.discResult || s?.discSolidesResult) mostrarDiscNoPainel(s.discResult, s.discSolidesResult);
 }
 
 function abrirModalTemplate(){
