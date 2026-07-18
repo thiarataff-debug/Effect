@@ -305,6 +305,12 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
 .corrigir-grid{display:flex;flex-direction:column;gap:6px;margin:10px 0}
 .corrigir-option{padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;transition:all .15s}
 .corrigir-option:hover,.corrigir-option.selected{border-color:var(--pink);background:#fde8e4;color:#b04a38;font-weight:700}
+.nivel-disc-grid{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.nivel-disc-option{padding:10px 13px;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s}
+.nivel-disc-option:hover,.nivel-disc-option.selected{border-color:#7c3aed;background:#f5f3ff}
+.nivel-disc-option .ndo-titulo{font-size:12.5px;font-weight:800;color:#2a2a2b}
+.nivel-disc-option.selected .ndo-titulo{color:#6d28d9}
+.nivel-disc-option .ndo-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
 
 /* Aba entrevistas global */
 .entrevistas-view{display:none;flex:1;flex-direction:column;overflow:hidden;background:#f5f7fa}
@@ -897,7 +903,7 @@ font-family:'Montserrat',sans-serif
           <!-- Grupo Candidato -->
           <button class="ha-btn" onclick="abrirModalEncaminhar()" title="Direcionar candidato para vaga" style="background:#8ed1b2;color:#064e3b;font-weight:700">🎯 Direcionar para vaga</button>
           <button class="ha-btn" onclick="abrirPainelVagas()" title="Ver todas as vagas disponíveis" style="background:#4f46e5;color:#fff;font-weight:700">📋 Ver Vagas</button>
-          <button class="ha-btn" onclick="enviarDiscDireto()" title="Enviar questionário DISC" style="background:#7c3aed;color:#fff;font-weight:700">📊 Enviar DISC</button>
+          <button class="ha-btn" onclick="abrirEnvioDisc()" title="Enviar questionário DISC" style="background:#7c3aed;color:#fff;font-weight:700">📊 Enviar DISC</button>
           <button class="ha-btn" onclick="abrirAvaliacao()" title="Abrir formulário de avaliação deste candidato" style="background:#0ea5e9;color:#fff;font-weight:800;font-size:11px;padding:6px 13px">📋 Avaliar</button>
           <button class="ha-btn" onclick="usarModeloPorTitulo('Solicitação de envio')" title="Inserir modelo: solicitação de envio de currículo" style="background:#0369a1;color:#fff;font-weight:700">📎 Pedir CV</button>
           <button class="ha-btn" onclick="usarModeloPorTitulo('recebimento de currículo')" title="Inserir modelo: confirmação de recebimento de currículo" style="background:#0d9488;color:#fff;font-weight:700">📄 Confirmar CV</button>
@@ -1043,6 +1049,32 @@ font-family:'Montserrat',sans-serif
     <div class="modal-footer">
       <button class="modal-btn modal-cancel" onclick="fecharModal('modal-corrigir')">Cancelar</button>
       <button class="modal-btn modal-confirm" onclick="enviarCorrecao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NÍVEL DO TESTE DISC -->
+<div class="modal-overlay" id="modal-nivel-disc">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">📊 Nível do candidato</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Selecione o nível da vaga para adequar o vocabulário e o relatório do teste DISC:</div>
+    <div class="nivel-disc-grid" id="nivel-disc-opcoes">
+      <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'operacional')">
+        <div class="ndo-titulo">Operacional</div>
+        <div class="ndo-desc">Garçom, cozinheiro, auxiliar, caixa, porteiro, motorista etc. Vocabulário simples e concreto.</div>
+      </div>
+      <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'administrativo')">
+        <div class="ndo-titulo">Administrativo</div>
+        <div class="ndo-desc">Assistente, analista, atendente, financeiro etc. Vocabulário de negócios padrão.</div>
+      </div>
+      <div class="nivel-disc-option" onclick="selecionarNivelDisc(this,'estrategico')">
+        <div class="ndo-titulo">Estratégico</div>
+        <div class="ndo-desc">Coordenador, gerente, diretor, head. Vocabulário de liderança e visão de negócio.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="fecharModal('modal-nivel-disc')">Cancelar</button>
+      <button class="modal-btn modal-confirm" style="background:#7c3aed" onclick="confirmarNivelDisc()">Continuar</button>
     </div>
   </div>
 </div>
@@ -3388,11 +3420,38 @@ function abrirSetDiscVaga(idVaga){
   if(!v){delete discPerfilVagas[idVaga];salvarLocal();renderPainelVagas('');toast('Perfil removido','success');return;}
   setDiscPerfilVaga(idVaga,v);renderPainelVagas('');
 }
-async function enviarDiscDireto(){
+// ─── SELEÇÃO DE NÍVEL DO TESTE DISC ───
+let _discNivelSelecionado=null;
+let _discNivelCallback=null;
+function abrirModalNivelDisc(callback){
+  document.querySelectorAll('.nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  _discNivelSelecionado=null;
+  _discNivelCallback=callback;
+  document.getElementById('modal-nivel-disc').classList.add('show');
+}
+function selecionarNivelDisc(el,nivel){
+  document.querySelectorAll('.nivel-disc-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  _discNivelSelecionado=nivel;
+}
+function confirmarNivelDisc(){
+  if(!_discNivelSelecionado){toast('Selecione o nível do candidato','error');return;}
+  const nivel=_discNivelSelecionado;
+  const cb=_discNivelCallback;
+  fecharModal('modal-nivel-disc');
+  _discNivelCallback=null;
+  if(cb)cb(nivel);
+}
+
+function abrirEnvioDisc(){
+  if(!sessaoAtual)return;
+  abrirModalNivelDisc(enviarDiscDireto);
+}
+async function enviarDiscDireto(nivel){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
   const nome=(s?.nome||'Candidato').split(' ')[0];
-  const linkDisc=`${API}/disc/${sessaoAtual}`;
+  const linkDisc=`${API}/disc/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
   const msg=`Olá, ${nome}! Para avançar no processo seletivo, pedimos que responda um breve questionário comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
   try{
     const r=await fetch(`${API}/inbox/enviar-disc`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:sessaoAtual,mensagem:msg})});
@@ -5525,7 +5584,6 @@ function abrirAvaliacao(){
 function abrirDiscCandidato(){
   if(!sessaoAtual)return;
   const s=todasSessoes[sessaoAtual];
-  const linkDisc=`${API}/disc/${sessaoAtual}`;
 
   if(s?.discResult){
     // Já tem resultado — mostrar no painel
@@ -5533,7 +5591,13 @@ function abrirDiscCandidato(){
     return;
   }
 
-  // Sem resultado — oferecer link para copiar ou enviar
+  // Sem resultado — pergunta o nível e insere o link para revisar/enviar
+  abrirModalNivelDisc(inserirLinkDiscComNivel);
+}
+function inserirLinkDiscComNivel(nivel){
+  if(!sessaoAtual)return;
+  const s=todasSessoes[sessaoAtual];
+  const linkDisc=`${API}/disc/${sessaoAtual}?nivel=${encodeURIComponent(nivel||'administrativo')}`;
   const input=document.getElementById('msg-input');
   const nome=s?.nome||'você';
   const msg=`Olá, ${nome.split(' ')[0]}! Para avançar no seu processo seletivo, pedimos que responda um breve questionário de perfil comportamental (5 min):\n\n${linkDisc}\n\nNão há respostas certas ou erradas — responda com sinceridade! 😊`;
@@ -5568,12 +5632,16 @@ function mostrarDiscNoPainel(disc){
           <span style="font-size:11px;font-weight:700;color:var(--muted);width:28px;text-align:right">${pct[k]||0}%</span>
         </div>`;}).join('')}
       </div>
-      <button class="nota-save" onclick="abrirDiscCompleto('${sessaoAtual}')">🔍 Ver relatório completo</button>
+      <button class="nota-save" onclick="abrirDiscCompleto('${sessaoAtual}')">🔍 Ver relatório completo (RH)</button>
+      <button class="nota-save" style="margin-top:6px;background:#7c3aed" onclick="abrirDiscGestor('${sessaoAtual}')">👔 Ver guia para o Gestor</button>
     </div>`;
 }
 
 function abrirDiscCompleto(tel){
   window.open(`${API}/disc/resultado-view/${tel}`,'_blank');
+}
+function abrirDiscGestor(tel){
+  window.open(`${API}/disc/resultado-gestor/${tel}`,'_blank');
 }
 
 function mostrarDiscNoPainelSeTiver(tel,s){
