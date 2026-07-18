@@ -38,6 +38,15 @@
   .topbar .sub{font-size:11px;color:var(--blue);margin-left:auto;}
   .topbar a.voltar{color:rgba(255,255,255,.75);text-decoration:none;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
   .topbar a.voltar:hover{color:#fff;}
+  .topbar-undo-group{display:flex;gap:6px;}
+  .topbar-undo-group button{
+    background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.28);
+    border-radius:6px; padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:5px;
+  }
+  .topbar-undo-group button:hover{background:rgba(255,255,255,.22);}
+  .topbar-undo-group button:disabled{opacity:.35; cursor:default;}
+  .topbar-undo-group button:disabled:hover{background:rgba(255,255,255,.12);}
   .layout{
     display:flex;
     align-items:flex-start;
@@ -216,6 +225,10 @@
 <div class="topbar">
   <i class="fas fa-bullhorn"></i>
   <h1>DIVULGAÇÃO DE VAGAS — LIA</h1>
+  <div class="topbar-undo-group">
+    <button type="button" id="btnUndoTop" title="Desfazer (Ctrl+Z)">↶ Desfazer</button>
+    <button type="button" id="btnRedoTop" title="Refazer (Ctrl+Shift+Z)">↷ Refazer</button>
+  </div>
   <a class="voltar" href="/inbox"><i class="fas fa-arrow-left"></i> Lia</a>
   <div class="sub">Effect Pessoas &amp; Performance</div>
 </div>
@@ -1405,6 +1418,7 @@ function handleAt(pt, el, fmt){
    canvas e com as bordas/centro das outras peças; se ficar perto o suficiente, encaixa
    (snap) e desenha uma linha guia rosa, igual ao Canva. */
 let activeGuides = null;
+let arrowGuideTimer = null;
 
 function snapCandidatesX(els, excludeId, fmt){
   const xs = [0, fmt.w/2, fmt.w];
@@ -1483,8 +1497,14 @@ function horizontalOverlap(a,b){
   const left=Math.max(a.x,b.x), right=Math.min(a.x+a.w,b.x+b.w);
   return Math.max(0, right-left);
 }
-function findRowNeighbors(el, els){
-  const rowEls = els.filter(e=> e.id!==el.id && !e.hidden && verticalOverlap(el,e) > Math.min(el.h,e.h)*0.4);
+// Ignora peças "gigantes" (fundos, retângulo do card, círculos decorativos) na hora de achar
+// vizinhos de linha/coluna — senão um fundo que passa atrás de tudo é confundido com vizinho
+// e a detecção de espaçamento nunca fecha.
+function isOversizedBg(e, fmt){
+  return e.w > fmt.w*0.4 || e.h > fmt.h*0.4;
+}
+function findRowNeighbors(el, els, fmt){
+  const rowEls = els.filter(e=> e.id!==el.id && !e.hidden && !isOversizedBg(e,fmt) && verticalOverlap(el,e) > Math.min(el.h,e.h)*0.4);
   let left=null, right=null, leftGap=Infinity, rightGap=Infinity;
   const midX = el.x+el.w/2;
   rowEls.forEach(e=>{
@@ -1499,8 +1519,8 @@ function findRowNeighbors(el, els){
   });
   return {left, right};
 }
-function findColNeighbors(el, els){
-  const colEls = els.filter(e=> e.id!==el.id && !e.hidden && horizontalOverlap(el,e) > Math.min(el.w,e.w)*0.4);
+function findColNeighbors(el, els, fmt){
+  const colEls = els.filter(e=> e.id!==el.id && !e.hidden && !isOversizedBg(e,fmt) && horizontalOverlap(el,e) > Math.min(el.w,e.w)*0.4);
   let top=null, bottom=null, topGap=Infinity, bottomGap=Infinity;
   const midY = el.y+el.h/2;
   colEls.forEach(e=>{
@@ -1519,10 +1539,10 @@ function findColNeighbors(el, els){
 function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
   const spacing = [];
   if(disabled) return spacing;
-  const threshold = Math.max(5, fmt.w*0.006);
+  const threshold = Math.max(6, fmt.w*0.008);
 
   if(!skipX){
-    const {left, right} = findRowNeighbors(el, els);
+    const {left, right} = findRowNeighbors(el, els, fmt);
     if(left && right){
       const leftGap = el.x-(left.x+left.w), rightGap = right.x-(el.x+el.w);
       if(leftGap>=-1 && rightGap>=-1 && Math.abs(leftGap-rightGap)<=threshold){
@@ -1533,7 +1553,7 @@ function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
         spacing.push({x1:el.x+el.w, x2:right.x, y:iy});
       }
     } else if(left && !right){
-      const {left:leftLeft} = findRowNeighbors(left, els.filter(e=>e.id!==el.id));
+      const {left:leftLeft} = findRowNeighbors(left, els.filter(e=>e.id!==el.id), fmt);
       if(leftLeft){
         const refGap = left.x-(leftLeft.x+leftLeft.w), curGap = el.x-(left.x+left.w);
         if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
@@ -1544,7 +1564,7 @@ function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
         }
       }
     } else if(right && !left){
-      const {right:rightRight} = findRowNeighbors(right, els.filter(e=>e.id!==el.id));
+      const {right:rightRight} = findRowNeighbors(right, els.filter(e=>e.id!==el.id), fmt);
       if(rightRight){
         const refGap = rightRight.x-(right.x+right.w), curGap = right.x-(el.x+el.w);
         if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
@@ -1558,7 +1578,7 @@ function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
   }
 
   if(!skipY){
-    const {top, bottom} = findColNeighbors(el, els);
+    const {top, bottom} = findColNeighbors(el, els, fmt);
     if(top && bottom){
       const topGap = el.y-(top.y+top.h), bottomGap = bottom.y-(el.y+el.h);
       if(topGap>=-1 && bottomGap>=-1 && Math.abs(topGap-bottomGap)<=threshold){
@@ -1569,7 +1589,7 @@ function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
         spacing.push({y1:el.y+el.h, y2:bottom.y, x:ix, vertical:true});
       }
     } else if(top && !bottom){
-      const {top:topTop} = findColNeighbors(top, els.filter(e=>e.id!==el.id));
+      const {top:topTop} = findColNeighbors(top, els.filter(e=>e.id!==el.id), fmt);
       if(topTop){
         const refGap = top.y-(topTop.y+topTop.h), curGap = el.y-(top.y+top.h);
         if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
@@ -1580,7 +1600,7 @@ function applyEqualSpacing(el, els, fmt, disabled, skipX, skipY){
         }
       }
     } else if(bottom && !top){
-      const {bottom:bottomBottom} = findColNeighbors(bottom, els.filter(e=>e.id!==el.id));
+      const {bottom:bottomBottom} = findColNeighbors(bottom, els.filter(e=>e.id!==el.id), fmt);
       if(bottomBottom){
         const refGap = bottomBottom.y-(bottom.y+bottom.h), curGap = bottom.y-(el.y+el.h);
         if(refGap>=0 && Math.abs(curGap-refGap)<=threshold){
@@ -1609,12 +1629,20 @@ function renderFormat(canvas, fmtKey, interactive){
       if(el) drawSelectionUI(ctx, el, fmt, selectedIds.length===1 && !el.locked);
     });
   }
-  if(interactive && activeDrag && activeDrag.mode==='move') drawGuides(ctx, fmt, activeGuides);
+  if(interactive && activeGuides && (!activeDrag || activeDrag.mode==='move')) drawGuides(ctx, fmt, activeGuides);
+}
+
+function updateUndoRedoButtons(){
+  const h = getHistory(currentFormat);
+  const canUndo = h.undo.length>0, canRedo = h.redo.length>0;
+  ['#btnUndo','#btnUndoTop'].forEach(sel=>{ const b=$(sel); if(b) b.disabled = !canUndo; });
+  ['#btnRedo','#btnRedoTop'].forEach(sel=>{ const b=$(sel); if(b) b.disabled = !canRedo; });
 }
 
 function draw(){
   const canvas = $('#preview');
   renderFormat(canvas, currentFormat, true);
+  updateUndoRedoButtons();
   saveState();
 }
 
@@ -2040,10 +2068,28 @@ function wireCanvasInteraction(){
     if(!dir) return;
     e.preventDefault();
     const step = e.shiftKey ? 16 : 4;
-    selectedElements().forEach(el=>{
-      if(el.locked) return;
-      el.x += dir[0]*step; el.y += dir[1]*step;
-    });
+    const group = selectedElements().filter(el=>!el.locked);
+    group.forEach(el=>{ el.x += dir[0]*step; el.y += dir[1]*step; });
+
+    // Mesma lógica de encaixe/linhas-guia do arrasto com o mouse, só que disparada pela setinha:
+    // mostra as linhas rosa (alinhamento e espaçamento igual) por um instante e some sozinha.
+    const primaryEl = findElement(currentFormat, primaryId());
+    if(primaryEl && !primaryEl.locked){
+      const fmt = FORMATS[currentFormat];
+      const groupIds = group.map(el=>el.id);
+      const others = getElements(currentFormat).filter(o=>!groupIds.includes(o.id));
+      const before = {x:primaryEl.x, y:primaryEl.y};
+      const guides = applySnap(primaryEl, others, fmt, e.altKey);
+      guides.spacing = applyEqualSpacing(primaryEl, others, fmt, e.altKey, guides.v.length>0, guides.h.length>0);
+      const corrX = primaryEl.x-before.x, corrY = primaryEl.y-before.y;
+      if(corrX||corrY){
+        group.forEach(el=>{ if(el!==primaryEl){ el.x+=corrX; el.y+=corrY; } });
+      }
+      activeGuides = guides;
+      clearTimeout(arrowGuideTimer);
+      arrowGuideTimer = setTimeout(()=>{ activeGuides=null; draw(); }, 650);
+    }
+
     draw();
   });
 }
@@ -2427,6 +2473,8 @@ function wireToolbar(){
 
   $('#btnUndo').addEventListener('click', doUndo);
   $('#btnRedo').addEventListener('click', doRedo);
+  $('#btnUndoTop').addEventListener('click', doUndo);
+  $('#btnRedoTop').addEventListener('click', doRedo);
 
   $('#generateLayout').addEventListener('click', ()=> confirmAndGenerate(currentFormat));
 }
