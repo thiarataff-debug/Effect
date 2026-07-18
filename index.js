@@ -432,6 +432,7 @@ function normalizarSessaoParaInbox(telefone, sessao) {
     disponibilidadeColetada: sessao?.disponibilidadeColetada || "",
     ultimaAnalise: sessao?.ultimaAnalise || null,
     discResult: sessao?.discResult || null,
+    discSolidesResult: sessao?.discSolidesResult || null,
     curriculo: sessao?.curriculo ? { filename: sessao.curriculo.filename, mimeType: sessao.curriculo.mimeType || null, sizeBytes: sessao.curriculo.sizeBytes || null, recebidoEm: sessao.curriculo.recebidoEm, recebidoEmMs: sessao.curriculo.recebidoEmMs || 0, recebidoEmFormatado: formatarDataWhatsApp(sessao.curriculo.recebidoEmMs || sessao.curriculo.recebidoEm), driveLink: sessao.curriculo.driveLink || null, pasta: sessao.curriculo.pasta || null, analiseStatus: sessao.curriculo.analiseStatus || 'recebido', local: !!sessao.curriculo.localPath } : null,
     curriculos: normalizarCurriculosParaInbox(sessao),
     lastMessage: ultima?.content || "",
@@ -1102,7 +1103,7 @@ async function restaurarDoUltimoBackup() {
           curriculos: [],
           curriculo: null,
           ultimaAnalise: s.ultimaAnalise || null,
-          discResult: s.discResult || null
+          discResult: s.discResult || null, discSolidesResult: s.discSolidesResult || null
         };
         restauradas++;
       }
@@ -1395,7 +1396,7 @@ function salvarSessoesLocal() {
         pausado: s.pausado,
         motivoPausa: s.motivoPausa,
         unreadCount: s.unreadCount || 0,
-        discResult: s.discResult || null,
+        discResult: s.discResult || null, discSolidesResult: s.discSolidesResult || null,
         ultimaAnalise: s.ultimaAnalise || null,
         lastMessageAtMs: Number(s.lastMessageAtMs || 0),
         historico: (s.historico || []).slice(-120),
@@ -1424,7 +1425,7 @@ function carregarSessoesLocal() {
           pausado: s.pausado || false,
           motivoPausa: s.motivoPausa || "",
           unreadCount: Number(s.unreadCount || 0),
-          discResult: s.discResult || null,
+          discResult: s.discResult || null, discSolidesResult: s.discSolidesResult || null,
           ultimaAnalise: s.ultimaAnalise || null,
           curriculos: s.curriculos || [],
           curriculo: s.curriculo || null
@@ -1543,6 +1544,7 @@ async function fazerBackup(tipo) {
         pausado: s.pausado,
         motivoPausa: s.motivoPausa,
         discResult: s.discResult,
+        discSolidesResult: s.discSolidesResult,
         ultimaAnalise: s.ultimaAnalise,
         historico: (s.historico || []).slice(-20)
       };
@@ -2210,7 +2212,299 @@ app.get("/disc/resultado-gestor/:telefone", (req, res) => {
   res.send(html);
 });
 
-async function salvarDiscNoDrive(telefone, nome, resultado) {
+// ═══════════════════════════════════════════════════════════════════════
+// DISC SÓLIDES — formato separado (marcação de adjetivos em lista única),
+// guarda o resultado em discSolidesResult para não conflitar com o
+// teste clássico (discResult) do disc.html
+// ═══════════════════════════════════════════════════════════════════════
+app.get("/disc-solides/:telefone", (req, res) => res.sendFile(path.join(__dirname, "disc-solides.html")));
+
+app.post("/disc-solides/submit", async (req, res) => {
+  try {
+    const telefone = limparTelefone(req.body.telefone || '');
+    const nome = String(req.body.nome || '').trim();
+    const vaga = String(req.body.vaga || '').trim();
+    const nivel = String(req.body.nivel || 'administrativo').trim().toLowerCase();
+    const percentuaisNatural = req.body.percentuaisNatural || {};
+    const percentuaisMeio = req.body.percentuaisMeio || {};
+    const primario = req.body.primario || '';
+    const secundario = req.body.secundario || null;
+    const relatorioRH = req.body.relatorioRH || null;
+    const relatorioGestor = req.body.relatorioGestor || null;
+    const palavrasNatural = req.body.palavrasNatural || [];
+    const palavrasMeio = req.body.palavrasMeio || [];
+
+    const resultado = {
+      respondidoEm: new Date().toISOString(),
+      nome, vaga, nivel,
+      percentuaisNatural, percentuaisMeio,
+      primario, secundario,
+      palavrasNatural, palavrasMeio,
+      relatorioRH, relatorioGestor
+    };
+
+    if (telefone && sessoes[telefone]) {
+      sessoes[telefone].discSolidesResult = resultado;
+      if (nome && !sessoes[telefone].nome) sessoes[telefone].nome = nome;
+    }
+
+    await salvarDiscNoDrive(telefone, nome, resultado, 'solides').catch(e => console.error('Erro DISC Sólides Drive:', e.message));
+
+    if (telefone) {
+      const nomeFirst = (nome || 'Candidato').split(' ')[0];
+      const perfisDesc = { D: 'Executor', I: 'Comunicador', S: 'Planejador', C: 'Analista' };
+      const descPrimario = perfisDesc[primario] || primario || '';
+      const msgConfirm = `✅ ${nomeFirst}, recebemos seu questionário comportamental!\n\nSeu perfil predominante é *${primario}${descPrimario ? ' — ' + descPrimario : ''}*. Nossa equipe irá considerar essas informações na avaliação do seu perfil. 💙`;
+      enviarMensagem(telefone, msgConfirm).catch(e => console.error('Erro ao notificar DISC Sólides:', e.message));
+      if (sessoes[telefone]) {
+        salvarConversaCompletaSheets(telefone, sessoes[telefone].historico, sessoes[telefone].nome || nome || '').catch(()=>{});
+      }
+    }
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Erro /disc-solides/submit:', e.message);
+    return res.json({ ok: false, erro: e.message });
+  }
+});
+
+app.get("/disc-solides/resultado/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discSolidesResult) return res.json({ ok: false });
+  return res.json({ ok: true, resultado: sessao.discSolidesResult });
+});
+
+app.get("/disc-solides/resultado-view/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discSolidesResult) return res.send('<h3>Sem resultado do Profiler para este candidato.</h3>');
+  const d = sessao.discSolidesResult;
+  const rh = d.relatorioRH || null;
+  const nome = d.nome || sessao.nome || tel;
+  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
+  const NOMES = {D:'Executor',I:'Comunicador',S:'Planejador',C:'Analista'};
+  const pctN = d.percentuaisNatural || {};
+  const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
+  const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+  const nivelLabel = NIVEL_LABEL[d.nivel || rh?.nivel] || '';
+
+  if (!rh) return res.send('<h3>Relatório de RH indisponível para este resultado.</h3>');
+
+  function barras(pct) {
+    return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:10.5px;font-weight:800;color:${CORES[k]};width:74px">${NOMES[k]}</div>
+      <div style="flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden">
+        <div style="width:${pct[k]||0}%;height:100%;background:${CORES[k]};border-radius:999px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;width:28px;text-align:right">${pct[k]||0}%</div>
+    </div>`).join('');
+  }
+  function lista(arr, cor='#374151') {
+    if (!arr||!arr.length) return '<p style="color:#a1a1aa;font-size:12px">—</p>';
+    return arr.map(i=>`<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:${cor};font-size:13px">•</span><span style="font-size:12.5px;color:#374151;line-height:1.5">${i}</span></div>`).join('');
+  }
+  function sec(titulo) { return `<div style="font-size:10px;font-weight:800;color:#a1a1aa;text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px">${titulo}</div>`; }
+
+  const aderenciaBloco = rh.aderenciaNivel ? (() => {
+    const a = rh.aderenciaNivel;
+    const cor = a.score >= 80 ? '#16a34a' : a.score >= 60 ? '#1fa5f0' : a.score >= 40 ? '#d97706' : '#dc2626';
+    return `<div style="background:#faf5ff;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px;font-weight:800;color:${cor}">${a.score}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${cor}">${a.label} ao nível ${a.nivelLabel||''}</div>
+          <div style="font-size:11px;color:#6b7280">Comparação do perfil natural com o perfil típico esperado para cargos deste nível.</div>
+        </div>
+      </div>
+    </div>`;
+  })() : '';
+
+  const matchBloco = rh.match ? `
+    <div style="background:#f0fdf4;border:1.5px solid #16a34a;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px;font-weight:800;color:#16a34a">${rh.match.score}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#16a34a">${rh.match.lbl} — ${rh.match.vagaLbl||rh.vaga}</div>
+          <div style="font-size:11px;color:#6b7280">${rh.match.nota||''}</div>
+        </div>
+      </div>
+    </div>` : '';
+
+  const indicadoresBloco = (rh.indicadores||[]).map(it => `
+    <div style="margin-bottom:9px">
+      <div style="font-size:11.5px;font-weight:700;color:#374151">${it.nome} — <span style="color:#6d28d9">${it.faixa}</span></div>
+      <div style="background:#ece7fb;border-radius:99px;height:7px;overflow:hidden;margin-top:3px"><div style="width:${it.score}%;height:100%;background:#6d28d9"></div></div>
+    </div>`).join('');
+
+  const competenciasBloco = (rh.competencias||[]).map(c => `
+    <div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px"><span style="color:#a1a1aa;width:16px">${c.num}</span><span style="flex:1;color:#374151">${c.nome}</span><span style="font-weight:800;color:#6d28d9">${c.faixa}</span></div>`).join('');
+
+  const talentosBloco = (rh.talentos||[]).map(t => `
+    <div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px"><span style="color:#a1a1aa;width:16px">${t.num}</span><span style="flex:1;color:#374151">${t.nome}</span><span style="font-weight:800;color:#6d28d9">${t.faixa}</span></div>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Profiler RH — ${nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Montserrat',sans-serif;background:#f5f3ff;padding:24px 16px;max-width:680px;margin:0 auto}
+    .card{background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 1px 5px rgba(0,0,0,.08);margin-bottom:14px}
+    .logo{font-size:14px;font-weight:800;color:#2a2a2b;margin-bottom:18px}.logo span{color:#8ed1b2}
+    @media print{body{background:#fff;padding:10px}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
+  </style></head><body>
+  <div class="logo">Effect <span>Pessoas</span> · Relatório de Seleção (Profiler)</div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#2a2a2b">${nome}</div>
+        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}${nivelLabel?' · Nível '+nivelLabel:''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${CORES[d.primario]||'#374151'}">${NOMES[d.primario]||''}${d.secundario?' / '+NOMES[d.secundario]:''}</div>
+        <div style="font-size:11px;color:#a1a1aa">Perfil predominante</div>
+      </div>
+    </div>
+    ${barras(pctN)}
+  </div>
+
+  ${aderenciaBloco}
+  ${matchBloco}
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:14px">📋 ANÁLISE PARA SELEÇÃO</div>
+    ${sec('Resumo do perfil')}
+    <p style="font-size:12.5px;color:#374151;line-height:1.6;margin-bottom:8px">${rh.resumoRH||''}</p>
+    ${sec('Ambientes com fit')}
+    ${lista(rh.ambientesFit,'#16a34a')}
+    ${sec('Ambientes de risco')}
+    ${lista(rh.ambientesRisco,'#dc2626')}
+    ${sec('Liderança ideal')}
+    <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.liderancaFit||''}</p>
+    ${sec('Conflito')} <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.conflito||''}</p>
+    ${sec('Motivação')} <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.motivacao||''}</p>
+    ${sec('Retenção')} <p style="font-size:12.5px;color:#374151;line-height:1.5">${rh.retencao||''}</p>
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Indicadores situacionais</div>
+    ${indicadoresBloco}
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Competências</div>
+    ${competenciasBloco}
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Área de talentos</div>
+    ${talentosBloco}
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:12px">✅ Sinais positivos na entrevista</div>
+    ${lista(rh.sinaisVerde,'#16a34a')}
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:12px">⚠️ Pontos de atenção</div>
+    ${lista(rh.alertas,'#dc2626')}
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">❓ Perguntas sugeridas para entrevista</div>
+    ${(rh.perguntasEntrevista||[]).map((p,i)=>`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:#a1a1aa;margin-bottom:3px">PERGUNTA ${i+1}</div><p style="font-size:12.5px;color:#374151;line-height:1.5">${p}</p></div>`).join('')}
+  </div>
+
+  <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
+  </body></html>`;
+  res.send(html);
+});
+
+app.get("/disc-solides/resultado-gestor/:telefone", (req, res) => {
+  const tel = limparTelefone(req.params.telefone);
+  const sessao = sessoes[tel];
+  if (!sessao?.discSolidesResult) return res.send('<h3>Sem resultado do Profiler para este candidato.</h3>');
+  const d = sessao.discSolidesResult;
+  const g = d.relatorioGestor || null;
+  const nome = d.nome || sessao.nome || tel;
+  const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
+  const NOMES = {D:'Executor',I:'Comunicador',S:'Planejador',C:'Analista'};
+  const pctN = d.percentuaisNatural || {};
+  const data = new Date(d.respondidoEm||Date.now()).toLocaleDateString('pt-BR');
+  const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+  const nivelLabel = NIVEL_LABEL[d.nivel || g?.nivel] || '';
+
+  if (!g) return res.send('<h3>Este candidato respondeu o teste antes da versão com relatório do gestor.</h3>');
+
+  function barras(pct) {
+    return ['D','I','S','C'].map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:10.5px;font-weight:800;color:${CORES[k]};width:74px">${NOMES[k]}</div>
+      <div style="flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden">
+        <div style="width:${pct[k]||0}%;height:100%;background:${CORES[k]};border-radius:999px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;width:28px;text-align:right">${pct[k]||0}%</div>
+    </div>`).join('');
+  }
+  function bloco(emoji, titulo, texto, cor='#4c1d95') {
+    if (!texto) return '';
+    return `<div class="card"><div style="font-size:12.5px;font-weight:800;color:${cor};margin-bottom:8px">${emoji} ${titulo}</div><p style="font-size:12.5px;color:#374151;line-height:1.6">${texto}</p></div>`;
+  }
+
+  const aderenciaBloco = g.aderenciaNivel ? (() => {
+    const a = g.aderenciaNivel;
+    const cor = a.score >= 80 ? '#16a34a' : a.score >= 60 ? '#1fa5f0' : a.score >= 40 ? '#d97706' : '#dc2626';
+    return `<div style="background:#faf5ff;border:1.5px solid ${cor};border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px;font-weight:800;color:${cor}">${a.score}%</div>
+        <div><div style="font-size:13px;font-weight:700;color:${cor}">${a.label} ao nível ${a.nivelLabel||''}</div></div>
+      </div>
+    </div>`;
+  })() : '';
+
+  const perguntasBloco = (g.perguntasAlinhamento||[]).length ? `
+    <div class="card">
+      <div style="font-size:12.5px;font-weight:800;color:#4c1d95;margin-bottom:10px">💬 Perguntas para usar nas primeiras conversas 1:1</div>
+      ${g.perguntasAlinhamento.map((p,i)=>`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:#a1a1aa;margin-bottom:3px">PERGUNTA ${i+1}</div><p style="font-size:12.5px;color:#374151;line-height:1.5">${p}</p></div>`).join('')}
+    </div>` : '';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Profiler Gestor — ${nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Montserrat',sans-serif;background:#f5f3ff;padding:24px 16px;max-width:680px;margin:0 auto}
+    .card{background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 1px 5px rgba(0,0,0,.08);margin-bottom:14px}
+    .logo{font-size:14px;font-weight:800;color:#2a2a2b;margin-bottom:18px}.logo span{color:#8ed1b2}
+    @media print{body{background:#fff;padding:10px}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
+  </style></head><body>
+  <div class="logo">Effect <span>Pessoas</span> · Guia para o Gestor (Profiler)</div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#2a2a2b">${nome}</div>
+        <div style="font-size:12px;color:#a1a1aa;margin-top:2px">${data} · ${d.vaga||'Vaga não informada'}${nivelLabel?' · Nível '+nivelLabel:''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:${CORES[d.primario]||'#374151'}">${NOMES[d.primario]||''}${d.secundario?' / '+NOMES[d.secundario]:''}</div>
+        <div style="font-size:11px;color:#a1a1aa">Perfil predominante</div>
+      </div>
+    </div>
+    ${barras(pctN)}
+    <p style="font-size:12.5px;color:#374151;line-height:1.6;margin-top:10px">${g.resumo||''}</p>
+  </div>
+
+  ${aderenciaBloco}
+  ${bloco('👔','Como gerenciar no dia a dia', g.comoGerenciar)}
+  ${bloco('💬','Como se comunicar melhor com essa pessoa', g.comoComunicar)}
+  ${bloco('📋','Como delegar tarefas', g.comoDelegar)}
+  ${bloco('🚀','Primeiros dias / onboarding', g.primeirosDias)}
+  ${bloco('🎯','O que motiva essa pessoa', g.gatilhosMotivacao,'#16a34a')}
+  ${bloco('⚠️','Sinais de alerta para acompanhar', g.sinaisAlerta,'#dc2626')}
+  ${perguntasBloco}
+
+  <button onclick="window.print()" style="background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:24px;width:100%">🖨️ Imprimir / Salvar PDF</button>
+  </body></html>`;
+  res.send(html);
+});
+
+async function salvarDiscNoDrive(telefone, nome, resultado, tipo) {
   const drive = getDriveClient();
   if (!drive) return;
 
@@ -2230,7 +2524,8 @@ async function salvarDiscNoDrive(telefone, nome, resultado) {
 
   const { Readable } = require('stream');
   const ts = new Date().toISOString().slice(0, 10);
-  const nomeArq = `DISC-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
+  const prefixo = tipo === 'solides' ? 'DISC-Solides' : 'DISC';
+  const nomeArq = `${prefixo}-${(nome||telefone).replace(/\s+/g,'-')}-${telefone}-${ts}.json`;
   const conteudo = JSON.stringify({ telefone, nome, ...resultado }, null, 2);
 
   await drive.files.create({
