@@ -2387,16 +2387,19 @@ app.get("/disc-solides/resultado-view/:telefone", (req, res) => {
 
   <div class="card">
     <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Indicadores situacionais</div>
+    <div style="font-size:11px;color:#9ca3af;line-height:1.5;margin-bottom:10px">Fatores que mostram como o candidato se comporta neste momento (energia, autoconfiança, flexibilidade etc.), calculados pela proporção de respostas positivas x negativas marcadas em cada perfil.</div>
     ${indicadoresBloco}
   </div>
 
   <div class="card">
     <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Competências</div>
+    <div style="font-size:11px;color:#9ca3af;line-height:1.5;margin-bottom:10px">Estimativa de 20 competências comportamentais a partir da combinação dos 4 perfis (D/I/S/C) — não são perguntas respondidas separadamente, e sim uma leitura derivada do perfil geral.</div>
     ${competenciasBloco}
   </div>
 
   <div class="card">
     <div style="font-size:13px;font-weight:800;color:#4c1d95;margin-bottom:12px">Área de talentos</div>
+    <div style="font-size:11px;color:#9ca3af;line-height:1.5;margin-bottom:10px">Áreas em que a energia do candidato tende a fluir com mais naturalidade, cruzando Emoção x Razão e Extroversão x Introversão. Indica afinidade, não performance garantida.</div>
     ${talentosBloco}
   </div>
 
