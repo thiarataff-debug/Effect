@@ -405,6 +405,19 @@
     </div>
 
     <div class="card">
+      <h2>🎨 Templates de arte</h2>
+      <label class="first">Template salvo</label>
+      <select id="templateSelect"></select>
+      <div class="company-actions">
+        <button type="button" class="btn btn-primary btn-sm" id="aplicarTemplate">Aplicar à arte</button>
+        <button type="button" class="btn btn-danger btn-sm" id="excluirTemplate">Excluir</button>
+      </div>
+      <button type="button" class="btn btn-outline btn-block btn-sm" id="salvarTemplate" style="margin-top:8px;">💾 Salvar arte atual como template</button>
+      <div class="hint">O template guarda o design dos <b>4 formatos</b> de uma vez, <b>sem a foto da vaga</b> (o painel volta pro ícone — cada vaga recebe a própria foto depois). Fica salvo no servidor, visível pra todo o time. Aplicar um template substitui a arte atual dos 4 formatos (Ctrl+Z desfaz no formato aberto).</div>
+      <div class="save-status" id="templateStatus"></div>
+    </div>
+
+    <div class="card">
       <h2>Elementos</h2>
       <div class="toolbar-row">
         <button type="button" class="btn btn-outline btn-sm" id="addText">+ Texto</button>
@@ -3411,6 +3424,137 @@ function loadSavedState(){
 }
 
 /* ---------------------------------------------------------
+   TEMPLATES DE ARTE — salvos no servidor, 4 formatos, sem foto
+--------------------------------------------------------- */
+let artTemplates = [];
+
+function setTemplateStatus(msg, isErro){
+  const el = $('#templateStatus');
+  if(!el) return;
+  el.textContent = msg||'';
+  el.classList.toggle('erro', !!isErro);
+}
+
+async function loadTemplates(){
+  try{
+    const r = await fetch('/vagas/templates');
+    const data = await r.json();
+    if(data.ok && Array.isArray(data.templates)) artTemplates = data.templates;
+  }catch(e){ console.error('Não foi possível carregar templates.', e); }
+  populateTemplateSelect();
+}
+
+async function persistTemplates(){
+  try{
+    const r = await fetch('/vagas/templates', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ templates: artTemplates })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Falha ao salvar');
+    return true;
+  }catch(e){ setTemplateStatus('⚠ Não foi possível salvar no servidor agora. '+e.message, true); return false; }
+}
+
+function populateTemplateSelect(selectId){
+  const sel = $('#templateSelect');
+  if(!sel) return;
+  sel.innerHTML = '';
+  if(!artTemplates.length){
+    const o = document.createElement('option');
+    o.value=''; o.textContent='— nenhum template salvo ainda —';
+    sel.appendChild(o);
+    return;
+  }
+  artTemplates.forEach(t=>{
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = t.nome;
+    sel.appendChild(o);
+  });
+  if(selectId) sel.value = selectId;
+}
+
+// Clona os layouts tirando a foto da vaga: o painel volta pro placeholder
+// de ícone (mesma peça do gerador), pra cada vaga nova receber a própria foto.
+function layoutsSemFoto(){
+  const clone = JSON.parse(JSON.stringify(layouts));
+  const col = getColors();
+  Object.keys(FORMATS).forEach(k=>{
+    const els = clone[k];
+    if(!Array.isArray(els) || !els.length) return;
+    const g = computePhotoGeomForFormat(k);
+    const rmRoles = ['foto','fotoShade'];
+    let removed = false, insertAt = -1;
+    for(let i=els.length-1;i>=0;i--){
+      if(rmRoles.includes(els[i].role)){ insertAt = i; els.splice(i,1); removed = true; }
+    }
+    if(!removed || !g) return;
+    const novos = [];
+    if(g.wide){
+      novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
+    } else {
+      const rA = Math.min(g.w,g.h)*g.fr;
+      const rp = (w,h)=> rA/(Math.min(w,h)/2);
+      novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(g.w,g.h), role:'fotoPh'}));
+      novos.push(newEllipseEl(g.x+g.w*0.18, g.y+g.h*0.1, g.w*0.9, g.w*0.9, {fill:'#ffffff', opacity:0.07, role:'fotoPhDeco'}));
+      novos.push(newIconEl(g.x+g.w*0.2, g.y+(g.h-g.w*0.6)/2, g.w*0.6, g.w*0.6, $('#categoria').value||'generico', '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
+    }
+    els.splice(insertAt, 0, ...novos);
+  });
+  return clone;
+}
+
+async function salvarTemplateAtual(){
+  const temArte = Object.keys(FORMATS).some(k=> Array.isArray(layouts[k]) && layouts[k].length);
+  if(!temArte){ alert('A arte está vazia — monte o design antes de salvar como template.'); return; }
+  const nome = (prompt('Nome do template (ex: "Padrão Segurança — azul escuro"):')||'').trim();
+  if(!nome) return;
+  artTemplates.push({
+    id: 'tpl-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+    nome,
+    criadoEm: new Date().toISOString(),
+    layouts: layoutsSemFoto()
+  });
+  const ok = await persistTemplates();
+  populateTemplateSelect(artTemplates[artTemplates.length-1].id);
+  if(ok) setTemplateStatus(`✓ Template "${nome}" salvo no servidor.`, false);
+}
+
+function aplicarTemplateSelecionado(){
+  const id = $('#templateSelect').value;
+  const t = artTemplates.find(x=>x.id===id);
+  if(!t){ alert('Selecione um template salvo.'); return; }
+  if(!confirm(`Aplicar o template "${t.nome}"?\n\nIsso substitui a arte atual dos 4 formatos (Ctrl+Z desfaz no formato aberto).`)) return;
+  pushHistory();
+  layouts = JSON.parse(JSON.stringify(t.layouts||{}));
+  // se já tem foto escolhida no formulário, encaixa no painel do template
+  if(jobPhotoDataUrl) aplicarFotoPainel(jobPhotoDataUrl);
+  clearSelection();
+  draw();
+  renderLayersList();
+  syncElPanel();
+  setTemplateStatus(`✓ Template "${t.nome}" aplicado.`, false);
+}
+
+async function excluirTemplateSelecionado(){
+  const id = $('#templateSelect').value;
+  const t = artTemplates.find(x=>x.id===id);
+  if(!t){ alert('Selecione um template salvo.'); return; }
+  if(!confirm(`Excluir o template "${t.nome}"? Essa ação não pode ser desfeita.`)) return;
+  artTemplates = artTemplates.filter(x=>x.id!==id);
+  const ok = await persistTemplates();
+  populateTemplateSelect();
+  if(ok) setTemplateStatus(`Template "${t.nome}" excluído.`, false);
+}
+
+function wireTemplates(){
+  $('#salvarTemplate').addEventListener('click', salvarTemplateAtual);
+  $('#aplicarTemplate').addEventListener('click', aplicarTemplateSelecionado);
+  $('#excluirTemplate').addEventListener('click', excluirTemplateSelecionado);
+}
+
+/* ---------------------------------------------------------
    CATEGORIA DO CARGO (menu + detecção automática pelo cargo)
 --------------------------------------------------------- */
 function populateCategorias(){
@@ -3462,6 +3606,8 @@ async function init(){
   wireLiveCanvasSync();
   wireJobDivulgacaoActions();
   wireDownloads();
+  wireTemplates();
+  loadTemplates(); // sem await — não trava a abertura da página
 
   await loadCompanies();
   currentCompany = companies[0] || null;
