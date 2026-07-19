@@ -1945,21 +1945,37 @@ function buildTallLayout(fmt, data, col){
   const topH = cardH*0.48;
   const leftW = cardW*0.57, rightW = cardW-leftW;
 
-  // painel foto / ícone
-  if(data.foto){
-    // Antes era um retângulo cru (radiusPct:0), sem nenhum acabamento — por
-    // isso parecia "quadradona"/datada. Agora: cantos levemente arredondados
-    // + um degradê escuro sutil no rodapé da foto (fecha de leve pro escuro),
-    // um efeito comum em pôster/editorial que dá mais profundidade sem
-    // esconder a imagem.
-    els.push(newImageEl(cardX+leftW, cardY, rightW, topH, data.foto, {radiusPct:0.035}));
-    els.push(newRectEl(cardX+leftW, cardY+topH*0.55, rightW, topH*0.45, {
-      gradient:[hexToRgba(shade(col.primary,-30),0), hexToRgba(shade(col.primary,-45),0.78)],
-      gradientDir:'vertical', radiusPct:0
+  // painel foto / ícone — acabamento editorial: foto "flutuando" com cantos
+  // bem arredondados, uma camada de cor da marca deslocada atrás (profundidade),
+  // degradê escuro suave só no rodapé e um contorno fino translúcido.
+  {
+    const m  = cardW*0.022;
+    const fx = cardX+leftW, fy = cardY+m, fw = rightW-m, fh = topH-m*1.6;
+    const fr = 0.07;
+    // raio absoluto igual pra foto (min*fr) e retângulos (min/2*radiusPct)
+    const rA = Math.min(fw,fh)*fr;
+    const rp = (w,h)=> rA/(Math.min(w,h)/2);
+    // camada de destaque atrás (deslocada pra baixo/direita — dá profundidade)
+    els.push(newRectEl(fx+m*0.85, fy+m*0.85, fw, fh, {fill:col.tertiary, opacity:0.5, radiusPct:rp(fw,fh)}));
+    if(data.foto){
+      els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:fr}));
+      // degradê escuro só na parte de baixo (efeito pôster, sem esconder a foto)
+      els.push(newRectEl(fx, fy+fh*0.58, fw, fh*0.42, {
+        gradient:[hexToRgba(shade(col.primary,-35),0), hexToRgba(shade(col.primary,-50),0.8)],
+        gradientDir:'vertical', radiusPct:rp(fw, fh*0.42)
+      }));
+    } else {
+      els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(fw,fh)}));
+      els.push(newEllipseEl(fx+fw*0.18, fy+fh*0.1, fw*0.9, fw*0.9, {fill:'#ffffff', opacity:0.07}));
+      els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14)}));
+    }
+    // contorno fino translúcido por cima (acabamento)
+    els.push(newRectEl(fx, fy, fw, fh, {
+      fill:'rgba(0,0,0,0)', stroke:'rgba(255,255,255,0.55)',
+      strokeWidth:Math.max(2, cardW*0.0035), radiusPct:rp(fw,fh)
     }));
-  } else {
-    els.push(newRectEl(cardX+leftW, cardY, rightW, topH, {fill:col.primary, gradient:[col.primary, shade(col.primary,-25)], radiusPct:0.035}));
-    els.push(newIconEl(cardX+leftW, cardY, rightW, topH, data.categoria, hexToRgba('#ffffff',0.85)));
+    // filete da cor de destaque na base da foto (toque de marca)
+    els.push(newRectEl(fx+fw*0.3, fy+fh-Math.max(4,cardH*0.006), fw*0.4, Math.max(4,cardH*0.006), {fill:col.accent, radiusPct:0.5}));
   }
 
   // banner sobre a foto
