@@ -1485,7 +1485,13 @@ carregarSessoesDoSheets().then(async () => {
   sincronizacaoInicialCompleta = true;
   console.log("[startup] Sincronização inicial completa.");
 }).catch(e => { console.error("Erro na inicialização:", e.message); sincronizacaoInicialCompleta = true; });
-setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
+// OBS: o backup periódico real fica só na definição logo abaixo de fazerBackup()
+// (mais adiante neste arquivo). Havia uma SEGUNDA chamada idêntica de
+// setInterval(fazerBackup("diario")) duplicada aqui, rodando a cada 2h em vez
+// de 1x por dia como o nome sugere — isso dobrava as chamadas ao Google Apps
+// Script (o mesmo serviço que salva currículos no Drive) sem necessidade,
+// provavelmente contribuindo para estourar a cota diária do Drive mais rápido.
+// Removida para eliminar a duplicidade.
 
 // Recarga automática periódica do Sheets — antes só recarregava quando o servidor
 // ligava, então qualquer correção feita na planilha/Apps Script só entrava em vigor
@@ -1570,14 +1576,15 @@ async function fazerBackup(tipo) {
   }
 }
 
-// Backup diário — executa a cada 24h
-setInterval(() => fazerBackup("diario"), 2 * 60 * 60 * 1000);
+// Backup diário — executa a cada 24h (estava rodando a cada 2h por engano, e
+// ainda duplicado em outro ponto do arquivo — juntos, isso multiplicava as
+// chamadas ao Google Apps Script bem além do necessário e ajudava a estourar
+// a cota diária de Drive daquela conta, que é a mesma usada como reserva para
+// salvar currículos. Corrigido para o intervalo real de 24h.)
+setInterval(() => fazerBackup("diario"), 24 * 60 * 60 * 1000);
 
 // Backup semanal — executa a cada 7 dias
 setInterval(() => fazerBackup("semanal"), 7 * 24 * 60 * 60 * 1000);
-
-// Backup a cada 2 horas
-// removido — substituído pelo intervalo de 2h acima
 
 // ── Rota: iniciar mini-questionário manualmente pelo Inbox ─────────────────
 app.post("/inbox/iniciar-questionario", async (req, res) => {
@@ -3055,6 +3062,50 @@ app.get("/inbox/curriculo/:telefone", async (req, res) => {
   }
 });
 
+// ── Rota de emergência: reenvia pro Drive currículos que ficaram presos só em
+// memória/local (base64 ou arquivo em /tmp) porque o upload original falhou —
+// por exemplo, quando o armazenamento do Drive estava cheio. Esses arquivos
+// não sobrevivem a um reinício do Railway (/tmp é apagado), então rode esta
+// rota manualmente (POST) assim que o problema no Drive for resolvido, antes
+// de fazer qualquer novo deploy/restart, pra não perdê-los de vez.
+app.post("/inbox/curriculos/retentar-drive", async (req, res) => {
+  const resultado = { tentados: 0, sucesso: 0, falha: 0, semArquivo: 0, detalhes: [] };
+  for (const [tel, sessao] of Object.entries(sessoes)) {
+    const lista = Array.isArray(sessao?.curriculos) ? sessao.curriculos : [];
+    let algumAtualizado = false;
+    for (const cv of lista) {
+      if (cv.driveLink) continue; // já está salvo, não precisa reenviar
+
+      let buffer = null;
+      if (cv.base64) buffer = Buffer.from(cv.base64, "base64");
+      else if (cv.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+      if (!buffer || !buffer.length) { resultado.semArquivo++; continue; }
+
+      resultado.tentados++;
+      try {
+        const info = await uploadCurriculoDrive(buffer, cv.filename || `curriculo_${tel}`, "Currículos Recebidos", tel, cv.mimeType);
+        if (info?.link) {
+          cv.driveLink = info.link;
+          cv.pasta = info.pasta;
+          cv.analiseStatus = "salvo_drive";
+          algumAtualizado = true;
+          resultado.sucesso++;
+          resultado.detalhes.push({ telefone: tel, nome: sessao.nome || null, filename: cv.filename, ok: true });
+        } else {
+          resultado.falha++;
+          resultado.detalhes.push({ telefone: tel, nome: sessao.nome || null, filename: cv.filename, ok: false, erro: "upload retornou sem link" });
+        }
+      } catch (e) {
+        resultado.falha++;
+        resultado.detalhes.push({ telefone: tel, nome: sessao.nome || null, filename: cv.filename, ok: false, erro: e.message });
+      }
+    }
+    if (algumAtualizado) {
+      await salvarConversaCompletaSheets(tel, sessao.historico, sessao.nome || "").catch(() => {});
+    }
+  }
+  res.json({ ok: true, ...resultado });
+});
 
 app.post("/inbox/observacao", async (req, res) => {
   const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from);
@@ -4454,6 +4505,60 @@ app.post("/vagas/empresas", (req, res) => {
   if (!lista) return res.json({ ok: false, erro: "Envie { empresas: [...] }" });
   const salvo = gravarEmpresasVagas(lista);
   res.json({ ok: salvo, erro: salvo ? undefined : "Não foi possível salvar no servidor" });
+});
+
+// ── VAGAS SALVAS + CONTADOR DE DIVULGAÇÕES ───────────────────────────────────
+// Permite dar um nome pra uma vaga (ex: "Vigilante Intermitente — Julho 2026")
+// e registrar, com data/hora, cada vez que ela foi divulgada (postada em
+// grupo, Instagram, etc.). Mesmo padrão de arquivo JSON no Volume das
+// empresas clientes acima — salvo no servidor, compartilhado pelo time.
+const VAGAS_DIVULGACOES_PATH = process.env.VAGAS_DIVULGACOES_PATH || "/data/vagas-divulgacoes.json";
+
+function lerVagasDivulgacao() {
+  try {
+    if (fs.existsSync(VAGAS_DIVULGACOES_PATH)) {
+      const lista = JSON.parse(fs.readFileSync(VAGAS_DIVULGACOES_PATH, "utf8"));
+      return Array.isArray(lista) ? lista : [];
+    }
+  } catch (e) { console.error("lerVagasDivulgacao:", e.message); }
+  return [];
+}
+
+function gravarVagasDivulgacao(lista) {
+  try {
+    const dir = path.dirname(VAGAS_DIVULGACOES_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(VAGAS_DIVULGACOES_PATH, JSON.stringify(lista), "utf8");
+    return true;
+  } catch (e) { console.error("gravarVagasDivulgacao:", e.message); return false; }
+}
+
+// Lista todas as vagas salvas (nome, cargo, empresa vinculada, histórico de divulgações).
+app.get("/vagas/divulgacoes", (req, res) => {
+  res.json({ ok: true, vagas: lerVagasDivulgacao() });
+});
+
+// Salva a lista inteira (cria/renomeia/exclui vaga) — mesmo padrão simples do
+// endpoint de empresas: o painel manda o array completo já com a edição.
+app.post("/vagas/divulgacoes", (req, res) => {
+  const lista = Array.isArray(req.body.vagas) ? req.body.vagas : null;
+  if (!lista) return res.json({ ok: false, erro: "Envie { vagas: [...] }" });
+  const salvo = gravarVagasDivulgacao(lista);
+  res.json({ ok: salvo, erro: salvo ? undefined : "Não foi possível salvar no servidor" });
+});
+
+// Registra UMA divulgação agora (data/hora) pra uma vaga salva específica.
+// Rota separada (em vez de reenviar a lista inteira) pra ser um clique rápido
+// e não correr risco de duas pessoas sobrescreverem a lista uma da outra.
+app.post("/vagas/divulgacoes/:id/registrar", (req, res) => {
+  const lista = lerVagasDivulgacao();
+  const vaga = lista.find(v => v.id === req.params.id);
+  if (!vaga) return res.json({ ok: false, erro: "Vaga salva não encontrada" });
+  if (!Array.isArray(vaga.divulgacoes)) vaga.divulgacoes = [];
+  const registro = { ts: Date.now(), canal: (req.body && req.body.canal) || "" };
+  vaga.divulgacoes.push(registro);
+  const salvo = gravarVagasDivulgacao(lista);
+  res.json({ ok: salvo, total: vaga.divulgacoes.length, registro });
 });
 
 // Gera (ou regera) o texto de divulgação, sem enviar nada ainda.
