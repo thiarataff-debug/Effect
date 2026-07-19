@@ -1106,6 +1106,91 @@ function getColors(){
   };
 }
 
+/* ---------------------------------------------------------
+   SINCRONIA AO VIVO: campo do formulário → arte já gerada
+   ---------------------------------------------------------
+   Antes, depois de gerar a arte, editar cargo/salário/contato/etc. no
+   formulário não mudava mais nada na tela — só "Recriar arte do zero"
+   aplicava, e isso apagava toda a formatação manual. Agora cada peça de
+   texto criada pelo gerador carrega uma "role" (cargo, salario, contato,
+   requisitos, atividades, beneficios, banner) e, ao digitar no campo
+   correspondente, o texto dessa peça é atualizado direto — sem regenerar
+   nada mais. Isso não mexe em posição, cor nem nenhum outro ajuste manual.
+--------------------------------------------------------- */
+const ROLE_TEXT_FORMULAS = {
+  cargo: (data) => (data.cargo||'Nome da Vaga').toUpperCase(),
+  salario: (data) => data.salario||'',
+  requisitos: (data) => data.requisitos.join('\n'),
+  atividades: (data) => data.atividades.join('\n'),
+  beneficios: (data) => data.beneficios.join('\n'),
+  contato: (data) => data.contato || data.cta || '',
+  banner: (data) => {
+    const bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
+    return bannerText ? `📍 ${bannerText.toUpperCase()}` : '';
+  }
+};
+
+// Só usado para o caso especial do "banner": geometria fixa (ancorada no
+// canto da foto), igual à usada em buildTallLayout — por isso dá pra inserir
+// essa peça depois, mesmo que ela não tivesse sido criada na primeira geração
+// (o que acontece quando o campo estava vazio na hora de gerar a arte).
+function computeBannerGeomForFormat(fmtKey){
+  const fmt = FORMATS[fmtKey];
+  if(!fmt || fmt.w>fmt.h) return null; // formato largo (LinkedIn) não tem essa peça
+  const W=fmt.w, H=fmt.h;
+  const cardX=W*0.045, cardY=H*0.045, cardW=W-cardX*2;
+  const leftW=cardW*0.57, rightW=cardW-leftW;
+  return {
+    x: cardX+leftW+rightW*0.06,
+    y: cardY+cardW*0.03,
+    w: rightW*0.74,
+    fontSize: cardW*0.026,
+    radius: cardW*0.012
+  };
+}
+
+function syncRoleAcrossFormats(role){
+  const formula = ROLE_TEXT_FORMULAS[role];
+  if(!formula) return;
+  const newText = formula(getData());
+  let currentTouched = false;
+  Object.keys(FORMATS).forEach(fmtKey=>{
+    const els = getElements(fmtKey);
+    if(!els.length) return; // arte ainda não gerada nesse formato — nada a sincronizar
+    let achou = false;
+    els.forEach(el=>{
+      if(el.type==='text' && el.role===role){
+        el.text = newText;
+        el.runs = null;
+        achou = true;
+        if(fmtKey===currentFormat) currentTouched = true;
+      }
+    });
+    if(!achou && role==='banner' && newText){
+      const geom = computeBannerGeomForFormat(fmtKey);
+      if(geom){
+        els.push(newTextEl(geom.x, geom.y, geom.w, newText, {
+          fontSize: geom.fontSize, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius: geom.radius, role:'banner'
+        }));
+        if(fmtKey===currentFormat) currentTouched = true;
+      }
+    }
+  });
+  if(currentTouched) draw();
+}
+
+function wireLiveCanvasSync(){
+  $('#cargo').addEventListener('input', ()=> syncRoleAcrossFormats('cargo'));
+  $('#salario').addEventListener('input', ()=> syncRoleAcrossFormats('salario'));
+  $('#requisitos').addEventListener('input', ()=> syncRoleAcrossFormats('requisitos'));
+  $('#atividades').addEventListener('input', ()=> syncRoleAcrossFormats('atividades'));
+  $('#beneficios').addEventListener('input', ()=> syncRoleAcrossFormats('beneficios'));
+  $('#contato').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
+  $('#cta').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
+  $('#banner').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
+  $('#cidade').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
+}
+
 /* ===========================================================
    MOTOR DE CANVAS LIVRE (estilo Canva) — objetos independentes
 =========================================================== */
@@ -1441,7 +1526,9 @@ function drawShapeElement(ctx, el){
       roundRectPath(ctx, el.x, el.y, el.w, el.h, Math.min(el.w,el.h)/2*(el.radiusPct!=null?el.radiusPct:0.12));
     }
     if(el.gradient){
-      const g = ctx.createLinearGradient(el.x,el.y,el.x+el.w,el.y+el.h);
+      const g = el.gradientDir==='vertical'
+        ? ctx.createLinearGradient(el.x, el.y, el.x, el.y+el.h)
+        : ctx.createLinearGradient(el.x,el.y,el.x+el.w,el.y+el.h);
       g.addColorStop(0, el.gradient[0]); g.addColorStop(1, el.gradient[1]);
       ctx.fillStyle = g;
     } else {
@@ -1842,9 +1929,18 @@ function buildTallLayout(fmt, data, col){
 
   // painel foto / ícone
   if(data.foto){
-    els.push(newImageEl(cardX+leftW, cardY, rightW, topH, data.foto, {radiusPct:0}));
+    // Antes era um retângulo cru (radiusPct:0), sem nenhum acabamento — por
+    // isso parecia "quadradona"/datada. Agora: cantos levemente arredondados
+    // + um degradê escuro sutil no rodapé da foto (fecha de leve pro escuro),
+    // um efeito comum em pôster/editorial que dá mais profundidade sem
+    // esconder a imagem.
+    els.push(newImageEl(cardX+leftW, cardY, rightW, topH, data.foto, {radiusPct:0.035}));
+    els.push(newRectEl(cardX+leftW, cardY+topH*0.55, rightW, topH*0.45, {
+      gradient:[hexToRgba(shade(col.primary,-30),0), hexToRgba(shade(col.primary,-45),0.78)],
+      gradientDir:'vertical', radiusPct:0
+    }));
   } else {
-    els.push(newRectEl(cardX+leftW, cardY, rightW, topH, {fill:col.primary, gradient:[col.primary, shade(col.primary,-25)], radiusPct:0}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, topH, {fill:col.primary, gradient:[col.primary, shade(col.primary,-25)], radiusPct:0.035}));
     els.push(newIconEl(cardX+leftW, cardY, rightW, topH, data.categoria, hexToRgba('#ffffff',0.85)));
   }
 
@@ -1852,7 +1948,7 @@ function buildTallLayout(fmt, data, col){
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
   if(bannerText){
     const bt = newTextEl(cardX+leftW+rightW*0.06, cardY+cardW*0.03, rightW*0.74, `📍 ${bannerText.toUpperCase()}`, {
-      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius:cardW*0.012
+      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius:cardW*0.012, role:'banner'
     });
     els.push(bt);
   }
@@ -1874,7 +1970,7 @@ function buildTallLayout(fmt, data, col){
   y += cardW*0.05 + cardH*0.02;
 
   const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.07, cardW*0.044, 800, "'Poppins', Arial, sans-serif");
-  const titleEl = newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1});
+  const titleEl = newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1, role:'cargo'});
   els.push(titleEl);
   y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.022;
 
@@ -1895,7 +1991,7 @@ function buildTallLayout(fmt, data, col){
   if(data.requisitos.length){
     const rowsFont = cardW*0.026;
     const reqText = data.requisitos.join('\n');
-    els.push(newTextEl(lx, y, lw, reqText, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3}));
+    els.push(newTextEl(lx, y, lw, reqText, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3, role:'requisitos'}));
     ctx.font = `500 ${Math.round(rowsFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     data.requisitos.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
@@ -1905,7 +2001,7 @@ function buildTallLayout(fmt, data, col){
   if(data.atividades.length){
     const actFont = cardW*0.026;
     const actText = data.atividades.join('\n');
-    els.push(newTextEl(lx, y, lw, actText, {fontSize:actFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3}));
+    els.push(newTextEl(lx, y, lw, actText, {fontSize:actFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3, role:'atividades'}));
     ctx.font = `500 ${Math.round(actFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     data.atividades.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
@@ -1920,14 +2016,14 @@ function buildTallLayout(fmt, data, col){
     const salLineH = salFont*1.25;
     const salTextY = by + (salH-salLineH)/2;
     els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:col.primary, radiusPct:0.24}));
-    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
+    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25, role:'salario'}));
     by += salH+cardH*0.022;
   }
 
   if(data.beneficios.length){
     const benFont = cardW*0.02;
     const benText = data.beneficios.join('\n');
-    els.push(newTextEl(cardX+pad, by, cardW-pad*2, benText, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28}));
+    els.push(newTextEl(cardX+pad, by, cardW-pad*2, benText, {fontSize:benFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.28, role:'beneficios'}));
     ctx.font = `500 ${Math.round(benFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     data.beneficios.forEach(b=> totalLines += wrapLines(ctx, b, cardW-pad*2).length);
@@ -1942,7 +2038,7 @@ function buildTallLayout(fmt, data, col){
   els.push(newIconEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, 'generico', '#ffffff', {bg:col.tertiary}));
   const mainLine = data.contato || data.cta || '';
   els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.14, cardW*0.6, 'INTERESSADOS, ENTRE EM CONTATO', {fontSize:cardW*0.016, fontWeight:700, color:'rgba(255,255,255,0.7)', align:'left'}));
-  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.42, cardW*0.6, mainLine, {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left'}));
+  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.42, cardW*0.6, mainLine, {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
 
   els.push(newTextEl(W*0.55, H-H*0.045, W*0.42, 'via Effect Pessoas & Performance', {fontSize:W*0.014, fontWeight:600, color:'rgba(255,255,255,0.55)', align:'right', opacity:0.9}));
 
@@ -1977,7 +2073,7 @@ function buildWideLayout(fmt, data, col){
   const innerX=cardX+cardW*0.045, innerW=leftW-cardW*0.07;
   let y=cardY+cardH*0.09;
   const fit = fitText(ctx, data.cargo.toUpperCase(), innerW, 2, cardW*0.05, cardW*0.028, 800, "'Poppins', Arial, sans-serif");
-  els.push(newTextEl(innerX, y, innerW, data.cargo.toUpperCase(), {fontSize:fit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
+  els.push(newTextEl(innerX, y, innerW, data.cargo.toUpperCase(), {fontSize:fit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15, role:'cargo'}));
   y += fit.lines.length*fit.size*1.15 + cardH*0.03;
 
   const tags = tagList(data);
@@ -1995,14 +2091,15 @@ function buildWideLayout(fmt, data, col){
   }
 
   if(data.salario){
-    els.push(newTextEl(innerX, y, innerW, data.salario, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
+    els.push(newTextEl(innerX, y, innerW, data.salario, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left', role:'salario'}));
     y += cardH*0.06;
   }
 
   const combinedFont = cardW*0.0145;
-  [data.requisitos, data.atividades, data.beneficios].forEach(arr=>{
+  const combinedRoles = ['requisitos','atividades','beneficios'];
+  [data.requisitos, data.atividades, data.beneficios].forEach((arr,arrIdx)=>{
     if(!arr.length) return;
-    els.push(newTextEl(innerX, y, innerW, arr.join('\n'), {fontSize:combinedFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4}));
+    els.push(newTextEl(innerX, y, innerW, arr.join('\n'), {fontSize:combinedFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4, role:combinedRoles[arrIdx]}));
     ctx.font = `500 ${Math.round(combinedFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     arr.forEach(s=> totalLines += wrapLines(ctx, s, innerW).length);
@@ -2014,7 +2111,7 @@ function buildWideLayout(fmt, data, col){
   els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.008), {fill:col.accent, radiusPct:0}));
   const mainLine = data.contato || data.cta || '';
   els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.16, cardW*0.5, 'CANDIDATE-SE', {fontSize:cardW*0.013, fontWeight:700, color:'rgba(255,255,255,0.75)', align:'left'}));
-  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.5, cardW*0.5, mainLine, {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left'}));
+  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.5, cardW*0.5, mainLine, {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
 
   return els;
 }
@@ -3061,6 +3158,7 @@ async function init(){
   wireCargoAutoCategory();
   wireJobFields();
   wireJobPhoto();
+  wireLiveCanvasSync();
   wireDownloads();
   wireCanvasInteraction();
   wireElPanel();
