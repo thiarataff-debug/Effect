@@ -2578,6 +2578,13 @@ function syncElPanel(){
   }
   if(el.type==='image'){
     $('#elImageRound').checked = !!el.round;
+    // CORREÇÃO: fotos já geradas (antes de qualquer ajuste no gerador padrão)
+    // não ganham cantos arredondados automaticamente — o slider existia mas
+    // ficava escondido pra imagens. Agora dá pra arredondar manualmente
+    // qualquer foto já colocada na arte, sem precisar recriar tudo do zero.
+    const imgRadPct = Math.round((el.radiusPct!=null?el.radiusPct:0)*100);
+    $('#elRadius').value = imgRadPct; $('#elRadiusVal').textContent = imgRadPct+'%';
+    $('#elRadius').closest('div, label').style.display = el.round ? 'none' : '';
   }
 
   const op = Math.round((el.opacity!=null?el.opacity:1)*100);
