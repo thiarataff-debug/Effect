@@ -1300,7 +1300,9 @@ const ROLE_TEXT_FORMULAS = {
   beneficios: (data) => data.beneficios.join('\n'),
   contato: (data) => data.contato || data.cta || '',
   banner: (data) => {
-    const bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
+    // Banner SÓ existe se a "Frase de destaque" for preenchida — a cidade
+    // sozinha não gera banner (ela vai pros chips abaixo do título).
+    const bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
     return bannerText ? `📍 ${bannerText.toUpperCase()}` : '';
   }
 };
@@ -1394,6 +1396,19 @@ function syncRoleAcrossFormats(role){
   const formula = ROLE_TEXT_FORMULAS[role];
   if(!formula) return;
   const newText = formula(getData());
+  // Frase de destaque vazia = sem banner: REMOVE selos existentes (inclusive
+  // os criados por versões antigas a partir da cidade).
+  if(role==='banner' && !newText){
+    let t = false;
+    Object.keys(FORMATS).forEach(fk=>{
+      const els = getElements(fk);
+      for(let i=els.length-1;i>=0;i--){
+        if(els[i].role==='banner'){ els.splice(i,1); if(fk===currentFormat) t = true; }
+      }
+    });
+    if(t) draw();
+    return;
+  }
   let currentTouched = false;
   Object.keys(FORMATS).forEach(fmtKey=>{
     const els = getElements(fmtKey);
@@ -2281,8 +2296,8 @@ function buildTallLayout(fmt, data, col){
     els.push(newRectEl(fx+fw*0.3, fy+fh-Math.max(4,cardH*0.006), fw*0.4, Math.max(4,cardH*0.006), {fill:col.accent, radiusPct:0.5, role:'fotoFilete'}));
   }
 
-  // banner sobre a foto
-  let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : (data.cidade ? `Venha fazer parte do time em ${data.cidade}!` : '');
+  // banner sobre a foto — só quando a "Frase de destaque" é preenchida
+  let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
   if(bannerText){
     const bt = newTextEl(cardX+leftW+rightW*0.06, cardY+cardW*0.03, rightW*0.74, `📍 ${bannerText.toUpperCase()}`, {
       fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius:cardW*0.012, role:'banner'
