@@ -2903,6 +2903,22 @@ app.post("/inbox/sos/zerar", (req, res) => {
   res.json({ ok: gravarSos(cfg) });
 });
 
+// Verifica se um buffer recuperado de memória/disco realmente é o arquivo (e não
+// um pedaço truncado/corrompido). Causa real do "Falha ao carregar o documento
+// PDF" recorrente: quando o processo reinicia (ex.: um novo deploy no Railway),
+// a sessão em memória é perdida e o currículo pode ser recuperado do Sheets —
+// mas células do Sheets têm limite de ~50.000 caracteres, então um PDF em
+// base64 (normalmente bem maior que isso) chega cortado ao meio. Sem essa
+// checagem, o servidor mandava esse pedaço truncado pro navegador como se
+// fosse o PDF inteiro, e o visualizador de PDF do Chrome falhava ao abrir.
+function bufferDeCurriculoValido(buffer, mimeType, filename) {
+  if (!buffer || !buffer.length) return false;
+  const nomeLower = String(filename || "").toLowerCase();
+  const ehPdf = String(mimeType || "").includes("pdf") || nomeLower.endsWith(".pdf");
+  if (!ehPdf) return true; // só validamos a assinatura de PDF; outros tipos passam direto
+  return buffer.slice(0, 5).toString("latin1") === "%PDF-";
+}
+
 // Função compartilhada: localiza o currículo (local, Sheets, ou busca automática no
 // Drive) e devolve OU um link pra abrir OU null. Não escreve na resposta — quem
 // chama decide o que fazer (redirecionar, servir o arquivo, ou responder JSON).
@@ -2959,6 +2975,11 @@ async function localizarCurriculo(tel, idxSolicitado) {
   let buffer = null;
   if (cv?.base64) buffer = Buffer.from(cv.base64, "base64");
   else if (cv?.localPath && fs.existsSync(cv.localPath)) buffer = fs.readFileSync(cv.localPath);
+
+  if (buffer && !bufferDeCurriculoValido(buffer, cv.mimeType, cv.filename)) {
+    console.error(`⚠️ Currículo truncado/corrompido em memória — ${sessao?.nome || tel} — ${cv.filename} — ignorando e tentando Drive.`);
+    buffer = null;
+  }
 
   if (buffer) return { ok: true, tipo: "arquivo", buffer, mimeType: cv.mimeType, filename: cv.filename, nomeCandidato: sessao?.nome || tel };
 
