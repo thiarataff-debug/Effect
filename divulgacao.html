@@ -1095,6 +1095,14 @@ function getData(){
   };
 }
 
+// Logo da EFFECT (assinatura da agência no rodapé das artes) — vem do cadastro
+// da empresa "Effect Pessoas & Performance" na lista de empresas, independente
+// de qual cliente estiver selecionado pra arte.
+function getEffectLogo(){
+  const eff = (companies||[]).find(c=> c.id==='seed-effect' || /effect/i.test(c.nome||''));
+  return (eff && eff.logoDataUrl) || null;
+}
+
 function getColors(){
   const c = currentCompany || {};
   return {
@@ -2069,7 +2077,14 @@ function buildTallLayout(fmt, data, col){
   els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0}));
   els.push(newRectEl(cardX, footerY, cardW, Math.max(3,cardH*0.006), {fill:col.tertiary, radiusPct:0}));
   const fBadgeSize = footerH*0.46;
-  els.push(newIconEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, 'generico', '#ffffff', {bg:col.tertiary}));
+  const effLogo = getEffectLogo();
+  if(effLogo){
+    // logo da EFFECT no selo do rodapé (assinatura da agência, não do cliente)
+    els.push(newEllipseEl(cardX+cardW*0.06-fBadgeSize*0.06, footerY+(footerH-fBadgeSize)/2-fBadgeSize*0.06, fBadgeSize*1.12, fBadgeSize*1.12, {fill:'#ffffff', opacity:0.95}));
+    els.push(newImageEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, effLogo, {round:true}));
+  } else {
+    els.push(newIconEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, 'generico', '#ffffff', {bg:col.tertiary}));
+  }
   const mainLine = data.contato || data.cta || '';
   els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.14, cardW*0.6, 'INTERESSADOS, ENTRE EM CONTATO', {fontSize:cardW*0.016, fontWeight:700, color:'rgba(255,255,255,0.7)', align:'left'}));
   els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.42, cardW*0.6, mainLine, {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
