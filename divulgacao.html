@@ -1158,6 +1158,72 @@ function computeBannerGeomForFormat(fmtKey){
   };
 }
 
+// Geometria do painel de foto de cada formato (mesma conta dos geradores),
+// pra foto nova "encaixar" no quadrado certo em vez de cair solta na arte.
+function computePhotoGeomForFormat(fmtKey){
+  const fmt = FORMATS[fmtKey];
+  if(!fmt) return null;
+  const W=fmt.w, H=fmt.h;
+  if(W>H){
+    const cardX=W*0.035, cardY=H*0.06, cardW=W-cardX*2, cardH=H-cardY*2;
+    const rightW=cardW*0.36, leftW=cardW-rightW;
+    return {wide:true, x:cardX+leftW, y:cardY, w:rightW, h:cardH};
+  }
+  const cardX=W*0.045, cardY=H*0.045, cardW=W-cardX*2, cardH=H-cardY*2;
+  const topH=cardH*0.48, leftW=cardW*0.57, rightW=cardW-leftW;
+  const m=cardW*0.022;
+  return {wide:false, x:cardX+leftW, y:cardY+m, w:rightW-m, h:topH-m*1.6, fr:0.07};
+}
+
+// Coloca (ou remove, se src=null) a foto no painel dela em todos os formatos,
+// substituindo o placeholder de ícone — estilo Canva: escolheu, encaixou.
+function aplicarFotoPainel(src){
+  const col = getColors();
+  const catKey = $('#categoria').value || 'generico';
+  let touched = false;
+  Object.keys(FORMATS).forEach(k=>{
+    const els = getElements(k);
+    if(!els.length) return;
+    const g = computePhotoGeomForFormat(k);
+    if(!g) return;
+    const rmRoles = ['foto','fotoShade','fotoPh','fotoPhDeco','fotoIcon'];
+    let insertAt = -1;
+    for(let i=els.length-1;i>=0;i--){
+      if(rmRoles.includes(els[i].role)){ insertAt = i; els.splice(i,1); }
+    }
+    if(insertAt<0){
+      const ib = els.findIndex(el=>el.role==='fotoBorda');
+      insertAt = ib>=0 ? ib : els.length;
+    }
+    const novos = [];
+    if(g.wide){
+      if(src){
+        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, {radiusPct:0, role:'foto'}));
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, opacity:0.55, radiusPct:0, role:'fotoShade'}));
+      } else {
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
+      }
+    } else {
+      const rA = Math.min(g.w,g.h)*g.fr;
+      const rp = (w,h)=> rA/(Math.min(w,h)/2);
+      if(src){
+        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, {radiusPct:g.fr, role:'foto'}));
+        novos.push(newRectEl(g.x, g.y+g.h*0.58, g.w, g.h*0.42, {
+          gradient:[hexToRgba(shade(col.primary,-35),0), hexToRgba(shade(col.primary,-50),0.8)],
+          gradientDir:'vertical', radiusPct:rp(g.w, g.h*0.42), role:'fotoShade'
+        }));
+      } else {
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(g.w,g.h), role:'fotoPh'}));
+        novos.push(newEllipseEl(g.x+g.w*0.18, g.y+g.h*0.1, g.w*0.9, g.w*0.9, {fill:'#ffffff', opacity:0.07, role:'fotoPhDeco'}));
+        novos.push(newIconEl(g.x+g.w*0.2, g.y+(g.h-g.w*0.6)/2, g.w*0.6, g.w*0.6, catKey, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
+      }
+    }
+    els.splice(insertAt, 0, ...novos);
+    if(k===currentFormat) touched = true;
+  });
+  if(touched) draw();
+}
+
 function syncRoleAcrossFormats(role){
   const formula = ROLE_TEXT_FORMULAS[role];
   if(!formula) return;
@@ -1964,26 +2030,26 @@ function buildTallLayout(fmt, data, col){
     const rA = Math.min(fw,fh)*fr;
     const rp = (w,h)=> rA/(Math.min(w,h)/2);
     // camada de destaque atrás (deslocada pra baixo/direita — dá profundidade)
-    els.push(newRectEl(fx+m*0.85, fy+m*0.85, fw, fh, {fill:col.tertiary, opacity:0.5, radiusPct:rp(fw,fh)}));
+    els.push(newRectEl(fx+m*0.85, fy+m*0.85, fw, fh, {fill:col.tertiary, opacity:0.5, radiusPct:rp(fw,fh), role:'fotoBack'}));
     if(data.foto){
-      els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:fr}));
+      els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:fr, role:'foto'}));
       // degradê escuro só na parte de baixo (efeito pôster, sem esconder a foto)
       els.push(newRectEl(fx, fy+fh*0.58, fw, fh*0.42, {
         gradient:[hexToRgba(shade(col.primary,-35),0), hexToRgba(shade(col.primary,-50),0.8)],
-        gradientDir:'vertical', radiusPct:rp(fw, fh*0.42)
+        gradientDir:'vertical', radiusPct:rp(fw, fh*0.42), role:'fotoShade'
       }));
     } else {
-      els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(fw,fh)}));
-      els.push(newEllipseEl(fx+fw*0.18, fy+fh*0.1, fw*0.9, fw*0.9, {fill:'#ffffff', opacity:0.07}));
-      els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14)}));
+      els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(fw,fh), role:'fotoPh'}));
+      els.push(newEllipseEl(fx+fw*0.18, fy+fh*0.1, fw*0.9, fw*0.9, {fill:'#ffffff', opacity:0.07, role:'fotoPhDeco'}));
+      els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
     }
     // contorno fino translúcido por cima (acabamento)
     els.push(newRectEl(fx, fy, fw, fh, {
       fill:'rgba(0,0,0,0)', stroke:'rgba(255,255,255,0.55)',
-      strokeWidth:Math.max(2, cardW*0.0035), radiusPct:rp(fw,fh)
+      strokeWidth:Math.max(2, cardW*0.0035), radiusPct:rp(fw,fh), role:'fotoBorda'
     }));
     // filete da cor de destaque na base da foto (toque de marca)
-    els.push(newRectEl(fx+fw*0.3, fy+fh-Math.max(4,cardH*0.006), fw*0.4, Math.max(4,cardH*0.006), {fill:col.accent, radiusPct:0.5}));
+    els.push(newRectEl(fx+fw*0.3, fy+fh-Math.max(4,cardH*0.006), fw*0.4, Math.max(4,cardH*0.006), {fill:col.accent, radiusPct:0.5, role:'fotoFilete'}));
   }
 
   // banner sobre a foto
@@ -2107,10 +2173,10 @@ function buildWideLayout(fmt, data, col){
 
   const rightW=cardW*0.36, leftW=cardW-rightW;
   if(data.foto){
-    els.push(newImageEl(cardX+leftW, cardY, rightW, cardH, data.foto, {radiusPct:0}));
-    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, opacity:0.55, radiusPct:0}));
+    els.push(newImageEl(cardX+leftW, cardY, rightW, cardH, data.foto, {radiusPct:0, role:'foto'}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, opacity:0.55, radiusPct:0, role:'fotoShade'}));
   } else {
-    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusPct:0}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
   }
   if(col.logo){
     const logoSize = rightW*0.3;
@@ -2987,8 +3053,8 @@ function wireJobPhoto(){
     reader.onload = ()=>{
       jobPhotoDataUrl = reader.result;
       $('#jobPhotoPreview').innerHTML = `<img src="${reader.result}">`;
-      const f = FORMATS[currentFormat];
-      addElement(newImageEl(f.w*0.28, f.h*0.3, f.w*0.44, f.w*0.44, reader.result, {round:false, radiusPct:0.06}));
+      pushHistory();
+      aplicarFotoPainel(reader.result); // encaixa direto no painel da foto, em todos os formatos
     };
     reader.readAsDataURL(file);
     e.target.value='';
@@ -2996,6 +3062,8 @@ function wireJobPhoto(){
   $('#removeJobPhoto').addEventListener('click', ()=>{
     jobPhotoDataUrl = null;
     $('#jobPhotoPreview').innerHTML = '—';
+    pushHistory();
+    aplicarFotoPainel(null); // volta o painel com o ícone da categoria
   });
 }
 
