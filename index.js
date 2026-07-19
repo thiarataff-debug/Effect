@@ -4551,4 +4551,609 @@ app.post("/vagas/divulgacoes", (req, res) => {
 // Rota separada (em vez de reenviar a lista inteira) pra ser um clique rápido
 // e não correr risco de duas pessoas sobrescreverem a lista uma da outra.
 app.post("/vagas/divulgacoes/:id/registrar", (req, res) => {
-  const lista = lerVagasDivul
+  const lista = lerVagasDivulgacao();
+  const vaga = lista.find(v => v.id === req.params.id);
+  if (!vaga) return res.json({ ok: false, erro: "Vaga salva não encontrada" });
+  if (!Array.isArray(vaga.divulgacoes)) vaga.divulgacoes = [];
+  const registro = { ts: Date.now(), canal: (req.body && req.body.canal) || "" };
+  vaga.divulgacoes.push(registro);
+  const salvo = gravarVagasDivulgacao(lista);
+  res.json({ ok: salvo, total: vaga.divulgacoes.length, registro });
+});
+
+// Gera (ou regera) o texto de divulgação, sem enviar nada ainda.
+app.post("/vagas/gerar-texto", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const provider = req.body.provider;
+    const { texto, providerUsado } = await gerarTextoDivulgacao(vaga, provider);
+    res.json({ ok: true, texto, providerUsado });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Gera uma foto de profissional via IA (DALL-E 3) a partir do cargo — usada no
+// cartaz de divulgação (seção 5). Disparo sempre manual (botão), nunca automático.
+app.post("/vagas/gerar-foto", async (req, res) => {
+  try {
+    const cargo = String(req.body.cargo || "").trim();
+    if (!cargo) return res.json({ ok: false, erro: "Informe o cargo antes de gerar a foto." });
+    const resultado = await gerarFotoProfissional(cargo);
+    res.json(resultado);
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Lista candidatos compatíveis com a vaga, para revisão antes do disparo.
+app.post("/vagas/candidatos-compativeis", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const candidatos = await buscarCandidatosCompativeis(vaga);
+    const lista = candidatos.map(c => ({
+      telefone: limparTelefone(campo(c, ["telefone", "Telefone", "whatsapp"], "")),
+      nome: campo(c, ["nome", "Nome"], "")
+    })).filter(c => c.telefone);
+    res.json({ ok: true, total: lista.length, candidatos: lista });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Aprova e dispara a divulgação: WhatsApp em lote para os candidatos compatíveis
+// (ou lista escolhida manualmente) + e-mail para o parceiro de redes sociais.
+// Este é o único gatilho de disparo — nada sai automaticamente sem essa chamada,
+// ou seja, o disparo só acontece depois que a vaga é aprovada no painel.
+app.post("/vagas/aprovar", async (req, res) => {
+  try {
+    const vaga = req.body.vaga || {};
+    const provider = req.body.provider;
+    const enviarWhatsapp = req.body.enviarWhatsapp !== false;
+    const enviarEmail = req.body.enviarEmail !== false;
+    const telefonesManual = Array.isArray(req.body.telefones) ? req.body.telefones : null;
+
+    let texto = String(req.body.texto || "").trim();
+    let providerUsado = "manual";
+    if (!texto) {
+      const gerado = await gerarTextoDivulgacao(vaga, provider);
+      texto = gerado.texto;
+      providerUsado = gerado.providerUsado;
+    }
+
+    let telefones = [];
+    if (telefonesManual) {
+      telefones = [...new Set(telefonesManual.map(limparTelefone).filter(t => t && t.length >= 8))];
+    } else if (enviarWhatsapp) {
+      const candidatos = await buscarCandidatosCompativeis(vaga);
+      telefones = [...new Set(candidatos.map(c => limparTelefone(campo(c, ["telefone", "Telefone", "whatsapp"], ""))).filter(t => t && t.length >= 8))];
+    }
+
+    if (enviarWhatsapp && telefones.length) {
+      // Reaproveita o motor de envio em lote (1 msg/seg, cai para template
+      // aprovado quando o candidato está fora da janela de 24h da Meta).
+      iniciarEnvioLote(telefones, texto, { templateFallback: true });
+    }
+
+    let resultadoEmail = { ok: false, erro: "Não solicitado" };
+    if (enviarEmail) {
+      resultadoEmail = await enviarEmailParceiro(vaga, texto);
+    }
+
+    res.json({
+      ok: true,
+      texto,
+      providerUsado,
+      totalCandidatosWhatsapp: telefones.length,
+      whatsappDisparado: enviarWhatsapp && telefones.length > 0,
+      email: resultadoEmail
+    });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// ── ENDPOINTS DE CONTROLE (Gemini + Railway) ──────────────────────────────────
+
+// GET /admin/status → retorna estado atual da IA e créditos Railway
+app.get("/admin/status", async (req, res) => {
+  const status = {
+    geminiAtivo,
+    railway: null,
+    gemini: {
+      quotaAlerta: geminiStats.quotaAlerta,
+      erros429: geminiStats.erros429,
+      totalCalls: geminiStats.totalCalls,
+      ultimoErro429: geminiStats.ultimoErro429,
+      usageUrl: "https://aistudio.google.com/app/usage"
+    }
+  };
+  if (CONFIG.RAILWAY_TOKEN) {
+    try {
+      // Verifica apenas se o token é válido — Railway não expõe saldo via API pública
+      const query = `{ me { name } }`;
+      const r = await fetch("https://backboard.railway.app/graphql/v2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
+        body: JSON.stringify({ query })
+      });
+      const data = await r.json();
+      const me = data?.data?.me;
+      if (me !== null && me !== undefined) {
+        status.railway = { conectado: true, nome: me.name || "Railway", billingUrl: "https://railway.app/account/billing" };
+      } else {
+        status.railway = { conectado: false };
+      }
+    } catch(e) { status.railway = { conectado: false, erro: e.message }; }
+  }
+  res.json(status);
+});
+
+// POST /admin/gemini-toggle → liga/desliga Gemini sem redeploy
+app.post("/admin/gemini-toggle", (req, res) => {
+  const { ativo } = req.body || {};
+  if (typeof ativo === "boolean") {
+    geminiAtivo = ativo;
+  } else {
+    geminiAtivo = !geminiAtivo; // toggle se não passar valor
+  }
+  // Ao reativar, reseta o alerta de quota (usuário recarregou créditos)
+  if (geminiAtivo) {
+    geminiStats.erros429 = 0;
+    geminiStats.quotaAlerta = false;
+    geminiStats.ultimoErro429 = null;
+  }
+  // Persiste estado no Volume para sobreviver a deploys
+  try {
+    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
+    inboxDataCache.geminiAtivo = geminiAtivo;
+    gravarDadosInbox(inboxDataCache);
+    console.log(`[IA] Estado salvo no Volume: geminiAtivo = ${geminiAtivo}`);
+  } catch(e) { console.error("[IA] Erro ao salvar estado no Volume:", e.message); }
+  const msg = geminiAtivo
+    ? "✅ Gemini ATIVADO — LIA respondendo normalmente."
+    : "⚠️ Gemini DESATIVADO — LIA em silêncio. Ative novamente quando recarregar créditos.";
+  console.log(msg);
+  res.json({ ok: true, geminiAtivo, mensagem: msg });
+});
+
+// POST /inbox/reativar-banco → envia msg de reativação para candidatos do Banco de Talentos
+app.post("/inbox/reativar-banco", async (req, res) => {
+  const { cargo, mensagem, telefones } = req.body || {};
+  if (!mensagem || !Array.isArray(telefones) || telefones.length === 0) {
+    return res.json({ ok: false, erro: "Parâmetros inválidos" });
+  }
+  const resultados = [];
+  for (const tel of telefones) {
+    try {
+      // Marca sessão como aguardando reativação
+      if (!sessoes[tel]) sessoes[tel] = { historico: [], nome: null, modo: "automatico", pausado: false, motivoPausa: "" };
+      sessoes[tel].aguardandoReativacao = true;
+      sessoes[tel].vagaReativacao = cargo || "";
+      sessoes[tel].pausado = false;
+      sessoes[tel].modo = "automatico";
+      atendimentosManuais.delete(tel);
+      // Envia mensagem WhatsApp
+      const r = await enviarMensagem(tel, mensagem);
+      // Registra no histórico
+      const nomeCand = sessoes[tel].nome || tel;
+      registrarEntradaSessao(sessoes[tel], "assistant", mensagem);
+      await salvarMensagemSheets(tel, "assistant", mensagem, nomeCand);
+      resultados.push({ telefone: tel, ok: true });
+    } catch(e) {
+      resultados.push({ telefone: tel, ok: false, erro: e.message });
+    }
+  }
+  const enviados = resultados.filter(r => r.ok).length;
+  console.log(`[REATIVAR-BANCO] Enviado para ${enviados}/${telefones.length} candidatos — cargo: ${cargo}`);
+  res.json({ ok: true, total: telefones.length, enviados, resultados });
+});
+
+// Monitoramento automático de créditos Railway a cada 6h
+async function verificarCreditosRailway() {
+  if (!CONFIG.RAILWAY_TOKEN) return;
+  try {
+    const query = `{ me { creditBalance } }`;
+    const r = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.RAILWAY_TOKEN}` },
+      body: JSON.stringify({ query })
+    });
+    const data = await r.json();
+    const creditos = parseFloat(data?.data?.me?.creditBalance ?? -1);
+    if (creditos >= 0 && creditos < 2.00) {
+      const msg = `⚠️ *ALERTA RAILWAY*\n\nCréditos Railway baixos: *$${creditos.toFixed(2)}*\n\nA LIA pode parar de funcionar em breve. Acesse railway.app para recarregar.`;
+      await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg).catch(() => {});
+      console.warn("⚠️ Créditos Railway baixos:", creditos);
+    }
+  } catch(e) { console.error("Erro ao verificar créditos Railway:", e.message); }
+}
+
+// Checar a cada 6 horas
+setInterval(verificarCreditosRailway, 6 * 60 * 60 * 1000);
+// Checar também 30s após startup
+setTimeout(verificarCreditosRailway, 30000);
+
+async function salvarAnaliseNaPlanilha(telefone, analise) {
+  try {
+    if (!CONFIG.VAGAS_URL) return;
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    await axios.post(urlBase, { acao: "salvarAnalise", telefone, nome: analise.nome || "", cidade: analise.cidade || "", areaInteresse: analise.areaInteresse || "", vagaInteresse: analise.vagaInteresse || "", idVaga: analise.idVaga || "", scoreGeral: analise.scoreGeral || "", scoreVaga: analise.scoreVaga || "", classificacao: analise.classificacao || "", motivoMatch: analise.motivoMatch || "", status: analise.status || "Analisado pela Lia", requisitoObrigatorio: analise.requisitoObrigatorio || "", escolaridadeCompativel: analise.escolaridadeCompativel || "", experienciaCompativel: analise.experienciaCompativel || "", anosExperiencia: analise.anosExperiencia || "", pontosFortes: analise.pontosFortes || "", pontosAtencao: analise.pontosAtencao || "", analiseIA: analise.analiseIA || "", transporteProprio: analise.transporteProprio || "", cltImediato: analise.cltImediato || "", observacoes: analise.observacoes || "", curriculoDriveLink: analise.curriculoDriveLink || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+  } catch (e) { console.error("Erro ao salvar análise:", e.message); }
+}
+
+async function confirmarInteresseNaPlanilha(telefone, analise) {
+  try {
+    if (!CONFIG.VAGAS_URL) return;
+    const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    await axios.post(urlBase, { acao: "confirmarInteresse", telefone, vagaInteresse: analise?.vagaInteresse || "", idVaga: analise?.idVaga || "" }, { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+  } catch (e) { console.error("Erro ao confirmar interesse:", e.message); }
+}
+
+function ehConfirmacaoInteresse(mensagem) {
+  const texto = normalizarTexto(mensagem);
+  return ["sim","tenho interesse","quero","quero participar","aceito","tenho sim","pode ser","tenho disponibilidade","tenho","ok"].some(p => texto === p || texto.includes(p));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRÉ-TRIAGEM + MINI-QUESTIONÁRIO + ALERTAS INTELIGENTES (Melhorias 1, 2 e 3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MINI_QUESTIONARIO_PERGUNTAS = [
+  { campo: "areaExperiencia", pergunta: "Qual é a sua principal área de atuação? (ex: vendas, logística, administrativo, limpeza...)" },
+  { campo: "anosExperiencia", pergunta: "Há quanto tempo você trabalha nessa área?" },
+  { campo: "escolaridade",    pergunta: "Qual é a sua escolaridade? (ex: ensino médio completo, superior cursando, técnico...)" },
+  { campo: "disponibCLT",    pergunta: "Você tem disponibilidade para trabalho em regime CLT com carteira assinada?" },
+  { campo: "localidade",     pergunta: "Em qual cidade ou bairro você mora?" }
+];
+
+function montarPerguntasKnockout(analise, vagas) {
+  const perguntas = [];
+  const reqObrig = normalizarTexto(analise && analise.requisitoObrigatorio ? analise.requisitoObrigatorio : "");
+  const cidade   = String((analise && analise.cidade) ? analise.cidade : "");
+  const vaga     = (vagas || []).find(function(v) { return campo(v, ["idVaga","ID Vaga","ID"]) === (analise && analise.idVaga); });
+  const escala   = vaga ? normalizarTexto(campo(vaga, ["escala","Escala","Escala/Horário"]) || "") : "";
+  const reqVaga  = vaga ? normalizarTexto(campo(vaga, ["requisitos","Requisitos"]) || "") : "";
+
+  if (reqObrig.includes("cnh") || reqObrig.includes("carteira") || reqVaga.includes("cnh"))
+    perguntas.push({ campo: "temCNH", knockout: true, pergunta: "Você possui CNH válida?" });
+  if (reqObrig.includes("vigilante"))
+    perguntas.push({ campo: "temVigilante", knockout: true, pergunta: "Você possui o Curso de Formação de Vigilante?" });
+  if (reqObrig.includes("superior") || reqObrig.includes("graduacao"))
+    perguntas.push({ campo: "temSuperior", knockout: true, pergunta: "Você possui ensino superior completo?" });
+  if (reqObrig.includes("ingles") || reqVaga.includes("ingles"))
+    perguntas.push({ campo: "nivelIngles", knockout: false, pergunta: "Qual é o seu nível de inglês? (básico, intermediário ou avançado)" });
+  if (escala.includes("6x1") || escala.includes("turno") || escala.includes("escala")) {
+    var escalaLabel = vaga ? (campo(vaga, ["escala","Escala"]) || "rotativa") : "rotativa";
+    perguntas.push({ campo: "aceitaEscala", knockout: true, pergunta: "A vaga trabalha em escala (" + escalaLabel + "). Você tem disponibilidade para esse regime?" });
+  }
+  if (cidade && !["es","espirito santo","espirito santo"].includes(normalizarTexto(cidade)))
+    perguntas.push({ campo: "localidade", knockout: true, pergunta: "A vaga é em " + cidade + ". Você mora na região ou tem como se deslocar?" });
+  if (reqObrig.includes("transporte") || reqVaga.includes("transporte proprio"))
+    perguntas.push({ campo: "temTransporte", knockout: true, pergunta: "Você possui transporte próprio?" });
+
+  return perguntas;
+}
+
+function ehRespostaNegativaKO(texto) {
+  var t = normalizarTexto(texto.trim());
+  return ["nao","não","nao tenho","não tenho","nao possuo","não possuo","nunca","negativo",
+          "infelizmente nao","infelizmente não","nao moro","nao consigo","nao tenho como"].some(function(p) {
+    return t === p || t.startsWith(p + " ") || t.includes(" " + p + " ") || t.endsWith(" " + p);
+  });
+}
+
+function gerarPerfilSintetico(respostas, sessao) {
+  return {
+    nome: sessao.nome || "",
+    areaExperiencia: respostas.areaExperiencia || "",
+    anosExperiencia: respostas.anosExperiencia || "",
+    escolaridade:    respostas.escolaridade || "",
+    localidade:      respostas.localidade || "",
+    disponibCLT:     respostas.disponibCLT || ""
+  };
+}
+
+async function salvarDisponibilidadeNaPlanilha(telefone, disponibilidade) {
+  try {
+    if (!CONFIG.VAGAS_URL) return;
+    var urlBase = CONFIG.VAGAS_URL.split("?")[0];
+    await axios.post(urlBase, { acao: "confirmarInteresse", telefone: telefone, disponibilidade: disponibilidade },
+      { headers: { "Content-Type": "application/json" }, timeout: 20000 });
+  } catch (e) { console.error("Erro ao salvar disponibilidade:", e.message); }
+}
+
+async function enviarAlertaFinalThiara(analise, telefone, disponibilidade, preTriagemOk, perfilSintetico) {
+  try {
+    var score = Number((analise && (analise.scoreVaga || analise.scoreGeral)) ? (analise.scoreVaga || analise.scoreGeral) : 0);
+    var nome  = (analise && analise.nome) ? analise.nome : ((perfilSintetico && perfilSintetico.nome) ? perfilSintetico.nome : "Não identificado");
+    var vaga  = (analise && analise.vagaInteresse) ? analise.vagaInteresse : "Não identificada";
+    var cid   = (analise && analise.cidade) ? analise.cidade : ((perfilSintetico && perfilSintetico.localidade) ? perfilSintetico.localidade : "Não informada");
+    var classif = String((analise && analise.classificacao) ? analise.classificacao : "").toLowerCase();
+
+    // Score < 50 sem classificação boa → não alerta
+    if (score < 50 && !classif.includes("bom") && !classif.includes("excelente")) {
+      console.log("Alerta suprimido (score baixo):", telefone, score);
+      return;
+    }
+
+    var prontoParaEntrevista = preTriagemOk && score >= 70;
+    var cabecalho = prontoParaEntrevista
+      ? (score >= 90 ? "⭐ CANDIDATO EXCELENTE — PRONTO PARA ENTREVISTA" : "✅ CANDIDATO QUALIFICADO — PRONTO PARA ENTREVISTA")
+      : "⚠️ CANDIDATO PARA REVISAR ANTES DE CONTATAR";
+
+    var blocoScore   = score > 0 ? "\n⭐ Score: " + score + "\n🏅 Classificação: " + (analise && analise.classificacao ? analise.classificacao : "—") : "";
+    var blocoDisp    = disponibilidade ? "\n\n📅 Disponibilidade:\n" + disponibilidade : "";
+    var blocoFortes  = (analise && analise.pontosFortes) ? "\n\n💼 Pontos fortes:\n" + formatarLista(analise.pontosFortes) : "";
+    var blocoAtencao = (!prontoParaEntrevista && analise && analise.pontosAtencao) ? "\n\n⚠️ Pontos de atenção:\n" + formatarLista(analise.pontosAtencao) : "";
+    var blocoSint    = perfilSintetico
+      ? "\n\n📋 Perfil coletado sem CV:\n• Área: " + (perfilSintetico.areaExperiencia||"-") + "\n• Exp: " + (perfilSintetico.anosExperiencia||"-") + "\n• Escolaridade: " + (perfilSintetico.escolaridade||"-") + "\n• Local: " + (perfilSintetico.localidade||"-")
+      : "";
+    var acao = prontoParaEntrevista
+      ? "\n\n👉 PRÓXIMO PASSO: Agendar entrevista"
+      : "\n\n👉 PRÓXIMO PASSO: Revisar perfil antes de contatar";
+
+    var texto = cabecalho + "\n\n👤 " + nome + "\n📌 Vaga: " + vaga + "\n📍 Cidade: " + cid + blocoScore + blocoDisp + blocoFortes + blocoAtencao + blocoSint + acao + "\n\n📱 WhatsApp: +" + telefone;
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
+  } catch (e) { console.error("Erro alerta final Thiara:", e.message); }
+}
+
+async function enviarAlertaThiara(analise, telefone) {
+  try {
+    const score = Number(analise.scoreVaga || analise.scoreGeral || 0);
+    const classificacao = String(analise.classificacao || "").toLowerCase();
+    if (score < 80 && !classificacao.includes("excelente")) return;
+    const destaque = score >= 90 || classificacao.includes("excelente") ? "⭐ CANDIDATO EXCELENTE IDENTIFICADO" : "🚨 NOVO MATCH IDENTIFICADO";
+      const texto = `${destaque}\n\n👤 ${analise.nome || "Não identificado"}\n\n📌 Vaga:\n${analise.vagaInteresse || "Não identificada"}\n\n📍 Cidade:\n${analise.cidade || "Não informada"}\n\n⭐ Score: ${analise.scoreVaga || analise.scoreGeral || "Não informado"}\n🏅 Classificação: ${analise.classificacao || "Não informada"}\n\n💼 Pontos fortes:\n${formatarLista(analise.pontosFortes)}\n\n📱 WhatsApp:\n+${telefone}`;
+    await enviarMensagem(CONFIG.THIARA_WHATSAPP, texto);
+  } catch (e) { console.error("Erro alerta Thiara:", e.message); }
+}
+
+// Mantida para compatibilidade com Inbox manual e /inbox/encaminhar
+async function enviarAlertaInteresseThiara(analise, telefone) {
+  // Redireciona para o alerta final inteligente (Melhoria 3)
+  await enviarAlertaFinalThiara(analise, telefone, "", true, null);
+}
+
+function formatarLista(texto) {
+  if (!texto) return "Não informado";
+  const partes = String(texto).split(/;|,|\n/).map(p => p.trim()).filter(Boolean).slice(0, 5);
+  return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
+}
+
+async function enviarMensagem(toOriginal, body) {
+  const to = limparTelefone(toOriginal);
+  if (!to) return;
+  try {
+    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
+    await axios.post(url, { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
+    supervisor.contarMensagemEnviada();
+  } catch (e) {
+    const erroMeta = e.response?.data?.error;
+    const msgErro = erroMeta ? `[Meta ${erroMeta.code}] ${erroMeta.message}` : e.message;
+    console.error("Erro ao enviar WhatsApp:", JSON.stringify(e.response?.data || e.message));
+    supervisor.registrarErroMeta(msgErro, to);
+    throw new Error(msgErro); // relança para que a rota retorne ok:false com o erro real
+  }
+}
+
+async function enviarTemplate(telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR") {
+  const to = limparTelefone(telefone);
+  if (!to) return { sucesso: false, erro: "Telefone inválido" };
+  try {
+    const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
+    await axios.post(url, { messaging_product: "whatsapp", to, type: "template", template: { name: templateName, language: { code: languageCode } } }, { headers: { Authorization: `Bearer ${CONFIG.META_ACCESS_TOKEN}`, "Content-Type": "application/json" }, timeout: 15000 });
+    console.log(`Template ${templateName} enviado para ${to}`);
+    return { sucesso: true };
+  } catch (e) {
+    console.error("Erro ao enviar template:", JSON.stringify(e.response?.data || e.message));
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+async function coletarTelefonesReengajamento() {
+  const agora = Date.now();
+  const INATIVO_MS = 3 * 24 * 60 * 60 * 1000;
+  return Object.entries(sessoes)
+    .filter(([tel, s]) => s.cvSalvo && (agora - (s.ultimaMensagem || 0)) > INATIVO_MS)
+    .map(([tel]) => tel);
+}
+
+app.get("/inbox/reengajamento/status", async (req, res) => {
+  try {
+    const telefones = await coletarTelefonesReengajamento();
+    res.json({ total: telefones.length, telefones });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+app.post("/inbox/reengajamento/disparar", async (req, res) => {
+  try {
+    const { templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR", forceTelefones, limite } = req.body || {};
+    const telefones = forceTelefones || await coletarTelefonesReengajamento();
+    const lista = limite ? telefones.slice(0, Number(limite)) : telefones;
+    const resultados = [];
+    for (const tel of lista) {
+      const r = await enviarTemplate(tel, templateName, languageCode);
+      resultados.push({ telefone: tel, ...r });
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    res.json({ enviados: resultados.filter(r => r.sucesso).length, total: lista.length, resultados });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// Evita pedir reenvio de currículo repetidas vezes pro mesmo candidato em pouco tempo
+const PEDIDOS_REENVIO_CV = {}; // { telefone: timestampMs do último pedido }
+const INTERVALO_MIN_REENVIO_MS = 24 * 60 * 60 * 1000; // 24h
+
+app.get("/inbox/curriculo/:telefone/pedir-reenvio", async (req, res) => {
+  try {
+    const tel = limparTelefone(req.params.telefone);
+    const sessao = sessoes[tel] || {};
+
+    // BUG CORRIGIDO: não existia nenhum limite — cada clique (ou clique duplo)
+    // mandava uma mensagem nova pro candidato pedindo o currículo de novo. Agora,
+    // se já foi pedido nas últimas 24h, avisa em vez de mandar outra mensagem.
+    const ultimoPedido = PEDIDOS_REENVIO_CV[tel] || 0;
+    const agora = Date.now();
+    if (agora - ultimoPedido < INTERVALO_MIN_REENVIO_MS) {
+      const horasRestantes = Math.ceil((INTERVALO_MIN_REENVIO_MS - (agora - ultimoPedido)) / (60 * 60 * 1000));
+      return res.json({ ok: true, jaSolicitado: true, mensagem: `Já foi pedido reenvio pra este candidato recentemente. Aguarde ~${horasRestantes}h antes de pedir de novo (evita mandar a mesma mensagem repetida).` });
+    }
+
+    const nome = (sessao.nome || 'Candidato').split(' ')[0];
+    const msg = `Olá, ${nome}! Precisamos do seu currículo atualizado para dar continuidade ao processo seletivo. Por favor, envie seu currículo aqui pelo WhatsApp. 😊`;
+    await enviarMensagem(tel, msg);
+    registrarEntradaSessao(sessao, 'assistant', msg);
+    salvarConversaCompletaSheets(tel, sessao.historico || [], sessao.nome || '').catch(() => {});
+    PEDIDOS_REENVIO_CV[tel] = agora;
+    res.json({ ok: true, jaSolicitado: false, mensagem: 'Mensagem enviada pedindo reenvio do currículo.' });
+  } catch (e) {
+    res.status(500).json({ ok: false, erro: e.message });
+  }
+});
+
+app.post("/inbox/reengajamento/enviar-um", async (req, res) => {
+  try {
+    const { telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR" } = req.body || {};
+    if (!telefone) return res.status(400).json({ erro: "telefone obrigatório" });
+    const r = await enviarTemplate(telefone, templateName, languageCode);
+    res.json(r);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// ── AGENDA: salvar entrevista no Google Calendar ─────────────────────────
+app.post("/agenda/salvar", async (req, res) => {
+  try {
+    const { candidato, cargo, empresa, data, hora, tipo, local, telefone } = req.body || {};
+    if (!candidato || !data || !hora) return res.json({ ok: false, erro: "Campos obrigatórios: candidato, data, hora" });
+    const result = await calendar.criarEventoEntrevista({ candidato, cargo, empresa, data, hora, tipo, local, telefone });
+    res.json(result);
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── AGENDA: horários livres ───────────────────────────────────────────────
+app.get("/agenda/disponibilidade", async (req, res) => {
+  try {
+    const { data } = req.query;
+    if (!data) return res.json({ ok: false, erro: "Parâmetro 'data' obrigatório (YYYY-MM-DD)" });
+    const result = await calendar.buscarHorariosLivres(data);
+    res.json(result);
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── AGENDA PESSOAL (Meu App) — lê/escreve direto no Google Calendar real ────
+// Mesmo calendário usado pelas entrevistas (calendar.js), então tudo aparece
+// junto: entrevistas marcadas pela Lia + compromissos pessoais da Thiara.
+app.get("/api/agenda-pessoal/eventos", async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) return res.status(400).json({ ok: false, erro: "Parâmetros 'inicio' e 'fim' obrigatórios (YYYY-MM-DD)" });
+    const result = await calendar.listarEventos(inicio, fim);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message, eventos: [] }); }
+});
+
+app.post("/api/agenda-pessoal/eventos", async (req, res) => {
+  try {
+    const { titulo, data } = req.body || {};
+    if (!titulo || !data) return res.status(400).json({ ok: false, erro: "Campos obrigatórios: titulo, data" });
+    const result = await calendar.criarEventoPessoal(req.body);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
+app.put("/api/agenda-pessoal/eventos/:id", async (req, res) => {
+  try {
+    const result = await calendar.editarEvento(req.params.id, req.body || {});
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
+app.delete("/api/agenda-pessoal/eventos/:id", async (req, res) => {
+  try {
+    const result = await calendar.excluirEvento(req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ ok: false, erro: e.message }); }
+});
+
+// ── AGENDA SYNC: persiste entrevistas, lembretes, status e config no Volume ──
+// (o inbox.html chama essas rotas para sincronizar dados entre dispositivos e
+// sobreviver a deploys — antes essa rota não existia e o sync falhava em silêncio)
+app.get("/inbox/agenda-sync", (req, res) => {
+  try {
+    const cache = inboxDataCache || lerDadosInbox() || {};
+    res.json({ ok: true, dados: cache.agendaSync || {} });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message, dados: {} });
+  }
+});
+
+app.post("/inbox/agenda-sync", (req, res) => {
+  try {
+    if (!inboxDataCache) inboxDataCache = lerDadosInbox() || {};
+    inboxDataCache.agendaSync = { ...(req.body || {}), _syncEm: new Date().toISOString() };
+    const persistido = gravarDadosInbox(inboxDataCache);
+    res.json({ ok: true, persistido });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// ── FINANCEIRO ────────────────────────────────────────────────────────────
+app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
+app.get("/avaliacao", (req, res) => res.sendFile(path.join(__dirname, "avaliacao.html")));
+
+app.post("/financeiro/lancamento", async (req, res) => {
+  try {
+    const dados = req.body || {};
+    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
+    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
+    const resp = await axios.post(urlBase, { acao: "salvarFinanceiro", ...dados }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+    res.json({ ok: true, data: resp.data });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+app.get("/financeiro/dados", async (req, res) => {
+  try {
+    const { mes, ano } = req.query;
+    if (!CONFIG.DRIVE_SCRIPT_URL) return res.json({ ok: false, erro: "DRIVE_SCRIPT_URL não configurado" });
+    const urlBase = CONFIG.DRIVE_SCRIPT_URL.split("?")[0];
+    const resp = await axios.get(`${urlBase}?acao=listarFinanceiro&mes=${mes||""}&ano=${ano||""}`, { timeout: 15000 });
+    res.json({ ok: true, data: resp.data });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ── SUPERVISOR ────────────────────────────────────────────────────────────
+app.get("/supervisor/status", (req, res) => res.json(supervisor.obterStatusSupervisor()));
+app.post("/supervisor/resumo", async (req, res) => { await supervisor.dispararResumoSemanal(); res.json({ ok: true }); });
+
+supervisor.iniciarSupervisor();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SYNC DE DADOS DO INBOX NO GOOGLE DRIVE
+// Persiste entrevistas, status, pipeline, notas — sobrevive a deploys e trocas de dispositivo
+// ══════════════════════════════════════════════════════════════════════════════
+// ── INBOX PERSISTENCE (Railway Volume) ──────────────────────────────────────
+// Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
+// O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
+// e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
+const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+
+// ── RESTAURA geminiAtivo DO VOLUME AO LIGAR O SERVIDOR ──────────────────────
+// BUG CRÍTICO CORRIGIDO: geminiAtivo era sempre resetado para `true` a cada
+// deploy/restart do Railway, mesmo quando o estado salvo no Volume era `false`.
+// Isso fazia a Lia voltar a responder sozinha depois de qualquer redeploy,
+// mesmo com o botão "IA OFF" marcado (o botão mostrava o último estado salvo
+// no navegador, mas o servidor já tinha voltado a chamar o Gemini normalmente).
+try {
+  const dadosSalvos = lerDadosInbox();
+  if (dadosSalvos && typeof dadosSalvos.geminiAtivo === "boolean") {
+    geminiAtivo = dadosSalvos.geminiAtivo;
+    inboxDataCache = dadosSalvos;
+    console.log(`[IA] Estado restaurado do Volume ao iniciar: geminiAtivo = ${geminiAtivo}`);
+  }
+} catch (e) {
+  console.error("[IA] Erro ao restaurar geminiAtivo do Volume:", e.message);
+}
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
