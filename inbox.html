@@ -907,6 +907,7 @@ font-family:'Montserrat',sans-serif
           <button class="ha-btn" onclick="abrirAvaliacao()" title="Abrir formulário de avaliação deste candidato" style="background:#0ea5e9;color:#fff;font-weight:800;font-size:11px;padding:6px 13px">📋 Avaliar</button>
           <button class="ha-btn" onclick="usarModeloPorTitulo('Solicitação de envio')" title="Inserir modelo: solicitação de envio de currículo" style="background:#0369a1;color:#fff;font-weight:700">📎 Pedir CV</button>
           <button class="ha-btn" onclick="usarModeloPorTitulo('recebimento de currículo')" title="Inserir modelo: confirmação de recebimento de currículo" style="background:#0d9488;color:#fff;font-weight:700">📄 Confirmar CV</button>
+          <button class="ha-btn" onclick="usarModeloPorTitulo('servidor indisponível')" title="Inserir modelo: aviso de indisponibilidade do servidor (pedir CV pelo telefone)" style="background:#dc2626;color:#fff;font-weight:700">🔴 FALHA</button>
           <button class="ha-btn" onclick="abrirModalModelos()" title="Modelos de comunicação" style="background:#0f766e;color:#fff;font-weight:700">📋 Modelos</button>
           <span class="ha-divider"></span>
           <!-- Dropdown Mais — tudo o que é secundário -->
@@ -5360,6 +5361,10 @@ const MODELOS_COMUNICACAO = [
   {
     titulo: '⚠️ Falha técnica — reenvio de dados',
     texto: `Boa tarde,\nEspero que esteja bem.\nTivemos uma falha técnica em nosso sistema operacional e perdemos todas as informações (entrevistas, currículos recebidos e conversas anteriores).\nPode nos atualizar quanto à vaga de interesse e enviar seu currículo atualizado novamente?`
+  },
+  {
+    titulo: '🔴 FALHA — servidor indisponível',
+    texto: `Prezado(a),\n\nEstamos com indisponibilidade em nosso servidor, o que pode ocasionar falha no recebimento de currículos.\nPedimos que encaminhe seu currículo pelo (27) 993169344.\n\nAgradecemos desde já pela compreensão!\n\nEquipe Effect Pessoas & Performance`
   }
 ];
 
