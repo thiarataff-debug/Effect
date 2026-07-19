@@ -3039,10 +3039,47 @@ function loadSavedState(){
 }
 
 /* ---------------------------------------------------------
+   CATEGORIA DO CARGO (menu + detecção automática pelo cargo)
+--------------------------------------------------------- */
+function populateCategorias(){
+  const sel = $('#categoria');
+  sel.innerHTML = '';
+  CATEGORIES.forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.v; o.textContent = c.l;
+    sel.appendChild(o);
+  });
+  sel.value = 'generico';
+}
+// Troca o ícone das artes já geradas quando a categoria muda
+function aplicarCategoriaNosIcones(){
+  const cat = $('#categoria').value || 'generico';
+  let touched = false;
+  Object.keys(FORMATS).forEach(k=>{
+    getElements(k).forEach(el=>{
+      if(el.type==='icon'){ el.key = cat; if(k===currentFormat) touched = true; }
+    });
+  });
+  if(touched) draw();
+}
+function wireCategoria(){
+  $('#categoria').addEventListener('change', aplicarCategoriaNosIcones);
+  $('#cargo').addEventListener('input', ()=>{
+    const det = detectCategoryFromCargo($('#cargo').value);
+    if(det && $('#categoria').value!==det){
+      $('#categoria').value = det;
+      aplicarCategoriaNosIcones();
+    }
+  });
+}
+
+/* ---------------------------------------------------------
    BOOT — a página já abre com um layout pré-pronto em todos os
    formatos (pra só editar), restaurando a última arte se houver.
 --------------------------------------------------------- */
 async function init(){
+  populateCategorias();
+  wireCategoria();
   renderFormatTabs();
   wireCanvasInteraction();
   wireElPanel();
