@@ -365,6 +365,32 @@
     </div>
 
     <div class="card">
+      <h2>📣 Divulgações desta vaga</h2>
+      <label class="first">Vaga salva</label>
+      <select id="jobSelect">
+        <option value="__new__">+ Nova vaga (ainda não salva)</option>
+      </select>
+
+      <label>Nome da vaga</label>
+      <input type="text" id="jobName" placeholder="Ex: Vigilante Intermitente — Julho 2026">
+
+      <div class="company-actions">
+        <button type="button" class="btn btn-primary btn-sm" id="saveJob">Salvar vaga</button>
+        <button type="button" class="btn btn-danger btn-sm" id="deleteJob">Excluir</button>
+      </div>
+      <div class="hint">Isso salva só o <b>nome, cargo e empresa</b> pra você reconhecer a vaga depois e contar quantas vezes divulgou — o design da arte em si continua sendo baixado como PNG, não fica salvo aqui. Fica no servidor, visível pra todo o time.</div>
+      <div class="save-status" id="jobSaveStatus"></div>
+
+      <div id="jobDivulgacaoStats" style="display:none; margin-top:14px;">
+        <div style="font-size:26px; font-weight:800; color:var(--navy);"><span id="jobDivulgacaoTotal">0</span> divulgações</div>
+        <div class="hint" id="jobDivulgacaoUltima" style="margin-top:2px;"></div>
+        <button type="button" class="btn btn-primary btn-block" id="registrarDivulgacao" style="margin-top:10px;">📣 Registrar divulgação agora</button>
+        <button type="button" class="toggle-link" id="toggleDivulgacaoLog" style="margin-top:8px;">Ver histórico de datas ▾</button>
+        <div id="jobDivulgacaoLog" style="display:none; max-height:170px; overflow:auto; margin-top:6px; font-size:12px; color:#4b5563; line-height:1.6;"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Elementos</h2>
       <div class="toolbar-row">
         <button type="button" class="btn btn-outline btn-sm" id="addText">+ Texto</button>
@@ -905,6 +931,144 @@ function applyCompanyToJobFields(c){
   $('#contato').value = c.whatsapp || c.instagram || '';
   $('#cta').value = c.ctaPadrao || '';
   $('#banner').value = c.bannerPadrao || '';
+}
+
+/* ---------------------------------------------------------
+   ESTADO: VAGAS SALVAS + CONTADOR DE DIVULGAÇÕES
+   (salvo no servidor da Lia — mesmo padrão das empresas acima)
+--------------------------------------------------------- */
+let savedJobs = [];
+let currentSavedJob = null;
+
+function setJobSaveStatus(msg, isErro){
+  const el = $('#jobSaveStatus');
+  if(!el) return;
+  el.textContent = msg||'';
+  el.classList.toggle('erro', !!isErro);
+}
+
+async function loadSavedJobs(){
+  try{
+    const r = await fetch('/vagas/divulgacoes');
+    const data = await r.json();
+    if(data.ok && Array.isArray(data.vagas)) savedJobs = data.vagas;
+  }catch(e){
+    console.error('Não foi possível carregar vagas salvas do servidor.', e);
+  }
+}
+
+async function persistSavedJobs(){
+  try{
+    const r = await fetch('/vagas/divulgacoes', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ vagas: savedJobs })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Falha ao salvar');
+    return true;
+  }catch(e){
+    setJobSaveStatus('⚠ Não foi possível salvar no servidor agora. '+e.message, true);
+    return false;
+  }
+}
+
+function populateJobSelect(selectId){
+  const sel = $('#jobSelect');
+  sel.innerHTML='';
+  savedJobs.forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v.id; opt.textContent=v.nome;
+    sel.appendChild(opt);
+  });
+  const optNew=document.createElement('option');
+  optNew.value='__new__'; optNew.textContent='+ Nova vaga (ainda não salva)';
+  sel.appendChild(optNew);
+  sel.value = selectId || '__new__';
+}
+
+function formatarDataHoraBR(ts){
+  return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function renderJobDivulgacaoStats(){
+  const box = $('#jobDivulgacaoStats');
+  if(!currentSavedJob){ box.style.display='none'; return; }
+  box.style.display='block';
+  const lista = Array.isArray(currentSavedJob.divulgacoes) ? currentSavedJob.divulgacoes : [];
+  $('#jobDivulgacaoTotal').textContent = lista.length;
+  const ultima = lista.length ? lista[lista.length-1] : null;
+  $('#jobDivulgacaoUltima').textContent = ultima ? `Última: ${formatarDataHoraBR(ultima.ts)}` : 'Ainda não registrou nenhuma divulgação.';
+  const log = $('#jobDivulgacaoLog');
+  log.innerHTML = lista.length
+    ? lista.slice().reverse().map((d,i)=>`<div>${lista.length-i}) ${formatarDataHoraBR(d.ts)}</div>`).join('')
+    : '<div>Nenhum registro ainda.</div>';
+}
+
+function fillJobPanel(v){
+  $('#jobName').value = v ? (v.nome||'') : '';
+  currentSavedJob = v || null;
+  renderJobDivulgacaoStats();
+  setJobSaveStatus('');
+}
+
+function onJobSelectChange(){
+  const val = $('#jobSelect').value;
+  if(val==='__new__'){ fillJobPanel(null); return; }
+  const v = savedJobs.find(x=>x.id===val);
+  fillJobPanel(v||null);
+}
+
+function wireJobDivulgacaoActions(){
+  $('#jobSelect').addEventListener('change', onJobSelectChange);
+
+  $('#saveJob').addEventListener('click', async ()=>{
+    const nome = $('#jobName').value.trim();
+    if(!nome){ alert('Dê um nome pra essa vaga antes de salvar (ex: "Vigilante Intermitente — Julho 2026").'); return; }
+    if(!currentSavedJob){
+      currentSavedJob = { id: 'v-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), divulgacoes: [] };
+      savedJobs.push(currentSavedJob);
+    }
+    currentSavedJob.nome = nome;
+    currentSavedJob.cargo = $('#cargo').value.trim();
+    currentSavedJob.companyId = currentCompany ? currentCompany.id : null;
+    currentSavedJob.companyNome = currentCompany ? currentCompany.nome : '';
+    if(!Array.isArray(currentSavedJob.divulgacoes)) currentSavedJob.divulgacoes = [];
+    const ok = await persistSavedJobs();
+    populateJobSelect(currentSavedJob.id);
+    renderJobDivulgacaoStats();
+    if(ok) setJobSaveStatus('✓ Vaga salva no servidor — visível pra todo o time.', false);
+  });
+
+  $('#deleteJob').addEventListener('click', async ()=>{
+    if(!currentSavedJob){ alert('Nenhuma vaga salva selecionada.'); return; }
+    if(!confirm(`Excluir a vaga salva "${currentSavedJob.nome}"? O histórico de divulgações dela também será apagado. Essa ação não pode ser desfeita.`)) return;
+    savedJobs = savedJobs.filter(x=>x.id!==currentSavedJob.id);
+    await persistSavedJobs();
+    currentSavedJob = null;
+    populateJobSelect('__new__');
+    fillJobPanel(null);
+  });
+
+  $('#registrarDivulgacao').addEventListener('click', async ()=>{
+    if(!currentSavedJob){ alert('Salve a vaga primeiro (dê um nome e clique em "Salvar vaga") antes de registrar uma divulgação.'); return; }
+    try{
+      const r = await fetch(`/vagas/divulgacoes/${encodeURIComponent(currentSavedJob.id)}/registrar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
+      const data = await r.json();
+      if(!data.ok) throw new Error(data.erro||'Falha ao registrar');
+      currentSavedJob.divulgacoes = currentSavedJob.divulgacoes || [];
+      currentSavedJob.divulgacoes.push({ ts: Date.now() });
+      renderJobDivulgacaoStats();
+    }catch(e){
+      alert('Não foi possível registrar a divulgação agora: '+e.message);
+    }
+  });
+
+  $('#toggleDivulgacaoLog').addEventListener('click', ()=>{
+    const log = $('#jobDivulgacaoLog');
+    const showing = log.style.display==='block';
+    log.style.display = showing ? 'none' : 'block';
+    $('#toggleDivulgacaoLog').textContent = showing ? 'Ver histórico de datas ▾' : 'Ocultar histórico de datas ▴';
+  });
 }
 
 /* ---------------------------------------------------------
@@ -2883,11 +3047,14 @@ function wireDownloads(){
 --------------------------------------------------------- */
 async function init(){
   await loadCompanies();
+  await loadSavedJobs();
   initCategorySelect();
   initFormatTabs();
   populateCompanySelect();
+  populateJobSelect();
   wireCompanyEditInputs();
   wireCompanyActions();
+  wireJobDivulgacaoActions();
   wireCargoAutoCategory();
   wireJobFields();
   wireJobPhoto();
