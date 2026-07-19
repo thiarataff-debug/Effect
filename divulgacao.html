@@ -359,9 +359,10 @@
         <input type="file" id="jobPhoto" accept="image/*">
       </div>
       <button type="button" class="toggle-link" id="removeJobPhoto" style="margin-top:6px;">Remover foto</button>
+      <div class="hint">Ao escolher a foto ela já entra direto na arte atual como uma camada nova (dá pra mover/redimensionar depois) — <b>não precisa clicar em "Gerar arte" pra isso</b>.</div>
 
-      <button type="button" class="btn btn-primary btn-block" id="generateLayout" style="margin-top:14px;">🪄 Gerar arte a partir do formulário</button>
-      <div class="hint">Isso (re)cria o design deste formato do zero com os dados acima. Se você já tiver customizado essa arte, ela será substituída — peça confirmação antes.</div>
+      <button type="button" class="btn btn-primary btn-block" id="generateLayout" style="margin-top:14px;">🪄 Recriar arte do zero</button>
+      <div class="hint">⚠️ Use isto só se quiser <b>recomeçar o design deste formato do zero</b> a partir dos dados acima. Isso apaga qualquer customização que você já tenha feito nesta arte (posições, cores, textos adicionados, fotos já inseridas etc.) — não é necessário pra adicionar foto ou editar texto, que já funcionam direto nos campos e no "+ Imagem"/"+ Texto".</div>
     </div>
 
     <div class="card">
@@ -2034,7 +2035,7 @@ function confirmAndGenerate(fmtKey){
     draw(); syncElPanel();
   };
   if(els.length){
-    if(confirm('Isso substitui a arte atual deste formato pelo design gerado a partir do formulário. Continuar?')) doIt();
+    if(confirm('⚠️ ATENÇÃO: isso vai APAGAR a arte atual deste formato (posições, cores, fotos e textos que você já ajustou manualmente) e recomeçar do zero só com os dados do formulário.\n\nSe você só queria adicionar uma foto ou mudar um texto, cancele — isso já é aplicado direto, sem precisar desta opção.\n\nTem certeza que quer recomeçar do zero?')) doIt();
   } else {
     doIt();
   }
@@ -3000,7 +3001,9 @@ function wireJobPhoto(){
       // formatação manual já feita. Agora a foto também é inserida direto
       // como uma camada nova na arte ATUAL (igual ao botão "+ Imagem"),
       // então dá pra adicionar a foto sem perder nada do que já foi ajustado.
-      const f = fmt();
+      // (bug corrigido: "fmt()" não existe neste escopo — o certo é
+      // FORMATS[currentFormat], como usado no resto do arquivo)
+      const f = FORMATS[currentFormat];
       addElement(newImageEl(f.w*0.62, f.h*0.06, f.w*0.33, f.h*0.4, reader.result));
     };
     reader.readAsDataURL(file);
