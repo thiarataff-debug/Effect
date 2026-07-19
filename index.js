@@ -4561,6 +4561,42 @@ app.post("/vagas/divulgacoes/:id/registrar", (req, res) => {
   res.json({ ok: salvo, total: vaga.divulgacoes.length, registro });
 });
 
+// ── TEMPLATES DE ARTE (Divulgação de Vagas) ──────────────────────────────────
+// Designs prontos salvos pelo time no painel /divulgacao: cada template guarda
+// os 4 formatos (Feed, Retrato, Stories, LinkedIn) sem a foto da vaga.
+// Mesmo padrão de JSON no Volume dos dois blocos acima.
+const VAGAS_TEMPLATES_PATH = process.env.VAGAS_TEMPLATES_PATH || "/data/vagas-templates.json";
+
+function lerVagasTemplates() {
+  try {
+    if (fs.existsSync(VAGAS_TEMPLATES_PATH)) {
+      const lista = JSON.parse(fs.readFileSync(VAGAS_TEMPLATES_PATH, "utf8"));
+      return Array.isArray(lista) ? lista : [];
+    }
+  } catch (e) { console.error("lerVagasTemplates:", e.message); }
+  return [];
+}
+
+function gravarVagasTemplates(lista) {
+  try {
+    const dir = path.dirname(VAGAS_TEMPLATES_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(VAGAS_TEMPLATES_PATH, JSON.stringify(lista), "utf8");
+    return true;
+  } catch (e) { console.error("gravarVagasTemplates:", e.message); return false; }
+}
+
+app.get("/vagas/templates", (req, res) => {
+  res.json({ ok: true, templates: lerVagasTemplates() });
+});
+
+app.post("/vagas/templates", (req, res) => {
+  const lista = Array.isArray(req.body.templates) ? req.body.templates : null;
+  if (!lista) return res.json({ ok: false, erro: "Envie { templates: [...] }" });
+  const salvo = gravarVagasTemplates(lista);
+  res.json({ ok: salvo, erro: salvo ? undefined : "Não foi possível salvar no servidor" });
+});
+
 // Gera (ou regera) o texto de divulgação, sem enviar nada ainda.
 app.post("/vagas/gerar-texto", async (req, res) => {
   try {
