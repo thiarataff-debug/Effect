@@ -2774,4 +2774,294 @@ const EMOJI_CATEGORIES = [
   {key:'smileys', label:'😀', emojis:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🥳','😎','🤓','🧐','😕','🙁','😮','😲','🥺','😢','😭','😱','😤','😡','🤬','😈','💀','🤡','👻','🤖','🎓'] },
   {key:'gestures', label:'👍', emojis:['👍','👎','👊','✊','🤛','🤜','🤞','✌️','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤙','💪','🙏','🤝','👏','🙌','👐','🤲','💅'] },
   {key:'work', label:'💼', emojis:['💼','📋','📝','✅','✔️','☑️','📌','📍','📅','📆','🗓️','⏰','⏱️','💰','💵','💳','🏆','🎯','📈','📊','🛠️','🔧','🔨','⚙️','🧰','👷','👨‍💻','👩‍💻','🚚','🏭','🏢','🏬','🏪','📣','📢','🔔','🔒','🔑','📞','📱','✉️','📧','🌐','🔗','📎','🗂️','🖨️'] },
-  {key:'objects', label:'💡', emojis:['💡','🔥','⭐','🌟','✨','🎉','🎊','🎁','🏅','🥇','🥈','🥉','📚','🍽️','🍕','🍔','☕','🥤','🚗','🚌','🚲','✈️','🏠','🏡','🌆','🌍','☀️','🌧�
+  {key:'objects', label:'💡', emojis:['💡','🔥','⭐','🌟','✨','🎉','🎊','🎁','🏅','🥇','🥈','🥉','📚','🍽️','🍕','🍔','☕','🥤','🚗','🚌','🚲','✈️','🏠','🏡','🌆','🌍','☀️','🌈','⚡','💧','🌱','🌷','🌻','🍀','🎵','🎶','🎤','🎧','⚽','🏀','🎮','🧩','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💖','💙','💯','❗','❓','⬆️','⬇️','⬅️','➡️','🔝','🆕','🆓','🆗'] },
+];
+
+function getRecentEmojis(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_RECENT_EMOJI)||'[]'); }catch(e){ return []; }
+}
+function pushRecentEmoji(em){
+  try{
+    let rec = getRecentEmojis().filter(x=>x!==em);
+    rec.unshift(em);
+    rec = rec.slice(0,24);
+    localStorage.setItem(STORAGE_RECENT_EMOJI, JSON.stringify(rec));
+  }catch(e){}
+}
+
+let emojiTabAtiva = 'smileys';
+function renderEmojiTabs(){
+  const tabs = $('#emojiTabs');
+  tabs.innerHTML = '';
+  EMOJI_CATEGORIES.forEach(cat=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = cat.label;
+    b.style.cssText = 'border:none;background:'+(cat.key===emojiTabAtiva?'#e0e7ff':'none')+';border-radius:6px;font-size:16px;cursor:pointer;padding:4px 8px;';
+    b.addEventListener('click', ()=>{ emojiTabAtiva = cat.key; renderEmojiTabs(); renderEmojiGrid(); });
+    tabs.appendChild(b);
+  });
+}
+function renderEmojiGrid(){
+  const grid = $('#emojiGrid');
+  const cat = EMOJI_CATEGORIES.find(c=>c.key===emojiTabAtiva);
+  const emojis = emojiTabAtiva==='recent' ? getRecentEmojis() : (cat && cat.emojis) || [];
+  grid.innerHTML = '';
+  if(!emojis.length){
+    grid.innerHTML = '<div class="hint" style="padding:8px;">Nenhum emoji recente ainda.</div>';
+    return;
+  }
+  emojis.forEach(em=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = em;
+    b.addEventListener('click', ()=> insertEmoji(em));
+    grid.appendChild(b);
+  });
+}
+
+// Com um texto selecionado: insere no cursor do campo "Texto" (ou no final).
+// Sem seleção: vira uma peça de texto nova, solta na arte (sticker).
+function insertEmoji(em){
+  pushRecentEmoji(em);
+  const el = currentEl();
+  if(el && el.type==='text'){
+    const ta = $('#elText');
+    const start = ta.selectionStart!=null ? ta.selectionStart : ta.value.length;
+    const end   = ta.selectionEnd!=null ? ta.selectionEnd : ta.value.length;
+    ta.value = ta.value.slice(0,start) + em + ta.value.slice(end);
+    ta.dispatchEvent(new Event('input', {bubbles:true}));
+    const pos = start + em.length;
+    ta.focus(); ta.setSelectionRange(pos,pos);
+  } else {
+    const f = FORMATS[currentFormat];
+    addElement(newTextEl(f.w*0.42, f.h*0.42, f.w*0.16, em, {fontSize: Math.round(f.w*0.1), align:'center'}));
+  }
+  if(emojiTabAtiva==='recent') renderEmojiGrid();
+}
+
+function wireEmojiPicker(){
+  const popup = $('#emojiPopup');
+  $('#emojiToggle').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const aberto = popup.style.display!=='none';
+    popup.style.display = aberto ? 'none' : 'block';
+    if(!aberto){ renderEmojiTabs(); renderEmojiGrid(); }
+  });
+  document.addEventListener('click', (e)=>{
+    if(popup.style.display!=='none' && !popup.contains(e.target) && e.target.id!=='emojiToggle') popup.style.display='none';
+  });
+}
+
+/* ---------------------------------------------------------
+   EMPRESA: seleção, edição, logo e cores
+--------------------------------------------------------- */
+function wireCompanyPanel(){
+  $('#toggleCompanyEdit').addEventListener('click', ()=>{
+    const p = $('#companyEditPanel');
+    p.classList.toggle('open');
+    $('#toggleCompanyEdit').textContent = p.classList.contains('open')
+      ? 'Editar dados / logo / cores da empresa ▴' : 'Editar dados / logo / cores da empresa ▾';
+  });
+
+  $('#companySelect').addEventListener('change', ()=>{
+    const v = $('#companySelect').value;
+    if(v==='__new__'){
+      currentCompany = { id:'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1', cidadePadrao:'', whatsapp:'', instagram:'', ctaPadrao:'', bannerPadrao:'', logoDataUrl:null };
+      fillCompanyEditPanel(currentCompany);
+      $('#companyEditPanel').classList.add('open');
+      $('#companyName').focus();
+      return;
+    }
+    currentCompany = companies.find(c=>c.id===v) || null;
+    if(currentCompany){
+      fillCompanyEditPanel(currentCompany);
+      applyCompanyToJobFields(currentCompany);
+    }
+  });
+
+  $('#companyLogo').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file || !currentCompany) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      currentCompany.logoDataUrl = reader.result;
+      $('#logoPreview').innerHTML = `<img src="${reader.result}">`;
+    };
+    reader.readAsDataURL(file);
+    e.target.value='';
+  });
+  $('#removeLogo').addEventListener('click', ()=>{
+    if(!currentCompany) return;
+    currentCompany.logoDataUrl = null;
+    $('#logoPreview').innerHTML = currentCompany.nome ? currentCompany.nome.charAt(0).toUpperCase() : '—';
+  });
+
+  $('#saveCompany').addEventListener('click', async ()=>{
+    if(!currentCompany) return;
+    const nome = $('#companyName').value.trim();
+    if(!nome){ alert('Dê um nome pra empresa antes de salvar.'); return; }
+    Object.assign(currentCompany, {
+      nome,
+      corPrimaria: $('#colorPrimary').value,
+      corSecundaria: $('#colorSecondary').value,
+      corTerciaria: $('#colorTertiary').value,
+      corDestaque: $('#colorAccent').value,
+      cidadePadrao: $('#companyCity').value.trim(),
+      whatsapp: $('#companyWhatsapp').value.trim(),
+      instagram: $('#companyInstagram').value.trim(),
+      ctaPadrao: $('#companyCta').value.trim(),
+      bannerPadrao: $('#companyBanner').value.trim(),
+    });
+    if(!companies.some(c=>c.id===currentCompany.id)) companies.push(currentCompany);
+    await saveCompanies();
+    populateCompanySelect(currentCompany.id);
+    applyCompanyToJobFields(currentCompany);
+  });
+
+  $('#deleteCompany').addEventListener('click', async ()=>{
+    if(!currentCompany) return;
+    if(!confirm(`Excluir a empresa "${currentCompany.nome}"?`)) return;
+    companies = companies.filter(c=>c.id!==currentCompany.id);
+    if(!companies.length) companies.push(seedDefaultCompany());
+    await saveCompanies();
+    currentCompany = companies[0];
+    populateCompanySelect(currentCompany.id);
+    fillCompanyEditPanel(currentCompany);
+    applyCompanyToJobFields(currentCompany);
+  });
+}
+
+/* Foto da vaga: entra direto na arte atual como camada nova */
+function wireJobPhoto(){
+  $('#jobPhoto').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      jobPhotoDataUrl = reader.result;
+      $('#jobPhotoPreview').innerHTML = `<img src="${reader.result}">`;
+      const f = FORMATS[currentFormat];
+      addElement(newImageEl(f.w*0.28, f.h*0.3, f.w*0.44, f.w*0.44, reader.result, {round:false, radiusPct:0.06}));
+    };
+    reader.readAsDataURL(file);
+    e.target.value='';
+  });
+  $('#removeJobPhoto').addEventListener('click', ()=>{
+    jobPhotoDataUrl = null;
+    $('#jobPhotoPreview').innerHTML = '—';
+  });
+}
+
+/* ---------------------------------------------------------
+   ABAS DE FORMATO
+--------------------------------------------------------- */
+function renderFormatTabs(){
+  const tabs = $('#formatTabs');
+  tabs.innerHTML = '';
+  Object.keys(FORMATS).forEach(key=>{
+    const b = document.createElement('button');
+    b.type='button';
+    b.className = 'tab-btn' + (key===currentFormat?' active':'');
+    b.textContent = FORMATS[key].label;
+    b.addEventListener('click', ()=> setFormat(key));
+    tabs.appendChild(b);
+  });
+}
+function setFormat(key){
+  if(!FORMATS[key] || key===currentFormat) return;
+  currentFormat = key;
+  clearSelection();
+  renderFormatTabs();
+  draw();
+  syncElPanel();
+  renderLayersList();
+}
+
+/* ---------------------------------------------------------
+   DOWNLOAD PNG
+--------------------------------------------------------- */
+function slugify(s){
+  return (s||'vaga').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'vaga';
+}
+function downloadFormat(fmtKey){
+  const c = document.createElement('canvas');
+  renderFormat(c, fmtKey, false);
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png');
+  a.download = `vaga-${slugify($('#cargo').value)}-${fmtKey}.png`;
+  a.click();
+}
+function wireDownloads(){
+  $('#downloadCurrent').addEventListener('click', ()=> downloadFormat(currentFormat));
+  $('#downloadAll').addEventListener('click', ()=>{
+    Object.keys(FORMATS).forEach((key,i)=> setTimeout(()=> downloadFormat(key), i*400));
+  });
+}
+
+/* ---------------------------------------------------------
+   PERSISTÊNCIA DA ARTE (localStorage — restaura ao reabrir)
+--------------------------------------------------------- */
+let _saveTimer = null;
+function saveState(){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORAGE_STATE, JSON.stringify({ currentFormat, layouts }));
+    }catch(e){ /* quota — imagens grandes podem estourar; segue sem salvar */ }
+  }, 400);
+}
+function loadSavedState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_STATE);
+    if(!raw) return false;
+    const st = JSON.parse(raw);
+    if(!st || typeof st!=='object' || !st.layouts) return false;
+    layouts = st.layouts;
+    if(st.currentFormat && FORMATS[st.currentFormat]) currentFormat = st.currentFormat;
+    return Object.keys(FORMATS).some(k=> Array.isArray(layouts[k]) && layouts[k].length);
+  }catch(e){ return false; }
+}
+
+/* ---------------------------------------------------------
+   BOOT — a página já abre com um layout pré-pronto em todos os
+   formatos (pra só editar), restaurando a última arte se houver.
+--------------------------------------------------------- */
+async function init(){
+  renderFormatTabs();
+  wireCanvasInteraction();
+  wireElPanel();
+  wireToolbar();
+  wireEmojiPicker();
+  wireCompanyPanel();
+  wireJobPhoto();
+  wireLiveCanvasSync();
+  wireJobDivulgacaoActions();
+  wireDownloads();
+
+  await loadCompanies();
+  currentCompany = companies[0] || null;
+  populateCompanySelect(currentCompany ? currentCompany.id : undefined);
+  if(currentCompany){
+    fillCompanyEditPanel(currentCompany);
+    applyCompanyToJobFields(currentCompany);
+  }
+
+  await loadSavedJobs();
+  populateJobSelect('__new__');
+
+  const restaurado = loadSavedState();
+  // LAYOUT PRÉ-PRONTO: qualquer formato sem arte já nasce com o design padrão
+  Object.keys(FORMATS).forEach(k=>{
+    if(!Array.isArray(layouts[k]) || !layouts[k].length) layouts[k] = generateDefaultLayout(k);
+  });
+
+  clearSelection();
+  renderFormatTabs();
+  draw();
+  renderLayersList();
+  syncElPanel();
+}
+init();
+})();
+</script>
+</body>
+</html>
