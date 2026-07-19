@@ -6796,4 +6796,161 @@ function renderPainelSaude(){
 }
 
 // ── LEMBRETES PESSOAIS ────────────────────────────────────────────────────────
-let _lembretes =
+let _lembretes = [];
+try{ _lembretes = JSON.parse(localStorage.getItem('effect_lembretes_v1')||'[]'); }catch(e){ _lembretes = []; }
+
+function salvarLembretesStorage(){
+  try{ localStorage.setItem('effect_lembretes_v1', JSON.stringify(_lembretes)); }catch(e){}
+}
+
+function recBadge(rec){
+  const m={diaria:'🔁 Diária',semanal:'🔁 Semanal',mensal:'🔁 Mensal',anual:'🔁 Anual'};
+  return (rec && rec!=='nenhuma' && m[rec]) ? (' · '+m[rec]) : '';
+}
+
+// Um lembrete "aplica" no dia ds (YYYY-MM-DD) se for a data exata (evento único)
+// ou se a recorrência bater (diária/semanal/mensal/anual a partir da data inicial).
+function lembreteAplicaNoDia(l, ds){
+  if(!l || !l.data) return false;
+  const rec = l.recorrencia || 'nenhuma';
+  if(rec === 'nenhuma') return l.data === ds;
+  if(ds < l.data) return false;
+  const [y,m,d] = ds.split('-').map(Number);
+  const [ly,lm,ld] = l.data.split('-').map(Number);
+  if(rec === 'diaria')  return true;
+  if(rec === 'semanal') return new Date(y,m-1,d).getDay() === new Date(ly,lm-1,ld).getDay();
+  if(rec === 'mensal')  return d === ld;
+  if(rec === 'anual')   return d === ld && m === lm;
+  return false;
+}
+
+function abrirModalLembrete(ds){
+  document.getElementById('lem-titulo').value='';
+  document.getElementById('lem-data').value = ds || agHojeDS();
+  document.getElementById('lem-hora').value='';
+  document.getElementById('lem-desc').value='';
+  document.getElementById('lem-notif').checked = true;
+  document.getElementById('lem-recorrencia').value='nenhuma';
+  document.getElementById('modal-lembrete').classList.add('show');
+  setTimeout(()=>{ const t=document.getElementById('lem-titulo'); if(t)t.focus(); },100);
+}
+
+function salvarLembrete(){
+  const titulo = document.getElementById('lem-titulo').value.trim();
+  const data   = document.getElementById('lem-data').value;
+  const hora   = document.getElementById('lem-hora').value;
+  const desc   = document.getElementById('lem-desc').value.trim();
+  const notif  = document.getElementById('lem-notif').checked;
+  const recorrencia = document.getElementById('lem-recorrencia').value || 'nenhuma';
+  if(!titulo){ toast('Informe o título do lembrete','error'); return; }
+  if(!data){ toast('Informe a data do lembrete','error'); return; }
+  const l = { id:'lem_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), titulo, data, hora, desc, notif, recorrencia, feito:false };
+  _lembretes.push(l);
+  salvarLembretesStorage();
+  if(notif){ pedirPermissaoNotificacao(); agendarNotificacaoLembrete(l); }
+  fecharModal('modal-lembrete');
+  toast('🔔 Lembrete criado: '+titulo,'success');
+  const va=document.getElementById('view-agenda');
+  if(va && va.style.display==='flex' && typeof renderAgenda==='function') renderAgenda();
+}
+
+function excluirLembrete(id){
+  if(!confirm('Excluir este lembrete?')) return;
+  _lembretes = _lembretes.filter(l=>l.id!==id);
+  salvarLembretesStorage();
+  toast('Lembrete excluído','success');
+  if(typeof renderAgendaAtual==='function') renderAgendaAtual();
+  if(typeof renderAgSidebar==='function') renderAgSidebar();
+  if(typeof renderAlertasAgenda==='function') renderAlertasAgenda();
+  if(calDiaSel && typeof agAbrirDia==='function') agAbrirDia(calDiaSel);
+}
+
+function marcarLembreteFeito(id){
+  const l = _lembretes.find(x=>x.id===id);
+  if(!l) return;
+  l.feito = true;
+  salvarLembretesStorage();
+  toast('✓ Lembrete concluído','success');
+  if(typeof renderAgendaAtual==='function') renderAgendaAtual();
+  if(typeof renderAgSidebar==='function') renderAgSidebar();
+  if(typeof renderAlertasAgenda==='function') renderAlertasAgenda();
+}
+
+// ── NOTIFICAÇÕES (30 min antes) ──
+function pedirPermissaoNotificacao(){
+  try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
+}
+
+const _notifAgendadas = new Set();
+function agendarNotificacaoLembrete(l, dsOverride){
+  try{
+    if(!l || !l.notif || !l.hora) return;
+    const ds = dsOverride || l.data;
+    if(!ds) return;
+    const chave = l.id + '_' + ds;
+    if(_notifAgendadas.has(chave)) return;
+    const alvo = new Date(ds+'T'+l.hora+':00').getTime() - 30*60*1000;
+    const delay = alvo - Date.now();
+    if(delay <= 0 || delay > 24*60*60*1000) return; // só agenda dentro das próximas 24h
+    _notifAgendadas.add(chave);
+    setTimeout(()=>{
+      try{
+        if('Notification' in window && Notification.permission==='granted'){
+          new Notification('🔔 '+l.titulo, { body:(l.hora?('Às '+l.hora):'')+(l.desc?(' · '+l.desc):'') });
+        }
+        toast('🔔 Lembrete em 30 min: '+l.titulo,'');
+      }catch(e){}
+    }, delay);
+  }catch(e){}
+}
+
+function agendarNotificacoesDoDia(){
+  const hoje = agHojeDS();
+  _lembretes.forEach(l=>{ if(!l.feito && l.notif && lembreteAplicaNoDia(l,hoje)) agendarNotificacaoLembrete(l, hoje); });
+}
+window.addEventListener('DOMContentLoaded', agendarNotificacoesDoDia);
+setInterval(agendarNotificacoesDoDia, 30*60*1000);
+
+// ── PRÓXIMOS EVENTOS (sidebar da agenda) ──
+function renderProximosEventos(){
+  const wrap = document.getElementById('proximos-wrap');
+  if(!wrap) return;
+  const hoje = agHojeDS();
+  const ents = ag2CollectEntrevistas()
+    .filter(e=>e.data>=hoje && e.status!=='Cancelada' && e.status!=='Realizada')
+    .sort((a,b)=>((a.data+(a.hora||''))<(b.data+(b.hora||''))?-1:1))
+    .slice(0,6);
+  const lems = [];
+  for(let i=0;i<14 && lems.length<6;i++){
+    const d=new Date(); d.setDate(d.getDate()+i);
+    const ds=agDS(d);
+    _lembretes.forEach(l=>{ if(!l.feito && lembreteAplicaNoDia(l,ds)) lems.push({...l,_ds:ds}); });
+  }
+  let html='';
+  ents.forEach(e=>{
+    html+=`<div onclick="agAbrirDia('${e.data}')" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px">📅 <strong>${e.nome}</strong><div style="font-size:10px;color:var(--muted)">${formatarDataBr(e.data)}${e.hora?(' às '+e.hora):''} · ${e.cargo||''}</div></div>`;
+  });
+  lems.slice(0,6).forEach(l=>{
+    html+=`<div onclick="agAbrirDia('${l._ds}')" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px">🔔 <strong>${l.titulo}</strong><div style="font-size:10px;color:var(--muted)">${formatarDataBr(l._ds)}${l.hora?(' às '+l.hora):''}${recBadge(l.recorrencia||'nenhuma')}</div></div>`;
+  });
+  wrap.innerHTML = html || '<div style="font-size:11px;color:var(--muted);padding:8px 0">Nenhum evento próximo.</div>';
+}
+
+// ── UTILITÁRIOS ──
+function autoResize(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+
+async function recarregarDoSheets(){
+  toast('🔄 Recarregando dados do Sheets...','');
+  try{
+    const r = await fetch('/inbox/recarregar');
+    const j = await r.json();
+    if(j.ok){ toast('✓ '+(j.msg||'Dados recarregados do Sheets'),'success'); carregarSessoes(); }
+    else toast('Erro ao recarregar: '+(j.erro||''),'error');
+  }catch(e){ toast('Erro ao recarregar do Sheets','error'); }
+}
+</script>
+</body>
+</html>
