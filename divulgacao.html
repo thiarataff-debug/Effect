@@ -1167,6 +1167,23 @@ function syncRoleAcrossFormats(role){
         if(fmtKey===currentFormat) currentTouched = true;
       }
     });
+    if(!achou && role==='salario'){
+      // Arte antiga (sem "role" nas peças): adota a peça de texto que parece ser o salário
+      const cand = els.find(el=>el.type==='text' && !el.role && /r\$|sal[áa]ri|combinar/i.test(el.text||''));
+      if(cand){
+        cand.role='salario'; cand.text=newText; cand.runs=null; achou=true;
+        if(fmtKey===currentFormat) currentTouched = true;
+      }
+    }
+    if(!achou && role==='salario' && newText){
+      // Não existe peça de salário nessa arte (gerada com o campo vazio): cria o selo
+      const fmt = FORMATS[fmtKey];
+      els.push(newTextEl(fmt.w*0.12, fmt.h*0.60, fmt.w*0.76, newText, {
+        fontSize: Math.round(fmt.w*0.03), fontWeight:800, color:'#ffffff',
+        bg:'#1f2937', radius: fmt.w*0.012, align:'center', role:'salario'
+      }));
+      if(fmtKey===currentFormat) currentTouched = true;
+    }
     if(!achou && role==='banner' && newText){
       const geom = computeBannerGeomForFormat(fmtKey);
       if(geom){
