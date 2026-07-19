@@ -335,7 +335,7 @@
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
 
       <label>Salário</label>
-      <input type="text" id="salario" placeholder="Ex: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
+      <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
 
       <label>Requisitos (um por linha)</label>
       <textarea id="requisitos" placeholder="Ensino médio completo&#10;Experiência mínima de 1 ano&#10;Disponibilidade de horário"></textarea>
@@ -1755,7 +1755,7 @@ function buildTallLayout(fmt, data, col){
     const salLineH = salFont*1.25;
     const salTextY = by + (salH-salLineH)/2;
     els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:col.primary, radiusPct:0.24}));
-    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, `💰 ${data.salario}`, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
+    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25}));
     by += salH+cardH*0.022;
   }
 
@@ -1830,7 +1830,7 @@ function buildWideLayout(fmt, data, col){
   }
 
   if(data.salario){
-    els.push(newTextEl(innerX, y, innerW, `💰 ${data.salario}`, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
+    els.push(newTextEl(innerX, y, innerW, data.salario, {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left'}));
     y += cardH*0.06;
   }
 
@@ -2134,6 +2134,18 @@ function duplicateSelected(){
   });
   selectedIds = newIds;
   draw(); syncElPanel();
+  // A duplicata fica selecionada, mas o painel de edição (onde dá pra mudar o
+  // texto) pode estar fora da área visível da barra lateral — principalmente
+  // se a pessoa estava olhando a lista de Camadas mais abaixo. Rola a barra
+  // lateral pra mostrar o painel e já deixa o campo de texto pronto pra editar.
+  if(newIds.length===1){
+    const el = findElement(currentFormat, newIds[0]);
+    if(el && el.type==='text'){
+      const panel = $('#elPanel');
+      if(panel) panel.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(()=>{ const ta=$('#elText'); if(ta){ ta.focus(); ta.select(); } }, 250);
+    }
+  }
 }
 
 function copySelected(){
@@ -2819,6 +2831,13 @@ function wireJobPhoto(){
       jobPhotoDataUrl = reader.result;
       $('#jobPhotoPreview').innerHTML = `<img src="${reader.result}">`;
       saveState();
+      // CORREÇÃO: escolher a foto aqui só guardava o arquivo pra usar numa
+      // eventual regeneração completa ("Gerar arte"), que apaga qualquer
+      // formatação manual já feita. Agora a foto também é inserida direto
+      // como uma camada nova na arte ATUAL (igual ao botão "+ Imagem"),
+      // então dá pra adicionar a foto sem perder nada do que já foi ajustado.
+      const f = fmt();
+      addElement(newImageEl(f.w*0.62, f.h*0.06, f.w*0.33, f.h*0.4, reader.result));
     };
     reader.readAsDataURL(file);
   });
