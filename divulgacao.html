@@ -1424,7 +1424,11 @@ function syncRoleAcrossFormats(role){
       }));
       if(fmtKey===currentFormat) currentTouched = true;
     }
-    if(!achou && role==='banner' && newText){
+    // Só CRIA o selo do banner se a "Frase de destaque" foi preenchida de
+    // propósito — digitar a cidade não deve inventar um banner novo (a cidade
+    // vai pros chips abaixo do título). Banners já existentes continuam
+    // sendo atualizados normalmente pelo bloco acima.
+    if(!achou && role==='banner' && newText && $('#banner').value.trim()){
       const geom = computeBannerGeomForFormat(fmtKey);
       if(geom){
         els.push(newTextEl(geom.x, geom.y, geom.w, newText, {
@@ -1437,6 +1441,60 @@ function syncRoleAcrossFormats(role){
   if(currentTouched) draw();
 }
 
+// Reconstrói a fileira de chips (contratação, regime, cidade, horário) abaixo
+// do título, ao vivo, em todos os formatos — mesma conta do gerador.
+function syncTagsAcrossFormats(){
+  const data = getData();
+  const col = getColors();
+  const tags = tagList(data);
+  const tmp = document.createElement('canvas').getContext('2d');
+  let touched = false;
+  Object.keys(FORMATS).forEach(fmtKey=>{
+    const els = getElements(fmtKey);
+    if(!els.length) return;
+    const fmt = FORMATS[fmtKey];
+    const W=fmt.w, H=fmt.h, wide = W>H;
+    const cardX = wide? W*0.035 : W*0.045, cardY = wide? H*0.06 : H*0.045;
+    const cardW = W-cardX*2, cardH = H-cardY*2;
+    // remove os chips atuais guardando a âncora (posição do primeiro)
+    let ax=null, ay=null, insertAt=-1;
+    for(let i=els.length-1;i>=0;i--){
+      if(els[i].role==='tag'){
+        ax = ax===null? els[i].x : Math.min(ax, els[i].x);
+        ay = ay===null? els[i].y : Math.min(ay, els[i].y);
+        insertAt = i; els.splice(i,1);
+      }
+    }
+    if(insertAt<0){
+      // arte sem chips (gerada com os campos vazios): ancora abaixo do título
+      const cargo = els.find(el=>el.role==='cargo');
+      if(!cargo) return;
+      ax = cargo.x;
+      ay = cargo.y + (cargo.h || cargo.fontSize*1.3) + cardH*0.02;
+      insertAt = els.indexOf(cargo)+1;
+    }
+    if(fmtKey===currentFormat) touched = true;
+    if(!tags.length) return;
+    const fontPx = wide? cardW*0.015 : cardW*0.021;
+    const tagFont = `600 ${Math.round(fontPx)}px 'Poppins', Arial, sans-serif`;
+    const tagH  = wide? cardW*0.032 : cardW*0.036;
+    const padX  = wide? cardW*0.012 : cardW*0.015;
+    const gapX  = wide? cardW*0.01  : cardW*0.011;
+    const rowGap= wide? cardH*0.014 : cardH*0.011;
+    const lw    = wide? (cardW-cardW*0.36)-cardW*0.07 : cardW*0.57-cardW*0.045-cardW*0.055;
+    let tx=ax, ty=ay, usedW=0;
+    const novos=[];
+    tags.forEach((t,i)=>{
+      const w = measureChipWidth(tmp, t, tagFont, padX);
+      if(usedW+w>lw && usedW>0){ tx=ax; ty+=tagH+rowGap; usedW=0; }
+      novos.push(newTextEl(tx, ty, w, t, {fontSize:fontPx, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      tx += w+gapX; usedW += w+gapX;
+    });
+    els.splice(insertAt, 0, ...novos);
+  });
+  if(touched) draw();
+}
+
 function wireLiveCanvasSync(){
   $('#cargo').addEventListener('input', ()=> syncRoleAcrossFormats('cargo'));
   $('#salario').addEventListener('input', ()=> syncRoleAcrossFormats('salario'));
@@ -1446,7 +1504,12 @@ function wireLiveCanvasSync(){
   $('#contato').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
   $('#cta').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
   $('#banner').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
-  $('#cidade').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
+  // cidade vai pros CHIPS abaixo do título; o banner só é atualizado se já
+  // existir na arte (a cidade faz parte do texto padrão dele)
+  $('#cidade').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('banner'); });
+  $('#horario').addEventListener('input', syncTagsAcrossFormats);
+  $('#contratacao').addEventListener('change', syncTagsAcrossFormats);
+  $('#regime').addEventListener('change', syncTagsAcrossFormats);
 }
 
 /* ===========================================================
@@ -2256,7 +2319,7 @@ function buildTallLayout(fmt, data, col){
     tags.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, tagPadX);
       if(usedW+w > lw && usedW>0){ tx = lx; ty += tagH+cardH*0.011; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.021, fontWeight:600, color:col.primary, bg:tint(i%2? col.tertiary: col.secondary,0.65), align:'center', radius:tagH/2}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.021, fontWeight:600, color:col.primary, bg:tint(i%2? col.tertiary: col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
       tx += w+gapX; usedW += w+gapX;
     });
     y = ty+tagH+cardH*0.018;
@@ -2365,7 +2428,7 @@ function buildWideLayout(fmt, data, col){
     tags.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, padX);
       if(tx+w>innerX+innerW && tx>innerX){ tx=innerX; ty+=tagH+cardH*0.014; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.015, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.015, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
       tx += w+gapX;
     });
     y = ty+tagH+cardH*0.02;
