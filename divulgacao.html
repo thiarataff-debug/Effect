@@ -386,10 +386,22 @@
       <div id="jobDivulgacaoStats" style="display:none; margin-top:14px;">
         <div style="font-size:26px; font-weight:800; color:var(--navy);"><span id="jobDivulgacaoTotal">0</span> divulgações</div>
         <div class="hint" id="jobDivulgacaoUltima" style="margin-top:2px;"></div>
-        <button type="button" class="btn btn-primary btn-block" id="registrarDivulgacao" style="margin-top:10px;">📣 Registrar divulgação agora</button>
+
+        <label style="margin-top:12px;">Registrar divulgação — clique no canal</label>
+        <div id="canaisBtns" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;"></div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+          <input type="date" id="divulgacaoData" style="flex:1;">
+          <button type="button" class="toggle-link" id="editarCanais" style="margin:0; white-space:nowrap;">⚙️ Editar canais</button>
+        </div>
+        <div class="hint">A data vale pro próximo clique — deixe em hoje pro registro normal, ou escolha um dia passado pra lançar retroativo.</div>
+
+        <div id="canaisResumo" style="margin-top:10px;"></div>
+
         <button type="button" class="toggle-link" id="toggleDivulgacaoLog" style="margin-top:8px;">Ver histórico de datas ▾</button>
         <div id="jobDivulgacaoLog" style="display:none; max-height:170px; overflow:auto; margin-top:6px; font-size:12px; color:#4b5563; line-height:1.6;"></div>
       </div>
+
+      <button type="button" class="btn btn-outline btn-block btn-sm" id="visaoGeralDivulgacoes" style="margin-top:12px;">📊 Visão geral de divulgações (todas as vagas)</button>
     </div>
 
     <div class="card">
@@ -992,18 +1004,178 @@ function formatarDataHoraBR(ts){
   return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+/* ── GESTOR DE DIVULGAÇÕES: canais ──
+   Canais editáveis (＋ adiciona, modo editar remove). Registros antigos de um
+   canal removido continuam contando no histórico e na visão geral. */
+const STORAGE_CANAIS = 'effectVagas.canais.v1';
+const CANAIS_PADRAO = ['Gazeta Empregos','Mais Vagas','Facebook','Grupos de WhatsApp'];
+let canaisEditMode = false;
+
+function getCanais(){
+  try{
+    const c = JSON.parse(localStorage.getItem(STORAGE_CANAIS)||'null');
+    return (Array.isArray(c)&&c.length) ? c : CANAIS_PADRAO.slice();
+  }catch(e){ return CANAIS_PADRAO.slice(); }
+}
+function saveCanais(c){ try{ localStorage.setItem(STORAGE_CANAIS, JSON.stringify(c)); }catch(e){} }
+
+function hojeISO(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function renderCanaisBtns(){
+  const wrap = $('#canaisBtns');
+  if(!wrap) return;
+  const canais = getCanais();
+  wrap.innerHTML = '';
+  canais.forEach(c=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn-primary btn-sm';
+    b.style.cssText = 'flex:1 1 45%; min-width:120px;';
+    b.textContent = canaisEditMode ? `✕ ${c}` : `📣 ${c}`;
+    if(canaisEditMode){
+      b.style.background = '#dc2626';
+      b.addEventListener('click', ()=>{
+        if(!confirm(`Remover o canal "${c}"?\n\nOs registros antigos dele continuam no histórico.`)) return;
+        saveCanais(getCanais().filter(x=>x!==c));
+        renderCanaisBtns();
+      });
+    } else {
+      b.addEventListener('click', ()=> registrarDivulgacaoCanal(c));
+    }
+    wrap.appendChild(b);
+  });
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'btn btn-outline btn-sm';
+  add.style.cssText = 'flex:1 1 45%; min-width:120px;';
+  add.textContent = '＋ Canal';
+  add.addEventListener('click', ()=>{
+    const nome = (prompt('Nome do novo canal (ex: Instagram, Indeed):')||'').trim();
+    if(!nome) return;
+    const canais2 = getCanais();
+    if(canais2.some(x=>x.toLowerCase()===nome.toLowerCase())){ alert('Esse canal já existe.'); return; }
+    canais2.push(nome);
+    saveCanais(canais2);
+    renderCanaisBtns();
+  });
+  wrap.appendChild(add);
+}
+
+async function registrarDivulgacaoCanal(canal){
+  if(!currentSavedJob){ alert('Salve a vaga primeiro (dê um nome e clique em "Salvar vaga") antes de registrar uma divulgação.'); return; }
+  let ts = Date.now();
+  const dataStr = $('#divulgacaoData').value;
+  if(dataStr && dataStr!==hojeISO()) ts = new Date(dataStr+'T12:00:00').getTime();
+  currentSavedJob.divulgacoes = currentSavedJob.divulgacoes || [];
+  currentSavedJob.divulgacoes.push({ ts, canal });
+  currentSavedJob.divulgacoes.sort((a,b)=>a.ts-b.ts);
+  renderJobDivulgacaoStats();
+  $('#divulgacaoData').value = hojeISO(); // volta pra hoje depois de um retroativo
+  const ok = await persistSavedJobs();
+  if(ok) setJobSaveStatus(`✓ Divulgação registrada: ${canal} — ${formatarDataHoraBR(ts)}`, false);
+}
+
 function renderJobDivulgacaoStats(){
   const box = $('#jobDivulgacaoStats');
   if(!currentSavedJob){ box.style.display='none'; return; }
   box.style.display='block';
+  renderCanaisBtns();
+  if($('#divulgacaoData') && !$('#divulgacaoData').value) $('#divulgacaoData').value = hojeISO();
   const lista = Array.isArray(currentSavedJob.divulgacoes) ? currentSavedJob.divulgacoes : [];
   $('#jobDivulgacaoTotal').textContent = lista.length;
   const ultima = lista.length ? lista[lista.length-1] : null;
-  $('#jobDivulgacaoUltima').textContent = ultima ? `Última: ${formatarDataHoraBR(ultima.ts)}` : 'Ainda não registrou nenhuma divulgação.';
+  $('#jobDivulgacaoUltima').textContent = ultima ? `Última: ${formatarDataHoraBR(ultima.ts)}${ultima.canal?(' — '+ultima.canal):''}` : 'Ainda não registrou nenhuma divulgação.';
+  // resumo por canal desta vaga
+  const porCanal = {};
+  lista.forEach(d=>{
+    const c = d.canal || 'Outro';
+    porCanal[c] = porCanal[c] || {n:0, last:0};
+    porCanal[c].n++;
+    if(d.ts>porCanal[c].last) porCanal[c].last = d.ts;
+  });
+  const resumo = $('#canaisResumo');
+  resumo.innerHTML = Object.keys(porCanal).length
+    ? Object.entries(porCanal).map(([c,info])=>
+        `<div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px dashed #e5e7eb;">
+          <span><b>${c}</b></span>
+          <span>${info.n}× · última ${new Date(info.last).toLocaleDateString('pt-BR')}</span>
+        </div>`).join('')
+    : '';
   const log = $('#jobDivulgacaoLog');
   log.innerHTML = lista.length
-    ? lista.slice().reverse().map((d,i)=>`<div>${lista.length-i}) ${formatarDataHoraBR(d.ts)}</div>`).join('')
+    ? lista.slice().reverse().map((d,i)=>`<div>${lista.length-i}) ${formatarDataHoraBR(d.ts)}${d.canal?(' — <b>'+d.canal+'</b>'):''}</div>`).join('')
     : '<div>Nenhum registro ainda.</div>';
+}
+
+/* ── VISÃO GERAL: tabela vagas × canais ── */
+function abrirVisaoGeralDivulgacoes(){
+  let ov = document.getElementById('vgDivOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'vgDivOverlay';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+    ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.style.display='none'; });
+    document.body.appendChild(ov);
+  }
+  const canaisBase = getCanais();
+  const jobs = (savedJobs||[]).slice();
+  // colunas = canais atuais + canais que aparecem em registros antigos
+  const extras = new Set();
+  jobs.forEach(v=> (v.divulgacoes||[]).forEach(d=>{ if(d.canal && !canaisBase.includes(d.canal)) extras.add(d.canal); }));
+  const colunas = canaisBase.concat([...extras]);
+  const agora = Date.now(), DIA = 24*60*60*1000;
+  const linhas = jobs.map(v=>{
+    const divs = v.divulgacoes||[];
+    const porCanal = {};
+    let last = 0;
+    divs.forEach(d=>{ const c=d.canal||'Outro'; porCanal[c]=(porCanal[c]||0)+1; if(d.ts>last)last=d.ts; });
+    return {v, porCanal, total:divs.length, last, diasSem: last? Math.floor((agora-last)/DIA) : null};
+  }).sort((a,b)=>{
+    if(a.last===0 && b.last===0) return 0;
+    if(a.last===0) return -1;
+    if(b.last===0) return 1;
+    return a.last-b.last; // há mais tempo sem divulgar primeiro
+  });
+  const chipDias = (d)=>{
+    if(d===null) return '<span style="background:#e5e7eb;color:#6b7280;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">nunca</span>';
+    const cor = d>=7 ? '#dc2626' : d>=3 ? '#d97706' : '#16a34a';
+    const bg  = d>=7 ? '#fee2e2' : d>=3 ? '#fef3c7' : '#dcfce7';
+    return `<span style="background:${bg};color:${cor};border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">${d===0?'hoje':d+'d atrás'}</span>`;
+  };
+  const th = 'padding:8px 10px; font-size:11px; font-weight:800; color:#1f3a5f; text-align:center; border-bottom:2px solid #e5e7eb; white-space:nowrap;';
+  const td = 'padding:8px 10px; font-size:12px; text-align:center; border-bottom:1px solid #f1f5f9;';
+  ov.innerHTML = `
+    <div style="background:#fff; border-radius:14px; max-width:900px; width:100%; max-height:85vh; overflow:auto; padding:20px;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:16px; font-weight:800; color:#1f3a5f;">📊 Visão geral de divulgações</div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('vgDivOverlay').style.display='none'">Fechar ✕</button>
+      </div>
+      ${jobs.length ? `
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr>
+          <th style="${th} text-align:left;">Vaga</th>
+          ${colunas.map(c=>`<th style="${th}">${c}</th>`).join('')}
+          <th style="${th}">Total</th>
+          <th style="${th}">Última</th>
+          <th style="${th}">Situação</th>
+        </tr></thead>
+        <tbody>
+          ${linhas.map(l=>`<tr>
+            <td style="${td} text-align:left;"><b>${l.v.nome||l.v.cargo||'—'}</b>${l.v.companyNome?`<div style="font-size:10px;color:#6b7280;">${l.v.companyNome}</div>`:''}</td>
+            ${colunas.map(c=>`<td style="${td}">${l.porCanal[c]?`<b>${l.porCanal[c]}</b>`:'<span style="color:#d1d5db;">—</span>'}</td>`).join('')}
+            <td style="${td}"><b>${l.total}</b></td>
+            <td style="${td} white-space:nowrap;">${l.last? new Date(l.last).toLocaleDateString('pt-BR') : '—'}</td>
+            <td style="${td}">${chipDias(l.diasSem)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="hint" style="margin-top:10px;">Ordenado por urgência: vagas nunca divulgadas ou há mais tempo paradas aparecem primeiro. Verde = divulgada há menos de 3 dias · Amarelo = 3 a 6 dias · Vermelho = 7 dias ou mais.</div>
+      ` : '<div class="hint">Nenhuma vaga salva ainda. Salve uma vaga no cartão "Divulgações desta vaga" pra começar a acompanhar.</div>'}
+    </div>`;
+  ov.style.display = 'flex';
 }
 
 function fillJobPanel(v){
@@ -1051,19 +1223,13 @@ function wireJobDivulgacaoActions(){
     fillJobPanel(null);
   });
 
-  $('#registrarDivulgacao').addEventListener('click', async ()=>{
-    if(!currentSavedJob){ alert('Salve a vaga primeiro (dê um nome e clique em "Salvar vaga") antes de registrar uma divulgação.'); return; }
-    try{
-      const r = await fetch(`/vagas/divulgacoes/${encodeURIComponent(currentSavedJob.id)}/registrar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
-      const data = await r.json();
-      if(!data.ok) throw new Error(data.erro||'Falha ao registrar');
-      currentSavedJob.divulgacoes = currentSavedJob.divulgacoes || [];
-      currentSavedJob.divulgacoes.push({ ts: Date.now() });
-      renderJobDivulgacaoStats();
-    }catch(e){
-      alert('Não foi possível registrar a divulgação agora: '+e.message);
-    }
+  $('#editarCanais').addEventListener('click', ()=>{
+    canaisEditMode = !canaisEditMode;
+    $('#editarCanais').textContent = canaisEditMode ? '✓ Concluir edição' : '⚙️ Editar canais';
+    renderCanaisBtns();
   });
+
+  $('#visaoGeralDivulgacoes').addEventListener('click', abrirVisaoGeralDivulgacoes);
 
   $('#toggleDivulgacaoLog').addEventListener('click', ()=>{
     const log = $('#jobDivulgacaoLog');
