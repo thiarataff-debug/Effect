@@ -829,6 +829,7 @@ font-family:'Montserrat',sans-serif
       <div class="sb-actions">
         <button class="btn-selecionar-all" id="btn-selecionar-all" onclick="toggleModoSelecao()" title="Ativar seleção em lote [Shift+S]">☑ Selecionar</button>
         <button class="btn-selecionar-all" id="btn-todas-lidas" onclick="marcarTodasLidas()" title="Zerar o contador: marca todas as conversas como lidas">✓✓ Lidas</button>
+        <button class="btn-selecionar-all" id="btn-zerar-cnt" onclick="zerarContadores()" title="Zera Não Lidas + Aguardando você + Aguardando candidato — sem apagar nada; a conversa volta a contar quando tiver mensagem nova">🧹 Zerar</button>
         <button class="btn-selecionar-all" id="btn-sos" onclick="abrirModalSos()" title="Mensagem SOS — texto salvo, envia um lote por dia; quem já recebeu não recebe de novo">🆘 SOS</button>
       </div>
       <div class="search-box">
@@ -2666,8 +2667,8 @@ function renderLista(){
     // Arquivadas nunca aparecem em outras abas
     if(tab!=='arquivadas' && arquivadas[tel]) return false;
     if(tab==='novos'){const h=s.historico||[];return !h.some(m=>m.role==='assistant');}
-    if(tab==='aguardando-recrutador'){return statusMap[tel]==='Aguardando recrutador';}
-    if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}
+    if(tab==='aguardando-recrutador'){return statusMap[tel]==='Aguardando recrutador'&&!aguardandoZerado(tel,s);}
+    if(tab==='aguardando-candidato'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true)&&!aguardandoZerado(tel,s);}
     if(tab==='aguardando-effect'){const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}
     if(tab==='novas')return contarNaoLidas(tel,s)>0;
     if(tab==='manual')return s.modo==='manual'||s.pausado===true;
@@ -2702,10 +2703,10 @@ function renderLista(){
   setTimeout(syncMaisContadores,0);
   document.getElementById('cnt-novos').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
   document.getElementById('cnt-aguardando-effect').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
-  document.getElementById('cnt-aguardando-candidato').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
+  document.getElementById('cnt-aguardando-candidato').textContent=visiveis.filter(([tel,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true)&&!aguardandoZerado(tel,s);}).length;
   // BUG CORRIGIDO: este contador nunca era calculado — o badge de "Aguardando você"
   // sempre mostrava 0, mesmo escondido dentro do menu "⋯ Mais".
-  document.getElementById('cnt-aguardando-recrutador').textContent=visiveis.filter(([tel])=>statusMap[tel]==='Aguardando recrutador').length;
+  document.getElementById('cnt-aguardando-recrutador').textContent=visiveis.filter(([tel,s])=>statusMap[tel]==='Aguardando recrutador'&&!aguardandoZerado(tel,s)).length;
   document.getElementById('cnt-novas').textContent=visiveis.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   document.getElementById('cnt-manual').textContent=visiveis.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
   document.getElementById('cnt-lia').textContent=visiveis.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
@@ -6418,6 +6419,31 @@ async function bulkArquivar(){
 
 // Zera o contador de nao lidas de UMA VEZ: marca tudo que esta carregado como visto.
 // Mensagens novas que chegarem DEPOIS voltam a contar normalmente.
+// Uma conversa "zerada" some dos Aguardando até chegar mensagem NOVA nela
+// (o histórico crescer além do tamanho registrado na hora do zerar).
+function aguardandoZerado(tel,s){
+  const z=(metaDados[tel]||{}).aguardZeradoLen;
+  return z!=null && ((s.historico||[]).length<=z);
+}
+
+// Zera os contadores: Não Lidas + Aguardando você + Aguardando candidato.
+// Nada é apagado — status e histórico ficam intactos; conversas voltam a
+// contar assim que houver movimento novo nelas.
+function zerarContadores(){
+  const tels=Object.keys(todasSessoes||{});
+  if(!tels.length){toast('Nenhuma conversa carregada','error');return;}
+  if(!confirm(`Zerar os contadores (Não Lidas, Aguardando você e Aguardando candidato) das ${tels.length} conversas?\n\nNada é apagado — cada conversa volta a contar quando tiver mensagem nova.`))return;
+  tels.forEach(tel=>{
+    const s=todasSessoes[tel];
+    const hist=(s&&s.historico)||[];
+    setMeta(tel,{ultimaMsgVista:hist.length, aguardZeradoLen:hist.length});
+  });
+  salvarLocal();
+  renderLista();
+  if(typeof atualizarTitulo==='function')atualizarTitulo();
+  toast('🧹 Contadores zerados','success');
+}
+
 function marcarTodasLidas(){
   const tels=Object.keys(todasSessoes||{});
   if(!tels.length){toast('Nenhuma conversa carregada','error');return;}
