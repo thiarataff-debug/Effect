@@ -432,7 +432,8 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 
 .notas-quick-add{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .notas-qa-titulo{width:100%;border:none;outline:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px}
-.notas-qa-texto{width:100%;border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:12.5px;resize:none;overflow:hidden;min-height:22px}
+.notas-qa-texto{width:100%;border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:12.5px;resize:none;overflow:hidden;min-height:22px;white-space:pre-wrap;word-break:break-word;cursor:text}
+.notas-qa-texto:empty:before{content:attr(data-placeholder);color:#9ca3af}
 .notas-qa-actions{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .notas-qa-tools{display:flex;align-items:center;gap:6px}
 .notas-qa-tool{background:none;border:none;font-size:15px;cursor:pointer;padding:4px 6px;border-radius:6px}
@@ -623,7 +624,18 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
   <div class="notas-quick-add" id="notas-quick-add">
     <input class="notas-qa-titulo" id="notas-qa-titulo" placeholder="Título" style="display:none">
     <div class="notas-qa-checklist" id="notas-qa-checklist" style="display:none"></div>
-    <textarea class="notas-qa-texto" id="notas-qa-texto" placeholder="Criar uma nota..." rows="1" onfocus="notasExpandirQuickAdd()" oninput="notasAutoGrow(this)"></textarea>
+    <div class="notas-m-fmtbar" id="notas-qa-fmtbar" style="display:none;border-bottom:none;padding-bottom:0;margin-bottom:4px">
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasQaFormatar('bold')" title="Negrito"><b>B</b></button>
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasQaFormatar('italic')" title="Itálico"><i>I</i></button>
+      <button type="button" class="notas-m-fmt-btn" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('')" title="Cor padrão">A</button>
+      <div class="notas-m-fmt-cor" style="background:#dc2626" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#dc2626')" title="Vermelho"></div>
+      <div class="notas-m-fmt-cor" style="background:#ea580c" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#ea580c')" title="Laranja"></div>
+      <div class="notas-m-fmt-cor" style="background:#ca8a04" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#ca8a04')" title="Amarelo"></div>
+      <div class="notas-m-fmt-cor" style="background:#16a34a" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#16a34a')" title="Verde"></div>
+      <div class="notas-m-fmt-cor" style="background:#2563eb" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#2563eb')" title="Azul"></div>
+      <div class="notas-m-fmt-cor" style="background:#9333ea" onmousedown="event.preventDefault()" onclick="notasQaFormatarCor('#9333ea')" title="Roxo"></div>
+    </div>
+    <div class="notas-qa-texto" id="notas-qa-texto" contenteditable="true" data-placeholder="Criar uma nota..." onfocus="notasExpandirQuickAdd()"></div>
     <div class="notas-qa-actions" id="notas-qa-actions" style="display:none">
       <div class="notas-qa-tools">
         <button class="notas-qa-tool" onclick="notasQuickAddToggleChecklist()" title="Nova lista">☑️</button>
@@ -3517,7 +3529,19 @@ function notasRenderCoresPicker(containerId, corAtual, onSelectFnName){
 function notasExpandirQuickAdd(){
   document.getElementById('notas-qa-titulo').style.display='block';
   document.getElementById('notas-qa-actions').style.display='flex';
+  if(notasQaChecklist===null) document.getElementById('notas-qa-fmtbar').style.display='flex';
   notasRenderCoresPicker('notas-qa-cores', notasQaCor, 'notasQaSelecionarCor');
+}
+// Formatação do quick add (negrito/itálico/cor) — mesma lógica do modal.
+function notasQaFormatar(cmd){
+  const el=document.getElementById('notas-qa-texto');
+  el.focus();
+  document.execCommand(cmd, false, null);
+}
+function notasQaFormatarCor(cor){
+  const el=document.getElementById('notas-qa-texto');
+  el.focus();
+  document.execCommand('foreColor', false, cor || '#1e293b');
 }
 function notasAutoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; }
 function notasQaSelecionarCor(corId){ notasQaCor=corId; notasRenderCoresPicker('notas-qa-cores', notasQaCor, 'notasQaSelecionarCor'); }
@@ -3526,10 +3550,12 @@ function notasQuickAddToggleChecklist(){
     notasQaChecklist=[{id:notasNovoId(),texto:'',feito:false}];
     document.getElementById('notas-qa-checklist').style.display='block';
     document.getElementById('notas-qa-texto').style.display='none';
+    document.getElementById('notas-qa-fmtbar').style.display='none';
   } else {
     notasQaChecklist=null;
     document.getElementById('notas-qa-checklist').style.display='none';
     document.getElementById('notas-qa-texto').style.display='block';
+    document.getElementById('notas-qa-fmtbar').style.display='flex';
   }
   notasQaRenderChecklist();
 }
@@ -3556,7 +3582,10 @@ function notasQaAddItemAfter(id){
 
 function notasFecharQuickAdd(){
   const titulo=document.getElementById('notas-qa-titulo').value.trim();
-  const texto=document.getElementById('notas-qa-texto').value.trim();
+  const textoEl=document.getElementById('notas-qa-texto');
+  // innerHTML preserva negrito/itálico/cor; considera vazio se só tiver <br>/espaços
+  let texto=textoEl.innerHTML.trim();
+  if(!textoEl.textContent.trim()) texto='';
   const temChecklist = notasQaChecklist && notasQaChecklist.some(i=>i.texto.trim());
   if(titulo || texto || temChecklist){
     const notas=notasGetAll();
@@ -3575,9 +3604,9 @@ function notasFecharQuickAdd(){
   }
   document.getElementById('notas-qa-titulo').value='';
   document.getElementById('notas-qa-titulo').style.display='none';
-  document.getElementById('notas-qa-texto').value='';
-  document.getElementById('notas-qa-texto').style.display='block';
-  document.getElementById('notas-qa-texto').style.height='auto';
+  textoEl.innerHTML='';
+  textoEl.style.display='block';
+  document.getElementById('notas-qa-fmtbar').style.display='none';
   document.getElementById('notas-qa-actions').style.display='none';
   document.getElementById('notas-qa-checklist').style.display='none';
   notasQaChecklist=null;
