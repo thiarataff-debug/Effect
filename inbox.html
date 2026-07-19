@@ -2691,31 +2691,38 @@ function renderLista(){
   });
 
   const all=Object.entries(todasSessoes);
-  document.getElementById('cnt-todas').textContent=all.length;
+  // BUG CORRIGIDO: todos os contadores abaixo eram calculados sobre "all"
+  // (TODAS as sessões, incluindo arquivadas), mas cada aba (inclusive "Não
+  // Lidas") esconde as conversas arquivadas da lista. Resultado: se uma
+  // conversa não lida fosse arquivada, ela continuava contando no badge mas
+  // sumia da lista — daí o badge mostrar um número e a lista aparecer vazia.
+  // Agora os contadores usam "visiveis" (exclui arquivadas), igual à lista.
+  const visiveis=all.filter(([tel])=>!arquivadas[tel]);
+  document.getElementById('cnt-todas').textContent=visiveis.length;
   setTimeout(syncMaisContadores,0);
-  document.getElementById('cnt-novos').textContent=all.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
-  document.getElementById('cnt-aguardando-effect').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
-  document.getElementById('cnt-aguardando-candidato').textContent=all.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
+  document.getElementById('cnt-novos').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];return!h.some(m=>m.role==='assistant');}).length;
+  document.getElementById('cnt-aguardando-effect').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='user';}).length;
+  document.getElementById('cnt-aguardando-candidato').textContent=visiveis.filter(([_,s])=>{const h=s.historico||[];const last=h[h.length-1];return last&&last.role==='assistant'&&!(s.modo==='manual'||s.pausado===true);}).length;
   // BUG CORRIGIDO: este contador nunca era calculado — o badge de "Aguardando você"
   // sempre mostrava 0, mesmo escondido dentro do menu "⋯ Mais".
-  document.getElementById('cnt-aguardando-recrutador').textContent=all.filter(([tel])=>statusMap[tel]==='Aguardando recrutador').length;
-  document.getElementById('cnt-novas').textContent=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
-  document.getElementById('cnt-manual').textContent=all.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
-  document.getElementById('cnt-lia').textContent=all.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
+  document.getElementById('cnt-aguardando-recrutador').textContent=visiveis.filter(([tel])=>statusMap[tel]==='Aguardando recrutador').length;
+  document.getElementById('cnt-novas').textContent=visiveis.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
+  document.getElementById('cnt-manual').textContent=visiveis.filter(([_,s])=>s.modo==='manual'||s.pausado===true).length;
+  document.getElementById('cnt-lia').textContent=visiveis.filter(([_,s])=>!(s.modo==='manual'||s.pausado===true)).length;
   document.getElementById('cnt-curriculos').textContent=
-all.filter(([t,s])=>
+visiveis.filter(([t,s])=>
   s.curriculo ||
   (s.curriculos && s.curriculos.length) ||
   String(s.lastMessage||s.preview||'').toLowerCase().includes('currículo')
 ).length;
-  document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]).length;
+  document.getElementById('cnt-retornar').textContent=Object.keys(marcadosRetorno).filter(t=>marcadosRetorno[t]&&todasSessoes[t]&&!arquivadas[t]).length;
   document.getElementById('cnt-arquivadas').textContent=Object.keys(arquivadas).filter(t=>arquivadas[t]&&todasSessoes[t]).length;
-  const nAtencao=all.filter(([_,s])=>isAtencao(s)).length;
+  const nAtencao=visiveis.filter(([_,s])=>isAtencao(s)).length;
   document.getElementById('cnt-atencao').textContent=nAtencao;
   const bNovas=document.getElementById('badge-novas');
-  const totalNL=all.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
+  const totalNL=visiveis.filter(([t,s])=>contarNaoLidas(t,s)>0).length;
   if(totalNL>0){bNovas.style.display='inline-block';bNovas.textContent=totalNL;}else bNovas.style.display='none';
-  document.getElementById('badge-total').textContent=all.length;
+  document.getElementById('badge-total').textContent=visiveis.length;
   if(!entries.length){lista.innerHTML='<div class="empty">Nenhuma conversa</div>';return;}
 
   lista.innerHTML=entries.map(([tel,s])=>{
