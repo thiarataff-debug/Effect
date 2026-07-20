@@ -1646,13 +1646,26 @@ function aplicarFotoPainel(src){
   Object.keys(FORMATS).forEach(k=>{
     const els = getElements(k);
     if(!els.length) return;
-    const g = computePhotoGeomForFormat(k);
-    if(!g) return;
+    const gPadrao = computePhotoGeomForFormat(k);
+    if(!gPadrao) return;
     const rmRoles = ['foto','fotoShade','fotoPh','fotoPhDeco','fotoIcon'];
     let insertAt = -1;
+    // Se já existia uma peça de foto/placeholder (mesmo que movida/redimensionada
+    // manualmente — comum em templates customizados), usa a posição e o tamanho
+    // DELA em vez da geometria padrão, senão a foto nova "pula" pro lugar de
+    // fábrica e some do canto onde o template a deixou.
+    let gAtual = null;
     for(let i=els.length-1;i>=0;i--){
-      if(rmRoles.includes(els[i].role)){ insertAt = i; els.splice(i,1); }
+      const el = els[i];
+      if(rmRoles.includes(el.role)){
+        insertAt = i;
+        if(!gAtual && (el.role==='foto' || el.role==='fotoPh')){
+          gAtual = { x: el.x, y: el.y, w: el.w, h: el.h };
+        }
+        els.splice(i,1);
+      }
     }
+    const g = Object.assign({}, gPadrao, gAtual||{});
     if(insertAt<0){
       const ib = els.findIndex(el=>el.role==='fotoBorda');
       insertAt = ib>=0 ? ib : els.length;
@@ -3866,13 +3879,21 @@ function aplicarTemplateSelecionado(){
   if(!confirm(`Aplicar o template "${t.nome}"?\n\nIsso substitui a arte atual dos 4 formatos (Ctrl+Z desfaz no formato aberto).`)) return;
   pushHistory();
   layouts = JSON.parse(JSON.stringify(t.layouts||{}));
-  // se já tem foto escolhida no formulário, encaixa no painel do template
-  if(jobPhotoDataUrl) aplicarFotoPainel(jobPhotoDataUrl);
   clearSelection();
   draw();
   renderLayersList();
   syncElPanel();
-  setTemplateStatus(`✓ Template "${t.nome}" aplicado.`, false);
+  if(jobPhotoDataUrl){
+    // já tem foto escolhida no formulário — encaixa direto no painel do template
+    aplicarFotoPainel(jobPhotoDataUrl);
+    draw();
+    setTemplateStatus(`✓ Template "${t.nome}" aplicado, já com a foto atual.`, false);
+  } else {
+    // sem foto ainda — abre o seletor de arquivo na hora, pra não precisar
+    // descer até o campo "Foto da vaga" manualmente depois de aplicar.
+    setTemplateStatus(`✓ Template "${t.nome}" aplicado. Escolha a foto da vaga pra completar.`, false);
+    $('#jobPhoto').click();
+  }
 }
 
 async function excluirTemplateSelecionado(){
