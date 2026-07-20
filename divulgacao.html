@@ -268,6 +268,13 @@
         </div>
         <div class="hint">Essas cores são só o ponto de partida do design gerado — depois de gerado, cada peça pode ter sua própria cor no painel de elemento.</div>
 
+        <label>Cor do selo (frase de destaque sobre a foto)</label>
+        <div class="colorrow">
+          <div class="colitem"><input type="color" id="colorBannerTexto" value="#ffffff"><span>Texto</span></div>
+          <div class="colitem"><input type="color" id="colorBannerFundo" value="#141414"><span>Fundo</span></div>
+        </div>
+        <div class="hint">Define a cor com que o selo nasce ao gerar a arte. Um selo já colocado na arte pode ser recolorido individualmente clicando nele e usando o painel "Elemento selecionado".</div>
+
         <label>Cidade / região padrão</label>
         <input type="text" id="companyCity" placeholder="Ex: São Paulo - SP">
 
@@ -402,6 +409,12 @@
       </div>
 
       <button type="button" class="btn btn-outline btn-block btn-sm" id="visaoGeralDivulgacoes" style="margin-top:12px;">📊 Visão geral de divulgações (todas as vagas)</button>
+    </div>
+
+    <div class="card">
+      <h2>🗓️ Cronograma de divulgação</h2>
+      <div class="hint">Monta um plano semanal fixo com os canais já cadastrados acima (WhatsApp, Instagram, Indeed etc.) e mostra quais estão há mais tempo sem receber uma vaga nova.</div>
+      <button type="button" class="btn btn-outline btn-block btn-sm" id="abrirCronograma" style="margin-top:10px;">🗓️ Abrir cronograma de divulgação</button>
     </div>
 
     <div class="card">
@@ -868,6 +881,8 @@ function seedDefaultCompany(){
     corSecundaria:'#7fb8e6',
     corTerciaria:'#8ed1b2',
     corDestaque:'#f4afa1',
+    corBannerTexto:'#ffffff',
+    corBannerFundo:'#141414',
     logoDataUrl:null,
     cidadePadrao:'',
     whatsapp:'',
@@ -944,6 +959,8 @@ function fillCompanyEditPanel(c){
   $('#colorSecondary').value = c.corSecundaria||'#7fb8e6';
   $('#colorTertiary').value = c.corTerciaria||'#8ed1b2';
   $('#colorAccent').value = c.corDestaque||'#f4afa1';
+  $('#colorBannerTexto').value = c.corBannerTexto||'#ffffff';
+  $('#colorBannerFundo').value = c.corBannerFundo||'#141414';
   $('#companyCity').value = c.cidadePadrao||'';
   $('#companyWhatsapp').value = c.whatsapp||'';
   $('#companyInstagram').value = c.instagram||'';
@@ -968,6 +985,10 @@ function applyCompanyToJobFields(c){
 --------------------------------------------------------- */
 let savedJobs = [];
 let currentSavedJob = null;
+
+// { "Nome do Canal": [0,2,4] } — dias da semana (0=Domingo…6=Sábado) em que
+// aquele canal deve receber uma vaga nova, salvo no servidor pra todo o time.
+let cronograma = {};
 
 function setJobSaveStatus(msg, isErro){
   const el = $('#jobSaveStatus');
@@ -1295,6 +1316,157 @@ function abrirVisaoGeralDivulgacoes(){
   ov.style.display = 'flex';
 }
 
+/* ── CRONOGRAMA DE DIVULGAÇÃO: plano semanal fixo por canal + alerta de canal
+   parado ── verifica todos os canais já cadastrados (o mesmo cartão "Divulgações
+   desta vaga" usa pra registrar) e cruza com o histórico real de todas as vagas
+   salvas pra mostrar quem está esquecido. ── */
+const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+async function loadCronograma(){
+  try{
+    const r = await fetch('/vagas/cronograma');
+    const data = await r.json();
+    if(data.ok && data.cronograma && typeof data.cronograma==='object' && !Array.isArray(data.cronograma)){
+      cronograma = data.cronograma;
+    }
+  }catch(e){
+    console.error('Não foi possível carregar o cronograma do servidor.', e);
+  }
+}
+
+async function persistCronograma(){
+  try{
+    const r = await fetch('/vagas/cronograma', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cronograma })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.erro||'Falha ao salvar');
+    return true;
+  }catch(e){
+    console.error('Não foi possível salvar o cronograma no servidor agora.', e);
+    return false;
+  }
+}
+
+// Todos os "lugares em que posta vaga": os canais cadastrados no cartão de
+// Divulgações + qualquer canal antigo que só existe no histórico (foi usado
+// uma vez e depois removido da lista, mas os registros continuam contando).
+function todosOsCanaisConhecidos(){
+  const base = getCanais();
+  const extras = new Set();
+  (savedJobs||[]).forEach(v=> (v.divulgacoes||[]).forEach(d=>{ if(d.canal && !base.includes(d.canal)) extras.add(d.canal); }));
+  return base.concat([...extras]);
+}
+
+// Última divulgação (timestamp) de cada canal, olhando o histórico de TODAS as vagas salvas.
+function ultimaDivulgacaoPorCanal(){
+  const porCanal = {};
+  (savedJobs||[]).forEach(v=> (v.divulgacoes||[]).forEach(d=>{
+    const c = d.canal || 'Outro';
+    if(!porCanal[c] || d.ts>porCanal[c]) porCanal[c] = d.ts;
+  }));
+  return porCanal;
+}
+
+function abrirCronogramaDivulgacao(){
+  let ov = document.getElementById('cronOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'cronOverlay';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+    ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.style.display='none'; });
+    document.body.appendChild(ov);
+  }
+
+  const canais = todosOsCanaisConhecidos();
+  const ultimas = ultimaDivulgacaoPorCanal();
+  const agora = Date.now(), DIA = 24*60*60*1000;
+  const hojeDia = new Date().getDay();
+
+  const th = 'padding:8px 10px; font-size:11px; font-weight:800; color:#1f3a5f; text-align:center; border-bottom:2px solid #e5e7eb; white-space:nowrap;';
+  const td = 'padding:8px 10px; font-size:12px; text-align:center; border-bottom:1px solid #f1f5f9;';
+
+  const chipDias = (ts)=>{
+    if(!ts) return '<span style="background:#e5e7eb;color:#6b7280;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">nunca</span>';
+    const d = Math.floor((agora-ts)/DIA);
+    const cor = d>=7 ? '#dc2626' : d>=3 ? '#d97706' : '#16a34a';
+    const bg  = d>=7 ? '#fee2e2' : d>=3 ? '#fef3c7' : '#dcfce7';
+    return `<span style="background:${bg};color:${cor};border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">${d===0?'hoje':d+'d atrás'}</span>`;
+  };
+
+  const canaisHoje = canais.filter(c=> (cronograma[c]||[]).includes(hojeDia));
+
+  const gradeHtml = `
+    <table style="width:100%; border-collapse:collapse;">
+      <thead><tr>
+        <th style="${th} text-align:left;">Canal</th>
+        ${DIAS_SEMANA.map(d=>`<th style="${th}">${d.slice(0,3)}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${canais.map(c=>`<tr>
+          <td style="${td} text-align:left;"><b>${c}</b></td>
+          ${DIAS_SEMANA.map((_,di)=>`<td style="${td}">
+            <input type="checkbox" data-cron-canal="${c.replace(/"/g,'&quot;')}" data-cron-dia="${di}" ${((cronograma[c]||[]).includes(di))?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+          </td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const alertaHtml = `
+    <table style="width:100%; border-collapse:collapse;">
+      <thead><tr>
+        <th style="${th} text-align:left;">Canal</th>
+        <th style="${th}">Dias programados</th>
+        <th style="${th}">Última divulgação</th>
+      </tr></thead>
+      <tbody>
+        ${canais.slice().sort((a,b)=>(ultimas[a]||0)-(ultimas[b]||0)).map(c=>`<tr>
+          <td style="${td} text-align:left;"><b>${c}</b>${(cronograma[c]||[]).includes(hojeDia)?' <span style="color:#16a34a;font-size:11px;">● hoje</span>':''}</td>
+          <td style="${td}">${(cronograma[c]||[]).length ? (cronograma[c]||[]).slice().sort((a,b)=>a-b).map(d=>DIAS_SEMANA[d].slice(0,3)).join(', ') : '<span style="color:#d1d5db;">— sem dia fixo</span>'}</td>
+          <td style="${td}">${chipDias(ultimas[c])}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  ov.innerHTML = `
+    <div style="background:#fff; border-radius:14px; max-width:820px; width:100%; max-height:85vh; overflow:auto; padding:20px;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div style="font-size:16px; font-weight:800; color:#1f3a5f;">🗓️ Cronograma de Divulgação</div>
+        <button type="button" class="btn btn-outline btn-sm" id="cronFechar">Fechar ✕</button>
+      </div>
+      <div class="hint" style="margin-bottom:14px;">Baseado nos canais já cadastrados no cartão "Divulgações desta vaga". Marque em quais dias da semana cada canal deve ser usado — fica salvo no servidor, visível pra todo o time.</div>
+
+      ${canaisHoje.length
+        ? `<div style="background:#eaf6ee;border:1px solid #bfe3cb;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#166534;"><b>📅 Hoje é ${DIAS_SEMANA[hojeDia]}</b> — canais programados: ${canaisHoje.map(c=>`<b>${c}</b>`).join(', ')}</div>`
+        : `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e;"><b>📅 Hoje é ${DIAS_SEMANA[hojeDia]}</b> — nenhum canal programado pra hoje no plano semanal.</div>`}
+
+      <div style="font-size:13px; font-weight:800; color:#1f3a5f; margin-bottom:8px;">Plano semanal fixo</div>
+      ${canais.length ? gradeHtml : '<div class="hint">Nenhum canal cadastrado ainda. Adicione canais no cartão "Divulgações desta vaga" (botão "＋ Canal").</div>'}
+
+      <div style="font-size:13px; font-weight:800; color:#1f3a5f; margin:22px 0 8px;">⏰ Canais sem divulgação recente</div>
+      ${canais.length ? alertaHtml : ''}
+      <div class="hint" style="margin-top:10px;">Verde = divulgado há menos de 3 dias · Amarelo = 3 a 6 dias · Vermelho = 7 dias ou mais · "nunca" = esse canal nunca teve uma divulgação registrada em nenhuma vaga salva.</div>
+    </div>`;
+
+  ov.querySelector('#cronFechar').addEventListener('click', ()=> ov.style.display='none');
+  ov.querySelectorAll('input[data-cron-canal]').forEach(chk=>{
+    chk.addEventListener('change', async ()=>{
+      const c = chk.dataset.cronCanal, di = parseInt(chk.dataset.cronDia,10);
+      const atual = new Set(cronograma[c]||[]);
+      if(chk.checked) atual.add(di); else atual.delete(di);
+      cronograma[c] = [...atual].sort((a,b)=>a-b);
+      await persistCronograma();
+    });
+  });
+
+  ov.style.display = 'flex';
+}
+
+function wireCronograma(){
+  $('#abrirCronograma').addEventListener('click', abrirCronogramaDivulgacao);
+}
+
 function fillJobPanel(v){
   $('#jobName').value = v ? (v.nome||'') : '';
   currentSavedJob = v || null;
@@ -1394,6 +1566,8 @@ function getColors(){
     secondary: c.corSecundaria || '#7fb8e6',
     tertiary: c.corTerciaria || '#8ed1b2',
     accent: c.corDestaque || '#f4afa1',
+    bannerText: c.corBannerTexto || '#ffffff',
+    bannerBg: c.corBannerFundo || '#141414',
     logo: c.logoDataUrl || null,
     nome: c.nome || ''
   };
@@ -1514,6 +1688,7 @@ function aplicarFotoPainel(src){
 function syncRoleAcrossFormats(role){
   const formula = ROLE_TEXT_FORMULAS[role];
   if(!formula) return;
+  const col = getColors();
   const newText = formula(getData());
   // Frase de destaque vazia = sem banner: REMOVE selos existentes (inclusive
   // os criados por versões antigas a partir da cidade).
@@ -1595,7 +1770,7 @@ function syncRoleAcrossFormats(role){
       const geom = computeBannerGeomForFormat(fmtKey);
       if(geom){
         els.push(newTextEl(geom.x, geom.y, geom.w, newText, {
-          fontSize: geom.fontSize, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius: geom.radius, role:'banner'
+          fontSize: geom.fontSize, fontWeight:700, color:col.bannerText, bg:col.bannerBg, align:'left', radius: geom.radius, role:'banner'
         }));
         if(fmtKey===currentFormat) currentTouched = true;
       }
@@ -2450,7 +2625,7 @@ function buildTallLayout(fmt, data, col){
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
   if(bannerText){
     const bt = newTextEl(cardX+leftW+rightW*0.06, cardY+cardW*0.03, rightW*0.74, `📍 ${bannerText.toUpperCase()}`, {
-      fontSize: cardW*0.026, fontWeight:700, color:'#ffffff', bg:'#141414', align:'left', radius:cardW*0.012, role:'banner'
+      fontSize: cardW*0.026, fontWeight:700, color:col.bannerText, bg:col.bannerBg, align:'left', radius:cardW*0.012, role:'banner'
     });
     els.push(bt);
   }
@@ -3412,7 +3587,7 @@ function wireCompanyPanel(){
   $('#companySelect').addEventListener('change', ()=>{
     const v = $('#companySelect').value;
     if(v==='__new__'){
-      currentCompany = { id:'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1', cidadePadrao:'', whatsapp:'', instagram:'', ctaPadrao:'', bannerPadrao:'', logoDataUrl:null };
+      currentCompany = { id:'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1', corBannerTexto:'#ffffff', corBannerFundo:'#141414', cidadePadrao:'', whatsapp:'', instagram:'', ctaPadrao:'', bannerPadrao:'', logoDataUrl:null };
       fillCompanyEditPanel(currentCompany);
       $('#companyEditPanel').classList.add('open');
       $('#companyName').focus();
@@ -3466,6 +3641,8 @@ function wireCompanyPanel(){
       corSecundaria: $('#colorSecondary').value,
       corTerciaria: $('#colorTertiary').value,
       corDestaque: $('#colorAccent').value,
+      corBannerTexto: $('#colorBannerTexto').value,
+      corBannerFundo: $('#colorBannerFundo').value,
       cidadePadrao: $('#companyCity').value.trim(),
       whatsapp: $('#companyWhatsapp').value.trim(),
       instagram: $('#companyInstagram').value.trim(),
@@ -3765,6 +3942,7 @@ async function init(){
   wireJobPhoto();
   wireLiveCanvasSync();
   wireJobDivulgacaoActions();
+  wireCronograma();
   wireDownloads();
   wireTemplates();
   loadTemplates(); // sem await — não trava a abertura da página
@@ -3779,6 +3957,7 @@ async function init(){
 
   await loadSavedJobs();
   populateJobSelect('__new__');
+  await loadCronograma();
 
   const restaurado = loadSavedState();
   // LAYOUT PRÉ-PRONTO: qualquer formato sem arte já nasce com o design padrão
