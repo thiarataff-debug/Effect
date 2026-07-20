@@ -423,6 +423,7 @@
       <select id="templateSelect"></select>
       <div class="company-actions">
         <button type="button" class="btn btn-primary btn-sm" id="aplicarTemplate">Aplicar à arte</button>
+        <button type="button" class="btn btn-outline btn-sm" id="renomearTemplate">✏️ Renomear</button>
         <button type="button" class="btn btn-danger btn-sm" id="excluirTemplate">Excluir</button>
       </div>
       <button type="button" class="btn btn-outline btn-block btn-sm" id="salvarTemplate" style="margin-top:8px;">💾 Salvar arte atual como template</button>
@@ -3885,9 +3886,23 @@ async function excluirTemplateSelecionado(){
   if(ok) setTemplateStatus(`Template "${t.nome}" excluído.`, false);
 }
 
+async function renomearTemplateSelecionado(){
+  const id = $('#templateSelect').value;
+  const t = artTemplates.find(x=>x.id===id);
+  if(!t){ alert('Selecione um template salvo.'); return; }
+  const novoNome = (prompt('Novo nome do template:', t.nome)||'').trim();
+  if(!novoNome || novoNome===t.nome) return;
+  const nomeAntigo = t.nome;
+  t.nome = novoNome;
+  const ok = await persistTemplates();
+  populateTemplateSelect(t.id);
+  if(ok) setTemplateStatus(`✓ Renomeado "${nomeAntigo}" → "${novoNome}".`, false);
+}
+
 function wireTemplates(){
   $('#salvarTemplate').addEventListener('click', salvarTemplateAtual);
   $('#aplicarTemplate').addEventListener('click', aplicarTemplateSelecionado);
+  $('#renomearTemplate').addEventListener('click', renomearTemplateSelecionado);
   $('#excluirTemplate').addEventListener('click', excluirTemplateSelecionado);
 }
 
