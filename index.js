@@ -4561,6 +4561,47 @@ app.post("/vagas/divulgacoes/:id/registrar", (req, res) => {
   res.json({ ok: salvo, total: vaga.divulgacoes.length, registro });
 });
 
+// ── CRONOGRAMA DE DIVULGAÇÃO ──────────────────────────────────────────────────
+// Guarda em quais dias da semana (0=Domingo … 6=Sábado) cada canal cadastrado
+// no painel /divulgacao deve ser usado — plano fixo de postagem, salvo no
+// servidor e visível/editável por todo o time. Mesmo padrão de JSON no Volume
+// dos blocos de empresas e vagas acima. Formato: { "Nome do Canal": [0,2,4] }.
+const VAGAS_CRONOGRAMA_PATH = process.env.VAGAS_CRONOGRAMA_PATH || "/data/vagas-cronograma.json";
+
+function lerVagasCronograma() {
+  try {
+    if (fs.existsSync(VAGAS_CRONOGRAMA_PATH)) {
+      const obj = JSON.parse(fs.readFileSync(VAGAS_CRONOGRAMA_PATH, "utf8"));
+      return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+    }
+  } catch (e) { console.error("lerVagasCronograma:", e.message); }
+  return {};
+}
+
+function gravarVagasCronograma(obj) {
+  try {
+    const dir = path.dirname(VAGAS_CRONOGRAMA_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(VAGAS_CRONOGRAMA_PATH, JSON.stringify(obj), "utf8");
+    return true;
+  } catch (e) { console.error("gravarVagasCronograma:", e.message); return false; }
+}
+
+// Lista o cronograma inteiro (canal -> dias da semana em que deve ser usado).
+app.get("/vagas/cronograma", (req, res) => {
+  res.json({ ok: true, cronograma: lerVagasCronograma() });
+});
+
+// Salva o cronograma inteiro — o painel manda o objeto completo já com a
+// edição aplicada, mesmo padrão simples dos outros endpoints de /vagas.
+app.post("/vagas/cronograma", (req, res) => {
+  const cronograma = (req.body && typeof req.body.cronograma === "object" && req.body.cronograma && !Array.isArray(req.body.cronograma))
+    ? req.body.cronograma : null;
+  if (!cronograma) return res.json({ ok: false, erro: "Envie { cronograma: {...} }" });
+  const salvo = gravarVagasCronograma(cronograma);
+  res.json({ ok: salvo, erro: salvo ? undefined : "Não foi possível salvar no servidor" });
+});
+
 // ── TEMPLATES DE ARTE (Divulgação de Vagas) ──────────────────────────────────
 // Designs prontos salvos pelo time no painel /divulgacao: cada template guarda
 // os 4 formatos (Feed, Retrato, Stories, LinkedIn) sem a foto da vaga.
