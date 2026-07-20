@@ -245,6 +245,7 @@
       <h2>Empresa cliente</h2>
       <label class="first">Selecionar empresa</label>
       <select id="companySelect"></select>
+      <div class="hint">Ao selecionar, a <b>última vaga divulgada desta empresa</b> é recarregada (benefícios, requisitos, salário…) e o layout prévio já aparece na tela. A empresa cliente serve só de base interna — <b>nome e logo do cliente nunca aparecem na arte</b>; a assinatura é sempre da Effect.</div>
       <button type="button" class="toggle-link" id="toggleCompanyEdit">Editar dados / logo / cores da empresa ▾</button>
 
       <div id="companyEditPanel">
@@ -362,8 +363,7 @@
       <button type="button" class="toggle-link" id="removeJobPhoto" style="margin-top:6px;">Remover foto</button>
       <div class="hint">Ao escolher a foto ela já entra direto na arte atual como uma camada nova (dá pra mover/redimensionar depois) — <b>não precisa clicar em "Gerar arte" pra isso</b>.</div>
 
-      <button type="button" class="btn btn-primary btn-block" id="generateLayout" style="margin-top:14px;">🪄 Recriar arte do zero</button>
-      <div class="hint">⚠️ Use isto só se quiser <b>recomeçar o design deste formato do zero</b> a partir dos dados acima. Isso apaga qualquer customização que você já tenha feito nesta arte (posições, cores, textos adicionados, fotos já inseridas etc.) — não é necessário pra adicionar foto ou editar texto, que já funcionam direto nos campos e no "+ Imagem"/"+ Texto".</div>
+      <div class="hint" style="margin-top:12px;">Pra recomeçar o design do zero a partir dos dados acima, use o botão <b>🪄 Recriar do zero</b> no topo da página (isso apaga a customização da arte atual).</div>
     </div>
 
     <div class="card">
@@ -442,13 +442,15 @@
           <div class="emoji-grid" id="emojiGrid"></div>
         </div>
       </div>
-      <div class="hint">Com um texto selecionado, clique num emoji pra inserir no cursor (ou no final do texto). Sem nada selecionado, o emoji vira uma peça nova solta na arte — como um sticker.</div>
+      <div class="hint">O emoji entra no cursor do <b>último campo de texto que você usou</b> — qualquer campo do formulário (cargo, requisitos, benefícios…) ou o texto da peça selecionada na arte. Sem campo nem peça selecionada, vira uma peça nova solta na arte — como um sticker.</div>
     </div>
 
     <div class="card">
-      <h2>Camadas</h2>
-      <div id="layersList"></div>
-      <div class="hint">De cima pra baixo = da frente pra trás. Clique pra selecionar (Shift+clique soma à seleção) mesmo se a peça estiver bloqueada ou escondida — é o único jeito de reselecionar uma peça bloqueada.</div>
+      <h2 id="toggleCamadas" style="cursor:pointer; user-select:none;">Camadas <span id="camadasChevron" style="float:right; color:var(--gray);">▸</span></h2>
+      <div id="camadasBody" style="display:none;">
+        <div id="layersList"></div>
+        <div class="hint">De cima pra baixo = da frente pra trás. Clique pra selecionar (Shift+clique soma à seleção) mesmo se a peça estiver bloqueada ou escondida — é o único jeito de reselecionar uma peça bloqueada ou que está atrás de outra.</div>
+      </div>
     </div>
 
     <div class="card" id="elPanel" style="display:none;">
@@ -1013,6 +1015,46 @@ function populateJobSelect(selectId){
   sel.value = selectId || '__new__';
 }
 
+// Fotografia dos campos da vaga (sem a foto) — salva junto com a vaga pra,
+// ao selecionar a empresa cliente depois, recarregar a última vaga divulgada
+// (mesmos benefícios, requisitos etc.) como ponto de partida.
+function snapshotFormVaga(){
+  return {
+    cargo: $('#cargo').value, categoria: $('#categoria').value,
+    contratacao: $('#contratacao').value, regime: $('#regime').value,
+    horario: $('#horario').value, cidade: $('#cidade').value,
+    banner: $('#banner').value, salario: $('#salario').value,
+    requisitos: $('#requisitos').value, atividades: $('#atividades').value,
+    beneficios: $('#beneficios').value, cta: $('#cta').value, contato: $('#contato').value
+  };
+}
+function aplicarSnapshotFormVaga(d){
+  if(!d) return;
+  $('#cargo').value = d.cargo||'';
+  if(d.categoria) $('#categoria').value = d.categoria;
+  $('#contratacao').value = d.contratacao||'';
+  $('#regime').value = d.regime||'';
+  $('#horario').value = d.horario||'';
+  $('#cidade').value = d.cidade||'';
+  $('#banner').value = d.banner||'';
+  $('#salario').value = d.salario||'';
+  $('#requisitos').value = d.requisitos||'';
+  $('#atividades').value = d.atividades||'';
+  $('#beneficios').value = d.beneficios||'';
+  $('#cta').value = d.cta||'';
+  $('#contato').value = d.contato||'';
+}
+// Última vaga com atividade da empresa: a com divulgação mais recente; se
+// nenhuma foi divulgada ainda, a salva por último.
+function ultimaVagaDaEmpresa(companyId){
+  const daEmpresa = savedJobs.filter(v=> v.companyId===companyId && v.dados);
+  if(!daEmpresa.length) return null;
+  const tsAtividade = v => (v.divulgacoes && v.divulgacoes.length) ? v.divulgacoes[v.divulgacoes.length-1].ts : 0;
+  let ultima = null;
+  daEmpresa.forEach(v=>{ if(!ultima || tsAtividade(v) >= tsAtividade(ultima)) ultima = v; });
+  return ultima;
+}
+
 function formatarDataHoraBR(ts){
   return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
@@ -1109,18 +1151,49 @@ function renderJobDivulgacaoStats(){
     porCanal[c].n++;
     if(d.ts>porCanal[c].last) porCanal[c].last = d.ts;
   });
+  // Retorno por canal: candidatos que chegaram e contratações, atribuídos ao
+  // canal — é isso que mede qual canal dá mais resultado de recrutamento.
+  const ret = currentSavedJob.retornos = currentSavedJob.retornos || {};
+  const canaisComDado = new Set([...Object.keys(porCanal), ...Object.keys(ret)]);
+  const btnMini = (canal, tipo, delta, simbolo)=>
+    `<button type="button" data-ret-canal="${canal.replace(/"/g,'&quot;')}" data-ret-tipo="${tipo}" data-ret-delta="${delta}"
+       style="border:1px solid #d7dbe0; background:#fff; border-radius:5px; width:20px; height:20px; line-height:1; cursor:pointer; font-size:12px; padding:0;">${simbolo}</button>`;
   const resumo = $('#canaisResumo');
-  resumo.innerHTML = Object.keys(porCanal).length
-    ? Object.entries(porCanal).map(([c,info])=>
-        `<div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px dashed #e5e7eb;">
-          <span><b>${c}</b></span>
-          <span>${info.n}× · última ${new Date(info.last).toLocaleDateString('pt-BR')}</span>
-        </div>`).join('')
+  resumo.innerHTML = canaisComDado.size
+    ? `<div class="hint" style="margin-bottom:4px;">Quando chegar candidato (ou fechar contratação) por um canal, registre aqui — é isso que mostra qual canal dá mais retorno.</div>` +
+      [...canaisComDado].map(c=>{
+        const info = porCanal[c] || {n:0, last:0};
+        const r = ret[c] || {cand:0, contr:0};
+        return `<div style="font-size:12px; padding:5px 0; border-bottom:1px dashed #e5e7eb;">
+          <div style="display:flex; justify-content:space-between;">
+            <span><b>${c}</b></span>
+            <span>${info.n}× divulgada${info.last?(' · última '+new Date(info.last).toLocaleDateString('pt-BR')):''}</span>
+          </div>
+          <div style="display:flex; gap:14px; align-items:center; margin-top:3px; color:#4b5563;">
+            <span style="display:flex; gap:4px; align-items:center;">👤 Candidatos: <b>${r.cand||0}</b> ${btnMini(c,'cand',-1,'−')}${btnMini(c,'cand',1,'+')}</span>
+            <span style="display:flex; gap:4px; align-items:center;">🤝 Contratados: <b>${r.contr||0}</b> ${btnMini(c,'contr',-1,'−')}${btnMini(c,'contr',1,'+')}</span>
+          </div>
+        </div>`;
+      }).join('')
     : '';
+  resumo.querySelectorAll('button[data-ret-canal]').forEach(b=>{
+    b.addEventListener('click', ()=> ajustarRetornoCanal(b.dataset.retCanal, b.dataset.retTipo, parseInt(b.dataset.retDelta,10)));
+  });
   const log = $('#jobDivulgacaoLog');
   log.innerHTML = lista.length
     ? lista.slice().reverse().map((d,i)=>`<div>${lista.length-i}) ${formatarDataHoraBR(d.ts)}${d.canal?(' — <b>'+d.canal+'</b>'):''}</div>`).join('')
     : '<div>Nenhum registro ainda.</div>';
+}
+
+// Soma/subtrai candidato ou contratação atribuído a um canal, nesta vaga.
+async function ajustarRetornoCanal(canal, tipo, delta){
+  if(!currentSavedJob) return;
+  const ret = currentSavedJob.retornos = currentSavedJob.retornos || {};
+  const r = ret[canal] = ret[canal] || {cand:0, contr:0};
+  r[tipo] = Math.max(0, (r[tipo]||0) + delta);
+  renderJobDivulgacaoStats();
+  const ok = await persistSavedJobs();
+  if(ok) setJobSaveStatus(`✓ ${tipo==='cand'?'Candidatos':'Contratados'} via ${canal}: ${r[tipo]}`, false);
 }
 
 /* ── VISÃO GERAL: tabela vagas × canais ── */
@@ -1160,6 +1233,36 @@ function abrirVisaoGeralDivulgacoes(){
   };
   const th = 'padding:8px 10px; font-size:11px; font-weight:800; color:#1f3a5f; text-align:center; border-bottom:2px solid #e5e7eb; white-space:nowrap;';
   const td = 'padding:8px 10px; font-size:12px; text-align:center; border-bottom:1px solid #f1f5f9;';
+  // Ranking de canais (todas as vagas somadas): divulgações × candidatos × contratações
+  const rank = {};
+  jobs.forEach(v=>{
+    (v.divulgacoes||[]).forEach(d=>{ const c=d.canal||'Outro'; rank[c]=rank[c]||{div:0,cand:0,contr:0}; rank[c].div++; });
+    Object.entries(v.retornos||{}).forEach(([c,r])=>{ rank[c]=rank[c]||{div:0,cand:0,contr:0}; rank[c].cand+=r.cand||0; rank[c].contr+=r.contr||0; });
+  });
+  const rankRows = Object.entries(rank)
+    .sort((a,b)=> (b[1].contr-a[1].contr) || (b[1].cand-a[1].cand) || (b[1].div-a[1].div));
+  const medalha = i => i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
+  const rankHtml = rankRows.length ? `
+    <div style="font-size:14px; font-weight:800; color:#1f3a5f; margin:22px 0 8px;">🏆 Qual canal dá mais retorno (todas as vagas)</div>
+    <table style="width:100%; border-collapse:collapse;">
+      <thead><tr>
+        <th style="${th} text-align:left;">Canal</th>
+        <th style="${th}">Divulgações</th>
+        <th style="${th}">👤 Candidatos</th>
+        <th style="${th}">🤝 Contratados</th>
+        <th style="${th}">Candidatos por divulgação</th>
+      </tr></thead>
+      <tbody>
+        ${rankRows.map(([c,r],i)=>`<tr>
+          <td style="${td} text-align:left;"><b>${medalha(i)}${c}</b></td>
+          <td style="${td}">${r.div}</td>
+          <td style="${td}"><b>${r.cand}</b></td>
+          <td style="${td}"><b>${r.contr}</b></td>
+          <td style="${td}">${r.div? (r.cand/r.div).toFixed(1) : '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="hint" style="margin-top:8px;">Os candidatos e contratados são os que você registra no cartão "Divulgações desta vaga" (botões + ao lado de cada canal). Ordenado por contratações, depois candidatos.</div>` : '';
   ov.innerHTML = `
     <div style="background:#fff; border-radius:14px; max-width:900px; width:100%; max-height:85vh; overflow:auto; padding:20px;" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1186,6 +1289,7 @@ function abrirVisaoGeralDivulgacoes(){
         </tbody>
       </table>
       <div class="hint" style="margin-top:10px;">Ordenado por urgência: vagas nunca divulgadas ou há mais tempo paradas aparecem primeiro. Verde = divulgada há menos de 3 dias · Amarelo = 3 a 6 dias · Vermelho = 7 dias ou mais.</div>
+      ${rankHtml}
       ` : '<div class="hint">Nenhuma vaga salva ainda. Salve uma vaga no cartão "Divulgações desta vaga" pra começar a acompanhar.</div>'}
     </div>`;
   ov.style.display = 'flex';
@@ -1219,6 +1323,7 @@ function wireJobDivulgacaoActions(){
     currentSavedJob.cargo = $('#cargo').value.trim();
     currentSavedJob.companyId = currentCompany ? currentCompany.id : null;
     currentSavedJob.companyNome = currentCompany ? currentCompany.nome : '';
+    currentSavedJob.dados = snapshotFormVaga(); // guarda os campos pra recarregar depois pela empresa
     if(!Array.isArray(currentSavedJob.divulgacoes)) currentSavedJob.divulgacoes = [];
     const ok = await persistSavedJobs();
     populateJobSelect(currentSavedJob.id);
@@ -1311,7 +1416,8 @@ const ROLE_TEXT_FORMULAS = {
   requisitos: (data) => data.requisitos.join('\n'),
   atividades: (data) => data.atividades.join('\n'),
   beneficios: (data) => data.beneficios.join('\n'),
-  contato: (data) => data.contato || data.cta || '',
+  contato: (data) => data.contato || '',
+  cta: (data) => (data.cta || 'INTERESSADOS, ENTRE EM CONTATO').toUpperCase(),
   banner: (data) => {
     // Banner SÓ existe se a "Frase de destaque" for preenchida — a cidade
     // sozinha não gera banner (ela vai pros chips abaixo do título).
@@ -1559,7 +1665,9 @@ function wireLiveCanvasSync(){
   $('#atividades').addEventListener('input', ()=> syncRoleAcrossFormats('atividades'));
   $('#beneficios').addEventListener('input', ()=> syncRoleAcrossFormats('beneficios'));
   $('#contato').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
-  $('#cta').addEventListener('input', ()=> syncRoleAcrossFormats('contato'));
+  // CTA controla o título do rodapé ("INTERESSADOS, ENTRE EM CONTATO" /
+  // "CANDIDATE-SE") — agora dá pra trocar esse texto direto pelo formulário.
+  $('#cta').addEventListener('input', ()=> syncRoleAcrossFormats('cta'));
   $('#banner').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
   // cidade vai pros CHIPS abaixo do título; o banner só é atualizado se já
   // existir na arte (a cidade faz parte do texto padrão dele)
@@ -1584,9 +1692,9 @@ let clipboard = null; // array de elementos copiados (Ctrl+C), independente do f
 function primaryId(){ return selectedIds.length ? selectedIds[selectedIds.length-1] : null; }
 function isSelected(id){ return selectedIds.includes(id); }
 function clearSelection(){ selectedIds = []; }
-function setSelection(id){ selectedIds = id ? [id] : []; }
-function addToSelection(id){ if(id && !selectedIds.includes(id)) selectedIds.push(id); }
-function toggleSelection(id){ const i=selectedIds.indexOf(id); if(i>=0) selectedIds.splice(i,1); else selectedIds.push(id); }
+function setSelection(id){ selectedIds = id ? [id] : []; if(id) lastCanvasSelAt = Date.now(); }
+function addToSelection(id){ if(id && !selectedIds.includes(id)){ selectedIds.push(id); lastCanvasSelAt = Date.now(); } }
+function toggleSelection(id){ const i=selectedIds.indexOf(id); if(i>=0) selectedIds.splice(i,1); else { selectedIds.push(id); lastCanvasSelAt = Date.now(); } }
 function selectedElements(){ return selectedIds.map(id=>findElement(currentFormat,id)).filter(Boolean); }
 
 function getElements(fmt){
@@ -2347,11 +2455,8 @@ function buildTallLayout(fmt, data, col){
     els.push(bt);
   }
 
-  // logo
-  if(col.logo){
-    const logoSize = cardW*0.16;
-    els.push(newImageEl(cardX+leftW+cardW*0.04, cardY+topH-logoSize-cardW*0.04, logoSize, logoSize, col.logo, {round:true}));
-  }
+  // Sem logo da empresa CLIENTE na arte: o cliente nunca é divulgado.
+  // A assinatura visual é sempre da Effect, no rodapé.
 
   const lx = cardX+pad, lw = leftW-pad-cardW*0.055;
   let y = cardY+cardH*0.035;
@@ -2437,8 +2542,9 @@ function buildTallLayout(fmt, data, col){
   } else {
     els.push(newIconEl(cardX+cardW*0.06, footerY+(footerH-fBadgeSize)/2, fBadgeSize, fBadgeSize, 'generico', '#ffffff', {bg:col.tertiary}));
   }
-  const mainLine = data.contato || data.cta || '';
-  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.14, cardW*0.6, 'INTERESSADOS, ENTRE EM CONTATO', {fontSize:cardW*0.016, fontWeight:700, color:'rgba(255,255,255,0.7)', align:'left'}));
+  const mainLine = data.contato || '';
+  const ctaTitulo = (data.cta || 'INTERESSADOS, ENTRE EM CONTATO').toUpperCase();
+  els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.14, cardW*0.6, ctaTitulo, {fontSize:cardW*0.016, fontWeight:700, color:'rgba(255,255,255,0.7)', align:'left', role:'cta'}));
   els.push(newTextEl(cardX+cardW*0.06+fBadgeSize+cardW*0.03, footerY+footerH*0.42, cardW*0.6, mainLine, {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
 
   els.push(newTextEl(W*0.55, H-H*0.045, W*0.42, 'via Effect Pessoas & Performance', {fontSize:W*0.014, fontWeight:600, color:'rgba(255,255,255,0.55)', align:'right', opacity:0.9}));
@@ -2464,9 +2570,11 @@ function buildWideLayout(fmt, data, col){
   } else {
     els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
   }
-  if(col.logo){
+  // Logo da EFFECT (nunca do cliente — o cliente não é divulgado na arte)
+  const effLogoWide = getEffectLogo();
+  if(effLogoWide){
     const logoSize = rightW*0.3;
-    els.push(newImageEl(cardX+leftW+rightW/2-logoSize/2, cardY+cardH*0.1, logoSize, logoSize, col.logo, {round:true}));
+    els.push(newImageEl(cardX+leftW+rightW/2-logoSize/2, cardY+cardH*0.1, logoSize, logoSize, effLogoWide, {round:true}));
   }
   els.push(newIconEl(cardX+leftW+rightW*0.25, cardY+cardH*0.34, rightW*0.5, rightW*0.5, data.categoria, '#ffffff', {bg:hexToRgba(col.tertiary,0.3)}));
   els.push(newTextEl(cardX+leftW+rightW*0.11, cardY+cardH*0.8, rightW*0.78, 'ESTAMOS CONTRATANDO', {fontSize:rightW*0.075, fontWeight:700, color:'#ffffff', align:'center', lineHeight:1.15}));
@@ -2510,8 +2618,9 @@ function buildWideLayout(fmt, data, col){
   const footerH = cardH*0.14, footerY=cardY+cardH-footerH;
   els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0}));
   els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.008), {fill:col.accent, radiusPct:0}));
-  const mainLine = data.contato || data.cta || '';
-  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.16, cardW*0.5, 'CANDIDATE-SE', {fontSize:cardW*0.013, fontWeight:700, color:'rgba(255,255,255,0.75)', align:'left'}));
+  const mainLine = data.contato || '';
+  const ctaTitulo = (data.cta || 'CANDIDATE-SE').toUpperCase();
+  els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.16, cardW*0.5, ctaTitulo, {fontSize:cardW*0.013, fontWeight:700, color:'rgba(255,255,255,0.75)', align:'left', role:'cta'}));
   els.push(newTextEl(cardX+cardW*0.04, footerY+footerH*0.5, cardW*0.5, mainLine, {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
 
   return els;
@@ -3081,7 +3190,13 @@ function wireElPanel(){
     });
   });
 
-  $('#elFill').addEventListener('input', withHistory((el,e)=>{ el.fill = e.target.value; }));
+  $('#elFill').addEventListener('input', withHistory((el,e)=>{
+    el.fill = e.target.value;
+    // Se a peça tem gradiente ativo, ele "ganha" da cor sólida e a mudança não
+    // aparecia (ex: tentar trocar o fundo do banner). Escolher uma cor sólida
+    // agora desliga o gradiente automaticamente.
+    if(el.gradient){ el.gradient = null; $('#elGradToggle').checked = false; }
+  }));
   $('#elGradToggle').addEventListener('change', withHistory((el,e)=>{ el.gradient = e.target.checked ? [$('#elGrad1').value, $('#elGrad2').value] : null; }));
   $('#elGrad1').addEventListener('input', withHistory((el,e)=>{ if(el.gradient) el.gradient=[e.target.value, el.gradient[1]]; }));
   $('#elGrad2').addEventListener('input', withHistory((el,e)=>{ if(el.gradient) el.gradient=[el.gradient[0], e.target.value]; }));
@@ -3155,10 +3270,16 @@ function wireToolbar(){
 
   $('#btnUndo').addEventListener('click', doUndo);
   $('#btnRedo').addEventListener('click', doRedo);
+
+  $('#toggleCamadas').addEventListener('click', ()=>{
+    const body = $('#camadasBody');
+    const aberto = body.style.display!=='none';
+    body.style.display = aberto ? 'none' : 'block';
+    $('#camadasChevron').textContent = aberto ? '▸' : '▾';
+  });
   $('#btnUndoTop').addEventListener('click', doUndo);
   $('#btnRedoTop').addEventListener('click', doRedo);
 
-  $('#generateLayout').addEventListener('click', ()=> confirmAndGenerate(currentFormat));
   $('#generateLayoutTop').addEventListener('click', ()=> confirmAndGenerate(currentFormat));
 }
 
@@ -3220,19 +3341,43 @@ function renderEmojiGrid(){
   });
 }
 
-// Com um texto selecionado: insere no cursor do campo "Texto" (ou no final).
-// Sem seleção: vira uma peça de texto nova, solta na arte (sticker).
+// Emoji em qualquer lugar: insere no cursor do ÚLTIMO campo de texto usado —
+// qualquer campo do formulário (cargo, requisitos, benefícios, CTA etc.) ou o
+// campo "Texto" da peça selecionada. Se a última coisa que você fez foi
+// selecionar uma peça de texto na arte, o emoji vai nela. Sem campo nem peça,
+// vira uma peça nova solta na arte (sticker).
+let lastTextField = null, lastTextFieldAt = 0, lastCanvasSelAt = 0;
+document.addEventListener('focusin', (e)=>{
+  const t = e.target;
+  if(t && (t.tagName==='TEXTAREA' || (t.tagName==='INPUT' && ['text','tel','search'].includes(t.type)))){
+    lastTextField = t; lastTextFieldAt = Date.now();
+  }
+});
+
+function insertEmojiNoCampo(campo, em){
+  const start = campo.selectionStart!=null ? campo.selectionStart : campo.value.length;
+  const end   = campo.selectionEnd!=null ? campo.selectionEnd : campo.value.length;
+  campo.value = campo.value.slice(0,start) + em + campo.value.slice(end);
+  campo.dispatchEvent(new Event('input', {bubbles:true})); // dispara a sincronia ao vivo com a arte
+  const pos = start + em.length;
+  campo.focus(); campo.setSelectionRange(pos,pos);
+}
+
 function insertEmoji(em){
   pushRecentEmoji(em);
   const el = currentEl();
-  if(el && el.type==='text'){
-    const ta = $('#elText');
-    const start = ta.selectionStart!=null ? ta.selectionStart : ta.value.length;
-    const end   = ta.selectionEnd!=null ? ta.selectionEnd : ta.value.length;
-    ta.value = ta.value.slice(0,start) + em + ta.value.slice(end);
-    ta.dispatchEvent(new Event('input', {bubbles:true}));
-    const pos = start + em.length;
-    ta.focus(); ta.setSelectionRange(pos,pos);
+  const temPecaTexto = el && el.type==='text';
+  let campoValido = lastTextField && document.body.contains(lastTextField) ? lastTextField : null;
+  // o campo "Texto" da peça só vale se ainda houver uma peça de texto selecionada
+  if(campoValido && campoValido.id==='elText' && !temPecaTexto) campoValido = null;
+  // Prioridade: o que você usou por último — peça de texto na arte ou campo do formulário
+  const preferePeca = temPecaTexto && (lastCanvasSelAt >= lastTextFieldAt || !campoValido || campoValido.id==='elText');
+  if(preferePeca){
+    insertEmojiNoCampo($('#elText'), em);
+  } else if(campoValido){
+    insertEmojiNoCampo(campoValido, em);
+  } else if(temPecaTexto){
+    insertEmojiNoCampo($('#elText'), em);
   } else {
     const f = FORMATS[currentFormat];
     addElement(newTextEl(f.w*0.42, f.h*0.42, f.w*0.16, em, {fontSize: Math.round(f.w*0.1), align:'center'}));
@@ -3276,7 +3421,22 @@ function wireCompanyPanel(){
     currentCompany = companies.find(c=>c.id===v) || null;
     if(currentCompany){
       fillCompanyEditPanel(currentCompany);
-      applyCompanyToJobFields(currentCompany);
+      // Se a empresa já tem vaga salva, recarrega a ÚLTIMA vaga divulgada dela:
+      // preenche o formulário (benefícios, requisitos, salário etc.) e já mostra
+      // o layout prévio na tela — ponto de partida pra nova vaga do mesmo cliente.
+      const ultima = ultimaVagaDaEmpresa(currentCompany.id);
+      if(ultima){
+        aplicarSnapshotFormVaga(ultima.dados);
+        populateJobSelect(ultima.id);
+        fillJobPanel(ultima);
+        pushHistory();
+        Object.keys(FORMATS).forEach(k=>{ layouts[k] = generateDefaultLayout(k); });
+        clearSelection();
+        draw(); syncElPanel(); saveState();
+        setJobSaveStatus(`✓ Carregada a última vaga desta empresa: "${ultima.nome}" (Ctrl+Z desfaz a arte).`, false);
+      } else {
+        applyCompanyToJobFields(currentCompany);
+      }
     }
   });
 
