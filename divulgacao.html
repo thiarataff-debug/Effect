@@ -1047,7 +1047,8 @@ function snapshotFormVaga(){
     horario: $('#horario').value, cidade: $('#cidade').value,
     banner: $('#banner').value, salario: $('#salario').value,
     requisitos: $('#requisitos').value, atividades: $('#atividades').value,
-    beneficios: $('#beneficios').value, cta: $('#cta').value, contato: $('#contato').value
+    beneficios: $('#beneficios').value, cta: $('#cta').value, contato: $('#contato').value,
+    foto: jobPhotoDataUrl || null
   };
 }
 function aplicarSnapshotFormVaga(d){
@@ -1065,6 +1066,25 @@ function aplicarSnapshotFormVaga(d){
   $('#beneficios').value = d.beneficios||'';
   $('#cta').value = d.cta||'';
   $('#contato').value = d.contato||'';
+  // Restaura a foto salva junto com essa vaga (se tinha) — assim, ao voltar
+  // pra uma vaga já salva, a foto dela reaparece em vez de continuar mostrando
+  // a de outra vaga que estava aberta antes.
+  jobPhotoDataUrl = d.foto || null;
+  $('#jobPhotoPreview').innerHTML = jobPhotoDataUrl ? `<img src="${jobPhotoDataUrl}">` : '—';
+}
+
+// Carrega uma vaga salva por completo: formulário, foto e o layout dos 4
+// formatos (com a foto real já embutida, se tinha) — usado tanto ao selecionar
+// a empresa (última vaga dela) quanto ao trocar manualmente no "Vaga salva".
+function carregarVagaSalva(v, msg){
+  aplicarSnapshotFormVaga(v.dados);
+  populateJobSelect(v.id);
+  fillJobPanel(v);
+  pushHistory();
+  Object.keys(FORMATS).forEach(k=>{ layouts[k] = generateDefaultLayout(k); });
+  clearSelection();
+  draw(); syncElPanel(); saveState();
+  setJobSaveStatus(msg || `✓ Vaga carregada: "${v.nome}" (Ctrl+Z desfaz a arte).`, false);
 }
 // Última vaga com atividade da empresa: a com divulgação mais recente; se
 // nenhuma foi divulgada ainda, a salva por último.
@@ -1479,7 +1499,16 @@ function onJobSelectChange(){
   const val = $('#jobSelect').value;
   if(val==='__new__'){ fillJobPanel(null); return; }
   const v = savedJobs.find(x=>x.id===val);
-  fillJobPanel(v||null);
+  if(!v){ fillJobPanel(null); return; }
+  if(v.dados){
+    // Recarrega o formulário, a foto e o layout dos 4 formatos dessa vaga —
+    // mesmo comportamento de quando a empresa recarrega a última vaga dela.
+    carregarVagaSalva(v, `✓ Vaga carregada: "${v.nome}" (Ctrl+Z desfaz a arte).`);
+  } else {
+    // Vaga antiga, salva antes de existir o snapshot do formulário — só dá
+    // pra mostrar nome/estatísticas mesmo, sem recarregar a arte.
+    fillJobPanel(v);
+  }
 }
 
 function wireJobDivulgacaoActions(){
@@ -3615,14 +3644,7 @@ function wireCompanyPanel(){
       // o layout prévio na tela — ponto de partida pra nova vaga do mesmo cliente.
       const ultima = ultimaVagaDaEmpresa(currentCompany.id);
       if(ultima){
-        aplicarSnapshotFormVaga(ultima.dados);
-        populateJobSelect(ultima.id);
-        fillJobPanel(ultima);
-        pushHistory();
-        Object.keys(FORMATS).forEach(k=>{ layouts[k] = generateDefaultLayout(k); });
-        clearSelection();
-        draw(); syncElPanel(); saveState();
-        setJobSaveStatus(`✓ Carregada a última vaga desta empresa: "${ultima.nome}" (Ctrl+Z desfaz a arte).`, false);
+        carregarVagaSalva(ultima, `✓ Carregada a última vaga desta empresa: "${ultima.nome}" (Ctrl+Z desfaz a arte).`);
       } else {
         applyCompanyToJobFields(currentCompany);
       }
