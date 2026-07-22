@@ -2277,6 +2277,12 @@ function drawShapeElement(ctx, el){
     if(el.shadow){ ctx.save(); ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=Math.max(el.w,el.h)*0.03; ctx.shadowOffsetY=Math.max(el.w,el.h)*0.015; }
     if(el.type==='ellipse'){
       ctx.beginPath(); ctx.ellipse(el.x+el.w/2, el.y+el.h/2, Math.max(0,el.w/2), Math.max(0,el.h/2), 0,0,Math.PI*2);
+    } else if(el.radiusCorners){
+      const m = Math.min(el.w, el.h);
+      const rc = el.radiusCorners;
+      roundRectPath(ctx, el.x, el.y, el.w, el.h, {
+        tl:m*(rc.tl||0), tr:m*(rc.tr||0), br:m*(rc.br||0), bl:m*(rc.bl||0)
+      });
     } else {
       roundRectPath(ctx, el.x, el.y, el.w, el.h, Math.min(el.w,el.h)/2*(el.radiusPct!=null?el.radiusPct:0.12));
     }
@@ -2300,6 +2306,15 @@ function drawImageElement(ctx, el){
     ctx.save();
     if(el.round){
       ctx.beginPath(); ctx.ellipse(el.x+el.w/2, el.y+el.h/2, el.w/2, el.h/2, 0,0,Math.PI*2); ctx.clip();
+    } else if(el.radiusCorners){
+      // cantos assimétricos (ex: só o inferior-esquerdo bem arredondado, tipo
+      // "cartão de referência") — cada valor é fração de min(w,h), igual ao radiusPct.
+      const m = Math.min(el.w, el.h);
+      const rc = el.radiusCorners;
+      roundRectPath(ctx, el.x, el.y, el.w, el.h, {
+        tl:m*(rc.tl||0), tr:m*(rc.tr||0), br:m*(rc.br||0), bl:m*(rc.bl||0)
+      });
+      ctx.clip();
     } else if(el.radiusPct){
       roundRectPath(ctx, el.x, el.y, el.w, el.h, Math.min(el.w,el.h)*el.radiusPct); ctx.clip();
     }
@@ -2998,13 +3013,16 @@ function buildFaixasTallLayout(fmt, data, col){
   if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
 
   // painel de foto: cola no topo e na borda direita do cartão (bleed), só
-  // parando exatamente onde começa a faixa colorida do rodapé.
+  // parando exatamente onde começa a faixa colorida do rodapé. O canto
+  // inferior-esquerdo ganha uma curva bem mais generosa que os outros —
+  // é essa curva assimétrica que dá a cara da referência.
   const footerH = cardH*0.105;
   const fx = cardX+leftW, fy = cardY, fw = cardW-leftW, fh = cardH-footerH;
+  const fotoCorners = {tl:0, tr:0, br:0, bl:0.34};
   if(data.foto){
-    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.05, role:'foto'}));
+    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusCorners:fotoCorners, role:'foto'}));
   } else {
-    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.05, role:'fotoPh'}));
+    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusCorners:fotoCorners, role:'fotoPh'}));
     els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
   }
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
@@ -3015,9 +3033,14 @@ function buildFaixasTallLayout(fmt, data, col){
   }
 
   // rodapé: faixa colorida cheia (as duas colunas), telefone em destaque
-  // branco embaixo da foto — igual à referência.
+  // branco embaixo da foto. O canto superior-esquerdo da faixa acompanha a
+  // mesma curva do canto inferior-esquerdo da foto, pra não sobrar "beiço".
   const footerY = cardY+cardH-footerH;
-  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0.2, role:'faixaRodape'}));
+  const fotoCornerAbs = Math.min(fw,fh)*fotoCorners.bl;
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {
+    radiusCorners:{tl:fotoCornerAbs/footerH, tr:0, br:0.16, bl:0.16},
+    fill:col.primary, role:'faixaRodape'
+  }));
   els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.18, fw*0.85, data.contato||'', {fontSize:cardW*0.023, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
   els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.58, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.014, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
 
@@ -3105,13 +3128,15 @@ function buildFaixasWideLayout(fmt, data, col){
   if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
   if(data.atividades.length){ pill('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
 
-  // foto: cola no topo e na borda direita do cartão, parando antes do rodapé
+  // foto: cola no topo e na borda direita do cartão, parando antes do rodapé.
+  // Canto inferior-esquerdo com curva bem mais generosa que os outros.
   const footerH = cardH*0.13;
   const fx = cardX+leftW, fy = cardY, fw = cardW-leftW, fh = cardH-footerH;
+  const fotoCorners = {tl:0, tr:0, br:0, bl:0.3};
   if(data.foto){
-    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.025, role:'foto'}));
+    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusCorners:fotoCorners, role:'foto'}));
   } else {
-    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.025, role:'fotoPh'}));
+    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusCorners:fotoCorners, role:'fotoPh'}));
     els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
   }
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
@@ -3122,9 +3147,14 @@ function buildFaixasWideLayout(fmt, data, col){
   }
 
   // rodapé: faixa colorida cheia (as duas colunas), telefone em destaque
-  // branco embaixo da foto — igual à referência.
+  // branco embaixo da foto. O canto superior-esquerdo acompanha a curva do
+  // canto inferior-esquerdo da foto.
   const footerY = cardY+cardH-footerH;
-  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0.16, role:'faixaRodape'}));
+  const fotoCornerAbs = Math.min(fw,fh)*fotoCorners.bl;
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {
+    radiusCorners:{tl:fotoCornerAbs/footerH, tr:0, br:0.14, bl:0.14},
+    fill:col.primary, role:'faixaRodape'
+  }));
   els.push(newTextEl(fx+fw*0.08, footerY+footerH*0.2, fw*0.86, data.contato||'', {fontSize:cardW*0.017, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
   els.push(newTextEl(fx+fw*0.08, footerY+footerH*0.6, fw*0.86, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.011, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
 
