@@ -2998,13 +2998,13 @@ function buildFaixasTallLayout(fmt, data, col){
   if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
 
   // painel de foto: cola no topo e na borda direita do cartão (bleed), só
-  // parando um pouco antes do rodapé, que atravessa a largura toda embaixo.
-  const footerH = cardH*0.095;
+  // parando exatamente onde começa a faixa colorida do rodapé.
+  const footerH = cardH*0.105;
   const fx = cardX+leftW, fy = cardY, fw = cardW-leftW, fh = cardH-footerH;
   if(data.foto){
-    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.035, role:'foto'}));
+    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.05, role:'foto'}));
   } else {
-    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.035, role:'fotoPh'}));
+    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.05, role:'fotoPh'}));
     els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
   }
   let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
@@ -3014,14 +3014,12 @@ function buildFaixasTallLayout(fmt, data, col){
     }));
   }
 
-  // rodapé: faixa inteira embaixo, ícone + contato à esquerda, CTA e assinatura à direita
+  // rodapé: faixa colorida cheia (as duas colunas), telefone em destaque
+  // branco embaixo da foto — igual à referência.
   const footerY = cardY+cardH-footerH;
-  els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.004), {fill:'#e5e7eb', radiusPct:0}));
-  const iconSize = footerH*0.46;
-  els.push(newIconEl(lx, footerY+(footerH-iconSize)/2, iconSize, iconSize, 'generico', '#ffffff', {bg:col.primary}));
-  els.push(newTextEl(lx+iconSize+cardW*0.014, footerY+footerH*0.16, cardW*0.4, data.contato||'', {fontSize:cardW*0.019, fontWeight:700, color:'#111827', align:'left', role:'contato'}));
-  els.push(newTextEl(lx+iconSize+cardW*0.014, footerY+footerH*0.56, cardW*0.4, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.012, fontWeight:600, color:'#6b7280', align:'left', role:'cta'}));
-  els.push(newTextEl(cardX+leftW, footerY+footerH*0.35, rightW-cardW*0.02, 'via Effect Pessoas & Performance', {fontSize:cardW*0.011, fontWeight:600, color:'#9ca3af', align:'right'}));
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0.2, role:'faixaRodape'}));
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.18, fw*0.85, data.contato||'', {fontSize:cardW*0.023, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.58, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.014, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
 
   return els;
 }
@@ -3123,14 +3121,12 @@ function buildFaixasWideLayout(fmt, data, col){
     }));
   }
 
-  // rodapé: faixa inteira embaixo (as duas colunas)
+  // rodapé: faixa colorida cheia (as duas colunas), telefone em destaque
+  // branco embaixo da foto — igual à referência.
   const footerY = cardY+cardH-footerH;
-  els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.006), {fill:'#e5e7eb', radiusPct:0}));
-  const iconSize = footerH*0.42;
-  els.push(newIconEl(lx, footerY+(footerH-iconSize)/2, iconSize, iconSize, 'generico', '#ffffff', {bg:col.primary}));
-  els.push(newTextEl(lx+iconSize+cardW*0.012, footerY+footerH*0.18, leftW*0.7, data.contato||'', {fontSize:cardW*0.015, fontWeight:700, color:'#111827', align:'left', role:'contato'}));
-  els.push(newTextEl(lx+iconSize+cardW*0.012, footerY+footerH*0.58, leftW*0.7, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.01, fontWeight:600, color:'#6b7280', align:'left', role:'cta'}));
-  els.push(newTextEl(cardX+leftW, footerY+footerH*0.36, rightW-cardW*0.02, 'via Effect Pessoas & Performance', {fontSize:cardW*0.01, fontWeight:600, color:'#9ca3af', align:'right'}));
+  els.push(newRectEl(cardX, footerY, cardW, footerH, {fill:col.primary, radiusPct:0.16, role:'faixaRodape'}));
+  els.push(newTextEl(fx+fw*0.08, footerY+footerH*0.2, fw*0.86, data.contato||'', {fontSize:cardW*0.017, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
+  els.push(newTextEl(fx+fw*0.08, footerY+footerH*0.6, fw*0.86, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.011, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
 
   return els;
 }
