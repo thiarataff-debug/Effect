@@ -242,6 +242,15 @@
     </div>
 
     <div class="card">
+      <h2>🖌️ Modelo de arte</h2>
+      <div class="toolbar-row">
+        <button type="button" class="btn btn-toggle btn-sm active" id="modeloClassico">Clássico</button>
+        <button type="button" class="btn btn-toggle btn-sm" id="modeloFaixas">Faixas coloridas</button>
+      </div>
+      <div class="hint">Escolhe o estilo usado sempre que a arte for gerada do zero ("🪄 Recriar do zero", ou ao trocar de empresa/vaga). "Faixas coloridas" põe a foto grande de um lado e cada seção (Requisitos, Salário e Benefícios, Horário) num selo colorido. Templates já salvos continuam com o próprio estilo, independente dessa escolha.</div>
+    </div>
+
+    <div class="card">
       <h2>Empresa cliente</h2>
       <label class="first">Selecionar empresa</label>
       <select id="companySelect"></select>
@@ -655,6 +664,30 @@ const FORMATS = {
 
 const STORAGE_COMPANIES_CACHE = 'effectVagas.companies.cache';
 const STORAGE_STATE = 'effectVagas.lastState.v2';
+const STORAGE_MODELO = 'effectVagas.modeloArte';
+
+// 'classico' (o design original) ou 'faixas' (foto grande à direita + selos
+// coloridos em cápsula por seção, tipo "Requisitos"/"Salário e Benefícios").
+// Só decide o que "Recriar do zero" desenha — templates salvos já guardam o
+// próprio estilo independente disso.
+let modeloArte = 'classico';
+function loadModeloArte(){
+  try{
+    const m = localStorage.getItem(STORAGE_MODELO);
+    if(m==='faixas' || m==='classico') modeloArte = m;
+  }catch(e){}
+}
+function setModeloArte(m){
+  modeloArte = m;
+  try{ localStorage.setItem(STORAGE_MODELO, m); }catch(e){}
+  const bC = $('#modeloClassico'), bF = $('#modeloFaixas');
+  if(bC) bC.classList.toggle('active', m==='classico');
+  if(bF) bF.classList.toggle('active', m==='faixas');
+}
+function wireModeloArte(){
+  $('#modeloClassico').addEventListener('click', ()=> setModeloArte('classico'));
+  $('#modeloFaixas').addEventListener('click', ()=> setModeloArte('faixas'));
+}
 
 /* ---------------------------------------------------------
    HELPERS DE DESENHO (genéricos, reaproveitados por vários tipos)
@@ -1621,6 +1654,7 @@ const ROLE_TEXT_FORMULAS = {
   atividades: (data) => data.atividades.join('\n'),
   beneficios: (data) => data.beneficios.join('\n'),
   contato: (data) => data.contato || '',
+  horario: (data) => data.horario || '',
   cta: (data) => (data.cta || 'INTERESSADOS, ENTRE EM CONTATO').toUpperCase(),
   banner: (data) => {
     // Banner SÓ existe se a "Frase de destaque" for preenchida — a cidade
@@ -1890,7 +1924,9 @@ function wireLiveCanvasSync(){
   // cidade vai pros CHIPS abaixo do título; o banner só é atualizado se já
   // existir na arte (a cidade faz parte do texto padrão dele)
   $('#cidade').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('banner'); });
-  $('#horario').addEventListener('input', syncTagsAcrossFormats);
+  // no modelo Clássico o horário vive no chip (rebuild completo); no modelo
+  // Faixas ele também é uma peça própria (role 'horario') — atualiza os dois.
+  $('#horario').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('horario'); });
   $('#contratacao').addEventListener('change', syncTagsAcrossFormats);
   $('#regime').addEventListener('change', syncTagsAcrossFormats);
 }
@@ -2844,11 +2880,233 @@ function buildWideLayout(fmt, data, col){
   return els;
 }
 
+// Cápsula colorida (mesmo truque dos chips: fundo + raio = metade da altura
+// de uma linha), usada como "selo" de seção no modelo Faixas coloridas.
+function pillEl(x, y, w, text, fontSize, col){
+  return newTextEl(x, y, w, text, {
+    fontSize, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius:fontSize*1.85/2
+  });
+}
+
+// Modelo "Faixas coloridas": foto grande de um lado, cargo em destaque e cada
+// seção (Requisitos, Atividades, Salário e Benefícios, Horário) com um selo
+// colorido em formato de cápsula acima do texto — inspirado em referências
+// de mercado, com as cores da própria empresa (ou da Effect, se a empresa não
+// tiver paleta própria) no lugar de uma cor fixa.
+function buildFaixasTallLayout(fmt, data, col){
+  const W=fmt.w, H=fmt.h;
+  const els = [];
+  const tmpCanvas = document.createElement('canvas');
+  const ctx = tmpCanvas.getContext('2d');
+  const fam = "'Poppins', Arial, sans-serif";
+
+  els.push(newRectEl(0,0,W,H,{fill:'#ffffff', radiusPct:0}));
+
+  const cardX=W*0.055, cardY=H*0.045, cardW=W-cardX*2, cardH=H-cardY*2;
+  const rightW = cardW*0.36, leftW = cardW-rightW-cardW*0.045;
+
+  // topo: selo "Vaga Disponível" à esquerda, marca Effect à direita
+  const topH = cardH*0.07;
+  els.push(newEllipseEl(cardX, cardY, topH, topH, {fill:col.primary}));
+  els.push(newIconEl(cardX+topH*0.18, cardY+topH*0.18, topH*0.64, topH*0.64, 'generico', '#ffffff', {}));
+  els.push(newTextEl(cardX+topH+cardW*0.018, cardY-cardH*0.003, leftW*0.6, 'Vaga', {fontSize:cardW*0.02, fontWeight:600, color:'#6b7280', align:'left', lineHeight:1.05}));
+  els.push(newTextEl(cardX+topH+cardW*0.018, cardY+cardW*0.024, leftW*0.6, 'Disponível', {fontSize:cardW*0.03, fontWeight:800, color:col.primary, align:'left', lineHeight:1.05}));
+
+  const effLogo = getEffectLogo();
+  const brandSize = topH*0.9;
+  const brandX = cardX+leftW-brandSize*3.1;
+  if(effLogo){
+    els.push(newImageEl(brandX, cardY, brandSize, brandSize, effLogo, {round:true}));
+  } else {
+    els.push(newIconEl(brandX, cardY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+  }
+  els.push(newTextEl(brandX+brandSize+cardW*0.012, cardY+brandSize*0.2, brandSize*2.4, 'EFFECT', {fontSize:cardW*0.03, fontWeight:800, color:col.primary, align:'left'}));
+
+  let y = cardY+topH+cardH*0.026;
+  const lx = cardX, lw = leftW;
+
+  // cargo
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.05, cardW*0.03, 800, fam);
+  els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.12, role:'cargo'}));
+  y += titleFit.lines.length*titleFit.size*1.12 + cardH*0.018;
+
+  // chips: contratação / regime / cidade (horário ganha selo próprio embaixo)
+  const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
+  if(tagsF.length){
+    const tagFont = `600 ${Math.round(cardW*0.018)}px ${fam}`;
+    const tagH = cardW*0.031, tagPadX = cardW*0.013, gapX = cardW*0.01;
+    let tx=lx, ty=y, usedW=0;
+    tagsF.forEach((t,i)=>{
+      const w = measureChipWidth(ctx, t, tagFont, tagPadX);
+      if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.01; usedW=0; }
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.018, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      tx += w+gapX; usedW += w+gapX;
+    });
+    y = ty+tagH+cardH*0.026;
+  }
+
+  const pillFont = cardW*0.023;
+  const pillH = pillFont*1.85;
+  const bodyFont = cardW*0.022;
+
+  function pill(label){
+    const pFont = `800 ${Math.round(pillFont)}px ${fam}`;
+    const w = measureChipWidth(ctx, label, pFont, pillFont*0.55);
+    els.push(pillEl(lx, y, w, label, pillFont, col));
+    y += pillH + cardH*0.013;
+  }
+  function bodyText(text, role, weight, color){
+    const f = weight||500;
+    ctx.font = `${f} ${Math.round(bodyFont)}px ${fam}`;
+    const linhas = wrapLines(ctx, text, lw);
+    els.push(newTextEl(lx, y, lw, text, {fontSize:bodyFont, fontWeight:f, color: color||'#374151', align:'left', lineHeight:1.32, role}));
+    y += linhas.length*bodyFont*1.32 + cardH*0.022;
+  }
+
+  if(data.requisitos.length){ pill('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
+  if(data.atividades.length){ pill('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
+  if(data.salario || data.beneficios.length){
+    pill('SALÁRIO E BENEFÍCIOS');
+    if(data.salario) bodyText(data.salario, 'salario', 800, '#111827');
+    if(data.beneficios.length) bodyText(data.beneficios.join('\n'), 'beneficios');
+  }
+  if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
+
+  // painel de foto: do topo até quase o rodapé, do lado direito
+  const fx = cardX+leftW+cardW*0.045, fy = cardY, fw = rightW, fh = cardH-cardH*0.105;
+  if(data.foto){
+    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.045, role:'foto'}));
+  } else {
+    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.045, role:'fotoPh'}));
+    els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
+  }
+  let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
+  if(bannerText){
+    els.push(newTextEl(fx+fw*0.07, fy+fh*0.035, fw*0.86, `📍 ${bannerText.toUpperCase()}`, {
+      fontSize:cardW*0.019, fontWeight:700, color:col.bannerText, bg:col.bannerBg, align:'left', radius:cardW*0.01, role:'banner'
+    }));
+  }
+
+  // rodapé: contato + CTA, uma linha fina separando do resto
+  const footerY = cardY+cardH-cardH*0.075;
+  els.push(newRectEl(cardX, footerY, cardW, Math.max(2,cardH*0.004), {fill:'#e5e7eb', radiusPct:0}));
+  const iconSize = cardH*0.044;
+  els.push(newIconEl(cardX, footerY+cardH*0.028, iconSize, iconSize, 'generico', '#ffffff', {bg:col.primary}));
+  els.push(newTextEl(cardX+iconSize+cardW*0.015, footerY+cardH*0.017, cardW*0.5, data.contato||'', {fontSize:cardW*0.022, fontWeight:700, color:'#111827', align:'left', role:'contato'}));
+  els.push(newTextEl(cardX, footerY+cardH*0.055, cardW*0.5, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.014, fontWeight:600, color:'#6b7280', align:'left', role:'cta'}));
+  els.push(newTextEl(cardX+cardW*0.5, footerY+cardH*0.028, cardW*0.5, 'via Effect Pessoas & Performance', {fontSize:cardW*0.013, fontWeight:600, color:'#9ca3af', align:'right'}));
+
+  return els;
+}
+
+function buildFaixasWideLayout(fmt, data, col){
+  const W=fmt.w, H=fmt.h;
+  const els = [];
+  const tmpCanvas = document.createElement('canvas');
+  const ctx = tmpCanvas.getContext('2d');
+  const fam = "'Poppins', Arial, sans-serif";
+
+  els.push(newRectEl(0,0,W,H,{fill:'#ffffff', radiusPct:0}));
+
+  const cardX=W*0.04, cardY=H*0.055, cardW=W-cardX*2, cardH=H-cardY*2;
+  const rightW = cardW*0.34, leftW = cardW-rightW-cardW*0.035;
+
+  const topH = cardH*0.11;
+  els.push(newEllipseEl(cardX, cardY, topH, topH, {fill:col.primary}));
+  els.push(newIconEl(cardX+topH*0.18, cardY+topH*0.18, topH*0.64, topH*0.64, 'generico', '#ffffff', {}));
+  els.push(newTextEl(cardX+topH+cardW*0.012, cardY+topH*0.16, leftW*0.55, 'Vaga Disponível', {fontSize:cardW*0.019, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
+
+  const effLogo = getEffectLogo();
+  const brandSize = topH*0.85;
+  const brandX = cardX+leftW-brandSize*2.7;
+  if(effLogo){
+    els.push(newImageEl(brandX, cardY, brandSize, brandSize, effLogo, {round:true}));
+  } else {
+    els.push(newIconEl(brandX, cardY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+  }
+  els.push(newTextEl(brandX+brandSize+cardW*0.01, cardY+brandSize*0.2, brandSize*2.1, 'EFFECT', {fontSize:cardW*0.02, fontWeight:800, color:col.primary, align:'left'}));
+
+  let y = cardY+topH+cardH*0.03;
+  const lx = cardX, lw = leftW;
+
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 2, cardW*0.034, cardW*0.02, 800, fam);
+  els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1, role:'cargo'}));
+  y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.022;
+
+  const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
+  if(tagsF.length){
+    const tagFont = `600 ${Math.round(cardW*0.013)}px ${fam}`;
+    const tagH = cardW*0.024, tagPadX = cardW*0.01, gapX = cardW*0.008;
+    let tx=lx, ty=y, usedW=0;
+    tagsF.forEach((t,i)=>{
+      const w = measureChipWidth(ctx, t, tagFont, tagPadX);
+      if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.012; usedW=0; }
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.013, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      tx += w+gapX; usedW += w+gapX;
+    });
+    y = ty+tagH+cardH*0.03;
+  }
+
+  const pillFont = cardW*0.016;
+  const pillH = pillFont*1.85;
+  const bodyFont = cardW*0.015;
+
+  function pill(label){
+    const pFont = `800 ${Math.round(pillFont)}px ${fam}`;
+    const w = measureChipWidth(ctx, label, pFont, pillFont*0.55);
+    els.push(pillEl(lx, y, w, label, pillFont, col));
+    y += pillH + cardH*0.012;
+  }
+  function bodyText(text, role, weight, color){
+    const f = weight||500;
+    ctx.font = `${f} ${Math.round(bodyFont)}px ${fam}`;
+    const linhas = wrapLines(ctx, text, lw);
+    els.push(newTextEl(lx, y, lw, text, {fontSize:bodyFont, fontWeight:f, color: color||'#374151', align:'left', lineHeight:1.28, role}));
+    y += linhas.length*bodyFont*1.28 + cardH*0.02;
+  }
+
+  if(data.requisitos.length){ pill('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
+  if(data.salario || data.beneficios.length){
+    pill('SALÁRIO E BENEFÍCIOS');
+    if(data.salario) bodyText(data.salario, 'salario', 800, '#111827');
+    if(data.beneficios.length) bodyText(data.beneficios.join('\n'), 'beneficios');
+  }
+  if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
+  if(data.atividades.length){ pill('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
+
+  const fx = cardX+leftW+cardW*0.035, fy = cardY, fw = rightW, fh = cardH;
+  if(data.foto){
+    els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:0.03, role:'foto'}));
+  } else {
+    els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:0.03, role:'fotoPh'}));
+    els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
+  }
+  let bannerText = data.banner ? data.banner.replace(/\{cidade\}/gi, data.cidade||'') : '';
+  if(bannerText){
+    els.push(newTextEl(fx+fw*0.06, fy+fh*0.05, fw*0.88, `📍 ${bannerText.toUpperCase()}`, {
+      fontSize:cardW*0.013, fontWeight:700, color:col.bannerText, bg:col.bannerBg, align:'left', radius:cardW*0.008, role:'banner'
+    }));
+  }
+
+  const footerY = cardY+cardH-cardH*0.12;
+  els.push(newRectEl(cardX, footerY, leftW, Math.max(2,cardH*0.006), {fill:'#e5e7eb', radiusPct:0}));
+  const iconSize = cardH*0.075;
+  els.push(newIconEl(cardX, footerY+cardH*0.03, iconSize, iconSize, 'generico', '#ffffff', {bg:col.primary}));
+  els.push(newTextEl(cardX+iconSize+cardW*0.012, footerY+cardH*0.024, leftW*0.75, data.contato||'', {fontSize:cardW*0.017, fontWeight:700, color:'#111827', align:'left', role:'contato'}));
+  els.push(newTextEl(cardX, footerY+cardH*0.075, leftW, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.011, fontWeight:600, color:'#6b7280', align:'left', role:'cta'}));
+
+  return els;
+}
+
 function generateDefaultLayout(fmtKey){
   const fmt = FORMATS[fmtKey];
   const data = getData();
   const col = getColors();
-  return (fmt.w>fmt.h) ? buildWideLayout(fmt,data,col) : buildTallLayout(fmt,data,col);
+  const wide = fmt.w>fmt.h;
+  if(modeloArte==='faixas'){
+    return wide ? buildFaixasWideLayout(fmt,data,col) : buildFaixasTallLayout(fmt,data,col);
+  }
+  return wide ? buildWideLayout(fmt,data,col) : buildTallLayout(fmt,data,col);
 }
 
 function confirmAndGenerate(fmtKey){
@@ -3989,6 +4247,9 @@ function wireCategoria(){
    formatos (pra só editar), restaurando a última arte se houver.
 --------------------------------------------------------- */
 async function init(){
+  loadModeloArte();
+  wireModeloArte();
+  setModeloArte(modeloArte); // sincroniza os botões com o que foi carregado
   populateCategorias();
   wireCategoria();
   renderFormatTabs();
