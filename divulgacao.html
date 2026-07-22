@@ -685,8 +685,23 @@ function setModeloArte(m){
   if(bF) bF.classList.toggle('active', m==='faixas');
 }
 function wireModeloArte(){
-  $('#modeloClassico').addEventListener('click', ()=> setModeloArte('classico'));
-  $('#modeloFaixas').addEventListener('click', ()=> setModeloArte('faixas'));
+  $('#modeloClassico').addEventListener('click', ()=> trocarModeloArte('classico'));
+  $('#modeloFaixas').addEventListener('click', ()=> trocarModeloArte('faixas'));
+}
+
+// Clicar no botão do modelo já RECRIA a arte na hora, nos 4 formatos, com
+// esse estilo — só marcar a escolha (sem redesenhar nada) confundia, porque
+// dava a impressão de que o clique não tinha feito nada.
+function trocarModeloArte(m){
+  if(m===modeloArte) return;
+  const nomeModelo = m==='faixas' ? 'Faixas coloridas' : 'Clássico';
+  const temArte = Object.keys(FORMATS).some(k=> Array.isArray(layouts[k]) && layouts[k].length);
+  if(temArte && !confirm(`Trocar pro modelo "${nomeModelo}"?\n\nIsso recria a arte dos 4 formatos AGORA com esse estilo, usando os dados atuais do formulário (Ctrl+Z desfaz, formato por formato).`)) return;
+  setModeloArte(m);
+  pushHistory();
+  Object.keys(FORMATS).forEach(k=>{ layouts[k] = generateDefaultLayout(k); });
+  clearSelection();
+  draw(); syncElPanel();
 }
 
 /* ---------------------------------------------------------
