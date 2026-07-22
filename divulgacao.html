@@ -2912,9 +2912,11 @@ function buildWideLayout(fmt, data, col){
 
 // Cápsula colorida (mesmo truque dos chips: fundo + raio = metade da altura
 // de uma linha), usada como "selo" de seção no modelo Faixas coloridas.
-function pillEl(x, y, w, text, fontSize, col){
+// radius: opcional — passa um valor já calculado quando o texto pode quebrar
+// em mais de uma linha (senão usa a conta padrão de cápsula de 1 linha só).
+function pillEl(x, y, w, text, fontSize, col, radius){
   return newTextEl(x, y, w, text, {
-    fontSize, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius:fontSize*1.85/2
+    fontSize, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius: radius!=null ? radius : fontSize*1.85/2
   });
 }
 
@@ -2935,72 +2937,76 @@ function buildFaixasTallLayout(fmt, data, col){
   const cardX=W*0.035, cardY=H*0.028, cardW=W-cardX*2, cardH=H-cardY*2;
   els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.045, shadow:true}));
 
-  // foto ocupa quase metade da largura, colada nas bordas de cima e da
-  // direita do cartão (igual à referência) — só a coluna de texto tem margem.
-  const leftW = cardW*0.5, rightW = cardW-leftW;
-  const pad = cardW*0.06;
-  const lx = cardX+pad, lw = leftW-pad-cardW*0.025;
+  // foto ocupa a maior parte da largura (~70%) — só a coluna de texto,
+  // bem mais estreita agora, tem margem.
+  const leftW = cardW*0.3, rightW = cardW-leftW;
+  const pad = cardW*0.09;
+  const lx = cardX+pad, lw = leftW-pad-cardW*0.02;
 
-  // topo: selo "Vaga Disponível" à esquerda, marca Effect mais à direita —
-  // tudo dentro da metade esquerda, com respiro entre os dois blocos.
-  const topH = cardH*0.078;
-  const badgeSize = topH*0.9;
+  // topo: selo "Vaga Disponível" em cima, marca Effect logo abaixo — em pé,
+  // um embaixo do outro, porque a coluna estreita não dá pra pôr lado a lado.
+  const badgeSize = cardH*0.05;
   const badgeY = cardY+cardH*0.026;
   els.push(newEllipseEl(lx, badgeY, badgeSize, badgeSize, {fill:col.primary}));
   els.push(newIconEl(lx+badgeSize*0.18, badgeY+badgeSize*0.18, badgeSize*0.64, badgeSize*0.64, 'generico', '#ffffff', {}));
-  const badgeTx = lx+badgeSize+cardW*0.02;
-  els.push(newTextEl(badgeTx, badgeY-cardH*0.006, leftW*0.5, 'Vaga', {fontSize:cardW*0.018, fontWeight:600, color:'#6b7280', align:'left', lineHeight:1.05}));
-  els.push(newTextEl(badgeTx, badgeY+cardH*0.023, leftW*0.5, 'Disponível', {fontSize:cardW*0.025, fontWeight:800, color:col.primary, align:'left', lineHeight:1.05}));
+  const badgeTx = lx+badgeSize+cardW*0.018;
+  els.push(newTextEl(badgeTx, badgeY-cardH*0.006, lw, 'Vaga', {fontSize:cardW*0.017, fontWeight:600, color:'#6b7280', align:'left', lineHeight:1.05}));
+  els.push(newTextEl(badgeTx, badgeY+cardH*0.021, lw, 'Disponível', {fontSize:cardW*0.023, fontWeight:800, color:col.primary, align:'left', lineHeight:1.05}));
 
   const effLogo = getEffectLogo();
-  const brandSize = topH*0.58;
-  const brandX = lx+lw-brandSize*3.3;
-  const brandY = badgeY+(badgeSize-brandSize)/2;
+  const brandSize = cardH*0.032;
+  const brandY = badgeY+badgeSize+cardH*0.024;
   if(effLogo){
-    els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
+    els.push(newImageEl(lx, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
-    els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+    els.push(newIconEl(lx, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
   }
-  els.push(newTextEl(brandX+brandSize+cardW*0.012, brandY+brandSize*0.2, brandSize*2.5, 'EFFECT', {fontSize:cardW*0.022, fontWeight:800, color:col.primary, align:'left'}));
+  els.push(newTextEl(lx+brandSize+cardW*0.014, brandY+brandSize*0.16, lw, 'EFFECT', {fontSize:cardW*0.02, fontWeight:800, color:col.primary, align:'left'}));
 
-  let y = cardY+topH+cardH*0.038;
+  let y = brandY+brandSize+cardH*0.036;
 
   // cargo
-  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.044, cardW*0.026, 800, fam);
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 4, cardW*0.036, cardW*0.021, 800, fam);
   els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.14, role:'cargo'}));
   y += titleFit.lines.length*titleFit.size*1.14 + cardH*0.024;
 
   // chips: contratação / regime / cidade (horário ganha selo próprio embaixo)
   const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
   if(tagsF.length){
-    const tagFont = `600 ${Math.round(cardW*0.016)}px ${fam}`;
-    const tagH = cardW*0.028, tagPadX = cardW*0.012, gapX = cardW*0.009;
+    const tagFont = `600 ${Math.round(cardW*0.013)}px ${fam}`;
+    const tagH = cardW*0.023, tagPadX = cardW*0.01, gapX = cardW*0.007;
     let tx=lx, ty=y, usedW=0;
     tagsF.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, tagPadX);
       if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.01; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.016, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.013, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
       tx += w+gapX; usedW += w+gapX;
     });
     y = ty+tagH+cardH*0.032;
   }
 
-  const pillFont = cardW*0.019;
-  const pillH = pillFont*1.85;
-  const bodyFont = cardW*0.019;
+  const pillFont = cardW*0.016;
+  const bodyFont = cardW*0.016;
 
+  // Pílula do selo: largura nunca passa da coluna (lw) — se o texto não
+  // couber numa linha só nessa largura, ela quebra pra 2 linhas e cresce em
+  // altura (perde um pouco a cara de cápsula, mas nunca vaza pra cima da foto).
   function pill(label){
     const pFont = `800 ${Math.round(pillFont)}px ${fam}`;
-    const w = measureChipWidth(ctx, label, pFont, pillFont*0.65);
-    els.push(pillEl(lx, y, w, label, pillFont, col));
-    y += pillH + cardH*0.018;
+    const padX = pillFont*0.6;
+    const w = Math.min(lw, measureChipWidth(ctx, label, pFont, padX));
+    ctx.font = pFont;
+    const linhas = wrapLines(ctx, label, Math.max(10, w-padX*2));
+    const h = linhas.length*(pillFont*1.25) + pillFont*0.6;
+    els.push(pillEl(lx, y, w, label, pillFont, col, linhas.length>1 ? Math.min(h/2,18) : h/2));
+    y += h + cardH*0.016;
   }
   function bodyText(text, role, weight, color){
     const f = weight||500;
     ctx.font = `${f} ${Math.round(bodyFont)}px ${fam}`;
     const linhas = wrapLines(ctx, text, lw);
     els.push(newTextEl(lx, y, lw, text, {fontSize:bodyFont, fontWeight:f, color: color||'#374151', align:'left', lineHeight:1.36, role}));
-    y += linhas.length*bodyFont*1.36 + cardH*0.032;
+    y += linhas.length*bodyFont*1.36 + cardH*0.03;
   }
 
   if(data.requisitos.length){ pill('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
@@ -3059,64 +3065,69 @@ function buildFaixasWideLayout(fmt, data, col){
   const cardX=W*0.03, cardY=H*0.04, cardW=W-cardX*2, cardH=H-cardY*2;
   els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.035, shadow:true}));
 
-  const leftW = cardW*0.5, rightW = cardW-leftW;
-  const pad = cardW*0.04;
-  const lx = cardX+pad, lw = leftW-pad-cardW*0.02;
+  const leftW = cardW*0.3, rightW = cardW-leftW;
+  const pad = cardW*0.028;
+  const lx = cardX+pad, lw = leftW-pad-cardW*0.015;
 
-  const topH = cardH*0.13;
-  const badgeSize = topH*0.82;
-  const badgeY = cardY+cardH*0.03;
+  // topo empilhado (selo em cima, marca Effect embaixo) — coluna estreita
+  // não dá pra pôr os dois lado a lado sem apertar demais.
+  const badgeSize = cardH*0.075;
+  const badgeY = cardY+cardH*0.035;
   els.push(newEllipseEl(lx, badgeY, badgeSize, badgeSize, {fill:col.primary}));
   els.push(newIconEl(lx+badgeSize*0.18, badgeY+badgeSize*0.18, badgeSize*0.64, badgeSize*0.64, 'generico', '#ffffff', {}));
-  els.push(newTextEl(lx+badgeSize+cardW*0.012, badgeY+badgeSize*0.16, leftW*0.55, 'Vaga Disponível', {fontSize:cardW*0.017, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
+  els.push(newTextEl(lx+badgeSize+cardW*0.01, badgeY+badgeSize*0.14, lw, 'Vaga Disponível', {fontSize:cardW*0.013, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
 
   const effLogo = getEffectLogo();
-  const brandSize = topH*0.5;
-  const brandX = lx+lw-brandSize*2.8;
-  const brandY = badgeY+(badgeSize-brandSize)/2;
+  const brandSize = cardH*0.05;
+  const brandY = badgeY+badgeSize+cardH*0.03;
   if(effLogo){
-    els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
+    els.push(newImageEl(lx, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
-    els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+    els.push(newIconEl(lx, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
   }
-  els.push(newTextEl(brandX+brandSize+cardW*0.01, brandY+brandSize*0.2, brandSize*2.2, 'EFFECT', {fontSize:cardW*0.017, fontWeight:800, color:col.primary, align:'left'}));
+  els.push(newTextEl(lx+brandSize+cardW*0.01, brandY+brandSize*0.18, lw, 'EFFECT', {fontSize:cardW*0.015, fontWeight:800, color:col.primary, align:'left'}));
 
-  let y = cardY+topH+cardH*0.04;
+  let y = brandY+brandSize+cardH*0.045;
 
-  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 2, cardW*0.03, cardW*0.018, 800, fam);
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.024, cardW*0.014, 800, fam);
   els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1, role:'cargo'}));
   y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.026;
 
   const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
   if(tagsF.length){
-    const tagFont = `600 ${Math.round(cardW*0.012)}px ${fam}`;
-    const tagH = cardW*0.022, tagPadX = cardW*0.009, gapX = cardW*0.007;
+    const tagFont = `600 ${Math.round(cardW*0.01)}px ${fam}`;
+    const tagH = cardW*0.019, tagPadX = cardW*0.008, gapX = cardW*0.006;
     let tx=lx, ty=y, usedW=0;
     tagsF.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, tagPadX);
       if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.012; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.012, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.01, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
       tx += w+gapX; usedW += w+gapX;
     });
     y = ty+tagH+cardH*0.036;
   }
 
-  const pillFont = cardW*0.014;
-  const pillH = pillFont*1.85;
-  const bodyFont = cardW*0.0135;
+  const pillFont = cardW*0.011;
+  const bodyFont = cardW*0.0105;
 
+  // Pílula do selo: nunca passa da largura da coluna (lw) — se não couber
+  // numa linha só, quebra pra 2 linhas em vez de vazar por cima da foto.
   function pill(label){
     const pFont = `800 ${Math.round(pillFont)}px ${fam}`;
-    const w = measureChipWidth(ctx, label, pFont, pillFont*0.65);
-    els.push(pillEl(lx, y, w, label, pillFont, col));
-    y += pillH + cardH*0.02;
+    const padX = pillFont*0.6;
+    const w = Math.min(lw, measureChipWidth(ctx, label, pFont, padX));
+    ctx.font = pFont;
+    const linhas = wrapLines(ctx, label, Math.max(10, w-padX*2));
+    const h = linhas.length*(pillFont*1.25) + pillFont*0.6;
+    els.push(pillEl(lx, y, w, label, pillFont, col, linhas.length>1 ? Math.min(h/2,18) : h/2));
+    y += h + cardH*0.014;
   }
   function bodyText(text, role, weight, color){
     const f = weight||500;
     ctx.font = `${f} ${Math.round(bodyFont)}px ${fam}`;
     const linhas = wrapLines(ctx, text, lw);
     els.push(newTextEl(lx, y, lw, text, {fontSize:bodyFont, fontWeight:f, color: color||'#374151', align:'left', lineHeight:1.3, role}));
-    y += linhas.length*bodyFont*1.3 + cardH*0.03;
+    y += linhas.length*bodyFont*1.3 + cardH*0.024;
   }
 
   if(data.requisitos.length){ pill('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
