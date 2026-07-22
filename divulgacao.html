@@ -3240,6 +3240,19 @@ function cornerPoint(box, name){
   return { x: name.includes('w') ? box.x : box.x+box.w, y: name.includes('n') ? box.y : box.y+box.h };
 }
 
+// Trava a peça dentro da página (0,0 até fmt.w,fmt.h) — impede que arrastar ou
+// redimensionar jogue a figura pra fora da arte. Peças giradas ficam de fora
+// dessa trava porque x/y/w/h deixam de representar o retângulo visual real.
+function clampElToCanvas(el, fmt){
+  if(el.rotation) return;
+  if(el.w > fmt.w) el.w = fmt.w;
+  if(el.h > fmt.h) el.h = fmt.h;
+  if(el.x < 0) el.x = 0;
+  if(el.y < 0) el.y = 0;
+  if(el.x + el.w > fmt.w) el.x = fmt.w - el.w;
+  if(el.y + el.h > fmt.h) el.y = fmt.h - el.h;
+}
+
 function applyShapeResize(handle, el, startEl, localPt){
   let x0=startEl.x, y0=startEl.y, x1=startEl.x+startEl.w, y1=startEl.y+startEl.h;
   if(handle.includes('n')) y0 = localPt.y;
@@ -3334,12 +3347,14 @@ function wireCanvasInteraction(){
             activeDrag.items.forEach(it=>{ if(it.el!==activeDrag.primaryEl){ it.el.x+=corrX; it.el.y+=corrY; } });
           }
         }
+        activeDrag.items.forEach(it=> clampElToCanvas(it.el, fmt));
       } else {
         const el = activeDrag.el;
         if(activeDrag.mode==='resize'){
           const localPt = toLocal(pt, activeDrag.startEl);
           if(el.type==='text') applyTextResize(activeDrag.handle, el, activeDrag.startEl, localPt);
           else applyShapeResize(activeDrag.handle, el, activeDrag.startEl, localPt);
+          clampElToCanvas(el, FORMATS[currentFormat]);
         } else if(activeDrag.mode==='rotate'){
           const cx=el.x+el.w/2, cy=el.y+el.h/2;
           let angle = Math.atan2(pt.y-cy, pt.x-cx)*180/Math.PI + 90;
@@ -3424,8 +3439,8 @@ function wireCanvasInteraction(){
     // Mesma lógica de encaixe/linhas-guia do arrasto com o mouse, só que disparada pela setinha:
     // mostra as linhas rosa (alinhamento e espaçamento igual) por um instante e some sozinha.
     const primaryEl = findElement(currentFormat, primaryId());
+    const fmt = FORMATS[currentFormat];
     if(primaryEl && !primaryEl.locked){
-      const fmt = FORMATS[currentFormat];
       const groupIds = group.map(el=>el.id);
       const others = getElements(currentFormat).filter(o=>!groupIds.includes(o.id));
       const before = {x:primaryEl.x, y:primaryEl.y};
@@ -3439,6 +3454,7 @@ function wireCanvasInteraction(){
       clearTimeout(arrowGuideTimer);
       arrowGuideTimer = setTimeout(()=>{ activeGuides=null; draw(); }, 650);
     }
+    group.forEach(el=> clampElToCanvas(el, fmt));
 
     draw();
   });
