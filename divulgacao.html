@@ -1670,6 +1670,12 @@ const ROLE_TEXT_FORMULAS = {
   beneficios: (data) => data.beneficios.join('\n'),
   contato: (data) => data.contato || '',
   horario: (data) => data.horario || '',
+  // Só usado no modelo "Faixas coloridas" (linha "Local: cidade · CLT · Presencial",
+  // sem chips coloridos) — no modelo Clássico não existe peça com esse role.
+  localLinha: (data) => {
+    const extras = [data.contratacao, data.regime].filter(Boolean).join('  ·  ');
+    return data.cidade ? `Local:  ${data.cidade}${extras?'   ·   '+extras:''}` : extras;
+  },
   cta: (data) => (data.cta || 'INTERESSADOS, ENTRE EM CONTATO').toUpperCase(),
   banner: (data) => {
     // Banner SÓ existe se a "Frase de destaque" for preenchida — a cidade
@@ -1882,6 +1888,10 @@ function syncTagsAcrossFormats(){
   Object.keys(FORMATS).forEach(fmtKey=>{
     const els = getElements(fmtKey);
     if(!els.length) return;
+    // Modelo "Faixas coloridas" não usa os chips coloridos (contratação/regime/
+    // cidade viram uma linha de texto simples, sincronizada por outro lugar) —
+    // detecta pela faixa de rodapé, que só existe nesse modelo.
+    if(els.some(el=>el.role==='faixaRodape')) return;
     const fmt = FORMATS[fmtKey];
     const W=fmt.w, H=fmt.h, wide = W>H;
     const cardX = wide? W*0.035 : W*0.045, cardY = wide? H*0.06 : H*0.045;
@@ -1938,12 +1948,12 @@ function wireLiveCanvasSync(){
   $('#banner').addEventListener('input', ()=> syncRoleAcrossFormats('banner'));
   // cidade vai pros CHIPS abaixo do título; o banner só é atualizado se já
   // existir na arte (a cidade faz parte do texto padrão dele)
-  $('#cidade').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('banner'); });
+  $('#cidade').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('banner'); syncRoleAcrossFormats('localLinha'); });
   // no modelo Clássico o horário vive no chip (rebuild completo); no modelo
   // Faixas ele também é uma peça própria (role 'horario') — atualiza os dois.
   $('#horario').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('horario'); });
-  $('#contratacao').addEventListener('change', syncTagsAcrossFormats);
-  $('#regime').addEventListener('change', syncTagsAcrossFormats);
+  $('#contratacao').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
+  $('#regime').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
 }
 
 /* ===========================================================
@@ -2935,96 +2945,99 @@ function buildFaixasTallLayout(fmt, data, col){
   els.push(newRectEl(0,0,W,H,{fill:'#f5f7fa', radiusPct:0}));
 
   const cardX=W*0.035, cardY=H*0.028, cardW=W-cardX*2, cardH=H-cardY*2;
-  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.045, shadow:true}));
+  const cardRadiusFrac = 0.045;
+  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:cardRadiusFrac, shadow:true}));
+  const cardCornerAbs = Math.min(cardW,cardH)/2*cardRadiusFrac;
 
-  // foto ocupa a maior parte da largura (~70%) — só a coluna de texto,
-  // bem mais estreita agora, tem margem.
-  const leftW = cardW*0.3, rightW = cardW-leftW;
-  const pad = cardW*0.09;
-  const lx = cardX+pad, lw = leftW-pad-cardW*0.02;
+  // faixa roxa/da-empresa cheia no topo — os cantos de cima acompanham o
+  // arredondado do próprio cartão, pra parecer "encaixada".
+  const topBarH = cardH*0.088;
+  els.push(newRectEl(cardX, cardY, cardW, topBarH, {
+    fill:col.primary,
+    radiusCorners:{tl:cardCornerAbs/Math.min(cardW,topBarH), tr:cardCornerAbs/Math.min(cardW,topBarH), br:0, bl:0},
+    role:'faixaTopo'
+  }));
 
-  // topo: selo "Vaga Disponível" em cima, marca Effect logo abaixo — em pé,
-  // um embaixo do outro, porque a coluna estreita não dá pra pôr lado a lado.
-  const badgeSize = cardH*0.05;
-  const badgeY = cardY+cardH*0.026;
-  els.push(newEllipseEl(lx, badgeY, badgeSize, badgeSize, {fill:col.primary}));
-  els.push(newIconEl(lx+badgeSize*0.18, badgeY+badgeSize*0.18, badgeSize*0.64, badgeSize*0.64, 'generico', '#ffffff', {}));
-  const badgeTx = lx+badgeSize+cardW*0.018;
-  els.push(newTextEl(badgeTx, badgeY-cardH*0.006, lw, 'Vaga', {fontSize:cardW*0.017, fontWeight:600, color:'#6b7280', align:'left', lineHeight:1.05}));
-  els.push(newTextEl(badgeTx, badgeY+cardH*0.021, lw, 'Disponível', {fontSize:cardW*0.023, fontWeight:800, color:col.primary, align:'left', lineHeight:1.05}));
+  // selo "Vaga Disponível" (círculo branco + texto branco) dentro da faixa
+  const badgeSize = topBarH*0.52;
+  const badgeY = cardY+(topBarH-badgeSize)/2;
+  const badgeX = cardX+cardW*0.04;
+  els.push(newEllipseEl(badgeX, badgeY, badgeSize, badgeSize, {fill:'#ffffff'}));
+  els.push(newIconEl(badgeX+badgeSize*0.16, badgeY+badgeSize*0.16, badgeSize*0.68, badgeSize*0.68, 'generico', col.primary, {}));
+  const badgeTx = badgeX+badgeSize+cardW*0.018;
+  els.push(newTextEl(badgeTx, badgeY-topBarH*0.02, cardW*0.3, '›  Vaga', {fontSize:cardW*0.017, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', lineHeight:1.05}));
+  els.push(newTextEl(badgeTx, badgeY+topBarH*0.32, cardW*0.3, 'Disponível', {fontSize:cardW*0.024, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.05}));
 
+  // marca Effect (logo + palavra) à direita, dentro da mesma faixa
   const effLogo = getEffectLogo();
-  const brandSize = cardH*0.032;
-  const brandY = badgeY+badgeSize+cardH*0.024;
+  const brandSize = topBarH*0.46;
+  const brandX = cardX+cardW-cardW*0.04-brandSize*2.9;
+  const brandY = cardY+(topBarH-brandSize)/2;
   if(effLogo){
-    els.push(newImageEl(lx, brandY, brandSize, brandSize, effLogo, {round:true}));
+    els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
-    els.push(newIconEl(lx, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+    els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', col.primary, {bg:'#ffffff'}));
   }
-  els.push(newTextEl(lx+brandSize+cardW*0.014, brandY+brandSize*0.16, lw, 'EFFECT', {fontSize:cardW*0.02, fontWeight:800, color:col.primary, align:'left'}));
+  els.push(newTextEl(brandX+brandSize+cardW*0.014, brandY+brandSize*0.2, brandSize*2.6, 'EFFECT', {fontSize:cardW*0.024, fontWeight:800, color:'#ffffff', align:'left'}));
 
-  let y = brandY+brandSize+cardH*0.036;
+  // ---- coluna de conteúdo (metade esquerda) ----
+  const leftW = cardW*0.5, rightW = cardW-leftW;
+  const pad = cardW*0.045;
+  const lx = cardX+pad, lw = leftW-pad-cardW*0.025;
+  let y = cardY+topBarH+cardH*0.032;
 
-  // cargo
-  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 4, cardW*0.036, cardW*0.021, 800, fam);
-  els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.14, role:'cargo'}));
-  y += titleFit.lines.length*titleFit.size*1.14 + cardH*0.024;
-
-  // chips: contratação / regime / cidade (horário ganha selo próprio embaixo)
-  const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
-  if(tagsF.length){
-    const tagFont = `600 ${Math.round(cardW*0.013)}px ${fam}`;
-    const tagH = cardW*0.023, tagPadX = cardW*0.01, gapX = cardW*0.007;
-    let tx=lx, ty=y, usedW=0;
-    tagsF.forEach((t,i)=>{
-      const w = measureChipWidth(ctx, t, tagFont, tagPadX);
-      if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.01; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.013, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
-      tx += w+gapX; usedW += w+gapX;
-    });
-    y = ty+tagH+cardH*0.032;
+  // barra colorida cheia (largura = coluna inteira) — usada tanto pro cargo
+  // quanto pros selos de seção, igual à referência (não é cápsula).
+  function fullBar(label, fontSizeFrac){
+    const barFont = cardW*fontSizeFrac;
+    const padX = barFont*0.55, padY = barFont*0.3;
+    ctx.font = `800 ${Math.round(barFont)}px ${fam}`;
+    const linhas = wrapLines(ctx, label, Math.max(10, lw-padX*2));
+    const h = linhas.length*(barFont*1.25)+padY*2;
+    return { h, el: newTextEl(lx, y, lw, label, {fontSize:barFont, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius:cardW*0.01}) };
   }
 
-  const pillFont = cardW*0.016;
-  const bodyFont = cardW*0.016;
+  const cargoBar = fullBar(data.cargo.toUpperCase(), 0.026);
+  cargoBar.el.role = 'cargo';
+  els.push(cargoBar.el);
+  y += cargoBar.h + cardH*0.022;
 
-  // Pílula do selo: largura nunca passa da coluna (lw) — se o texto não
-  // couber numa linha só nessa largura, ela quebra pra 2 linhas e cresce em
-  // altura (perde um pouco a cara de cápsula, mas nunca vaza pra cima da foto).
-  function pill(label){
-    const pFont = `800 ${Math.round(pillFont)}px ${fam}`;
-    const padX = pillFont*0.6;
-    const w = Math.min(lw, measureChipWidth(ctx, label, pFont, padX));
-    ctx.font = pFont;
-    const linhas = wrapLines(ctx, label, Math.max(10, w-padX*2));
-    const h = linhas.length*(pillFont*1.25) + pillFont*0.6;
-    els.push(pillEl(lx, y, w, label, pillFont, col, linhas.length>1 ? Math.min(h/2,18) : h/2));
-    y += h + cardH*0.016;
+  // "Local: cidade · contratação · regime" em texto simples (sem chips)
+  const extrasF = [data.contratacao, data.regime].filter(Boolean).join('  ·  ');
+  const localLine = data.cidade ? `Local:  ${data.cidade}${extrasF?'   ·   '+extrasF:''}` : extrasF;
+  if(localLine){
+    els.push(newTextEl(lx, y, lw, localLine, {fontSize:cardW*0.018, fontWeight:500, color:'#374151', align:'left', role:'localLinha'}));
+    y += cardW*0.018*1.3 + cardH*0.028;
+  }
+
+  const bodyFont = cardW*0.019;
+  function sectionBar(label){
+    const bar = fullBar(label, 0.021);
+    els.push(bar.el);
+    y += bar.h + cardH*0.015;
   }
   function bodyText(text, role, weight, color){
     const f = weight||500;
     ctx.font = `${f} ${Math.round(bodyFont)}px ${fam}`;
     const linhas = wrapLines(ctx, text, lw);
     els.push(newTextEl(lx, y, lw, text, {fontSize:bodyFont, fontWeight:f, color: color||'#374151', align:'left', lineHeight:1.36, role}));
-    y += linhas.length*bodyFont*1.36 + cardH*0.03;
+    y += linhas.length*bodyFont*1.36 + cardH*0.026;
   }
 
-  if(data.requisitos.length){ pill('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
-  if(data.atividades.length){ pill('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
+  if(data.requisitos.length){ sectionBar('REQUISITOS'); bodyText(data.requisitos.join('\n'), 'requisitos'); }
+  if(data.atividades.length){ sectionBar('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
   if(data.salario || data.beneficios.length){
-    pill('SALÁRIO E BENEFÍCIOS');
+    sectionBar('SALÁRIO E BENEFÍCIOS');
     if(data.salario) bodyText(data.salario, 'salario', 800, '#111827');
     if(data.beneficios.length) bodyText(data.beneficios.join('\n'), 'beneficios');
   }
-  if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
+  if(data.horario){ sectionBar('HORÁRIO'); bodyText(data.horario, 'horario'); }
 
-  // painel de foto: cola no topo e na borda direita do cartão (bleed), só
-  // parando exatamente onde começa a faixa colorida do rodapé. O canto
-  // inferior-esquerdo ganha uma curva bem mais generosa que os outros —
-  // é essa curva assimétrica que dá a cara da referência.
-  const footerH = cardH*0.105;
-  const fx = cardX+leftW, fy = cardY, fw = cardW-leftW, fh = cardH-footerH;
-  const fotoCorners = {tl:0, tr:0, br:0, bl:0.34};
+  // ---- foto: começa logo abaixo da faixa do topo, cola na borda direita,
+  // pára onde a faixa do rodapé começa. Canto inferior-esquerdo bem curvo.
+  const footerH = cardH*0.15;
+  const fx = cardX+leftW, fy = cardY+topBarH, fw = cardW-leftW, fh = cardH-topBarH-footerH;
+  const fotoCorners = {tl:0, tr:0, br:0, bl:0.3};
   if(data.foto){
     els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusCorners:fotoCorners, role:'foto'}));
   } else {
@@ -3038,17 +3051,32 @@ function buildFaixasTallLayout(fmt, data, col){
     }));
   }
 
-  // rodapé: faixa colorida cheia (as duas colunas), telefone em destaque
-  // branco embaixo da foto. O canto superior-esquerdo da faixa acompanha a
-  // mesma curva do canto inferior-esquerdo da foto, pra não sobrar "beiço".
+  // ---- rodapé: faixa cheia, ícones/contatos à esquerda, telefone em
+  // destaque à direita (sob a foto). Cantos de baixo acompanham o cartão; o
+  // canto de cima-esquerda acompanha a curva da foto, sem sobrar "beiço".
   const footerY = cardY+cardH-footerH;
   const fotoCornerAbs = Math.min(fw,fh)*fotoCorners.bl;
   els.push(newRectEl(cardX, footerY, cardW, footerH, {
-    radiusCorners:{tl:fotoCornerAbs/footerH, tr:0, br:0.16, bl:0.16},
-    fill:col.primary, role:'faixaRodape'
+    fill:col.primary,
+    radiusCorners:{
+      tl: fotoCornerAbs/footerH, tr:0,
+      bl: cardCornerAbs/footerH, br: cardCornerAbs/footerH
+    },
+    role:'faixaRodape'
   }));
-  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.18, fw*0.85, data.contato||'', {fontSize:cardW*0.023, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
-  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.58, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.014, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
+
+  // esquerda: Instagram da empresa, se tiver cadastrado
+  const insta = (currentCompany && currentCompany.instagram) ? currentCompany.instagram : '';
+  if(insta){
+    const rIconSize = footerH*0.16;
+    const ry = footerY+footerH*0.42-rIconSize/2;
+    els.push(newIconEl(lx, ry, rIconSize, rIconSize, 'generico', '#ffffff', {}));
+    els.push(newTextEl(lx+rIconSize+cardW*0.012, ry+rIconSize*0.08, lw, insta, {fontSize:cardW*0.014, fontWeight:600, color:'#ffffff', align:'left'}));
+  }
+
+  // direita: telefone em destaque + CTA, sob a foto
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.26, fw*0.85, data.contato||'', {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.58, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.013, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
 
   return els;
 }
@@ -3065,50 +3093,50 @@ function buildFaixasWideLayout(fmt, data, col){
   const cardX=W*0.03, cardY=H*0.04, cardW=W-cardX*2, cardH=H-cardY*2;
   els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.035, shadow:true}));
 
-  const leftW = cardW*0.3, rightW = cardW-leftW;
-  const pad = cardW*0.028;
-  const lx = cardX+pad, lw = leftW-pad-cardW*0.015;
+  const leftW = cardW*0.5, rightW = cardW-leftW;
+  const pad = cardW*0.04;
+  const lx = cardX+pad, lw = leftW-pad-cardW*0.02;
 
-  // topo empilhado (selo em cima, marca Effect embaixo) — coluna estreita
-  // não dá pra pôr os dois lado a lado sem apertar demais.
-  const badgeSize = cardH*0.075;
-  const badgeY = cardY+cardH*0.035;
+  const topH = cardH*0.13;
+  const badgeSize = topH*0.82;
+  const badgeY = cardY+cardH*0.03;
   els.push(newEllipseEl(lx, badgeY, badgeSize, badgeSize, {fill:col.primary}));
   els.push(newIconEl(lx+badgeSize*0.18, badgeY+badgeSize*0.18, badgeSize*0.64, badgeSize*0.64, 'generico', '#ffffff', {}));
-  els.push(newTextEl(lx+badgeSize+cardW*0.01, badgeY+badgeSize*0.14, lw, 'Vaga Disponível', {fontSize:cardW*0.013, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
+  els.push(newTextEl(lx+badgeSize+cardW*0.012, badgeY+badgeSize*0.16, leftW*0.55, 'Vaga Disponível', {fontSize:cardW*0.017, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
 
   const effLogo = getEffectLogo();
-  const brandSize = cardH*0.05;
-  const brandY = badgeY+badgeSize+cardH*0.03;
+  const brandSize = topH*0.5;
+  const brandX = lx+lw-brandSize*2.8;
+  const brandY = badgeY+(badgeSize-brandSize)/2;
   if(effLogo){
-    els.push(newImageEl(lx, brandY, brandSize, brandSize, effLogo, {round:true}));
+    els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
-    els.push(newIconEl(lx, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
+    els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
   }
-  els.push(newTextEl(lx+brandSize+cardW*0.01, brandY+brandSize*0.18, lw, 'EFFECT', {fontSize:cardW*0.015, fontWeight:800, color:col.primary, align:'left'}));
+  els.push(newTextEl(brandX+brandSize+cardW*0.01, brandY+brandSize*0.2, brandSize*2.2, 'EFFECT', {fontSize:cardW*0.017, fontWeight:800, color:col.primary, align:'left'}));
 
-  let y = brandY+brandSize+cardH*0.045;
+  let y = cardY+topH+cardH*0.04;
 
-  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 3, cardW*0.024, cardW*0.014, 800, fam);
+  const titleFit = fitText(ctx, data.cargo.toUpperCase(), lw, 2, cardW*0.03, cardW*0.018, 800, fam);
   els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1, role:'cargo'}));
   y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.026;
 
   const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
   if(tagsF.length){
-    const tagFont = `600 ${Math.round(cardW*0.01)}px ${fam}`;
-    const tagH = cardW*0.019, tagPadX = cardW*0.008, gapX = cardW*0.006;
+    const tagFont = `600 ${Math.round(cardW*0.012)}px ${fam}`;
+    const tagH = cardW*0.022, tagPadX = cardW*0.009, gapX = cardW*0.007;
     let tx=lx, ty=y, usedW=0;
     tagsF.forEach((t,i)=>{
       const w = measureChipWidth(ctx, t, tagFont, tagPadX);
       if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagH+cardH*0.012; usedW=0; }
-      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.01, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
+      els.push(newTextEl(tx, ty, w, t, {fontSize:cardW*0.012, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
       tx += w+gapX; usedW += w+gapX;
     });
     y = ty+tagH+cardH*0.036;
   }
 
-  const pillFont = cardW*0.011;
-  const bodyFont = cardW*0.0105;
+  const pillFont = cardW*0.014;
+  const bodyFont = cardW*0.0135;
 
   // Pílula do selo: nunca passa da largura da coluna (lw) — se não couber
   // numa linha só, quebra pra 2 linhas em vez de vazar por cima da foto.
