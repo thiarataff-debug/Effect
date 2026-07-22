@@ -2942,12 +2942,12 @@ function buildFaixasTallLayout(fmt, data, col){
   const ctx = tmpCanvas.getContext('2d');
   const fam = "'Poppins', Arial, sans-serif";
 
-  els.push(newRectEl(0,0,W,H,{fill:'#f5f7fa', radiusPct:0}));
-
-  const cardX=W*0.035, cardY=H*0.028, cardW=W-cardX*2, cardH=H-cardY*2;
-  const cardRadiusFrac = 0.045;
-  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:cardRadiusFrac, shadow:true}));
-  const cardCornerAbs = Math.min(cardW,cardH)/2*cardRadiusFrac;
+  // A arte preenche o canvas inteiro (sem moldura/margem cinza ao redor) —
+  // o "cartão" cobre exatamente 0,0 até W,H.
+  const cardX=0, cardY=0, cardW=W, cardH=H;
+  const cardRadiusFrac = 0;
+  els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:cardRadiusFrac}));
+  const cardCornerAbs = 0;
 
   // faixa roxa/da-empresa cheia no topo — os cantos de cima acompanham o
   // arredondado do próprio cartão, pra parecer "encaixada".
