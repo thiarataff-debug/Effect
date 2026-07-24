@@ -2713,28 +2713,28 @@ function buildTallLayout(fmt, data, col){
   {
     const m  = cardW*0.022;
     const fx = cardX+leftW, fy = cardY+m, fw = rightW-m, fh = topH-m*1.6;
-    const fr = 0.07;
-    // raio absoluto igual pra foto (min*fr) e retângulos (min/2*radiusPct)
-    const rA = Math.min(fw,fh)*fr;
-    const rp = (w,h)=> rA/(Math.min(w,h)/2);
+    // cantos assimétricos (referência: foto quase reta nos 3 cantos e uma
+    // curva bem acentuada só no canto inferior-direito) — substitui o
+    // arredondado uniforme de antes. Cada valor é fração de min(fw,fh).
+    const fotoCorners = {tl:0.055, tr:0.055, br:0.42, bl:0.055};
     // camada de destaque atrás (deslocada pra baixo/direita — dá profundidade)
-    els.push(newRectEl(fx+m*0.85, fy+m*0.85, fw, fh, {fill:col.tertiary, opacity:0.5, radiusPct:rp(fw,fh), role:'fotoBack'}));
+    els.push(newRectEl(fx+m*0.85, fy+m*0.85, fw, fh, {fill:col.tertiary, opacity:0.5, radiusCorners:fotoCorners, role:'fotoBack'}));
     if(data.foto){
-      els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusPct:fr, role:'foto'}));
+      els.push(newImageEl(fx, fy, fw, fh, data.foto, {radiusCorners:fotoCorners, role:'foto'}));
       // degradê escuro só na parte de baixo (efeito pôster, sem esconder a foto)
       els.push(newRectEl(fx, fy+fh*0.58, fw, fh*0.42, {
         gradient:[hexToRgba(shade(col.primary,-35),0), hexToRgba(shade(col.primary,-50),0.8)],
-        gradientDir:'vertical', radiusPct:rp(fw, fh*0.42), role:'fotoShade'
+        gradientDir:'vertical', radiusCorners:fotoCorners, role:'fotoShade'
       }));
     } else {
-      els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(fw,fh), role:'fotoPh'}));
+      els.push(newRectEl(fx, fy, fw, fh, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusCorners:fotoCorners, role:'fotoPh'}));
       els.push(newEllipseEl(fx+fw*0.18, fy+fh*0.1, fw*0.9, fw*0.9, {fill:'#ffffff', opacity:0.07, role:'fotoPhDeco'}));
       els.push(newIconEl(fx+fw*0.2, fy+(fh-fw*0.6)/2, fw*0.6, fw*0.6, data.categoria, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
     }
     // contorno fino translúcido por cima (acabamento)
     els.push(newRectEl(fx, fy, fw, fh, {
       fill:'rgba(0,0,0,0)', stroke:'rgba(255,255,255,0.55)',
-      strokeWidth:Math.max(2, cardW*0.0035), radiusPct:rp(fw,fh), role:'fotoBorda'
+      strokeWidth:Math.max(2, cardW*0.0035), radiusCorners:fotoCorners, role:'fotoBorda'
     }));
     // filete da cor de destaque na base da foto (toque de marca)
     els.push(newRectEl(fx+fw*0.3, fy+fh-Math.max(4,cardH*0.006), fw*0.4, Math.max(4,cardH*0.006), {fill:col.accent, radiusPct:0.5, role:'fotoFilete'}));
@@ -2858,11 +2858,16 @@ function buildWideLayout(fmt, data, col){
   els.push(newRectEl(cardX,cardY,cardW,cardH,{fill:'#ffffff', radiusPct:0.05, shadow:true}));
 
   const rightW=cardW*0.36, leftW=cardW-rightW;
+  // cantos assimétricos: reto no lado que encosta no texto (esquerda), leve
+  // arredondado no canto de cima-direita (acompanha a curva do cartão) e uma
+  // curva bem mais forte no canto inferior-direito — acabamento "cartão de
+  // referência" em vez do retângulo 100% reto de antes.
+  const fotoCornersWide = {tl:0, tr:0.05, br:0.5, bl:0};
   if(data.foto){
-    els.push(newImageEl(cardX+leftW, cardY, rightW, cardH, data.foto, {radiusPct:0, role:'foto'}));
-    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, opacity:0.55, radiusPct:0, role:'fotoShade'}));
+    els.push(newImageEl(cardX+leftW, cardY, rightW, cardH, data.foto, {radiusCorners:fotoCornersWide, role:'foto'}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, opacity:0.55, radiusCorners:fotoCornersWide, role:'fotoShade'}));
   } else {
-    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
+    els.push(newRectEl(cardX+leftW, cardY, rightW, cardH, {fill:col.primary, radiusCorners:fotoCornersWide, role:'fotoPh'}));
   }
   // Logo da EFFECT (nunca do cliente — o cliente não é divulgado na arte)
   const effLogoWide = getEffectLogo();
