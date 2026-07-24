@@ -81,7 +81,23 @@ const CONFIG = {
   PARCEIRO_EMAIL: process.env.PARCEIRO_EMAIL,               // e-mail do parceiro que divulga nas redes
   PARCEIRO_NOME: process.env.PARCEIRO_NOME || "Parceiro de Divulgação",
   TEMPLATE_DIVULGACAO_VAGA: process.env.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos", // template aprovado na Meta p/ candidatos fora da janela de 24h
-  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || "https://effect-production.up.railway.app"
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || "https://effect-production.up.railway.app",
+
+  // ── Dados da própria Effect (CONTRATADA), usados na minuta de contrato ─────
+  // Preencha via variável de ambiente no Railway (ou direto aqui) com os dados
+  // reais da empresa. Enquanto não preenchidos, a minuta sai com placeholders
+  // visíveis para não passar informação errada por engano.
+  CONTRATADA_NOME_FANTASIA:  process.env.CONTRATADA_NOME_FANTASIA  || "EFFECT – Pessoas & Performance",
+  CONTRATADA_RAZAO:          process.env.CONTRATADA_RAZAO          || "THIARA AVELINO FREIRE FERREIRA",
+  CONTRATADA_CNPJ:           process.env.CONTRATADA_CNPJ           || "52.745.316/0001-06",
+  CONTRATADA_ENDERECO:       process.env.CONTRATADA_ENDERECO       || "Rua Pinho, nº 95, Colina de Laranjeiras, Serra/ES, CEP 29167-142",
+  CONTRATADA_EMAIL:          process.env.CONTRATADA_EMAIL          || "effectpessoas@gmail.com",
+  CONTRATADA_TELEFONE:       process.env.CONTRATADA_TELEFONE       || "(27) 99792-5288",
+  CONTRATADA_FORO_CIDADE:    process.env.CONTRATADA_FORO_CIDADE    || "Serra",
+  CONTRATADA_FORO_UF:        process.env.CONTRATADA_FORO_UF        || "Espírito Santo",
+  CONTRATO_DIAS_GARANTIA:      process.env.CONTRATO_DIAS_GARANTIA      || "30",
+  CONTRATO_DIAS_AVISO_RESCISAO: process.env.CONTRATO_DIAS_AVISO_RESCISAO || "30",
+  CONTRATO_MULTA_PCT:           process.env.CONTRATO_MULTA_PCT           || "10"
 };
 
 // ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
@@ -3291,6 +3307,449 @@ function escapeHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+function extenso(v, fallback) {
+  const s = (v ?? '').toString().trim();
+  return s ? escapeHtml(s) : `<span class="vazio">${escapeHtml(fallback || '[a definir]')}</span>`;
+}
+
+function dataPorExtenso(iso) {
+  try {
+    const dt = iso ? new Date(iso) : new Date();
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  } catch (e) { return ''; }
+}
+
+// Extrai um número de um texto de salário em formato BRL (ex.: "R$ 2.500,00").
+// Retorna null se não conseguir interpretar (ex.: "A combinar").
+function parseValorBRL(s) {
+  if (!s) return null;
+  let cleaned = String(s).replace(/[^\d,.]/g, '');
+  if (!cleaned) return null;
+  if (cleaned.includes(',') && cleaned.includes('.')) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  else if (cleaned.includes(',')) cleaned = cleaned.replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+// Aplica a tabela de honorários da Cláusula 13 sobre o salário-base da vaga.
+function faixaHonorarios(salario) {
+  const v = parseValorBRL(salario);
+  if (v == null) return 'A definir conforme tabela da Cláusula 13, com base no salário-base efetivamente pactuado.';
+  const pct = v < 2000 ? 60 : (v < 4000 ? 50 : 40);
+  return `${pct}% do salário-base — equivalente a R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × ${pct}% (conforme Cláusula 13)`;
+}
+
+const brm = (s) => `<p class="clausula-titulo">${escapeHtml(s)}</p>`;                        // título de cláusula
+const brp = (s) => `<p>${s}</p>`;                                                             // parágrafo comum
+const bri = (rom, s) => `<p class="item"><strong>${rom} –</strong> ${s}</p>`;                 // item I, II, III...
+const brb = (s) => `<p class="bullet">• ${s}</p>`;                                            // bullet simples
+const brpar = (rot, s) => `<p class="paragrafo"><strong>Parágrafo ${rot}.</strong> ${s}</p>`;  // Parágrafo Único/Primeiro...
+const brparte = (s) => `<p class="parte-titulo">${escapeHtml(s)}</p>`;                        // PARTE 1 – ...
+
+// Minuta de contrato de prestação de serviços de Recrutamento, Seleção e
+// Consultoria em Gestão de Pessoas, com o texto revisado e aprovado pela
+// Effect. O corpo das cláusulas (1 a 32) é padronizado — só o cabeçalho da
+// CONTRATANTE, o Anexo I (condições comerciais) e a data/local de assinatura
+// são preenchidos automaticamente a partir do formulário do cliente. Ainda
+// assim, é um modelo — vale revisão de um advogado antes do uso oficial.
+function textoMinutaContrato(d) {
+  return `
+<p class="centro"><strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE RECRUTAMENTO, SELEÇÃO E CONSULTORIA EM GESTÃO DE PESSOAS</strong></p>
+
+<p>Pelo presente instrumento particular, de um lado,</p>
+
+<p class="clausula-titulo">CONTRATANTE</p>
+<p>Razão Social: ${extenso(d.contrato_razao)}</p>
+<p>CNPJ: ${extenso(d.contrato_cnpj)}</p>
+<p>Endereço: ${extenso(d.contrato_endereco)}</p>
+<p>Representante Legal: ${extenso(d.responsavel_nome)}</p>
+<p>Cargo: ${extenso(d.responsavel_cargo)}</p>
+<p>E-mail: ${extenso(d.responsavel_email)}</p>
+<p>Telefone: ${extenso(d.responsavel_whatsapp)}</p>
+<p>doravante denominada simplesmente <strong>CONTRATANTE</strong>;</p>
+
+<p>e, de outro lado,</p>
+
+<p class="clausula-titulo">CONTRATADA</p>
+<p>${escapeHtml(CONFIG.CONTRATADA_NOME_FANTASIA)}</p>
+<p>Razão Social: ${escapeHtml(CONFIG.CONTRATADA_RAZAO)}</p>
+<p>CNPJ: ${escapeHtml(CONFIG.CONTRATADA_CNPJ)}</p>
+<p>Endereço: ${escapeHtml(CONFIG.CONTRATADA_ENDERECO)}</p>
+<p>E-mail: ${escapeHtml(CONFIG.CONTRATADA_EMAIL)}</p>
+<p>Telefone: ${escapeHtml(CONFIG.CONTRATADA_TELEFONE)}</p>
+<p>doravante denominada simplesmente <strong>CONTRATADA</strong>,</p>
+
+<p>têm entre si justo e contratado o presente Contrato de Prestação de Serviços de Recrutamento, Seleção e Consultoria em Gestão de Pessoas, que será regido pelas cláusulas e condições seguintes.</p>
+
+${brm('CLÁUSULA 1 – DAS DEFINIÇÕES')}
+<p>Para fins deste contrato, os termos abaixo terão os seguintes significados:</p>
+${bri('I', 'Candidato Apresentado: toda pessoa indicada, encaminhada, entrevistada, recomendada ou cujo currículo tenha sido disponibilizado pela CONTRATADA à CONTRATANTE, independentemente da etapa em que se encontre o processo seletivo.')}
+${bri('II', 'Processo Seletivo: conjunto de atividades desenvolvidas pela CONTRATADA para identificação, avaliação e indicação de profissionais aderentes ao perfil solicitado pela CONTRATANTE.')}
+${bri('III', 'Contratação: qualquer forma de utilização profissional do candidato apresentado pela CONTRATADA, incluindo, mas não se limitando a:')}
+${brb('registro em carteira de trabalho (CLT);')}
+${brb('contrato de experiência;')}
+${brb('contratação temporária;')}
+${brb('contrato de prestação de serviços;')}
+${brb('contrato como pessoa jurídica (PJ);')}
+${brb('trabalho intermitente;')}
+${brb('freelancer;')}
+${brb('diária;')}
+${brb('contrato de estágio;')}
+${brb('jovem aprendiz;')}
+${brb('cooperativa;')}
+${brb('terceirização;')}
+${brb('qualquer outra modalidade que resulte na prestação de serviços em benefício da CONTRATANTE.')}
+${bri('IV', 'Admissão: considera-se ocorrida a admissão na data em que o candidato iniciar efetivamente suas atividades em favor da CONTRATANTE, ainda que o registro formal ocorra posteriormente.')}
+${bri('V', 'Proposta Comercial: documento emitido pela CONTRATADA contendo valores, prazos, condições comerciais, modalidades de contratação e demais especificações do serviço contratado, integrando este contrato para todos os efeitos legais.')}
+${bri('VI', 'Garantia Effect: benefício concedido pela CONTRATADA consistente na realização de um novo processo seletivo, sem cobrança de novos honorários, observadas as condições previstas neste contrato.')}
+${bri('VII', 'Briefing da Vaga: conjunto de informações fornecidas pela CONTRATANTE contendo, entre outras, descrição do cargo, requisitos técnicos, competências desejadas, remuneração, benefícios, jornada, local de trabalho e demais características necessárias ao recrutamento.')}
+
+${brm('CLÁUSULA 2 – DO OBJETO')}
+<p>O presente contrato tem por objeto a prestação de serviços especializados de Recrutamento, Seleção e Consultoria em Gestão de Pessoas, compreendendo, conforme necessidade da CONTRATANTE:</p>
+${bri('I', 'alinhamento técnico do perfil da vaga;')}
+${bri('II', 'elaboração de estratégia de recrutamento;')}
+${bri('III', 'divulgação de oportunidades em canais apropriados;')}
+${bri('IV', 'hunting ativo de profissionais;')}
+${bri('V', 'triagem curricular;')}
+${bri('VI', 'entrevistas individuais presenciais ou remotas;')}
+${bri('VII', 'entrevistas por competências;')}
+${bri('VIII', 'aplicação de testes técnicos, comportamentais ou psicológicos, quando contratados e legalmente permitidos;')}
+${bri('IX', 'elaboração de pareceres técnicos;')}
+${bri('X', 'apresentação de candidatos;')}
+${bri('XI', 'acompanhamento das etapas do processo seletivo;')}
+${bri('XII', 'apoio consultivo durante a tomada de decisão;')}
+${bri('XIII', 'formação de banco de talentos;')}
+${bri('XIV', 'Executive Search, quando contratado;')}
+${bri('XV', 'demais atividades relacionadas ao recrutamento e seleção de pessoas.')}
+${brpar('Primeiro', 'Os serviços serão executados com autonomia técnica e metodológica pela CONTRATADA, utilizando processos próprios de avaliação profissional.')}
+${brpar('Segundo', 'A CONTRATADA poderá utilizar plataformas digitais, sistemas de recrutamento, redes profissionais, banco de currículos e demais ferramentas que considerar adequadas para a execução dos serviços.')}
+
+${brm('CLÁUSULA 3 – DA NATUREZA DOS SERVIÇOS')}
+<p>Os serviços prestados possuem natureza consultiva e técnica, caracterizando obrigação de meio, e não obrigação de resultado.</p>
+<p>Em razão disso, a CONTRATADA compromete-se a empregar diligência, conhecimento técnico, metodologia adequada e boas práticas de recrutamento e seleção, não assumindo obrigação de garantir:</p>
+${bri('I', 'a contratação de candidatos;')}
+${bri('II', 'a aceitação de propostas pelos candidatos;')}
+${bri('III', 'a permanência do profissional contratado;')}
+${bri('IV', 'o desempenho funcional do candidato após sua admissão;')}
+${bri('V', 'resultados financeiros ou operacionais decorrentes da contratação.')}
+${brpar('Único', 'A decisão final acerca da contratação, remuneração, benefícios, jornada, admissão, desligamento ou qualquer outra condição relativa ao vínculo profissional será sempre de exclusiva responsabilidade da CONTRATANTE.')}
+
+${brm('CLÁUSULA 4 – DA VIGÊNCIA')}
+<p>O presente contrato terá vigência de ____ (____) meses, iniciando-se em ___/___/____ e encerrando-se em ___/___/____, podendo ser renovado mediante acordo escrito entre as partes.</p>
+<p>A renovação poderá ocorrer por termo aditivo ou por manifestação expressa das partes, mantendo-se as demais cláusulas deste instrumento.</p>
+
+${brparte('PARTE 2 – EXECUÇÃO DOS SERVIÇOS')}
+
+${brm('CLÁUSULA 5 – DO INÍCIO DOS SERVIÇOS')}
+<p>Os serviços terão início após o atendimento cumulativo dos seguintes requisitos:</p>
+${bri('I', 'assinatura deste contrato;')}
+${bri('II', 'aprovação da Proposta Comercial, quando houver;')}
+${bri('III', 'recebimento do briefing completo da vaga;')}
+${bri('IV', 'definição do perfil profissional pretendido;')}
+${bri('V', 'disponibilização das informações necessárias à execução do processo seletivo.')}
+${brpar('Primeiro', 'Considera-se briefing completo aquele que contenha, no mínimo: a) cargo; b) descrição das atividades; c) remuneração; d) benefícios; e) jornada de trabalho; f) local de trabalho; g) requisitos técnicos; h) competências comportamentais; i) modalidade de contratação.')}
+${brpar('Segundo', 'Enquanto qualquer das informações acima permanecer pendente, os prazos previstos neste contrato permanecerão suspensos, sem qualquer responsabilidade da CONTRATADA.')}
+
+${brm('CLÁUSULA 6 – DO FLUXO DO PROCESSO SELETIVO')}
+<p>Após o recebimento do briefing completo, a CONTRATADA iniciará as atividades de recrutamento utilizando metodologia própria, podendo compreender:</p>
+${bri('I', 'divulgação da vaga;')}
+${bri('II', 'busca ativa de candidatos (Hunting);')}
+${bri('III', 'triagem curricular;')}
+${bri('IV', 'entrevistas;')}
+${bri('V', 'aplicação de avaliações;')}
+${bri('VI', 'elaboração de parecer técnico;')}
+${bri('VII', 'encaminhamento dos candidatos considerados aderentes ao perfil solicitado.')}
+${brpar('Primeiro', 'A CONTRATADA poderá deixar de apresentar candidatos que, a seu critério técnico, não atendam aos requisitos mínimos da vaga.')}
+${brpar('Segundo', 'A apresentação de candidatos não obriga a CONTRATANTE à contratação, nem caracteriza recomendação absoluta de contratação.')}
+
+${brm('CLÁUSULA 7 – DOS PRAZOS')}
+<p>A CONTRATADA compromete-se a iniciar os trabalhos em até 02 (dois) dias úteis após o recebimento de todas as informações necessárias.</p>
+<p>Entretanto, o prazo para apresentação de candidatos poderá variar conforme:</p>
+${bri('I', 'complexidade da vaga;')}
+${bri('II', 'nível de especialização exigido;')}
+${bri('III', 'escassez de profissionais no mercado;')}
+${bri('IV', 'localização da vaga;')}
+${bri('V', 'remuneração oferecida;')}
+${bri('VI', 'urgência da contratação;')}
+${bri('VII', 'sazonalidade do mercado.')}
+${brpar('Único', 'A CONTRATADA compromete-se a manter a CONTRATANTE informada sobre o andamento do processo seletivo sempre que solicitado ou quando houver fatos relevantes.')}
+
+${brm('CLÁUSULA 8 – DAS OBRIGAÇÕES DA CONTRATADA')}
+<p>Constituem obrigações da CONTRATADA:</p>
+${bri('I', 'conduzir os processos seletivos com ética, imparcialidade e profissionalismo;')}
+${bri('II', 'empregar metodologia técnica compatível com o perfil da vaga;')}
+${bri('III', 'manter absoluto sigilo sobre todas as informações recebidas;')}
+${bri('IV', 'apresentar candidatos que, segundo sua avaliação técnica, possuam aderência ao perfil solicitado;')}
+${bri('V', 'manter comunicação clara com a CONTRATANTE durante toda a execução dos serviços;')}
+${bri('VI', 'cumprir a legislação vigente, especialmente a Lei Geral de Proteção de Dados (LGPD);')}
+${bri('VII', 'preservar a imagem institucional da CONTRATANTE durante o processo seletivo;')}
+${bri('VIII', 'agir sempre com boa-fé, diligência e zelo profissional.')}
+${brpar('Único', 'A CONTRATADA possui autonomia técnica para definir a metodologia de recrutamento e seleção utilizada em cada processo.')}
+
+${brm('CLÁUSULA 9 – DAS OBRIGAÇÕES DA CONTRATANTE')}
+<p>Constituem obrigações da CONTRATANTE:</p>
+${bri('I', 'fornecer informações completas e verdadeiras sobre a vaga;')}
+${bri('II', 'informar corretamente remuneração, benefícios, jornada e demais condições da contratação;')}
+${bri('III', 'designar um responsável para comunicação com a CONTRATADA;')}
+${bri('IV', 'fornecer feedback acerca dos candidatos apresentados;')}
+${bri('V', 'cumprir os prazos de pagamento;')}
+${bri('VI', 'respeitar as condições comerciais estabelecidas neste contrato;')}
+${bri('VII', 'comunicar imediatamente qualquer alteração referente à vaga.')}
+${brpar('Primeiro', 'A ausência de informações ou a prestação de informações incorretas poderá comprometer o processo seletivo, não podendo tal fato ser imputado à CONTRATADA.')}
+${brpar('Segundo', 'A CONTRATANTE compromete-se a comunicar formalmente a contratação de qualquer candidato apresentado pela CONTRATADA, informando a data de admissão e a remuneração efetivamente praticada.')}
+
+${brm('CLÁUSULA 10 – DO PRAZO PARA FEEDBACK')}
+<p>A CONTRATANTE deverá fornecer retorno acerca dos candidatos apresentados, sempre que possível, no prazo máximo de 05 (cinco) dias úteis.</p>
+${brpar('Primeiro', 'O atraso no fornecimento de feedback poderá impactar diretamente o interesse e a disponibilidade dos candidatos, não podendo a CONTRATADA ser responsabilizada pela eventual perda desses profissionais.')}
+${brpar('Segundo', 'Na hipótese de ausência de retorno superior a 15 (quinze) dias corridos, o processo seletivo poderá ser considerado suspenso até manifestação da CONTRATANTE.')}
+
+${brm('CLÁUSULA 11 – DAS ALTERAÇÕES DA VAGA')}
+<p>Após iniciado o processo seletivo, qualquer alteração substancial nas condições inicialmente informadas será considerada novo alinhamento da vaga.</p>
+<p>Consideram-se alterações substanciais, entre outras:</p>
+${bri('I', 'alteração da remuneração;')}
+${bri('II', 'alteração dos benefícios;')}
+${bri('III', 'mudança da jornada de trabalho;')}
+${bri('IV', 'alteração do local de trabalho;')}
+${bri('V', 'mudança do cargo;')}
+${bri('VI', 'alteração das atividades principais;')}
+${bri('VII', 'alteração da escolaridade exigida;')}
+${bri('VIII', 'alteração dos requisitos técnicos;')}
+${bri('IX', 'inclusão de novas competências obrigatórias.')}
+${brpar('Primeiro', 'Ocorrendo qualquer das hipóteses acima, a CONTRATADA poderá reiniciar o processo seletivo, reiniciando-se também os prazos operacionais.')}
+${brpar('Segundo', 'Caso as alterações impliquem aumento significativo da complexidade do recrutamento, as partes poderão revisar os honorários mediante acordo formal.')}
+
+${brm('CLÁUSULA 12 – DA SUSPENSÃO DOS SERVIÇOS')}
+<p>A CONTRATADA poderá suspender temporariamente o processo seletivo quando ocorrer qualquer das seguintes situações:</p>
+${bri('I', 'ausência de informações indispensáveis;')}
+${bri('II', 'atraso superior a 15 (quinze) dias no pagamento de valores devidos;')}
+${bri('III', 'ausência de feedback da CONTRATANTE;')}
+${bri('IV', 'solicitação expressa da CONTRATANTE;')}
+${bri('V', 'fatos que inviabilizem a continuidade dos trabalhos.')}
+${brpar('Único', 'Durante o período de suspensão ficarão igualmente suspensos todos os prazos previstos neste contrato, retomando sua contagem após a regularização da situação.')}
+
+${brparte('PARTE 3 – CONDIÇÕES COMERCIAIS')}
+
+${brm('CLÁUSULA 13 – DOS HONORÁRIOS')}
+<p>Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA honorários de sucesso ("Success Fee"), devidos exclusivamente em caso de efetiva contratação de candidato apresentado pela CONTRATADA.</p>
+<p>Os honorários serão calculados sobre o salário-base mensal bruto da vaga, conforme a tabela abaixo:</p>
+<table class="tabela-honorarios">
+  <thead><tr><th>Faixa Salarial</th><th>Honorários</th></tr></thead>
+  <tbody>
+    <tr><td>De R$ 1.000,00 até R$ 1.999,99</td><td><strong>60% do salário-base</strong></td></tr>
+    <tr><td>De R$ 2.000,00 até R$ 3.999,99</td><td><strong>50% do salário-base</strong></td></tr>
+    <tr><td>Igual ou superior a R$ 4.000,00</td><td><strong>40% do salário-base</strong></td></tr>
+  </tbody>
+</table>
+${brpar('Primeiro', 'Para fins deste contrato, considera-se salário-base o valor da remuneração fixa mensal pactuada para o cargo, excluídos benefícios, comissões, premiações, bônus, ajuda de custo, participação nos lucros e demais verbas variáveis.')}
+${brpar('Segundo', 'Caso a remuneração seja alterada antes da admissão do candidato, os honorários serão calculados com base no salário efetivamente contratado.')}
+<p class="nota-anexo">→ O percentual aplicável a esta contratação específica está calculado no <strong>Anexo I</strong>, ao final deste contrato.</p>
+
+${brm('CLÁUSULA 14 – DO FATO GERADOR DOS HONORÁRIOS')}
+<p>Os honorários serão considerados devidos quando ocorrer qualquer forma de contratação ou utilização profissional de candidato apresentado pela CONTRATADA.</p>
+<p>Para fins deste contrato, equiparam-se à contratação:</p>
+${bri('I', 'registro em carteira de trabalho (CLT);')}
+${bri('II', 'contrato de experiência;')}
+${bri('III', 'contratação como Pessoa Jurídica (PJ);')}
+${bri('IV', 'contratação temporária;')}
+${bri('V', 'contrato intermitente;')}
+${bri('VI', 'estágio;')}
+${bri('VII', 'jovem aprendiz;')}
+${bri('VIII', 'terceirização;')}
+${bri('IX', 'contratação por cooperativa;')}
+${bri('X', 'prestação de serviços como freelancer;')}
+${bri('XI', 'contratação por diária;')}
+${bri('XII', 'qualquer modalidade que resulte na prestação de serviços em benefício da CONTRATANTE.')}
+${brpar('Único', 'Os honorários também serão devidos caso a contratação ocorra por empresa pertencente ao mesmo grupo econômico, empresa coligada, controladora, controlada ou por terceiros indicados pela CONTRATANTE.')}
+
+${brm('CLÁUSULA 15 – DA AVALIAÇÃO PRÁTICA PRÉ-ADMISSIONAL')}
+<p>A CONTRATANTE poderá realizar avaliação prática destinada exclusivamente à verificação da aptidão técnica do candidato.</p>
+<p>A avaliação prática deverá observar, cumulativamente, os seguintes limites:</p>
+${bri('I', 'máximo de 03 (três) escalas por candidato;')}
+${bri('II', 'realização em período não superior a 07 (sete) dias corridos.')}
+${brpar('Primeiro', 'A avaliação prática deverá possuir caráter exclusivamente avaliativo, não podendo ser utilizada para suprir necessidades permanentes de mão de obra da CONTRATANTE.')}
+${brpar('Segundo', 'Caso o candidato permaneça prestando serviços além dos limites previstos nesta cláusula, ainda que sob qualquer nomenclatura, inclusive freelancer, diarista, temporário, experiência, teste, prestação eventual ou equivalente, considerar-se-á caracterizada a utilização efetiva da mão de obra apresentada pela CONTRATADA, tornando imediatamente exigíveis os honorários previstos neste contrato, independentemente da data da formalização da admissão.')}
+${brpar('Terceiro', 'A remuneração do candidato durante a avaliação prática será de inteira responsabilidade da CONTRATANTE.')}
+${brpar('Quarto', 'A CONTRATADA não possui qualquer responsabilidade pela gestão, pagamento, encargos, segurança do trabalho ou obrigações decorrentes da realização das avaliações práticas.')}
+
+${brm('CLÁUSULA 16 – DO PAGAMENTO')}
+<p>Após a confirmação da contratação, a CONTRATADA emitirá a competente Nota Fiscal.</p>
+<p>O pagamento deverá ocorrer no prazo de ____ (__________) dias contados da emissão da Nota Fiscal, mediante ${extenso(d.contrato_pagamento, 'PIX, transferência bancária ou outro meio previamente acordado entre as partes')}.</p>
+${brpar('Único', 'A CONTRATANTE compromete-se a informar imediatamente à CONTRATADA a efetiva contratação de qualquer candidato apresentado.')}
+
+${brm('CLÁUSULA 17 – DO INADIMPLEMENTO')}
+<p>O atraso no pagamento acarretará:</p>
+${bri('I', 'multa moratória de 2% (dois por cento);')}
+${bri('II', 'juros de mora de 1% (um por cento) ao mês, calculados pro rata die;')}
+${bri('III', 'atualização monetária pelo índice legal aplicável.')}
+${brpar('Primeiro', 'Persistindo a inadimplência por período superior a 15 (quinze) dias, a CONTRATADA poderá suspender quaisquer processos seletivos em andamento.')}
+${brpar('Segundo', 'Os custos decorrentes de cobrança judicial ou extrajudicial, inclusive honorários advocatícios, serão suportados pela parte inadimplente, na forma da legislação vigente.')}
+
+${brm('CLÁUSULA 18 – DA CONTRATAÇÃO POSTERIOR')}
+<p>Os candidatos apresentados pela CONTRATADA permanecerão vinculados ao presente contrato pelo prazo de 12 (doze) meses contados da data de sua apresentação.</p>
+<p>Caso qualquer desses candidatos seja contratado durante esse período, ainda que após o encerramento do processo seletivo ou por iniciativa da CONTRATANTE, serão integralmente devidos os honorários previstos neste contrato.</p>
+${brpar('Primeiro', 'A presente cláusula aplica-se inclusive quando: I – houver contratação direta pelo proprietário, sócios ou administradores; II – ocorrer contratação por empresa do mesmo grupo econômico; III – a vaga originalmente trabalhada tenha sido cancelada; IV – o candidato seja contratado para cargo diverso daquele inicialmente divulgado.')}
+${brpar('Segundo', 'A simples alegação de que o candidato foi localizado posteriormente pela CONTRATANTE não afastará a incidência desta cláusula quando houver comprovação de apresentação prévia realizada pela CONTRATADA.')}
+
+${brm('CLÁUSULA 19 – DO PROGRAMA GARANTIA EFFECT')}
+<p>Como diferencial comercial, a CONTRATADA concede à CONTRATANTE o Programa Garantia Effect, consistente na realização de um novo processo seletivo para a mesma vaga, sem cobrança de novos honorários, caso o candidato contratado seja desligado no prazo de até ${escapeHtml(CONFIG.CONTRATO_DIAS_GARANTIA)} (trinta) dias corridos contados da data de admissão.</p>
+${brpar('Primeiro', 'A garantia compreende exclusivamente uma única reposição, limitada à mesma vaga originalmente contratada.')}
+${brpar('Segundo', 'A garantia consiste exclusivamente na realização de novo processo seletivo, não implicando devolução de valores pagos.')}
+
+${brm('CLÁUSULA 20 – DAS HIPÓTESES DE PERDA DA GARANTIA')}
+<p>A Garantia Effect perderá automaticamente sua validade quando ocorrer qualquer das seguintes hipóteses:</p>
+${bri('I', 'atraso no pagamento dos honorários;')}
+${bri('II', 'alteração da remuneração originalmente informada;')}
+${bri('III', 'alteração dos benefícios;')}
+${bri('IV', 'alteração da jornada de trabalho;')}
+${bri('V', 'alteração do local de trabalho;')}
+${bri('VI', 'alteração das atribuições do cargo;')}
+${bri('VII', 'alteração do perfil profissional solicitado;')}
+${bri('VIII', 'encerramento da vaga;')}
+${bri('IX', 'desligamento decorrente de reestruturação interna da empresa;')}
+${bri('X', 'descumprimento, pela CONTRATANTE, da legislação trabalhista ou previdenciária;')}
+${bri('XI', 'prática de assédio moral, assédio sexual, discriminação ou qualquer conduta ilícita que tenha contribuído para o desligamento do candidato;')}
+${bri('XII', 'pedido de desligamento motivado por condições de trabalho substancialmente diferentes daquelas informadas durante o processo seletivo.')}
+${brpar('Único', 'Verificada qualquer das hipóteses acima, eventual reposição será considerada novo processo seletivo, sujeito à cobrança dos honorários normalmente aplicáveis.')}
+
+${brparte('PARTE 4 – DISPOSIÇÕES JURÍDICAS FINAIS')}
+
+${brm('CLÁUSULA 21 – DA CONFIDENCIALIDADE')}
+<p>As partes comprometem-se a manter absoluto sigilo sobre todas as informações, documentos, dados, estratégias, processos, metodologias, documentos comerciais, informações financeiras e demais conteúdos obtidos em razão da execução deste contrato.</p>
+<p>Consideram-se confidenciais, entre outros:</p>
+${bri('I', 'currículos;')}
+${bri('II', 'pareceres técnicos;')}
+${bri('III', 'avaliações;')}
+${bri('IV', 'testes;')}
+${bri('V', 'informações salariais;')}
+${bri('VI', 'estrutura organizacional;')}
+${bri('VII', 'banco de candidatos;')}
+${bri('VIII', 'documentos internos;')}
+${bri('IX', 'dados estratégicos da CONTRATANTE;')}
+${bri('X', 'metodologia empregada pela CONTRATADA.')}
+${brpar('Primeiro', 'Nenhuma informação poderá ser divulgada, reproduzida ou compartilhada sem autorização expressa da outra parte, salvo quando exigido por lei ou determinação judicial.')}
+${brpar('Segundo', 'A obrigação de confidencialidade permanecerá vigente por 05 (cinco) anos após o encerramento deste contrato.')}
+
+${brm('CLÁUSULA 22 – DA LEI GERAL DE PROTEÇÃO DE DADOS (LGPD)')}
+<p>As partes comprometem-se a observar integralmente as disposições da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados – LGPD), bem como toda legislação correlata.</p>
+${brpar('Primeiro', 'Os dados pessoais tratados em razão deste contrato serão utilizados exclusivamente para a execução dos processos seletivos contratados.')}
+${brpar('Segundo', 'Cada parte será responsável pelo tratamento dos dados pessoais sob sua guarda, respondendo individualmente por eventuais danos decorrentes de tratamento irregular.')}
+${brpar('Terceiro', 'A CONTRATANTE compromete-se a utilizar os dados dos candidatos exclusivamente para fins relacionados à vaga contratada, sendo vedada qualquer utilização diversa sem fundamento legal.')}
+${brpar('Quarto', 'Encerrado o processo seletivo, a CONTRATANTE deverá eliminar ou anonimizar os dados pessoais dos candidatos não contratados, salvo obrigação legal de conservação.')}
+
+${brm('CLÁUSULA 23 – DA PROPRIEDADE INTELECTUAL')}
+<p>Todos os métodos, formulários, entrevistas estruturadas, pareceres técnicos, avaliações, materiais, documentos, apresentações, relatórios, modelos, fluxos de recrutamento, banco de talentos e demais conteúdos produzidos pela CONTRATADA constituem sua propriedade intelectual exclusiva.</p>
+${brpar('Primeiro', 'A contratação dos serviços não implica cessão de propriedade intelectual.')}
+${brpar('Segundo', 'É vedada a reprodução, distribuição, comercialização, compartilhamento ou utilização desses materiais para quaisquer outras finalidades sem autorização expressa da CONTRATADA.')}
+
+${brm('CLÁUSULA 24 – DOS CURRÍCULOS E DOS CANDIDATOS APRESENTADOS')}
+<p>Os currículos encaminhados pela CONTRATADA destinam-se exclusivamente ao preenchimento da vaga objeto deste contrato.</p>
+<p>É vedado à CONTRATANTE:</p>
+${bri('I', 'compartilhar currículos com terceiros;')}
+${bri('II', 'encaminhar candidatos para empresas parceiras;')}
+${bri('III', 'utilizar candidatos apresentados para processos seletivos de terceiros;')}
+${bri('IV', 'divulgar informações pessoais dos candidatos sem autorização.')}
+${brpar('Primeiro', 'Caso a CONTRATANTE tenha interesse em aproveitar candidato apresentado para vaga diversa daquela originalmente contratada, deverá comunicar previamente a CONTRATADA.')}
+${brpar('Segundo', 'A utilização de candidato apresentado para outra vaga não afasta a incidência dos honorários previstos neste contrato.')}
+
+${brm('CLÁUSULA 25 – DAS COMUNICAÇÕES')}
+<p>Serão consideradas válidas todas as comunicações realizadas por:</p>
+${bri('I', 'e-mail;')}
+${bri('II', 'WhatsApp;')}
+${bri('III', 'plataformas eletrônicas de gestão de processos;')}
+${bri('IV', 'assinatura eletrônica;')}
+${bri('V', 'qualquer outro meio eletrônico habitualmente utilizado entre as partes.')}
+${brpar('Primeiro', 'As partes reconhecem a validade jurídica das comunicações eletrônicas para fins de aprovações, solicitações, envio de currículos, aceite de propostas, notificações e demais atos relacionados à execução deste contrato.')}
+${brpar('Segundo', 'As assinaturas eletrônicas possuem plena validade jurídica, produzindo os mesmos efeitos das assinaturas físicas, nos termos da legislação brasileira.')}
+
+${brm('CLÁUSULA 26 – DA NÃO EXCLUSIVIDADE')}
+<p>O presente contrato não estabelece qualquer obrigação de exclusividade entre as partes.</p>
+<p>A CONTRATADA poderá prestar serviços a outras empresas, inclusive concorrentes da CONTRATANTE, desde que preservadas a confidencialidade e a ética profissional.</p>
+<p>Da mesma forma, a CONTRATANTE poderá contratar outras consultorias de recrutamento e seleção.</p>
+
+${brm('CLÁUSULA 27 – DA ANTICORRUPÇÃO E COMPLIANCE')}
+<p>As partes declaram conhecer e cumprir a legislação brasileira relativa ao combate à corrupção, fraude, lavagem de dinheiro e demais normas aplicáveis.</p>
+<p>Comprometem-se, ainda, a não oferecer, prometer, autorizar ou conceder vantagem indevida a agentes públicos ou privados em razão deste contrato.</p>
+<p>O descumprimento desta cláusula autorizará a rescisão imediata do contrato, independentemente de aviso prévio.</p>
+
+${brm('CLÁUSULA 28 – DO CASO FORTUITO E DA FORÇA MAIOR')}
+<p>Nenhuma das partes responderá por atrasos ou impossibilidade de cumprimento das obrigações quando decorrentes de caso fortuito ou força maior.</p>
+<p>Consideram-se, entre outros:</p>
+${bri('I', 'desastres naturais;')}
+${bri('II', 'enchentes;')}
+${bri('III', 'pandemias;')}
+${bri('IV', 'greves gerais;')}
+${bri('V', 'interrupção de energia elétrica;')}
+${bri('VI', 'indisponibilidade prolongada de sistemas;')}
+${bri('VII', 'ataques cibernéticos;')}
+${bri('VIII', 'atos governamentais que impeçam a continuidade dos serviços.')}
+${brpar('Único', 'Enquanto perdurar o evento de força maior, ficarão suspensas as obrigações afetadas, sem incidência de penalidades.')}
+
+${brm('CLÁUSULA 29 – DA RESCISÃO')}
+<p>O presente contrato poderá ser rescindido:</p>
+${bri('I', 'por comum acordo entre as partes;')}
+${bri('II', `mediante aviso prévio escrito de ${escapeHtml(CONFIG.CONTRATO_DIAS_AVISO_RESCISAO)} (trinta) dias;`)}
+${bri('III', 'imediatamente, em caso de descumprimento contratual;')}
+${bri('IV', 'imediatamente, em caso de inadimplência superior a 15 (quinze) dias;')}
+${bri('V', 'por violação das cláusulas de confidencialidade ou LGPD;')}
+${bri('VI', 'por prática de ato ilícito relacionado à execução deste contrato.')}
+${brpar('Primeiro', 'A rescisão não prejudicará os honorários já devidos em razão de candidatos apresentados antes do encerramento da relação contratual.')}
+${brpar('Segundo', 'Os candidatos encaminhados pela CONTRATADA antes da rescisão permanecerão vinculados à cláusula de contratação posterior prevista neste contrato.')}
+${brpar('Terceiro', `O descumprimento de qualquer obrigação prevista neste contrato sujeitará a parte infratora ao pagamento de multa não compensatória correspondente a ${escapeHtml(CONFIG.CONTRATO_MULTA_PCT)}% (${CONFIG.CONTRATO_MULTA_PCT === '10' ? 'dez por cento' : escapeHtml(CONFIG.CONTRATO_MULTA_PCT) + ' por cento'}) sobre o valor dos honorários devidos ou, na ausência destes, sobre o valor da Proposta Comercial vigente, sem prejuízo da apuração de perdas e danos e da exigibilidade do cumprimento da obrigação principal.`)}
+
+${brm('CLÁUSULA 30 – DA INEXISTÊNCIA DE VÍNCULO EMPREGATÍCIO')}
+<p>O presente contrato possui natureza exclusivamente civil e comercial.</p>
+<p>Nenhuma disposição deste instrumento poderá ser interpretada como constituição de vínculo empregatício, sociedade, representação comercial, associação, mandato ou qualquer outra relação além da prestação de serviços ora contratada.</p>
+<p>Os profissionais eventualmente utilizados pela CONTRATADA permanecerão sob sua exclusiva direção, coordenação e responsabilidade.</p>
+
+${brm('CLÁUSULA 31 – DAS DISPOSIÇÕES GERAIS')}
+<p>Este contrato constitui o acordo integral celebrado entre as partes, substituindo quaisquer entendimentos anteriores, escritos ou verbais.</p>
+${brpar('Primeiro', 'Qualquer alteração deste contrato somente produzirá efeitos mediante termo aditivo escrito e assinado pelas partes.')}
+${brpar('Segundo', 'A eventual tolerância quanto ao descumprimento de qualquer cláusula não implicará renúncia de direitos ou novação contratual.')}
+${brpar('Terceiro', 'A eventual nulidade de qualquer cláusula não prejudicará a validade das demais disposições contratuais.')}
+${brpar('Quarto', 'A Proposta Comercial, Ordens de Serviço, Aditivos Contratuais e demais documentos assinados pelas partes passam a integrar este contrato para todos os efeitos legais.')}
+
+${brm('CLÁUSULA 32 – DO FORO')}
+<p>As partes elegem o Foro da Comarca de ${escapeHtml(CONFIG.CONTRATADA_FORO_CIDADE)}, Estado do ${escapeHtml(CONFIG.CONTRATADA_FORO_UF)}, com renúncia expressa de qualquer outro, por mais privilegiado que seja, para dirimir quaisquer controvérsias oriundas deste contrato.</p>
+
+<p><strong>E, POR ESTAREM JUSTAS E CONTRATADAS,</strong></p>
+<p>Firmam o presente instrumento em duas vias de igual teor e forma, juntamente com duas testemunhas.</p>
+
+<p class="assinatura-local">${escapeHtml(CONFIG.CONTRATADA_FORO_CIDADE)}/${escapeHtml((CONFIG.CONTRATADA_FORO_UF||'').split(' ').map(w=>w[0]).join('') || 'ES')}, ${dataPorExtenso(d.criadoEm)}.</p>
+
+<div class="assinaturas">
+  <div class="linha-assinatura">
+    <div class="tra"></div>
+    <span><strong>CONTRATANTE</strong><br>Razão Social: ${extenso(d.contrato_razao)}<br>Representante: ${extenso(d.responsavel_nome)}<br>Cargo: ${extenso(d.responsavel_cargo)}<br>Assinatura: ____________________________</span>
+  </div>
+  <div class="linha-assinatura">
+    <div class="tra"></div>
+    <span><strong>CONTRATADA</strong><br>${escapeHtml(CONFIG.CONTRATADA_RAZAO)}<br>${escapeHtml(CONFIG.CONTRATADA_NOME_FANTASIA)}<br>CNPJ: ${escapeHtml(CONFIG.CONTRATADA_CNPJ)}<br>Assinatura: ____________________________</span>
+  </div>
+  <div class="linha-assinatura">
+    <div class="tra"></div>
+    <span><strong>TESTEMUNHA 1</strong><br>Nome: ______________________________<br>CPF: ______________________________<br>Assinatura: ____________________________</span>
+  </div>
+  <div class="linha-assinatura">
+    <div class="tra"></div>
+    <span><strong>TESTEMUNHA 2</strong><br>Nome: ______________________________<br>CPF: ______________________________<br>Assinatura: ____________________________</span>
+  </div>
+</div>
+
+${brparte('ANEXO I – CONDIÇÕES COMERCIAIS DESTA CONTRATAÇÃO')}
+<p>Preenchido automaticamente com os dados enviados pela CONTRATANTE no portal — evita alterar o corpo do contrato a cada novo cliente. Integra este contrato para todos os fins de direito e prevalece sobre as condições gerais apenas quanto aos aspectos comerciais aqui especificados.</p>
+${brb(`Cargo(s): ${extenso(d.vaga_cargo)}`)}
+${brb(`Quantidade de vagas: ${extenso(d.vaga_quantidade, '1')}`)}
+${brb(`Tipo de serviço contratado: ${extenso(d.contrato_servico)}`)}
+${brb(`Salário-base informado: ${extenso(d.vaga_salario, 'a definir')}`)}
+${brb(`Percentual de honorários aplicável: ${faixaHonorarios(d.vaga_salario)}`)}
+${brb(`Benefícios: ${extenso(d.vaga_beneficios, 'não informado')}`)}
+${brb(`Condições de pagamento: ${extenso(d.contrato_pagamento, 'a combinar')}`)}
+${d.contrato_valor ? brb(`Valor/condição comercial adicional informada no formulário: ${extenso(d.contrato_valor)}`) : ''}
+${brb(`Responsável pelo projeto (Contratante): ${extenso(d.responsavel_nome)}`)}
+${brb(`Observações específicas: ${extenso(d.contrato_obs, 'nenhuma')}`)}
+<p class="nota-anexo">Recebido via Portal do Cliente em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · ID ${escapeHtml(d.contratoId)}.</p>`;
+}
+
 function paginaContrato(d) {
   const linha = (rotulo, valor, destaque) => `<div class="linha${destaque ? ' destaque' : ''}"><span class="rotulo">${escapeHtml(rotulo)}</span><span class="valor">${escapeHtml(valor) || '<span class="vazio">—</span>'}</span></div>`;
   return `<!DOCTYPE html>
@@ -3299,17 +3758,42 @@ function paginaContrato(d) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contrato — ${escapeHtml(d.empresa_nome || 'Effect')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1a2a4a;--white:#ffffff;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--text:#2a2a2b}
+:root{--navy:#1a2a4a;--white:#ffffff;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--text:#2a2a2b;--warn:#b45309;--warn-bg:#fff7ed}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);padding:32px}
-.folha{max-width:760px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,.06);overflow:hidden}
+.folha{max-width:800px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,.06);overflow:hidden}
 .topo{background:var(--navy);color:#fff;padding:28px 36px}
 .topo .logo{font-weight:800;font-size:15px;letter-spacing:.5px}.topo .logo span{color:var(--green)}
 .topo h1{font-size:22px;font-weight:800;margin-top:10px}
 .topo .sub{font-size:12.5px;color:rgba(255,255,255,.6);margin-top:4px}
+.aviso{background:var(--warn-bg);color:var(--warn);border-bottom:1px solid #fde3b6;padding:14px 36px;font-size:12.5px;font-weight:600;line-height:1.5}
+.abas{display:flex;gap:0;border-bottom:2px solid #eef0f3;padding:0 36px}
+.aba{padding:14px 18px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+.aba.ativa{color:var(--navy);border-color:var(--green)}
 .corpo{padding:32px 36px}
+.painel{display:none}
+.painel.ativa{display:block}
+/* Minuta do contrato */
+.minuta{font-family:'Merriweather',serif;font-size:12.5px;line-height:1.8;text-align:justify;color:#1c1c1c}
+.minuta p{margin-bottom:10px}
+.minuta p.centro{text-align:center;margin-bottom:20px;font-size:14px}
+.minuta p.parte-titulo{text-align:center;text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-top:36px;margin-bottom:16px;color:var(--navy);border-top:2px solid var(--navy);border-bottom:2px solid var(--navy);padding:8px 0}
+.minuta p.clausula-titulo{font-weight:800;margin-top:22px;margin-bottom:8px;color:var(--navy)}
+.minuta p.item{margin-left:18px;margin-bottom:6px}
+.minuta p.bullet{margin-left:30px;margin-bottom:5px}
+.minuta p.paragrafo{margin-left:0;margin-bottom:8px;font-size:12px;color:#333}
+.minuta .vazio{color:#b91c1c;font-style:italic;font-weight:700}
+.minuta .assinatura-local{margin-top:28px}
+.minuta .nota-anexo{font-size:11.5px;color:#555;font-style:italic}
+.minuta table.tabela-honorarios{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+.minuta table.tabela-honorarios th,.minuta table.tabela-honorarios td{border:1px solid #ccc;padding:7px 10px;text-align:left}
+.minuta table.tabela-honorarios th{background:var(--navy);color:#fff}
+.assinaturas{margin-top:40px;display:flex;flex-direction:column;gap:28px}
+.linha-assinatura .tra{border-top:1px solid #555;width:320px;margin-bottom:8px}
+.linha-assinatura span{font-size:11.5px;line-height:1.7}
+/* Resumo em tabela */
 .grupo{margin-bottom:28px}
 .grupo:last-child{margin-bottom:0}
 .grupo-titulo{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--green);background:rgba(142,209,178,.12);display:inline-block;padding:4px 10px;border-radius:6px;margin-bottom:14px}
@@ -3322,39 +3806,55 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .rodape{padding:20px 36px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .rodape small{color:var(--muted);font-size:11px}
 .btn{background:var(--green);color:var(--navy);padding:10px 22px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
-@media print{ body{background:#fff;padding:0} .folha{box-shadow:none;border-radius:0} .rodape .btn{display:none} }
+@media print{
+  body{background:#fff;padding:0}
+  .folha{box-shadow:none;border-radius:0}
+  .rodape .btn, .abas{display:none}
+  .painel{display:block !important}
+  .painel + .painel{page-break-before:always}
+}
 </style>
 </head>
 <body>
 <div class="folha">
   <div class="topo">
     <div class="logo">Effect <span>Pessoas</span></div>
-    <h1>Dados para contrato — ${escapeHtml(d.empresa_nome || '')}</h1>
+    <h1>Contrato — ${escapeHtml(d.empresa_nome || '')}</h1>
     <div class="sub">Recebido em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · Origem: ${escapeHtml(d.origem || 'Portal do Cliente')}</div>
   </div>
+  <div class="aviso">⚠️ Este documento é uma MINUTA gerada automaticamente a partir dos dados enviados pelo cliente. Revise (e peça revisão de um advogado) antes de usar como contrato oficial — especialmente os dados da CONTRATADA e os prazos de garantia/rescisão.</div>
+  <div class="abas">
+    <div class="aba ativa" onclick="mostrarAba('minuta',this)">📄 Minuta do contrato</div>
+    <div class="aba" onclick="mostrarAba('resumo',this)">📋 Dados brutos enviados</div>
+  </div>
   <div class="corpo">
-    <div class="grupo">
-      <div class="grupo-titulo">Empresa contratante</div>
-      ${linha('Razão social', d.contrato_razao, true)}
-      ${linha('CNPJ', d.contrato_cnpj)}
-      ${linha('CPF (se aplicável)', d.contrato_cpf)}
-      ${linha('Endereço', d.contrato_endereco)}
-      ${linha('Responsável', `${d.responsavel_nome || ''}${d.responsavel_cargo ? ' ('+d.responsavel_cargo+')' : ''}`)}
-      ${linha('WhatsApp', d.responsavel_whatsapp)}
-      ${linha('E-mail', d.responsavel_email)}
+    <div class="painel ativa" id="painel-minuta">
+      <div class="minuta">${textoMinutaContrato(d)}</div>
     </div>
-    <div class="grupo">
-      <div class="grupo-titulo">Objeto e valores</div>
-      ${linha('Serviço contratado', d.contrato_servico, true)}
-      ${linha('Valor', d.contrato_valor || 'A definir', true)}
-      ${linha('Forma de pagamento', d.contrato_pagamento)}
-      ${linha('Observações', d.contrato_obs)}
-    </div>
-    <div class="grupo">
-      <div class="grupo-titulo">Vaga relacionada</div>
-      ${linha('Cargo', `${d.vaga_cargo || ''}${d.vaga_quantidade ? ' ('+d.vaga_quantidade+' vaga(s))' : ''}`)}
-      ${linha('Cidade', d.vaga_cidade)}
-      ${linha('Salário', d.vaga_salario)}
+    <div class="painel" id="painel-resumo">
+      <div class="grupo">
+        <div class="grupo-titulo">Empresa contratante</div>
+        ${linha('Razão social', d.contrato_razao, true)}
+        ${linha('CNPJ', d.contrato_cnpj)}
+        ${linha('CPF (se aplicável)', d.contrato_cpf)}
+        ${linha('Endereço', d.contrato_endereco)}
+        ${linha('Responsável', `${d.responsavel_nome || ''}${d.responsavel_cargo ? ' ('+d.responsavel_cargo+')' : ''}`)}
+        ${linha('WhatsApp', d.responsavel_whatsapp)}
+        ${linha('E-mail', d.responsavel_email)}
+      </div>
+      <div class="grupo">
+        <div class="grupo-titulo">Objeto e valores</div>
+        ${linha('Serviço contratado', d.contrato_servico, true)}
+        ${linha('Valor', d.contrato_valor || 'A definir', true)}
+        ${linha('Forma de pagamento', d.contrato_pagamento)}
+        ${linha('Observações', d.contrato_obs)}
+      </div>
+      <div class="grupo">
+        <div class="grupo-titulo">Vaga relacionada</div>
+        ${linha('Cargo', `${d.vaga_cargo || ''}${d.vaga_quantidade ? ' ('+d.vaga_quantidade+' vaga(s))' : ''}`)}
+        ${linha('Cidade', d.vaga_cidade)}
+        ${linha('Salário', d.vaga_salario)}
+      </div>
     </div>
   </div>
   <div class="rodape">
@@ -3362,6 +3862,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
     <button class="btn" onclick="window.print()">🖨️ Salvar como PDF</button>
   </div>
 </div>
+<script>
+function mostrarAba(nome, el){
+  document.querySelectorAll('.aba').forEach(a=>a.classList.remove('ativa'));
+  document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativa'));
+  el.classList.add('ativa');
+  document.getElementById('painel-'+nome).classList.add('ativa');
+}
+</script>
 </body>
 </html>`;
 }
@@ -3406,7 +3914,7 @@ ${d.perfil_obs ? '• Obs: '+d.perfil_obs : ''}
 • Pagamento: ${d.contrato_pagamento || ''}
 ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
 
-📎 Ver/imprimir dados do contrato: ${linkContrato}`;
+📎 Minuta de contrato (gerada automaticamente) + dados brutos: ${linkContrato}`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
 
