@@ -80,7 +80,8 @@ const CONFIG = {
   EMAIL_PASS: process.env.EMAIL_PASS,                       // senha de app (não a senha normal)
   PARCEIRO_EMAIL: process.env.PARCEIRO_EMAIL,               // e-mail do parceiro que divulga nas redes
   PARCEIRO_NOME: process.env.PARCEIRO_NOME || "Parceiro de Divulgação",
-  TEMPLATE_DIVULGACAO_VAGA: process.env.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos" // template aprovado na Meta p/ candidatos fora da janela de 24h
+  TEMPLATE_DIVULGACAO_VAGA: process.env.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos", // template aprovado na Meta p/ candidatos fora da janela de 24h
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || "https://effect-production.up.railway.app"
 };
 
 // ── MODO EMERGÊNCIA: desativa IA Gemini sem precisar de deploy ───────────────
@@ -3268,9 +3269,110 @@ app.post("/inbox/encaminhar", async (req, res) => {
 // ROTA — PORTAL DO CLIENTE
 // ============================================================
 
+// Dados de contrato ficam salvos em /data/contratos.json (Railway Volume
+// persistente — mesmo padrão usado para inbox/vagas). Sem Volume montado em
+// /data, o arquivo cai em /tmp e dura só a sessão atual do processo.
+const CONTRATOS_PATH = process.env.CONTRATOS_PATH || "/data/contratos.json";
+
+function lerContratos() {
+  try { return JSON.parse(fs.readFileSync(CONTRATOS_PATH, "utf8")); }
+  catch (e) { return []; }
+}
+
+function salvarContrato(registro) {
+  try {
+    const lista = lerContratos();
+    lista.unshift(registro);
+    fs.writeFileSync(CONTRATOS_PATH, JSON.stringify(lista.slice(0, 500)), "utf8");
+  } catch (e) { console.error("Erro salvando contrato local:", e.message); }
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function paginaContrato(d) {
+  const linha = (rotulo, valor, destaque) => `<div class="linha${destaque ? ' destaque' : ''}"><span class="rotulo">${escapeHtml(rotulo)}</span><span class="valor">${escapeHtml(valor) || '<span class="vazio">—</span>'}</span></div>`;
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato — ${escapeHtml(d.empresa_nome || 'Effect')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2a4a;--white:#ffffff;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--text:#2a2a2b}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);padding:32px}
+.folha{max-width:760px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,.06);overflow:hidden}
+.topo{background:var(--navy);color:#fff;padding:28px 36px}
+.topo .logo{font-weight:800;font-size:15px;letter-spacing:.5px}.topo .logo span{color:var(--green)}
+.topo h1{font-size:22px;font-weight:800;margin-top:10px}
+.topo .sub{font-size:12.5px;color:rgba(255,255,255,.6);margin-top:4px}
+.corpo{padding:32px 36px}
+.grupo{margin-bottom:28px}
+.grupo:last-child{margin-bottom:0}
+.grupo-titulo{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--green);background:rgba(142,209,178,.12);display:inline-block;padding:4px 10px;border-radius:6px;margin-bottom:14px}
+.linha{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid #eef0f3;font-size:13.5px}
+.linha:last-child{border-bottom:none}
+.linha.destaque{background:rgba(142,209,178,.08);margin:0 -10px;padding:9px 10px;border-radius:8px;border-bottom:none;font-weight:700}
+.rotulo{flex:0 0 190px;font-weight:700;color:var(--navy)}
+.valor{flex:1;white-space:pre-wrap;word-break:break-word}
+.vazio{color:var(--muted);font-weight:400}
+.rodape{padding:20px 36px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.rodape small{color:var(--muted);font-size:11px}
+.btn{background:var(--green);color:var(--navy);padding:10px 22px;border-radius:8px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
+@media print{ body{background:#fff;padding:0} .folha{box-shadow:none;border-radius:0} .rodape .btn{display:none} }
+</style>
+</head>
+<body>
+<div class="folha">
+  <div class="topo">
+    <div class="logo">Effect <span>Pessoas</span></div>
+    <h1>Dados para contrato — ${escapeHtml(d.empresa_nome || '')}</h1>
+    <div class="sub">Recebido em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · Origem: ${escapeHtml(d.origem || 'Portal do Cliente')}</div>
+  </div>
+  <div class="corpo">
+    <div class="grupo">
+      <div class="grupo-titulo">Empresa contratante</div>
+      ${linha('Razão social', d.contrato_razao, true)}
+      ${linha('CNPJ', d.contrato_cnpj)}
+      ${linha('CPF (se aplicável)', d.contrato_cpf)}
+      ${linha('Endereço', d.contrato_endereco)}
+      ${linha('Responsável', `${d.responsavel_nome || ''}${d.responsavel_cargo ? ' ('+d.responsavel_cargo+')' : ''}`)}
+      ${linha('WhatsApp', d.responsavel_whatsapp)}
+      ${linha('E-mail', d.responsavel_email)}
+    </div>
+    <div class="grupo">
+      <div class="grupo-titulo">Objeto e valores</div>
+      ${linha('Serviço contratado', d.contrato_servico, true)}
+      ${linha('Valor', d.contrato_valor || 'A definir', true)}
+      ${linha('Forma de pagamento', d.contrato_pagamento)}
+      ${linha('Observações', d.contrato_obs)}
+    </div>
+    <div class="grupo">
+      <div class="grupo-titulo">Vaga relacionada</div>
+      ${linha('Cargo', `${d.vaga_cargo || ''}${d.vaga_quantidade ? ' ('+d.vaga_quantidade+' vaga(s))' : ''}`)}
+      ${linha('Cidade', d.vaga_cidade)}
+      ${linha('Salário', d.vaga_salario)}
+    </div>
+  </div>
+  <div class="rodape">
+    <small>ID: ${escapeHtml(d.contratoId)} · Effect Pessoas &amp; Performance</small>
+    <button class="btn" onclick="window.print()">🖨️ Salvar como PDF</button>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 app.post("/cliente/solicitar", async (req, res) => {
   try {
     const d = req.body;
+    const contratoId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const registro = { ...d, contratoId, criadoEm: new Date().toISOString() };
+    salvarContrato(registro);
+    const linkContrato = `${CONFIG.PUBLIC_BASE_URL}/cliente/contrato/${contratoId}`;
     const msg = `🆕 NOVA SOLICITAÇÃO DE VAGA — Effect
 
 🏢 EMPRESA
@@ -3302,7 +3404,9 @@ ${d.perfil_obs ? '• Obs: '+d.perfil_obs : ''}
 • Serviço: ${d.contrato_servico || ''}
 • Valor: ${d.contrato_valor || 'A definir'}
 • Pagamento: ${d.contrato_pagamento || ''}
-${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
+${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
+
+📎 Ver/imprimir dados do contrato: ${linkContrato}`;
 
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
 
@@ -3318,6 +3422,46 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}`;
     console.error("Erro /cliente/solicitar:", e.message);
     res.json({ ok: false, erro: e.message });
   }
+});
+
+// Página HTML (imprimível/salvável em PDF pelo navegador) com os dados de
+// contrato de uma solicitação específica.
+app.get("/cliente/contrato/:id", (req, res) => {
+  const lista = lerContratos();
+  const d = lista.find(x => x.contratoId === req.params.id);
+  if (!d) return res.status(404).send("<p style='font-family:sans-serif;padding:40px'>Contrato não encontrado (ou o link expirou).</p>");
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(paginaContrato(d));
+});
+
+// Lista de todas as solicitações recebidas, com link para cada contrato —
+// útil caso a mensagem de WhatsApp com o link individual se perca.
+app.get("/cliente/contratos", (req, res) => {
+  const lista = lerContratos();
+  const linhas = lista.map(d => `<tr>
+    <td>${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')}</td>
+    <td>${escapeHtml(d.empresa_nome)}</td>
+    <td>${escapeHtml(d.vaga_cargo)}</td>
+    <td>${escapeHtml(d.contrato_valor)}</td>
+    <td><a href="/cliente/contrato/${escapeHtml(d.contratoId)}" target="_blank">Abrir ↗</a></td>
+  </tr>`).join('');
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Contratos recebidos — Effect</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Montserrat',sans-serif;background:#f5f7fa;color:#2a2a2b;padding:32px}
+h1{color:#1a2a4a;font-size:20px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+th,td{text-align:left;padding:12px 14px;font-size:13px;border-bottom:1px solid #eef0f3}
+th{background:#1a2a4a;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tr:last-child td{border-bottom:none}
+a{color:#1fa5ff;font-weight:700;text-decoration:none}
+</style></head><body>
+<h1>Solicitações recebidas — dados de contrato</h1>
+<table><thead><tr><th>Data</th><th>Empresa</th><th>Cargo</th><th>Valor</th><th></th></tr></thead>
+<tbody>${linhas || '<tr><td colspan="5">Nenhuma solicitação ainda.</td></tr>'}</tbody></table>
+</body></html>`);
 });
 
 app.post("/cliente/disponibilidade", async (req, res) => {
