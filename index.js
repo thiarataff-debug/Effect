@@ -3340,8 +3340,12 @@ function parseValorBRL(s) {
   if (!s) return null;
   let cleaned = String(s).replace(/[^\d,.]/g, '');
   if (!cleaned) return null;
-  if (cleaned.includes(',') && cleaned.includes('.')) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-  else if (cleaned.includes(',')) cleaned = cleaned.replace(',', '.');
+  if (cleaned.includes(',')) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (cleaned.includes('.')) {
+    const partes = cleaned.split('.');
+    if (partes.length > 1 && partes[partes.length - 1].length === 3) cleaned = partes.join('');
+  }
   const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
@@ -3751,15 +3755,17 @@ ${brm('CLÁUSULA 32 – DO FORO')}
 </div>
 
 ${brparte('ANEXO I – CONDIÇÕES COMERCIAIS DESTA CONTRATAÇÃO')}
-<p>As condições comerciais desta contratação, detalhadas a seguir, integram este contrato para todos os fins de direito e prevalecem sobre as condições gerais apenas quanto aos aspectos comerciais aqui especificados.</p>
-${brb(`Cargo(s): ${extenso(d.vaga_cargo)}`)}
-${brb(`Quantidade de vagas: ${extenso(d.vaga_quantidade, '1')}`)}
+<p>As condições comerciais desta contratação, detalhadas a seguir, integram este contrato para todos os fins de direito e prevalecem sobre as condições gerais apenas quanto aos aspectos comerciais aqui especificados. Cada cargo abaixo é tratado como uma contratação independente para fins de honorários (Cláusula 13).</p>
+${(Array.isArray(d.vagas) && d.vagas.length ? d.vagas : [{ cargo: d.vaga_cargo, quantidade: d.vaga_quantidade, salario: d.vaga_salario, beneficios: d.vaga_beneficios }]).map((v, i, arr) => `
+<p class="clausula-titulo" style="margin-top:${i === 0 ? '0' : '18px'};font-size:13px">${arr.length > 1 ? `Cargo ${i + 1} de ${arr.length}` : 'Cargo'}</p>
+${brb(`Cargo: ${extenso(v.cargo)}`)}
+${brb(`Quantidade de vagas: ${extenso(v.quantidade, '1')}`)}
+${brb(`Salário-base informado: ${extenso(v.salario, 'a definir')}`)}
+${brb(`Percentual de honorários aplicável: ${faixaHonorarios(v.salario)}`)}
+${brb(`Benefícios: ${extenso(v.beneficios, 'não informado')}`)}`).join('\n')}
 ${brb(`Tipo de serviço contratado: ${extenso(d.contrato_servico)}`)}
-${brb(`Salário-base informado: ${extenso(d.vaga_salario, 'a definir')}`)}
-${brb(`Percentual de honorários aplicável: ${faixaHonorarios(d.vaga_salario)}`)}
-${brb(`Benefícios: ${extenso(d.vaga_beneficios, 'não informado')}`)}
 ${brb(`Condições de pagamento: ${extenso(d.contrato_pagamento, 'a combinar')}`)}
-${d.contrato_valor ? brb(`Valor/condição comercial adicional informada no formulário: ${extenso(d.contrato_valor)}`) : ''}
+${d.contrato_valor ? brb(`Resumo dos honorários calculados: ${extenso(d.contrato_valor)}`) : ''}
 ${brb(`Responsável pelo projeto (Contratante): ${extenso(d.responsavel_nome)}`)}
 ${brb(`Observações específicas: ${extenso(d.contrato_obs, 'nenhuma')}`)}
 <p class="nota-anexo">Recebido via Portal do Cliente em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · ID ${escapeHtml(d.contratoId)}.</p>`;
@@ -3833,7 +3839,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 <body>
 <div class="folha">
   <div class="topo">
-    <div class="logo">Effect <span>Pessoas</span></div>
+    <div class="logo">Effect <span>Pessoas & Performance</span></div>
     <h1>Contrato — ${escapeHtml(d.empresa_nome || '')}</h1>
     <div class="sub">Recebido em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · Origem: ${escapeHtml(d.origem || 'Portal do Cliente')}</div>
   </div>
@@ -3852,10 +3858,30 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 app.post("/cliente/solicitar", async (req, res) => {
   try {
     const d = req.body;
+    // Normaliza a lista de vagas: formulários novos mandam d.vagas (array,
+    // um item por cargo); formulários antigos (cache do navegador) mandam só
+    // os campos singulares vaga_* — nesse caso montamos um array de 1 item
+    // pra tudo (mensagem, planilha, contrato) funcionar igual.
+    const vagas = Array.isArray(d.vagas) && d.vagas.length ? d.vagas : [{
+      cargo: d.vaga_cargo, quantidade: d.vaga_quantidade, cidade: d.vaga_cidade, salario: d.vaga_salario,
+      horario: d.vaga_horario, beneficios: d.vaga_beneficios, beneficios_outros: d.vaga_beneficios_outros,
+      responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos
+    }];
+
     const contratoId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    const registro = { ...d, contratoId, criadoEm: new Date().toISOString() };
+    const registro = { ...d, vagas, contratoId, criadoEm: new Date().toISOString() };
     salvarContrato(registro);
     const linkContrato = `${CONFIG.PUBLIC_BASE_URL}/cliente/contrato/${contratoId}`;
+
+    const blocoVagas = vagas.map((v, i) => `💼 VAGA${vagas.length > 1 ? ' ' + (i + 1) : ''}
+• Cargo: ${v.cargo || ''} (${v.quantidade || '1'} vaga(s))
+• Cidade: ${v.cidade || ''}
+• Salário: ${v.salario || 'A combinar'}
+• Horário: ${v.horario || ''}
+• Benefícios: ${v.beneficios || ''}${v.beneficios_outros ? ', ' + v.beneficios_outros : ''}
+• Responsabilidades: ${v.responsabilidades || ''}
+• Requisitos: ${v.requisitos || ''}`).join('\n\n');
+
     const msg = `🆕 NOVA SOLICITAÇÃO DE VAGA — Effect
 
 🏢 EMPRESA
@@ -3865,14 +3891,7 @@ app.post("/cliente/solicitar", async (req, res) => {
 • E-mail: ${d.responsavel_email || ''}
 • Segmento: ${d.segmento || ''}
 
-💼 VAGA
-• Cargo: ${d.vaga_cargo || ''} (${d.vaga_quantidade || '1'} vaga(s))
-• Cidade: ${d.vaga_cidade || ''}
-• Salário: ${d.vaga_salario || 'A combinar'}
-• Horário: ${d.vaga_horario || ''}
-• Benefícios: ${d.vaga_beneficios || ''}
-• Responsabilidades: ${d.vaga_responsabilidades || ''}
-• Requisitos: ${d.vaga_requisitos || ''}
+${blocoVagas}
 
 👤 PERFIL
 • Escolaridade: ${d.perfil_escolaridade || ''}
@@ -3885,7 +3904,7 @@ ${d.perfil_obs ? '• Obs: '+d.perfil_obs : ''}
 • CNPJ: ${d.contrato_cnpj || ''}
 • Endereço: ${d.contrato_endereco || ''}
 • Serviço: ${d.contrato_servico || ''}
-• Valor: ${d.contrato_valor || 'A definir'}
+• Honorários: ${d.contrato_valor || 'A definir'}
 • Pagamento: ${d.contrato_pagamento || ''}
 ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
 
@@ -3894,10 +3913,13 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
     await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
 
     if (CONFIG.VAGAS_URL) {
-      try {
-        const urlBase = CONFIG.VAGAS_URL.split("?")[0];
-        await axios.post(urlBase, { acao: "salvarAnalise", cargo: d.vaga_cargo, cliente: d.empresa_nome, cidade: d.vaga_cidade, salario: d.vaga_salario, horario: d.vaga_horario, beneficios: d.vaga_beneficios, responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos, escolaridade: d.perfil_escolaridade, experiencia: d.perfil_experiencia, contato: d.responsavel_whatsapp, origem: "Portal do Cliente" }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
-      } catch(e) { console.error("Erro salvar vaga cliente:", e.message); }
+      const urlBase = CONFIG.VAGAS_URL.split("?")[0];
+      // Uma linha na planilha por cargo, mantendo o mesmo formato de sempre.
+      for (const v of vagas) {
+        try {
+          await axios.post(urlBase, { acao: "salvarAnalise", cargo: v.cargo, cliente: d.empresa_nome, cidade: v.cidade, salario: v.salario, horario: v.horario, beneficios: v.beneficios, responsabilidades: v.responsabilidades, requisitos: v.requisitos, escolaridade: d.perfil_escolaridade, experiencia: d.perfil_experiencia, contato: d.responsavel_whatsapp, origem: "Portal do Cliente" }, { headers: { "Content-Type": "application/json" }, timeout: 15000 });
+        } catch(e) { console.error("Erro salvar vaga cliente:", e.message); }
+      }
     }
 
     res.json({ ok: true });
