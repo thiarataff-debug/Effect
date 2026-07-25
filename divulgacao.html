@@ -1744,7 +1744,12 @@ function aplicarFotoPainel(src){
       if(rmRoles.includes(el.role)){
         insertAt = i;
         if(!gAtual && (el.role==='foto' || el.role==='fotoPh')){
-          gAtual = { x: el.x, y: el.y, w: el.w, h: el.h };
+          // Guarda também os cantos (radiusCorners/radiusPct) do placeholder,
+          // pra foto nova manter o MESMO formato (ex.: esquerda arredondada,
+          // direita reta) em vez de voltar pro raio genérico.
+          gAtual = { x: el.x, y: el.y, w: el.w, h: el.h,
+            radiusCorners: el.radiusCorners || null,
+            radiusPct: (el.radiusPct!=null ? el.radiusPct : null) };
         }
         els.splice(i,1);
       }
@@ -1755,24 +1760,35 @@ function aplicarFotoPainel(src){
       insertAt = ib>=0 ? ib : els.length;
     }
     const novos = [];
+    // Mesmos cantos do placeholder substituído (se tinha): mantém o formato
+    // original do painel — ex.: cantos esquerdos arredondados e direitos retos.
+    const rKeep = g.radiusCorners ? {radiusCorners:g.radiusCorners}
+               : (g.radiusPct!=null ? {radiusPct:g.radiusPct} : null);
     if(g.wide){
       if(src){
-        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, {radiusPct:0, role:'foto'}));
-        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, opacity:0.55, radiusPct:0, role:'fotoShade'}));
+        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, Object.assign({role:'foto'}, rKeep||{radiusPct:0})));
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, Object.assign({fill:col.primary, opacity:0.55, role:'fotoShade'}, rKeep||{radiusPct:0})));
       } else {
-        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, radiusPct:0, role:'fotoPh'}));
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, Object.assign({fill:col.primary, role:'fotoPh'}, rKeep||{radiusPct:0})));
       }
     } else {
       const rA = Math.min(g.w,g.h)*g.fr;
       const rp = (w,h)=> rA/(Math.min(w,h)/2);
       if(src){
-        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, {radiusPct:g.fr, role:'foto'}));
-        novos.push(newRectEl(g.x, g.y+g.h*0.58, g.w, g.h*0.42, {
+        novos.push(newImageEl(g.x, g.y, g.w, g.h, src, Object.assign({role:'foto'}, rKeep||{radiusPct:g.fr})));
+        // Sombra da base acompanha os cantos inferiores da foto (mesmo raio
+        // absoluto, convertido pra fração da altura da faixa de sombra).
+        let shadeR = {radiusPct:rp(g.w, g.h*0.42)};
+        if(g.radiusCorners){
+          const m = Math.min(g.w,g.h), m2 = Math.min(g.w, g.h*0.42);
+          shadeR = {radiusCorners:{tl:0, tr:0, br:m*(g.radiusCorners.br||0)/m2, bl:m*(g.radiusCorners.bl||0)/m2}};
+        }
+        novos.push(newRectEl(g.x, g.y+g.h*0.58, g.w, g.h*0.42, Object.assign({
           gradient:[hexToRgba(shade(col.primary,-35),0), hexToRgba(shade(col.primary,-50),0.8)],
-          gradientDir:'vertical', radiusPct:rp(g.w, g.h*0.42), role:'fotoShade'
-        }));
+          gradientDir:'vertical', role:'fotoShade'
+        }, shadeR)));
       } else {
-        novos.push(newRectEl(g.x, g.y, g.w, g.h, {fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', radiusPct:rp(g.w,g.h), role:'fotoPh'}));
+        novos.push(newRectEl(g.x, g.y, g.w, g.h, Object.assign({fill:col.primary, gradient:[col.secondary, shade(col.primary,-30)], gradientDir:'vertical', role:'fotoPh'}, rKeep||{radiusPct:rp(g.w,g.h)})));
         novos.push(newEllipseEl(g.x+g.w*0.18, g.y+g.h*0.1, g.w*0.9, g.w*0.9, {fill:'#ffffff', opacity:0.07, role:'fotoPhDeco'}));
         novos.push(newIconEl(g.x+g.w*0.2, g.y+(g.h-g.w*0.6)/2, g.w*0.6, g.w*0.6, catKey, '#ffffff', {bg:hexToRgba('#ffffff',0.14), role:'fotoIcon'}));
       }
