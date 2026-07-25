@@ -2564,6 +2564,46 @@ async function salvarDiscNoDrive(telefone, nome, resultado, tipo) {
 }
 app.get("/cliente", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
 app.get("/meu-app", (req, res) => res.sendFile(path.join(__dirname, "meu-app.html")));
+// Página HTML (imprimível/salvável em PDF pelo navegador) com os dados de
+// contrato de uma solicitação específica.
+app.get("/cliente/contrato/:id", (req, res) => {
+  const lista = lerContratos();
+  const d = lista.find(x => x.contratoId === req.params.id);
+  if (!d) return res.status(404).send("<p style='font-family:sans-serif;padding:40px'>Contrato não encontrado (ou o link expirou).</p>");
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(paginaContrato(d));
+});
+
+// Lista de todas as solicitações recebidas, com link para cada contrato —
+// útil caso a mensagem de WhatsApp com o link individual se perca.
+app.get("/cliente/contratos", (req, res) => {
+  const lista = lerContratos();
+  const linhas = lista.map(d => `<tr>
+    <td>${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')}</td>
+    <td>${escapeHtml(d.empresa_nome)}</td>
+    <td>${escapeHtml(Array.isArray(d.vagas) && d.vagas.length ? d.vagas.map(v => v.cargo).filter(Boolean).join(', ') : d.vaga_cargo)}</td>
+    <td>${escapeHtml(d.contrato_valor)}</td>
+    <td><a href="/cliente/contrato/${escapeHtml(d.contratoId)}" target="_blank">Abrir ↗</a></td>
+  </tr>`).join('');
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Contratos recebidos — Effect</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Montserrat',sans-serif;background:#f5f7fa;color:#2a2a2b;padding:32px}
+h1{color:#1a2a4a;font-size:20px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+th,td{text-align:left;padding:12px 14px;font-size:13px;border-bottom:1px solid #eef0f3}
+th{background:#1a2a4a;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tr:last-child td{border-bottom:none}
+a{color:#1fa5ff;font-weight:700;text-decoration:none}
+</style></head><body>
+<h1>Solicitações recebidas — dados de contrato</h1>
+<table><thead><tr><th>Data</th><th>Empresa</th><th>Cargo</th><th>Valor</th><th></th></tr></thead>
+<tbody>${linhas || '<tr><td colspan="5">Nenhuma solicitação ainda.</td></tr>'}</tbody></table>
+</body></html>`);
+});
+
 app.get("/cliente/:id", (req, res) => res.sendFile(path.join(__dirname, "cliente.html")));
 
 // ============================================================
@@ -3910,7 +3950,11 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
 
 📎 Minuta de contrato (gerada automaticamente) + dados brutos: ${linkContrato}`;
 
-    await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg);
+    // Se o WhatsApp falhar (ex.: janela de 24h da Meta), NAO interrompe:
+    // o contrato ja foi salvo e a planilha ainda precisa ser alimentada.
+    let avisoWhats = null;
+    try { await enviarMensagem(CONFIG.THIARA_WHATSAPP, msg); }
+    catch (e) { avisoWhats = e.message; console.error("Falha ao avisar Thiara via WhatsApp:", e.message); }
 
     if (CONFIG.VAGAS_URL) {
       const urlBase = CONFIG.VAGAS_URL.split("?")[0];
@@ -3922,51 +3966,11 @@ ${d.contrato_obs ? '• Obs: '+d.contrato_obs : ''}
       }
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, contratoId, link: linkContrato, avisoWhats });
   } catch (e) {
     console.error("Erro /cliente/solicitar:", e.message);
     res.json({ ok: false, erro: e.message });
   }
-});
-
-// Página HTML (imprimível/salvável em PDF pelo navegador) com os dados de
-// contrato de uma solicitação específica.
-app.get("/cliente/contrato/:id", (req, res) => {
-  const lista = lerContratos();
-  const d = lista.find(x => x.contratoId === req.params.id);
-  if (!d) return res.status(404).send("<p style='font-family:sans-serif;padding:40px'>Contrato não encontrado (ou o link expirou).</p>");
-  res.set("Content-Type", "text/html; charset=utf-8");
-  res.send(paginaContrato(d));
-});
-
-// Lista de todas as solicitações recebidas, com link para cada contrato —
-// útil caso a mensagem de WhatsApp com o link individual se perca.
-app.get("/cliente/contratos", (req, res) => {
-  const lista = lerContratos();
-  const linhas = lista.map(d => `<tr>
-    <td>${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')}</td>
-    <td>${escapeHtml(d.empresa_nome)}</td>
-    <td>${escapeHtml(d.vaga_cargo)}</td>
-    <td>${escapeHtml(d.contrato_valor)}</td>
-    <td><a href="/cliente/contrato/${escapeHtml(d.contratoId)}" target="_blank">Abrir ↗</a></td>
-  </tr>`).join('');
-  res.set("Content-Type", "text/html; charset=utf-8");
-  res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Contratos recebidos — Effect</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-body{font-family:'Montserrat',sans-serif;background:#f5f7fa;color:#2a2a2b;padding:32px}
-h1{color:#1a2a4a;font-size:20px;margin-bottom:20px}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06)}
-th,td{text-align:left;padding:12px 14px;font-size:13px;border-bottom:1px solid #eef0f3}
-th{background:#1a2a4a;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
-tr:last-child td{border-bottom:none}
-a{color:#1fa5ff;font-weight:700;text-decoration:none}
-</style></head><body>
-<h1>Solicitações recebidas — dados de contrato</h1>
-<table><thead><tr><th>Data</th><th>Empresa</th><th>Cargo</th><th>Valor</th><th></th></tr></thead>
-<tbody>${linhas || '<tr><td colspan="5">Nenhuma solicitação ainda.</td></tr>'}</tbody></table>
-</body></html>`);
 });
 
 app.post("/cliente/disponibilidade", async (req, res) => {
