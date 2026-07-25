@@ -4098,7 +4098,10 @@ async function enviarMsg(){
 
   const isLaura=modoAtual==='manual'||modoAtual==='camila';
   const nomeRemetente=modoAtual==='camila'?'Camila':'Laura';
-  if(isLaura)texto+=`\n\n— ${nomeRemetente}, Equipe Effect ${modoAtual==='camila'?'🩷':'💙'}`;
+  // Não duplicar assinatura: modelos institucionais (ex.: Confirmar CV) já terminam
+  // com "Equipe Effect Pessoas", então não acrescentamos "— Laura, Equipe Effect".
+  const jaAssinado=texto.includes('Equipe Effect Pessoas')||texto.includes(`— ${nomeRemetente}, Equipe Effect`);
+  if(isLaura&&!jaAssinado)texto+=`\n\n— ${nomeRemetente}, Equipe Effect ${modoAtual==='camila'?'🩷':'💙'}`;
 
   const btn=document.getElementById('send-btn');
   btn.disabled=true;
