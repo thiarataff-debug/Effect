@@ -107,6 +107,18 @@ textarea{resize:vertical;min-height:90px}
 .radio-item input{display:none}
 .radio-item.selected{background:rgba(31,165,255,.1);border-color:var(--blue);color:var(--navy)}
 
+/* Cartões de vaga (multi-cargo) */
+.vaga-card{background:#fff;border:2px solid #e5e7eb;border-radius:14px;padding:20px;margin-bottom:20px}
+.vaga-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.vaga-card-titulo{font-weight:800;font-size:13px;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
+.btn-remover-vaga{background:transparent;color:var(--pink);border:none;font-size:12px;font-weight:700;cursor:pointer;padding:4px 8px}
+.btn-remover-vaga:hover{text-decoration:underline}
+.btn-add-vaga{background:transparent;color:var(--blue);border:2px dashed var(--blue);border-radius:10px;padding:12px;width:100%;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;transition:all .15s}
+.btn-add-vaga:hover{background:rgba(31,165,255,.06)}
+.honorarios-vaga-linha{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #eef0f3;font-size:12.5px}
+.honorarios-vaga-linha:last-child{border-bottom:none}
+.honorarios-vaga-linha .cargo{font-weight:700;color:var(--navy)}
+
 .form-nav{display:flex;justify-content:space-between;margin-top:32px;gap:12px}
 .btn-next{background:var(--navy);color:#fff;padding:12px 28px;border-radius:10px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s}
 .btn-next:hover{background:var(--blue)}
@@ -158,7 +170,7 @@ footer strong{color:var(--green)}
 <body>
 
 <nav>
-  <div class="nav-logo">Effect <span>Pessoas</span></div>
+  <div class="nav-logo">Effect <span>Pessoas & Performance</span></div>
   <div class="nav-links">
     <a href="#processo">Nosso processo</a>
     <a href="#diferenciais">Diferenciais</a>
@@ -389,57 +401,12 @@ footer strong{color:var(--green)}
         </div>
       </div>
 
-      <!-- ETAPA 2: VAGA -->
+      <!-- ETAPA 2: VAGA(S) -->
       <div class="form-section" id="step-2">
-        <h3>Sobre a vaga</h3>
-        <p>Quanto mais detalhes, mais assertivo será o processo.</p>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Cargo <span class="req">*</span></label>
-            <input type="text" id="vaga_cargo" placeholder="Ex: Auxiliar de Cozinha">
-          </div>
-          <div class="form-group">
-            <label>Quantidade de vagas <span class="req">*</span></label>
-            <input type="number" id="vaga_quantidade" placeholder="1" min="1">
-          </div>
-          <div class="form-group">
-            <label>Cidade / Bairro <span class="req">*</span></label>
-            <input type="text" id="vaga_cidade" placeholder="Ex: Serra/ES — Bairro Industrial">
-          </div>
-          <div class="form-group">
-            <label>Salário / Remuneração</label>
-            <input type="text" id="vaga_salario" placeholder="Ex: R$ 1.500 ou A combinar">
-          </div>
-          <div class="form-group full">
-            <label>Escala / Horário <span class="req">*</span></label>
-            <input type="text" id="vaga_horario" placeholder="Ex: Seg-Sex 08h às 17h48 / 6x1 noturno">
-          </div>
-          <div class="form-group full">
-            <label>Benefícios oferecidos</label>
-            <div class="check-group">
-              <label class="check-item"><input type="checkbox" value="Vale Transporte" onchange="toggleCheck(this)"><div class="check-box">✓</div>Vale Transporte</label>
-              <label class="check-item"><input type="checkbox" value="Vale Refeição" onchange="toggleCheck(this)"><div class="check-box">✓</div>Vale Refeição</label>
-              <label class="check-item"><input type="checkbox" value="Refeição no Local" onchange="toggleCheck(this)"><div class="check-box">✓</div>Refeição no Local</label>
-              <label class="check-item"><input type="checkbox" value="Plano de Saúde" onchange="toggleCheck(this)"><div class="check-box">✓</div>Plano de Saúde</label>
-              <label class="check-item"><input type="checkbox" value="Plano Odontológico" onchange="toggleCheck(this)"><div class="check-box">✓</div>Plano Odontológico</label>
-              <label class="check-item"><input type="checkbox" value="Convênio Farmácia" onchange="toggleCheck(this)"><div class="check-box">✓</div>Convênio Farmácia</label>
-              <label class="check-item"><input type="checkbox" value="Celular Corporativo" onchange="toggleCheck(this)"><div class="check-box">✓</div>Celular Corporativo</label>
-              <label class="check-item"><input type="checkbox" value="Comissão / Gorjetas" onchange="toggleCheck(this)"><div class="check-box">✓</div>Comissão / Gorjetas</label>
-            </div>
-          </div>
-          <div class="form-group full">
-            <label>Outros benefícios</label>
-            <input type="text" id="vaga_beneficios_outros" placeholder="Descreva outros benefícios não listados acima">
-          </div>
-          <div class="form-group full">
-            <label>Principais responsabilidades <span class="req">*</span></label>
-            <textarea id="vaga_responsabilidades" placeholder="Descreva as principais atividades e responsabilidades do cargo..."></textarea>
-          </div>
-          <div class="form-group full">
-            <label>Requisitos obrigatórios</label>
-            <textarea id="vaga_requisitos" placeholder="Ex: CNH categoria B, NR-35, inglês intermediário..."></textarea>
-          </div>
-        </div>
+        <h3>Sobre a(s) vaga(s)</h3>
+        <p>Quanto mais detalhes, mais assertivo será o processo. Precisa contratar para cargos diferentes? Adicione quantos precisar — cada um entra com seu próprio cálculo de honorários no contrato.</p>
+        <div id="vagas-container"></div>
+        <button type="button" class="btn-add-vaga" onclick="adicionarVaga()">+ Adicionar outro cargo</button>
         <div class="form-nav">
           <button class="btn-back" onclick="irPara(1)">← Voltar</button>
           <button class="btn-next" onclick="irPara(3)">Próximo →</button>
@@ -561,9 +528,11 @@ footer strong{color:var(--green)}
               <label class="check-item"><input type="checkbox" value="Consultoria de RH / NR01" onchange="toggleCheck(this)"><div class="check-box">✓</div>Consultoria RH / NR01</label>
             </div>
           </div>
-          <div class="form-group">
-            <label>Valor combinado (R$)</label>
-            <input type="text" id="contrato_valor" placeholder="Ex: 1.500,00 ou A definir">
+          <div class="form-group full" id="honorarios-box">
+            <label>Honorários (Success Fee) por cargo</label>
+            <div id="honorarios-display" style="padding:11px 14px;border:2px solid #e5e7eb;border-radius:10px;background:#fff">Informe o salário na etapa "Vaga(s)" para calcularmos automaticamente.</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Calculado conforme a Cláusula 13 do contrato: até R$ 1.999,99 → 60% · de R$ 2.000,00 a R$ 3.999,99 → 50% · a partir de R$ 4.000,00 → 40% do salário-base.</div>
+            <input type="hidden" id="contrato_valor">
           </div>
           <div class="form-group">
             <label>Forma de pagamento</label>
@@ -711,7 +680,7 @@ function renderGrade(){
         return `<div onclick="${status!=='agendado'?`toggleSlot('${key}')`:''}()" 
           id="slot-${key.replace(/[:\-]/g,'_')}"
           style="margin:3px;border-radius:7px;border:1.5px solid ${border};background:${bg};cursor:${cursor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${status==='disponivel'?'#16a34a':status==='agendado'?'#1d4ed8':'var(--muted)'};min-height:36px;transition:all .15s"
-          onmouseover="if('${status}'!=='agendado')this.style.background='${status==='disponivel'?'#bbf7d0':'#f3f4f6}'"
+          onmouseover="if('${status}'!=='agendado')this.style.background='${status==='disponivel'?'#bbf7d0':'#f3f4f6'}'"
           onmouseout="this.style.background='${bg}'"
         >${icon}</div>`;
       }).join('')}
@@ -790,12 +759,173 @@ function irPara(step) {
   document.getElementById(`prog-${step}`)?.classList.add('active');
   document.getElementById(`prog-${step}`)?.classList.remove('done');
   document.getElementById('formulario').scrollIntoView({behavior:'smooth', block:'start'});
+  if (step === 4) atualizarHonorarios();
 }
 
+// Extrai um número de um texto de salário em formato BRL (ex.: "R$ 2.500,00",
+// "1.500" ou "1500.50"). Se houver vírgula, ela é o separador decimal e os
+// pontos são de milhar. Sem vírgula, um ponto seguido de exatamente 3 dígitos
+// é tratado como separador de milhar (ex.: "1.500" = 1500, não 1,5); caso
+// contrário é tratado como separador decimal (ex.: "1500.50" = 1500,50).
+function parseValorBRL(s) {
+  if (!s) return null;
+  let cleaned = String(s).replace(/[^\d,.]/g, '');
+  if (!cleaned) return null;
+  if (cleaned.includes(',')) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (cleaned.includes('.')) {
+    const partes = cleaned.split('.');
+    if (partes.length > 1 && partes[partes.length - 1].length === 3) cleaned = partes.join('');
+  }
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+// Calcula e exibe o percentual de honorários (Cláusula 13), um valor por
+// cargo cadastrado na etapa "Vaga(s)" — substitui o campo livre "valor
+// combinado" por um cálculo automático pela faixa salarial de cada vaga.
+function atualizarHonorarios() {
+  const box = document.getElementById('honorarios-display');
+  const hidden = document.getElementById('contrato_valor');
+  if (!box || !hidden) return;
+  const cards = Array.from(document.querySelectorAll('.vaga-card'));
+  const fmt = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const linhas = [];
+  cards.forEach((card, i) => {
+    const cargo = card.querySelector('[data-field="cargo"]')?.value || `Cargo ${i + 1}`;
+    const salarioStr = card.querySelector('[data-field="salario"]')?.value || '';
+    const v = parseValorBRL(salarioStr);
+    if (v == null) {
+      linhas.push({ html: `<div class="honorarios-vaga-linha"><span class="cargo">${escHtml(cargo)}</span><span>informe o salário</span></div>`, texto: `${cargo}: informe o salário` });
+      return;
+    }
+    const pct = v < 2000 ? 60 : (v < 4000 ? 50 : 40);
+    const honor = v * pct / 100;
+    linhas.push({
+      html: `<div class="honorarios-vaga-linha"><span class="cargo">${escHtml(cargo)}</span><span>${pct}% (R$ ${fmt(v)}) = R$ ${fmt(honor)}</span></div>`,
+      texto: `${cargo}: ${pct}% do salário-base (R$ ${fmt(v)}) = R$ ${fmt(honor)}`
+    });
+  });
+  if (!linhas.length) {
+    box.innerHTML = 'Informe o salário na etapa "Vaga(s)" para calcularmos automaticamente.';
+    hidden.value = '';
+    return;
+  }
+  box.innerHTML = linhas.map(l => l.html).join('');
+  hidden.value = linhas.map(l => l.texto).join(' | ');
+}
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// ── Múltiplas vagas / cargos ────────────────────────────────────────────────
+const BENEFICIOS_OPCOES = ['Vale Transporte','Vale Refeição','Refeição no Local','Plano de Saúde','Plano Odontológico','Convênio Farmácia','Celular Corporativo','Comissão / Gorjetas'];
+let vagaContador = 0;
+
+function vagaCardTemplate(idx, numero) {
+  const beneficiosHtml = BENEFICIOS_OPCOES.map(v => `<label class="check-item"><input type="checkbox" value="${v}" onchange="toggleCheck(this)"><div class="check-box">✓</div>${v}</label>`).join('');
+  return `
+    <div class="vaga-card" data-idx="${idx}">
+      <div class="vaga-card-header">
+        <span class="vaga-card-titulo">Cargo ${numero}</span>
+        <button type="button" class="btn-remover-vaga" onclick="removerVaga(this)">🗑 Remover</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Cargo <span class="req">*</span></label>
+          <input type="text" data-field="cargo" placeholder="Ex: Auxiliar de Cozinha">
+        </div>
+        <div class="form-group">
+          <label>Quantidade de vagas <span class="req">*</span></label>
+          <input type="number" data-field="quantidade" placeholder="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Cidade / Bairro <span class="req">*</span></label>
+          <input type="text" data-field="cidade" placeholder="Ex: Serra/ES — Bairro Industrial">
+        </div>
+        <div class="form-group">
+          <label>Salário / Remuneração</label>
+          <input type="text" data-field="salario" placeholder="Ex: R$ 1.500 ou A combinar" oninput="atualizarHonorarios()">
+        </div>
+        <div class="form-group full">
+          <label>Escala / Horário <span class="req">*</span></label>
+          <input type="text" data-field="horario" placeholder="Ex: Seg-Sex 08h às 17h48 / 6x1 noturno">
+        </div>
+        <div class="form-group full">
+          <label>Benefícios oferecidos</label>
+          <div class="check-group">${beneficiosHtml}</div>
+        </div>
+        <div class="form-group full">
+          <label>Outros benefícios</label>
+          <input type="text" data-field="beneficios_outros" placeholder="Descreva outros benefícios não listados acima">
+        </div>
+        <div class="form-group full">
+          <label>Principais responsabilidades <span class="req">*</span></label>
+          <textarea data-field="responsabilidades" placeholder="Descreva as principais atividades e responsabilidades do cargo..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Requisitos obrigatórios</label>
+          <textarea data-field="requisitos" placeholder="Ex: CNH categoria B, NR-35, inglês intermediário..."></textarea>
+        </div>
+      </div>
+    </div>`;
+}
+
+function adicionarVaga() {
+  const idx = vagaContador++;
+  const numero = document.querySelectorAll('.vaga-card').length + 1;
+  document.getElementById('vagas-container').insertAdjacentHTML('beforeend', vagaCardTemplate(idx, numero));
+  atualizarBotoesRemoverVaga();
+}
+
+function removerVaga(btn) {
+  const card = btn.closest('.vaga-card');
+  const cards = document.querySelectorAll('.vaga-card');
+  if (cards.length <= 1) return; // sempre precisa sobrar pelo menos 1 cargo
+  card.remove();
+  renumerarVagas();
+  atualizarBotoesRemoverVaga();
+  atualizarHonorarios();
+}
+
+function renumerarVagas() {
+  document.querySelectorAll('.vaga-card').forEach((card, i) => {
+    const titulo = card.querySelector('.vaga-card-titulo');
+    if (titulo) titulo.textContent = `Cargo ${i + 1}`;
+  });
+}
+
+function atualizarBotoesRemoverVaga() {
+  const cards = document.querySelectorAll('.vaga-card');
+  cards.forEach(card => {
+    const btn = card.querySelector('.btn-remover-vaga');
+    if (btn) btn.style.display = cards.length > 1 ? 'inline-block' : 'none';
+  });
+}
+
+// Semeia o primeiro cartão de vaga ao carregar a página.
+document.addEventListener('DOMContentLoaded', () => { if (!document.querySelector('.vaga-card')) adicionarVaga(); });
+if (document.readyState !== 'loading' && !document.querySelector('.vaga-card')) adicionarVaga();
+
 function validarStep(step) {
+  if (step === 2) {
+    const cards = document.querySelectorAll('.vaga-card');
+    for (const card of cards) {
+      for (const campo of ['cargo','quantidade','cidade','horario','responsabilidades']) {
+        const el = card.querySelector(`[data-field="${campo}"]`);
+        if (!el || !el.value.trim()) {
+          el?.focus();
+          mostrarToast('Preencha todos os campos obrigatórios de cada cargo', 'error');
+          el?.scrollIntoView({behavior:'smooth', block:'center'});
+          return false;
+        }
+      }
+    }
+    return true;
+  }
   const obrigatorios = {
     1: ['empresa_nome','responsavel_nome','responsavel_whatsapp'],
-    2: ['vaga_cargo','vaga_quantidade','vaga_cidade','vaga_horario','vaga_responsabilidades'],
     3: [],
     4: ['contrato_razao','contrato_cnpj','contrato_endereco']
   };
@@ -867,15 +997,27 @@ async function enviarFormulario() {
     responsavel_email:   document.getElementById('responsavel_email').value,
     segmento:            getCheckedFromGroup('segmento-group').join(', '),
     // Vaga
-    vaga_cargo:          document.getElementById('vaga_cargo').value,
-    vaga_quantidade:     document.getElementById('vaga_quantidade').value,
-    vaga_cidade:         document.getElementById('vaga_cidade').value,
-    vaga_salario:        document.getElementById('vaga_salario').value,
-    vaga_horario:        document.getElementById('vaga_horario').value,
-    vaga_beneficios:     Array.from(document.querySelectorAll('#step-2 .check-item.checked')).map(el=>el.querySelector('input')?.value).join(', '),
-    vaga_beneficios_outros: document.getElementById('vaga_beneficios_outros').value,
-    vaga_responsabilidades: document.getElementById('vaga_responsabilidades').value,
-    vaga_requisitos:     document.getElementById('vaga_requisitos').value,
+    vagas: Array.from(document.querySelectorAll('.vaga-card')).map(card => ({
+      cargo:              card.querySelector('[data-field="cargo"]')?.value || '',
+      quantidade:         card.querySelector('[data-field="quantidade"]')?.value || '',
+      cidade:             card.querySelector('[data-field="cidade"]')?.value || '',
+      salario:            card.querySelector('[data-field="salario"]')?.value || '',
+      horario:            card.querySelector('[data-field="horario"]')?.value || '',
+      beneficios:         Array.from(card.querySelectorAll('.check-item.checked')).map(el => el.querySelector('input')?.value).join(', '),
+      beneficios_outros:  card.querySelector('[data-field="beneficios_outros"]')?.value || '',
+      responsabilidades:  card.querySelector('[data-field="responsabilidades"]')?.value || '',
+      requisitos:         card.querySelector('[data-field="requisitos"]')?.value || ''
+    })),
+    // Campos abaixo replicam a 1ª vaga por compatibilidade com telas/integrações antigas
+    vaga_cargo:          document.querySelector('.vaga-card [data-field="cargo"]')?.value || '',
+    vaga_quantidade:     document.querySelector('.vaga-card [data-field="quantidade"]')?.value || '',
+    vaga_cidade:         document.querySelector('.vaga-card [data-field="cidade"]')?.value || '',
+    vaga_salario:        document.querySelector('.vaga-card [data-field="salario"]')?.value || '',
+    vaga_horario:        document.querySelector('.vaga-card [data-field="horario"]')?.value || '',
+    vaga_beneficios:     Array.from(document.querySelector('.vaga-card')?.querySelectorAll('.check-item.checked') || []).map(el=>el.querySelector('input')?.value).join(', '),
+    vaga_beneficios_outros: document.querySelector('.vaga-card [data-field="beneficios_outros"]')?.value || '',
+    vaga_responsabilidades: document.querySelector('.vaga-card [data-field="responsabilidades"]')?.value || '',
+    vaga_requisitos:     document.querySelector('.vaga-card [data-field="requisitos"]')?.value || '',
     // Perfil
     perfil_escolaridade: document.getElementById('perfil_escolaridade').value,
     perfil_experiencia:  document.getElementById('perfil_experiencia').value,
@@ -929,6 +1071,20 @@ async function enviarFormulario() {
 }
 
 function formatarWhatsApp(d) {
+  const vagas = Array.isArray(d.vagas) && d.vagas.length ? d.vagas : [{
+    cargo: d.vaga_cargo, quantidade: d.vaga_quantidade, cidade: d.vaga_cidade, salario: d.vaga_salario,
+    horario: d.vaga_horario, beneficios: d.vaga_beneficios, beneficios_outros: d.vaga_beneficios_outros,
+    responsabilidades: d.vaga_responsabilidades, requisitos: d.vaga_requisitos
+  }];
+  const blocoVagas = vagas.map((v, i) => `💼 VAGA ${vagas.length > 1 ? (i + 1) : ''}
+• Cargo: ${v.cargo} (${v.quantidade} vaga(s))
+• Cidade: ${v.cidade}
+• Salário: ${v.salario}
+• Horário: ${v.horario}
+• Benefícios: ${v.beneficios}${v.beneficios_outros ? ', ' + v.beneficios_outros : ''}
+• Responsabilidades: ${v.responsabilidades}
+• Requisitos: ${v.requisitos}`).join('\n\n');
+
   return `🆕 NOVA SOLICITAÇÃO DE VAGA — Effect
 
 🏢 EMPRESA
@@ -938,14 +1094,7 @@ function formatarWhatsApp(d) {
 • E-mail: ${d.responsavel_email}
 • Segmento: ${d.segmento}
 
-💼 VAGA
-• Cargo: ${d.vaga_cargo} (${d.vaga_quantidade} vaga(s))
-• Cidade: ${d.vaga_cidade}
-• Salário: ${d.vaga_salario}
-• Horário: ${d.vaga_horario}
-• Benefícios: ${d.vaga_beneficios}${d.vaga_beneficios_outros ? ', '+d.vaga_beneficios_outros : ''}
-• Responsabilidades: ${d.vaga_responsabilidades}
-• Requisitos: ${d.vaga_requisitos}
+${blocoVagas}
 
 👤 PERFIL
 • Escolaridade: ${d.perfil_escolaridade}
@@ -970,7 +1119,7 @@ function mostrarDashboard(dados) {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
         <div style="background:var(--green);color:var(--navy);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px">✓</div>
         <div>
-          <div style="font-weight:800;font-size:16px;color:var(--navy)">${dados.vaga_cargo}</div>
+          <div style="font-weight:800;font-size:16px;color:var(--navy)">${dados.vaga_cargo}${Array.isArray(dados.vagas) && dados.vagas.length > 1 ? ` + ${dados.vagas.length - 1} outro(s) cargo(s)` : ''}</div>
           <div style="font-size:12px;color:var(--muted)">${dados.empresa_nome} · ${dados.vaga_cidade}</div>
         </div>
         <div style="margin-left:auto;background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:10px;font-size:11px;font-weight:700">Em andamento</div>
