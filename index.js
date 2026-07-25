@@ -3319,6 +3319,21 @@ function dataPorExtenso(iso) {
   } catch (e) { return ''; }
 }
 
+function dataCurta(iso) {
+  try {
+    const dt = iso ? new Date(iso) : new Date();
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch (e) { return '__/__/____'; }
+}
+
+function dataMaisMeses(iso, meses) {
+  try {
+    const dt = iso ? new Date(iso) : new Date();
+    dt.setMonth(dt.getMonth() + meses);
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch (e) { return '__/__/____'; }
+}
+
 // Extrai um número de um texto de salário em formato BRL (ex.: "R$ 2.500,00").
 // Retorna null se não conseguir interpretar (ex.: "A combinar").
 function parseValorBRL(s) {
@@ -3419,7 +3434,7 @@ ${bri('X', 'apresentação de candidatos;')}
 ${bri('XI', 'acompanhamento das etapas do processo seletivo;')}
 ${bri('XII', 'apoio consultivo durante a tomada de decisão;')}
 ${bri('XIII', 'formação de banco de talentos;')}
-${bri('XIV', 'Executive Search, quando contratado;')}
+${bri('XIV', 'executive search, quando contratado;')}
 ${bri('XV', 'demais atividades relacionadas ao recrutamento e seleção de pessoas.')}
 ${brpar('Primeiro', 'Os serviços serão executados com autonomia técnica e metodológica pela CONTRATADA, utilizando processos próprios de avaliação profissional.')}
 ${brpar('Segundo', 'A CONTRATADA poderá utilizar plataformas digitais, sistemas de recrutamento, redes profissionais, banco de currículos e demais ferramentas que considerar adequadas para a execução dos serviços.')}
@@ -3435,7 +3450,7 @@ ${bri('V', 'resultados financeiros ou operacionais decorrentes da contratação.
 ${brpar('Único', 'A decisão final acerca da contratação, remuneração, benefícios, jornada, admissão, desligamento ou qualquer outra condição relativa ao vínculo profissional será sempre de exclusiva responsabilidade da CONTRATANTE.')}
 
 ${brm('CLÁUSULA 4 – DA VIGÊNCIA')}
-<p>O presente contrato terá vigência de ____ (____) meses, iniciando-se em ___/___/____ e encerrando-se em ___/___/____, podendo ser renovado mediante acordo escrito entre as partes.</p>
+<p>O presente contrato terá vigência de 06 (seis) meses, iniciando-se em ${dataCurta(d.criadoEm)} e encerrando-se em ${dataMaisMeses(d.criadoEm, 6)}, podendo ser renovado mediante acordo escrito entre as partes.</p>
 <p>A renovação poderá ocorrer por termo aditivo ou por manifestação expressa das partes, mantendo-se as demais cláusulas deste instrumento.</p>
 
 ${brparte('PARTE 2 – EXECUÇÃO DOS SERVIÇOS')}
@@ -3573,7 +3588,7 @@ ${brpar('Quarto', 'A CONTRATADA não possui qualquer responsabilidade pela gest�
 
 ${brm('CLÁUSULA 16 – DO PAGAMENTO')}
 <p>Após a confirmação da contratação, a CONTRATADA emitirá a competente Nota Fiscal.</p>
-<p>O pagamento deverá ocorrer no prazo de ____ (__________) dias contados da emissão da Nota Fiscal, mediante ${extenso(d.contrato_pagamento, 'PIX, transferência bancária ou outro meio previamente acordado entre as partes')}.</p>
+<p>O pagamento deverá ocorrer no prazo de até 07 (sete) dias contados da emissão da Nota Fiscal, mediante PIX, boleto ou transferência eletrônica.</p>
 ${brpar('Único', 'A CONTRATANTE compromete-se a informar imediatamente à CONTRATADA a efetiva contratação de qualquer candidato apresentado.')}
 
 ${brm('CLÁUSULA 17 – DO INADIMPLEMENTO')}
@@ -3736,7 +3751,7 @@ ${brm('CLÁUSULA 32 – DO FORO')}
 </div>
 
 ${brparte('ANEXO I – CONDIÇÕES COMERCIAIS DESTA CONTRATAÇÃO')}
-<p>Preenchido automaticamente com os dados enviados pela CONTRATANTE no portal — evita alterar o corpo do contrato a cada novo cliente. Integra este contrato para todos os fins de direito e prevalece sobre as condições gerais apenas quanto aos aspectos comerciais aqui especificados.</p>
+<p>As condições comerciais desta contratação, detalhadas a seguir, integram este contrato para todos os fins de direito e prevalecem sobre as condições gerais apenas quanto aos aspectos comerciais aqui especificados.</p>
 ${brb(`Cargo(s): ${extenso(d.vaga_cargo)}`)}
 ${brb(`Quantidade de vagas: ${extenso(d.vaga_quantidade, '1')}`)}
 ${brb(`Tipo de serviço contratado: ${extenso(d.contrato_servico)}`)}
@@ -3822,54 +3837,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
     <h1>Contrato — ${escapeHtml(d.empresa_nome || '')}</h1>
     <div class="sub">Recebido em ${escapeHtml(d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '')} · Origem: ${escapeHtml(d.origem || 'Portal do Cliente')}</div>
   </div>
-  <div class="aviso">⚠️ Este documento é uma MINUTA gerada automaticamente a partir dos dados enviados pelo cliente. Revise (e peça revisão de um advogado) antes de usar como contrato oficial — especialmente os dados da CONTRATADA e os prazos de garantia/rescisão.</div>
-  <div class="abas">
-    <div class="aba ativa" onclick="mostrarAba('minuta',this)">📄 Minuta do contrato</div>
-    <div class="aba" onclick="mostrarAba('resumo',this)">📋 Dados brutos enviados</div>
-  </div>
   <div class="corpo">
-    <div class="painel ativa" id="painel-minuta">
-      <div class="minuta">${textoMinutaContrato(d)}</div>
-    </div>
-    <div class="painel" id="painel-resumo">
-      <div class="grupo">
-        <div class="grupo-titulo">Empresa contratante</div>
-        ${linha('Razão social', d.contrato_razao, true)}
-        ${linha('CNPJ', d.contrato_cnpj)}
-        ${linha('CPF (se aplicável)', d.contrato_cpf)}
-        ${linha('Endereço', d.contrato_endereco)}
-        ${linha('Responsável', `${d.responsavel_nome || ''}${d.responsavel_cargo ? ' ('+d.responsavel_cargo+')' : ''}`)}
-        ${linha('WhatsApp', d.responsavel_whatsapp)}
-        ${linha('E-mail', d.responsavel_email)}
-      </div>
-      <div class="grupo">
-        <div class="grupo-titulo">Objeto e valores</div>
-        ${linha('Serviço contratado', d.contrato_servico, true)}
-        ${linha('Valor', d.contrato_valor || 'A definir', true)}
-        ${linha('Forma de pagamento', d.contrato_pagamento)}
-        ${linha('Observações', d.contrato_obs)}
-      </div>
-      <div class="grupo">
-        <div class="grupo-titulo">Vaga relacionada</div>
-        ${linha('Cargo', `${d.vaga_cargo || ''}${d.vaga_quantidade ? ' ('+d.vaga_quantidade+' vaga(s))' : ''}`)}
-        ${linha('Cidade', d.vaga_cidade)}
-        ${linha('Salário', d.vaga_salario)}
-      </div>
-    </div>
+    <div class="minuta">${textoMinutaContrato(d)}</div>
   </div>
   <div class="rodape">
     <small>ID: ${escapeHtml(d.contratoId)} · Effect Pessoas &amp; Performance</small>
     <button class="btn" onclick="window.print()">🖨️ Salvar como PDF</button>
   </div>
 </div>
-<script>
-function mostrarAba(nome, el){
-  document.querySelectorAll('.aba').forEach(a=>a.classList.remove('ativa'));
-  document.querySelectorAll('.painel').forEach(p=>p.classList.remove('ativa'));
-  el.classList.add('ativa');
-  document.getElementById('painel-'+nome).classList.add('ativa');
-}
-</script>
 </body>
 </html>`;
 }
