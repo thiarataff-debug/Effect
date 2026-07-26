@@ -1830,6 +1830,17 @@ function syncRoleAcrossFormats(role){
         if(fmtKey===currentFormat) currentTouched = true;
       }
     });
+    // Salário limpo: selos com fundo próprio (criados ao vivo) são removidos —
+    // senão sobra uma barra escura vazia na arte.
+    if(role==='salario' && !newText){
+      for(let i=els.length-1;i>=0;i--){
+        const el=els[i];
+        if(el.type==='text' && el.role==='salario' && el.bg){
+          els.splice(i,1);
+          if(fmtKey===currentFormat) currentTouched = true;
+        }
+      }
+    }
     if(!achou && role==='salario'){
       // Arte antiga (sem "role" nas peças): adota a peça de texto que parece ser o salário
       const cand = els.find(el=>el.type==='text' && !el.role && /r\$|sal[áa]ri|combinar/i.test(el.text||''));
@@ -1838,42 +1849,48 @@ function syncRoleAcrossFormats(role){
         if(fmtKey===currentFormat) currentTouched = true;
       }
     }
-    if(!achou && role==='salario' && newText){
-      // Não existe peça de salário nessa arte (gerada com o campo vazio): cria o selo
-      const fmt = FORMATS[fmtKey];
-      els.push(newTextEl(fmt.w*0.12, fmt.h*0.60, fmt.w*0.76, newText, {
-        fontSize: Math.round(fmt.w*0.03), fontWeight:800, color:'#ffffff',
-        bg:'#1f2937', radius: fmt.w*0.012, align:'center', role:'salario'
-      }));
-      if(fmtKey===currentFormat) currentTouched = true;
-    }
     // Requisitos / Atividades / Benefícios: se a arte foi gerada com o campo
     // vazio, a caixa de texto não existe — cria na hora, empilhando abaixo da
     // última peça relacionada (título → chips → requisitos → atividades → salário → benefícios).
-    if(!achou && ['requisitos','atividades','beneficios'].includes(role) && newText){
+    if(!achou && ['requisitos','atividades','beneficios','salario','horario','localLinha'].includes(role) && newText){
       const fmt = FORMATS[fmtKey];
       const W=fmt.w, H=fmt.h, wide = W>H;
       const cardX = wide? W*0.035 : W*0.045, cardY = wide? H*0.06 : H*0.045;
       const cardW = W-cardX*2, cardH = H-cardY*2;
       const pad = cardW*0.045;
       const lx = cardX+pad;
-      const lw = role==='beneficios' ? cardW-pad*2 : (wide? (cardW-cardW*0.36)-cardW*0.07 : cardW*0.47);
-      const fontPx = role==='beneficios' ? cardW*0.02 : cardW*0.026;
+      let lw = role==='beneficios' ? cardW-pad*2 : (wide? (cardW-cardW*0.36)-cardW*0.07 : cardW*0.47);
+      // Enquadra na coluna esquerda: se há painel de foto, a peça nova não
+      // pode invadir a foto — limita a largura ao espaço livre à esquerda.
+      const foto = els.find(e=>e.role==='foto'||e.role==='fotoPh');
+      if(foto){
+        const livre = foto.x - lx - cardW*0.02;
+        if(livre > cardW*0.22) lw = Math.min(lw, livre);
+      }
+      const fontPx = role==='beneficios' ? cardW*0.02 : role==='localLinha' ? cardW*0.022 : role==='salario' ? cardW*0.024 : cardW*0.026;
       const bottomOf = (el)=> el.y + ((el.h && el.h>10) ? el.h : (el.fontSize||24)*1.3);
-      const ordem = role==='requisitos' ? ['tag','cargo']
-                  : role==='atividades' ? ['requisitos','tag','cargo']
-                  : ['salario','atividades','requisitos','tag','cargo'];
+      const ordem = role==='localLinha' ? ['tag','cargo']
+                  : role==='requisitos' ? ['localLinha','tag','cargo']
+                  : role==='atividades' ? ['requisitos','localLinha','tag','cargo']
+                  : role==='salario' ? ['atividades','requisitos','localLinha','tag','cargo']
+                  : role==='horario' ? ['salario','atividades','requisitos','localLinha','tag','cargo']
+                  : ['horario','salario','atividades','requisitos','tag','cargo'];
       let ay = null;
       for(const r of ordem){
         const cand = els.filter(e=>e.role===r);
         if(cand.length){ ay = Math.max(...cand.map(bottomOf)) + cardH*0.02; break; }
       }
       if(ay===null) ay = cardY+cardH*0.42;
-      els.push(newTextEl(lx, ay, lw, newText, {
-        fontSize: fontPx, fontWeight:500,
-        color: role==='beneficios' ? '#2a2a2e' : '#4b5563',
-        align:'left', lineHeight: role==='beneficios' ? 1.28 : 1.3, role
-      }));
+      const opts = role==='salario'
+        ? {fontSize:fontPx, fontWeight:800, color:'#ffffff', bg:'#1f2937', radius:cardW*0.012, align:'center', role}
+        : role==='localLinha'
+        ? {fontSize:fontPx, fontWeight:600, color:'#4b5563', align:'left', role}
+        : role==='horario'
+        ? {fontSize:fontPx, fontWeight:600, color:'#374151', align:'left', lineHeight:1.3, role}
+        : {fontSize:fontPx, fontWeight:500,
+           color: role==='beneficios' ? '#2a2a2e' : '#4b5563',
+           align:'left', lineHeight: role==='beneficios' ? 1.28 : 1.3, role};
+      els.push(newTextEl(lx, ay, lw, newText, opts));
       if(fmtKey===currentFormat) currentTouched = true;
     }
     // Só CRIA o selo do banner se a "Frase de destaque" foi preenchida de
