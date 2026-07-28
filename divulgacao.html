@@ -4917,10 +4917,9 @@ function aplicarTemplateSelecionado(){
     draw();
     setTemplateStatus(`✓ Template "${t.nome}" aplicado, já com a foto atual.`, false);
   } else {
-    // sem foto ainda — abre o seletor de arquivo na hora, pra não precisar
-    // descer até o campo "Foto da vaga" manualmente depois de aplicar.
-    setTemplateStatus(`✓ Template "${t.nome}" aplicado. Escolha a foto da vaga pra completar.`, false);
-    $('#jobPhoto').click();
+    // sem foto ainda — só avisa; a foto é escolhida depois, no campo
+    // "Foto da vaga" do formulário, quando a usuária quiser.
+    setTemplateStatus(`✓ Template "${t.nome}" aplicado. Escolha a foto da vaga no campo "Foto da vaga" pra completar.`, false);
   }
 }
 
