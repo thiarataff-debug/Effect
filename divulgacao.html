@@ -3601,9 +3601,10 @@ function buildFaixasTallLayout(fmt, data, col){
     els.push(newTextEl(lx, footerY+footerH*(insta?0.54:0.38), lw, emailEmp, {fontSize:cardW*0.015, fontWeight:500, color:'#ffffff', align:'left'}));
   }
 
-  // direita: CTA em cima (maiúsculas) e telefone GRANDE embaixo
+  // direita: CTA em cima (maiúsculas, branco) e telefone GRANDE embaixo na
+  // cor secundária (azul-claro) — igual à arte de referência da equipe
   els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.18, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.015, fontWeight:700, color:'#ffffff', align:'left', lineHeight:1.2, role:'cta'}));
-  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.55, fw*0.85, data.contato||'', {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.52, fw*0.85, data.contato||'', {fontSize:cardW*0.032, fontWeight:800, color:col.secondary, align:'left', role:'contato'}));
 
   return els;
 }
@@ -3746,7 +3747,7 @@ function confirmAndGenerate(fmtKey){
     // Sobram só o banner do nome da vaga (com "NOME DA VAGA") e o banner do
     // salário (vazio). Saem: foto, cards coloridos (cada vaga usa os seus),
     // requisitos, benefícios e os textos da vaga anterior. Tudo editável.
-    if(!confirm('Recriar do zero: mantém o layout, o cabeçalho e o rodapé.\nFicam só o banner do nome da vaga e o banner do salário.\nSaem: foto, cards coloridos e os textos da vaga anterior.\n\nContinuar?')) return;
+    if(!confirm('Recriar do zero: mantém o layout. O cabeçalho e o rodapé voltam ao padrão Effect (e ficam travados 🔒 — destrave nas camadas pra editar).\nFicam só o banner do nome da vaga e o banner do salário.\nSaem: foto, cards coloridos e os textos da vaga anterior.\n\nContinuar?')) return;
     pushHistory();
     // limpa os campos que mudam de vaga pra vaga
     ['cargo','salario','requisitos','beneficios','horario','cidade','contratacao','regime'].forEach(id=>{
@@ -3758,6 +3759,22 @@ function confirmAndGenerate(fmtKey){
     jobPhotoDataUrl = null;
     if($('#jobPhotoPreview')) $('#jobPhotoPreview').innerHTML = '—';
     aplicarFotoPainel(null);
+    // RECONSTRÓI cabeçalho e rodapé no padrão atual da Effect (substitui os
+    // antigos salvos na arte, em todos os formatos) — sem isso, arte salva
+    // ficava pra sempre com o cabeçalho/rodapé da época em que foi criada.
+    Object.keys(FORMATS).forEach(fk=>{
+      const arr = getElements(fk);
+      if(!arr.length) return;
+      const Hf = FORMATS[fk].h;
+      const ehTopo = el => el.role!=='banner' && (((el.y||0)+(el.h||0)) <= Hf*0.15 || el.role==='faixaTopo');
+      const ehRodape = el => (el.y||0) >= Hf*0.82 || el.role==='faixaRodape';
+      const fresco = generateDefaultLayout(fk);
+      const topoNovo = fresco.filter(ehTopo);
+      const rodapeNovo = fresco.filter(el=> ehRodape(el) && !ehTopo(el));
+      for(let i=arr.length-1;i>=0;i--){ if(ehTopo(arr[i]) || ehRodape(arr[i])) arr.splice(i,1); }
+      arr.splice(Math.min(1, arr.length), 0, ...topoNovo);
+      arr.push(...rodapeNovo);
+    });
     // atualiza a marca antiga salva na arte e tira ícones soltos do cabeçalho
     // e do rodapé (ex.: o caminhãozinho) — o do painel da foto fica
     Object.keys(FORMATS).forEach(fk=>{
