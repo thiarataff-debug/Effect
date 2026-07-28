@@ -3738,18 +3738,37 @@ function generateDefaultLayout(fmtKey){
 function confirmAndGenerate(fmtKey){
   const els = getElements(fmtKey);
   if(els.length){
-    // "Recriar do zero" agora é um RESET SUAVE: mantém o layout, o cabeçalho,
-    // o rodapé, a foto, as cores e toda a disposição dos elementos — limpa só
-    // o que muda de uma vaga pra outra (cargo, salário, requisitos e
-    // benefícios), em todos os formatos. Tudo continua editável depois.
-    if(!confirm('Recriar do zero: mantém o layout, o cabeçalho e o rodapé desta arte, e limpa apenas cargo, salário, requisitos e benefícios (em todos os formatos).\n\nContinuar?')) return;
+    // "Recriar do zero" = RESET SUAVE: mantém layout, cabeçalho e rodapé.
+    // Sobram só o banner do nome da vaga (com "NOME DA VAGA") e o banner do
+    // salário (vazio). Saem: foto, cards coloridos (cada vaga usa os seus),
+    // requisitos, benefícios e os textos da vaga anterior. Tudo editável.
+    if(!confirm('Recriar do zero: mantém o layout, o cabeçalho e o rodapé.\nFicam só o banner do nome da vaga e o banner do salário.\nSaem: foto, cards coloridos e os textos da vaga anterior.\n\nContinuar?')) return;
     pushHistory();
-    ['cargo','salario','requisitos','beneficios'].forEach(id=>{ const i = $('#'+id); if(i) i.value = ''; });
-    ['cargo','salario','requisitos','beneficios'].forEach(r=> syncRoleAcrossFormats(r));
-    // salário vazio: a faixa colorida atrás dele também sai
+    // limpa os campos que mudam de vaga pra vaga
+    ['cargo','salario','requisitos','beneficios','horario','cidade','contratacao','regime'].forEach(id=>{
+      const i = $('#'+id); if(i) i.value = '';
+    });
+    ['cargo','salario','requisitos','beneficios','horario'].forEach(r=> syncRoleAcrossFormats(r));
+    syncTagsAcrossFormats(); // campos vazios → cards coloridos saem
+    // foto sai (o painel volta a ser o quadro colorido da categoria)
+    jobPhotoDataUrl = null;
+    if($('#jobPhotoPreview')) $('#jobPhotoPreview').innerHTML = '—';
+    aplicarFotoPainel(null);
+    // atualiza a marca antiga salva na arte e tira ícones soltos do cabeçalho
+    // e do rodapé (ex.: o caminhãozinho) — o do painel da foto fica
     Object.keys(FORMATS).forEach(fk=>{
-      const arr = getElements(fk);
-      for(let i=arr.length-1;i>=0;i--) if(arr[i].role==='salarioBg') arr.splice(i,1);
+      const arr = getElements(fk), Hfmt = FORMATS[fk].h;
+      for(let i=arr.length-1;i>=0;i--){
+        const el = arr[i];
+        if(el.type==='text' && /^effect$/i.test((el.text||'').trim())){
+          el.text = 'Effect Pessoas\n& Performance';
+          el.fontSize = Math.round(el.fontSize*0.6);
+          el.lineHeight = 1.15;
+          el.runs = null;
+        } else if(el.type==='icon' && el.role!=='fotoIcon' && ((el.y||0) < Hfmt*0.14 || (el.y||0) > Hfmt*0.8)){
+          arr.splice(i,1);
+        }
+      }
     });
     clearSelection();
     draw(); syncElPanel();
