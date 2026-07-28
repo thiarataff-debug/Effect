@@ -384,6 +384,15 @@
 
       <label>Frase de destaque (selo sobre a foto)</label>
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
+      <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
+        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
+          <input type="color" id="bannerBg" value="#141414" style="width:36px; height:26px; padding:1px;"> Fundo do selo
+        </label>
+        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
+          <input type="color" id="bannerTx" value="#ffffff" style="width:36px; height:26px; padding:1px;"> Texto do selo
+        </label>
+      </div>
+      <div class="hint">As cores do selo valem pra esta arte — mudar aqui atualiza o selo na hora. O padrão vem do cadastro da empresa.</div>
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
@@ -1060,6 +1069,9 @@ function applyCompanyToJobFields(c){
   $('#contato').value = c.whatsapp || c.instagram || '';
   $('#cta').value = c.ctaPadrao || '';
   $('#banner').value = c.bannerPadrao || '';
+  // cores do selo de destaque desta arte partem do padrão da empresa
+  $('#bannerBg').value = c.corBannerFundo || '#141414';
+  $('#bannerTx').value = c.corBannerTexto || '#ffffff';
 }
 
 /* ---------------------------------------------------------
@@ -1678,8 +1690,10 @@ function getColors(){
     secondary: c.corSecundaria || '#7fb8e6',
     tertiary: c.corTerciaria || '#8ed1b2',
     accent: c.corDestaque || '#f4afa1',
-    bannerText: c.corBannerTexto || '#ffffff',
-    bannerBg: c.corBannerFundo || '#141414',
+    // cores do selo: o seletor do formulário (por arte) manda; o cadastro da
+    // empresa é só o ponto de partida (applyCompanyToJobFields preenche).
+    bannerText: ($('#bannerTx') && $('#bannerTx').value) || c.corBannerTexto || '#ffffff',
+    bannerBg: ($('#bannerBg') && $('#bannerBg').value) || c.corBannerFundo || '#141414',
     logo: c.logoDataUrl || null,
     nome: c.nome || ''
   };
@@ -2039,6 +2053,19 @@ function wireLiveCanvasSync(){
   $('#horario').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('horario'); });
   $('#contratacao').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
   $('#regime').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
+  // cores do selo de destaque (banner): pinta as peças existentes ao vivo,
+  // em todos os formatos — sem precisar recriar a arte.
+  const syncBannerColors = ()=>{
+    let t = false;
+    Object.keys(FORMATS).forEach(fk=>{
+      getElements(fk).forEach(el=>{
+        if(el.role==='banner'){ el.bg = $('#bannerBg').value; el.color = $('#bannerTx').value; if(fk===currentFormat) t = true; }
+      });
+    });
+    if(t){ draw(); saveState(); }
+  };
+  $('#bannerBg').addEventListener('input', syncBannerColors);
+  $('#bannerTx').addEventListener('input', syncBannerColors);
 }
 
 /* ===========================================================
