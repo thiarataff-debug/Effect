@@ -137,7 +137,7 @@
   .btn-sm{padding:6px 10px; font-size:12px;}
   .btn-toggle{background:#fff; color:var(--navy); border:1px solid #d7dbe0;}
   .btn-toggle.active{background:var(--navy); color:#fff; border-color:var(--navy);}
-  .hint{font-size:11.5px; color:var(--gray); margin-top:4px; line-height:1.4;}
+  .hint{display:none;} /* explicações ocultadas a pedido da equipe */
   /* caixinha de formatação estilo Word */
   .fmt-ribbon{position:sticky; top:8px; z-index:50; display:flex; align-items:center; gap:2px;
     background:#fff; border:1px solid #d8dce3; border-radius:10px; padding:5px 8px;
@@ -250,7 +250,7 @@
   <div class="topbar-undo-group">
     <button type="button" id="btnUndoTop" title="Desfazer (Ctrl+Z)">↶ Desfazer</button>
     <button type="button" id="btnRedoTop" title="Refazer (Ctrl+Shift+Z)">↷ Refazer</button>
-    <button type="button" id="generateLayoutTop" title="Recriar arte do zero (apaga customização atual)" style="background:#7c3aed">🪄 Recriar do zero</button>
+    <button type="button" id="generateLayoutTop" title="Limpa cargo, salário, requisitos e benefícios — mantém layout, cabeçalho e rodapé" style="background:#7c3aed">🪄 Recriar do zero</button>
   </div>
   <a class="voltar" href="/inbox"><i class="fas fa-arrow-left"></i> Lia</a>
   <div class="sub">Effect Pessoas &amp; Performance</div>
@@ -259,9 +259,8 @@
 <div class="layout">
   <aside class="sidebar">
 
-    <div class="intro">
-      <strong>Como usar:</strong> 1) Escolha a empresa cliente. 2) Preencha o cargo e os detalhes da vaga. 3) Clique em <b>"Gerar arte a partir do formulário"</b> pra criar o design inicial. 4) A partir daí é igual ao Canva: clique numa peça pra selecioná-la, arraste pra mover, puxe os cantos pra redimensionar (em texto, isso também aumenta/diminui a fonte), use a alcinha de cima pra girar, e edite tudo (cor, negrito, alinhamento, fundo etc.) no painel "Elemento selecionado" que aparece aqui embaixo. Dá pra adicionar textos, formas, ícones e imagens novas, deletar qualquer peça e reorganizar a ordem das camadas.
-    </div>
+    <!-- textos de explicação removidos a pedido da equipe (os .hint também
+         somem via CSS — pra reativar, é só apagar a regra .hint{display:none}) -->
 
     <div class="card">
       <h2>🖌️ Modelo de arte</h2>
@@ -595,6 +594,9 @@
 
         <label style="display:flex; align-items:center; gap:6px; margin-top:12px;"><input type="checkbox" id="elBgToggle" style="width:auto;"> Fundo colorido (chip)</label>
         <input type="color" id="elBgColor" style="margin-top:6px;">
+
+        <label>Cantos do fundo <span id="elTextRadVal" style="color:var(--gray); font-weight:500;"></span></label>
+        <input type="range" id="elTextRad" min="0" max="80" step="1">
 
         <label>Espaçamento entre linhas <span id="elLineHVal" style="color:var(--gray); font-weight:500;"></span></label>
         <input type="range" id="elLineH" min="80" max="200" step="1">
@@ -1968,7 +1970,7 @@ function syncRoleAcrossFormats(role){
         : role==='horario'
         ? {fontSize:fontPx, fontWeight:600, color:'#374151', align:'left', lineHeight:1.3, role}
         : {fontSize:fontPx, fontWeight:500,
-           color: role==='beneficios' ? '#2a2a2e' : '#4b5563',
+           color: '#2a2a2e', // mesma cor pra requisitos, atividades e benefícios
            align:'left', lineHeight: role==='beneficios' ? 1.28 : 1.3, role};
       els.push(newTextEl(lx, ay, lw, newText, opts));
       if(fmtKey===currentFormat) currentTouched = true;
@@ -2765,7 +2767,9 @@ function drawTextElement(ctx, el){
 
   withTransform(ctx, el, ()=>{
     if(el.bg){
-      const r = el.radius!=null ? el.radius : Math.min(el.h/2, 18);
+      // padrão proporcional ao tamanho da letra (antes era travado em 18px,
+      // que em canvas de 1080px parecia quase quadrado)
+      const r = el.radius!=null ? el.radius : Math.min(el.h/2, el.fontSize*0.9);
       roundRectPath(ctx, el.x, el.y, el.w, el.h, r);
       ctx.fillStyle = el.bg; ctx.fill();
     }
@@ -3284,7 +3288,7 @@ function buildTallLayout(fmt, data, col){
   if(data.requisitos.length){
     const rowsFont = cardW*0.026;
     const reqText = data.requisitos.join('\n');
-    els.push(newTextEl(lx, y, lw, reqText, {fontSize:rowsFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3, role:'requisitos'}));
+    els.push(newTextEl(lx, y, lw, reqText, {fontSize:rowsFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.3, role:'requisitos'}));
     ctx.font = `500 ${Math.round(rowsFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     data.requisitos.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
@@ -3294,7 +3298,7 @@ function buildTallLayout(fmt, data, col){
   if(data.atividades.length){
     const actFont = cardW*0.026;
     const actText = data.atividades.join('\n');
-    els.push(newTextEl(lx, y, lw, actText, {fontSize:actFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.3, role:'atividades'}));
+    els.push(newTextEl(lx, y, lw, actText, {fontSize:actFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.3, role:'atividades'}));
     ctx.font = `500 ${Math.round(actFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     data.atividades.forEach(r=> totalLines += wrapLines(ctx, r, lw).length);
@@ -3409,7 +3413,7 @@ function buildWideLayout(fmt, data, col){
   const combinedRoles = ['requisitos','atividades','beneficios'];
   [data.requisitos, data.atividades, data.beneficios].forEach((arr,arrIdx)=>{
     if(!arr.length) return;
-    els.push(newTextEl(innerX, y, innerW, arr.join('\n'), {fontSize:combinedFont, fontWeight:500, color:'#4b5563', align:'left', lineHeight:1.4, role:combinedRoles[arrIdx]}));
+    els.push(newTextEl(innerX, y, innerW, arr.join('\n'), {fontSize:combinedFont, fontWeight:500, color:'#2a2a2e', align:'left', lineHeight:1.4, role:combinedRoles[arrIdx]}));
     ctx.font = `500 ${Math.round(combinedFont)}px 'Poppins', Arial, sans-serif`;
     let totalLines = 0;
     arr.forEach(s=> totalLines += wrapLines(ctx, s, innerW).length);
@@ -3478,14 +3482,15 @@ function buildFaixasTallLayout(fmt, data, col){
   // marca Effect (logo + palavra) à direita, dentro da mesma faixa
   const effLogo = getEffectLogo();
   const brandSize = topBarH*0.46;
-  const brandX = cardX+cardW-cardW*0.04-brandSize*2.9;
+  const brandTxtW = cardW*0.24;
+  const brandX = cardX+cardW-cardW*0.04-brandSize-cardW*0.014-brandTxtW;
   const brandY = cardY+(topBarH-brandSize)/2;
   if(effLogo){
     els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
     els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', col.primary, {bg:'#ffffff'}));
   }
-  els.push(newTextEl(brandX+brandSize+cardW*0.014, brandY+brandSize*0.2, brandSize*2.6, 'EFFECT', {fontSize:cardW*0.024, fontWeight:800, color:'#ffffff', align:'left'}));
+  els.push(newTextEl(brandX+brandSize+cardW*0.014, brandY+brandSize*0.18, brandTxtW, 'Effect Pessoas\n& Performance', {fontSize:cardW*0.014, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.15}));
 
   // ---- coluna de conteúdo (metade esquerda) ----
   const leftW = cardW*0.5, rightW = cardW-leftW;
@@ -3495,16 +3500,17 @@ function buildFaixasTallLayout(fmt, data, col){
 
   // barra colorida cheia (largura = coluna inteira) — usada tanto pro cargo
   // quanto pros selos de seção, igual à referência (não é cápsula).
-  function fullBar(label, fontSizeFrac){
+  function fullBar(label, fontSizeFrac, radius){
     const barFont = cardW*fontSizeFrac;
     const padX = barFont*0.55, padY = barFont*0.3;
     ctx.font = `800 ${Math.round(barFont)}px ${fam}`;
     const linhas = wrapLines(ctx, label, Math.max(10, lw-padX*2));
     const h = linhas.length*(barFont*1.25)+padY*2;
-    return { h, el: newTextEl(lx, y, lw, label, {fontSize:barFont, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius:cardW*0.01}) };
+    return { h, el: newTextEl(lx, y, lw, label, {fontSize:barFont, fontWeight:800, color:'#ffffff', bg:col.primary, align:'left', radius: radius!=null ? radius : cardW*0.01}) };
   }
 
-  const cargoBar = fullBar(data.cargo.toUpperCase(), 0.026);
+  // barra do cargo bem arredondada (combina com os cards logo abaixo)
+  const cargoBar = fullBar(data.cargo.toUpperCase(), 0.026, cardW*0.03);
   cargoBar.el.role = 'cargo';
   els.push(cargoBar.el);
   y += cargoBar.h + cardH*0.022;
@@ -3586,10 +3592,9 @@ function buildFaixasTallLayout(fmt, data, col){
   // esquerda: Instagram da empresa, se tiver cadastrado
   const insta = (currentCompany && currentCompany.instagram) ? currentCompany.instagram : '';
   if(insta){
-    const rIconSize = footerH*0.16;
-    const ry = footerY+footerH*0.42-rIconSize/2;
-    els.push(newIconEl(lx, ry, rIconSize, rIconSize, 'generico', '#ffffff', {}));
-    els.push(newTextEl(lx+rIconSize+cardW*0.012, ry+rIconSize*0.08, lw, insta, {fontSize:cardW*0.014, fontWeight:600, color:'#ffffff', align:'left'}));
+    // sem ícone — só o @ da empresa, alinhado à esquerda
+    const ry = footerY+footerH*0.42-footerH*0.08;
+    els.push(newTextEl(lx, ry, lw, insta, {fontSize:cardW*0.014, fontWeight:600, color:'#ffffff', align:'left'}));
   }
 
   // direita: telefone em destaque + CTA, sob a foto
@@ -3624,14 +3629,15 @@ function buildFaixasWideLayout(fmt, data, col){
 
   const effLogo = getEffectLogo();
   const brandSize = topH*0.5;
-  const brandX = lx+lw-brandSize*2.8;
+  const brandTxtW = cardW*0.155;
+  const brandX = lx+lw-brandSize-cardW*0.008-brandTxtW;
   const brandY = badgeY+(badgeSize-brandSize)/2;
   if(effLogo){
     els.push(newImageEl(brandX, brandY, brandSize, brandSize, effLogo, {round:true}));
   } else {
     els.push(newIconEl(brandX, brandY, brandSize, brandSize, 'generico', '#ffffff', {bg:col.primary}));
   }
-  els.push(newTextEl(brandX+brandSize+cardW*0.01, brandY+brandSize*0.2, brandSize*2.2, 'EFFECT', {fontSize:cardW*0.017, fontWeight:800, color:col.primary, align:'left'}));
+  els.push(newTextEl(brandX+brandSize+cardW*0.008, brandY+brandSize*0.16, brandTxtW, 'Effect Pessoas\n& Performance', {fontSize:cardW*0.01, fontWeight:800, color:col.primary, align:'left', lineHeight:1.15}));
 
   let y = cardY+topH+cardH*0.04;
 
@@ -3731,16 +3737,28 @@ function generateDefaultLayout(fmtKey){
 
 function confirmAndGenerate(fmtKey){
   const els = getElements(fmtKey);
-  const doIt = () => {
+  if(els.length){
+    // "Recriar do zero" agora é um RESET SUAVE: mantém o layout, o cabeçalho,
+    // o rodapé, a foto, as cores e toda a disposição dos elementos — limpa só
+    // o que muda de uma vaga pra outra (cargo, salário, requisitos e
+    // benefícios), em todos os formatos. Tudo continua editável depois.
+    if(!confirm('Recriar do zero: mantém o layout, o cabeçalho e o rodapé desta arte, e limpa apenas cargo, salário, requisitos e benefícios (em todos os formatos).\n\nContinuar?')) return;
+    pushHistory();
+    ['cargo','salario','requisitos','beneficios'].forEach(id=>{ const i = $('#'+id); if(i) i.value = ''; });
+    ['cargo','salario','requisitos','beneficios'].forEach(r=> syncRoleAcrossFormats(r));
+    // salário vazio: a faixa colorida atrás dele também sai
+    Object.keys(FORMATS).forEach(fk=>{
+      const arr = getElements(fk);
+      for(let i=arr.length-1;i>=0;i--) if(arr[i].role==='salarioBg') arr.splice(i,1);
+    });
+    clearSelection();
+    draw(); syncElPanel();
+  } else {
+    // sem arte ainda: gera o layout padrão completo (com cabeçalho e rodapé)
     pushHistory();
     layouts[fmtKey] = generateDefaultLayout(fmtKey);
     clearSelection();
     draw(); syncElPanel();
-  };
-  if(els.length){
-    if(confirm('⚠️ ATENÇÃO: isso vai APAGAR a arte atual deste formato (posições, cores, fotos e textos que você já ajustou manualmente) e recomeçar do zero só com os dados do formulário.\n\nSe você só queria adicionar uma foto ou mudar um texto, cancele — isso já é aplicado direto, sem precisar desta opção.\n\nTem certeza que quer recomeçar do zero?')) doIt();
-  } else {
-    doIt();
   }
 }
 
@@ -4180,6 +4198,11 @@ function syncElPanel(){
     $('#elBgColor').value = toHexColor(el.bg) || '#1f3a5f';
     const bgW = $('#elBgColor').closest('.hexwrap') || $('#elBgColor');
     bgW.style.visibility = el.bg ? 'visible':'hidden';
+    // cantos do fundo: mostra o valor atual (ou o padrão proporcional)
+    const radAtual = Math.round(el.radius!=null ? el.radius : Math.min((el.h||el.fontSize*1.85)/2, el.fontSize*0.9));
+    $('#elTextRad').value = Math.min(80, radAtual);
+    $('#elTextRadVal').textContent = radAtual+'px';
+    $('#elTextRad').disabled = !el.bg;
     const lh = Math.round((el.lineHeight||1.25)*100);
     $('#elLineH').value = lh; $('#elLineHVal').textContent = lh+'%';
     document.querySelectorAll('#elAlignRow button').forEach(b=> b.classList.toggle('active', b.dataset.align===(el.align||'left')));
@@ -4290,9 +4313,16 @@ function wireElPanel(){
   $('#elFontSize').addEventListener('input', withHistory((el,e)=>{ el.fontSize = parseInt(e.target.value,10); $('#elFontSizeVal').textContent = e.target.value+'px'; }));
   $('#elBold').addEventListener('change', withHistory((el,e)=>{ el.fontWeight = e.target.checked ? 800 : 500; }));
   $('#elItalic').addEventListener('change', withHistory((el,e)=>{ el.italic = e.target.checked; }));
-  $('#elColor').addEventListener('input', withHistory((el,e)=>{ el.color = e.target.value; }));
+  // Mudar a cor do texto vale pro texto INTEIRO: limpa cores aplicadas antes
+  // só em trechos (runs) — era isso que fazia parecer que a cor "não mudava"
+  // (ex.: requisitos com cor de seleção antiga por cima da cor base).
+  $('#elColor').addEventListener('input', withHistory((el,e)=>{
+    el.color = e.target.value;
+    if(el.runs) el.runs.forEach(r=>{ r.color = null; });
+  }));
   $('#elBgToggle').addEventListener('change', withHistory((el,e)=>{ el.bg = e.target.checked ? $('#elBgColor').value : null; const w = $('#elBgColor').closest('.hexwrap') || $('#elBgColor'); w.style.visibility = el.bg?'visible':'hidden'; }));
   $('#elBgColor').addEventListener('input', withHistory((el,e)=>{ if(el.bg) el.bg = e.target.value; }));
+  $('#elTextRad').addEventListener('input', withHistory((el,e)=>{ el.radius = parseInt(e.target.value,10); $('#elTextRadVal').textContent = e.target.value+'px'; }));
   $('#elLineH').addEventListener('input', withHistory((el,e)=>{ el.lineHeight = parseInt(e.target.value,10)/100; $('#elLineHVal').textContent = e.target.value+'%'; }));
 
   document.querySelectorAll('#elAlignRow button').forEach(b=>{
