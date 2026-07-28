@@ -3770,6 +3770,22 @@ function confirmAndGenerate(fmtKey){
         }
       }
     });
+    // FIXA cabeçalho, rodapé e o painel da foto nos tamanhos/posições atuais:
+    // peças travadas (🔒) não podem ser arrastadas nem redimensionadas por
+    // acidente. Pra mexer nelas, destrave no cadeado da lista de camadas.
+    // Os TEXTOS do rodapé (contato/CTA) continuam sincronizando pelo
+    // formulário normalmente, mesmo travados.
+    const FOTO_ROLES = ['foto','fotoPh','fotoShade','fotoBorda','fotoIcon','fotoPhDeco','fotoFilete'];
+    Object.keys(FORMATS).forEach(fk=>{
+      const Hfmt = FORMATS[fk].h;
+      getElements(fk).forEach(el=>{
+        const noTopo = (el.y||0) + (el.h||0) <= Hfmt*0.15;
+        const noRodape = (el.y||0) >= Hfmt*0.82;
+        if(noTopo || noRodape || FOTO_ROLES.includes(el.role) || el.role==='faixaTopo' || el.role==='faixaRodape'){
+          el.locked = true;
+        }
+      });
+    });
     clearSelection();
     draw(); syncElPanel();
   } else {
