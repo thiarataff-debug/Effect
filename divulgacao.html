@@ -247,7 +247,7 @@
         <button type="button" class="btn btn-toggle btn-sm active" id="modeloClassico">Clássico</button>
         <button type="button" class="btn btn-toggle btn-sm" id="modeloFaixas">Faixas coloridas</button>
       </div>
-      <div class="hint">Escolhe o estilo usado sempre que a arte for gerada do zero ("🪄 Recriar do zero", ou ao trocar de empresa/vaga). "Faixas coloridas" põe a foto grande de um lado e cada seção (Requisitos, Salário e Benefícios, Horário) num selo colorido. Templates já salvos continuam com o próprio estilo, independente dessa escolha.</div>
+      <div class="hint">Escolhe o estilo usado sempre que a arte for gerada do zero ("🪄 Recriar do zero", ou ao trocar de empresa/vaga). "Faixas coloridas" põe a foto grande de um lado, cada seção (Requisitos, Atividades, Salário e Benefícios) num selo colorido, e local/contratação/regime/horário em cards coloridos abaixo do título. Templates já salvos continuam com o próprio estilo, independente dessa escolha.</div>
     </div>
 
     <div class="card">
@@ -1670,8 +1670,9 @@ const ROLE_TEXT_FORMULAS = {
   beneficios: (data) => data.beneficios.join('\n'),
   contato: (data) => data.contato || '',
   horario: (data) => data.horario || '',
-  // Só usado no modelo "Faixas coloridas" (linha "Local: cidade · CLT · Presencial",
-  // sem chips coloridos) — no modelo Clássico não existe peça com esse role.
+  // LEGADO: só existe em artes antigas do modelo "Faixas coloridas" (linha
+  // "Local: cidade · CLT · Presencial" de texto simples). Artes novas usam os
+  // CARDS coloridos (role 'tag') na paleta da Effect, nos dois modelos.
   localLinha: (data) => {
     const extras = [data.contratacao, data.regime].filter(Boolean).join('  ·  ');
     return data.cidade ? `Local:  ${data.cidade}${extras?'   ·   '+extras:''}` : extras;
@@ -1852,7 +1853,11 @@ function syncRoleAcrossFormats(role){
     // Requisitos / Atividades / Benefícios: se a arte foi gerada com o campo
     // vazio, a caixa de texto não existe — cria na hora, empilhando abaixo da
     // última peça relacionada (título → chips → requisitos → atividades → salário → benefícios).
-    if(!achou && ['requisitos','atividades','beneficios','salario','horario','localLinha'].includes(role) && newText){
+    // 'horario' e 'localLinha' saíram da lista de criação: esses dados agora
+    // vivem nos CARDS coloridos abaixo do título (syncTagsAcrossFormats) —
+    // criar peça solta duplicaria a informação. Peças já existentes em artes
+    // antigas continuam sendo atualizadas pelo bloco "achou" acima.
+    if(!achou && ['requisitos','atividades','beneficios','salario'].includes(role) && newText){
       const fmt = FORMATS[fmtKey];
       const W=fmt.w, H=fmt.h, wide = W>H;
       const cardX = wide? W*0.035 : W*0.045, cardY = wide? H*0.06 : H*0.045;
@@ -1921,14 +1926,18 @@ function syncTagsAcrossFormats(){
   Object.keys(FORMATS).forEach(fmtKey=>{
     const els = getElements(fmtKey);
     if(!els.length) return;
-    // Modelo "Faixas coloridas" não usa os chips coloridos (contratação/regime/
-    // cidade viram uma linha de texto simples, sincronizada por outro lugar) —
-    // detecta pela faixa de rodapé, que só existe nesse modelo.
-    if(els.some(el=>el.role==='faixaRodape')) return;
+    // Modelo "Faixas coloridas" agora TAMBÉM usa os cards coloridos (a antiga
+    // linha "Local: cidade · CLT · Presencial" virou chips) — detecta pela
+    // faixa de rodapé, que só existe nesse modelo, pra usar a geometria certa.
+    const faixas = els.some(el=>el.role==='faixaRodape');
     const fmt = FORMATS[fmtKey];
     const W=fmt.w, H=fmt.h, wide = W>H;
-    const cardX = wide? W*0.035 : W*0.045, cardY = wide? H*0.06 : H*0.045;
+    const cardX = faixas ? (wide? W*0.03 : 0) : (wide? W*0.035 : W*0.045);
+    const cardY = faixas ? (wide? H*0.04 : 0) : (wide? H*0.06 : H*0.045);
     const cardW = W-cardX*2, cardH = H-cardY*2;
+    // Arte Faixas antiga com seção "HORÁRIO" própria: não repete o horário
+    // nos cards, senão ele aparece duas vezes.
+    const tagsFmt = (faixas && els.some(el=>el.role==='horario')) ? tags.filter(t=>t!==data.horario) : tags;
     // remove os chips atuais guardando a âncora (posição do primeiro)
     let ax=null, ay=null, insertAt=-1;
     for(let i=els.length-1;i>=0;i--){
@@ -1937,6 +1946,12 @@ function syncTagsAcrossFormats(){
         ay = ay===null? els[i].y : Math.min(ay, els[i].y);
         insertAt = i; els.splice(i,1);
       }
+    }
+    // Arte Faixas antiga (linha "Local: ..." de texto simples): a linha vira
+    // cards — remove a peça e ancora os chips no lugar dela.
+    if(insertAt<0 && faixas){
+      const li = els.findIndex(el=>el.role==='localLinha');
+      if(li>=0){ ax = els[li].x; ay = els[li].y; insertAt = li; els.splice(li,1); }
     }
     if(insertAt<0){
       // arte sem chips (gerada com os campos vazios): ancora abaixo do título
@@ -1947,17 +1962,17 @@ function syncTagsAcrossFormats(){
       insertAt = els.indexOf(cargo)+1;
     }
     if(fmtKey===currentFormat) touched = true;
-    if(!tags.length) return;
-    const fontPx = wide? cardW*0.015 : cardW*0.021;
+    if(!tagsFmt.length) return;
+    const fontPx = faixas ? (wide? cardW*0.012 : cardW*0.019) : (wide? cardW*0.015 : cardW*0.021);
     const tagFont = `600 ${Math.round(fontPx)}px 'Poppins', Arial, sans-serif`;
-    const tagH  = wide? cardW*0.032 : cardW*0.036;
-    const padX  = wide? cardW*0.012 : cardW*0.015;
-    const gapX  = wide? cardW*0.01  : cardW*0.011;
+    const tagH  = faixas ? (wide? cardW*0.022 : cardW*0.033) : (wide? cardW*0.032 : cardW*0.036);
+    const padX  = faixas ? (wide? cardW*0.009 : cardW*0.014) : (wide? cardW*0.012 : cardW*0.015);
+    const gapX  = faixas ? (wide? cardW*0.007 : cardW*0.01) : (wide? cardW*0.01  : cardW*0.011);
     const rowGap= wide? cardH*0.014 : cardH*0.011;
-    const lw    = wide? (cardW-cardW*0.36)-cardW*0.07 : cardW*0.57-cardW*0.045-cardW*0.055;
+    const lw    = faixas ? (wide? cardW*0.46 : cardW*0.43) : (wide? (cardW-cardW*0.36)-cardW*0.07 : cardW*0.57-cardW*0.045-cardW*0.055);
     let tx=ax, ty=ay, usedW=0;
     const novos=[];
-    tags.forEach((t,i)=>{
+    tagsFmt.forEach((t,i)=>{
       const w = measureChipWidth(tmp, t, tagFont, padX);
       if(usedW+w>lw && usedW>0){ tx=ax; ty+=tagH+rowGap; usedW=0; }
       novos.push(newTextEl(tx, ty, w, t, {fontSize:fontPx, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagH/2, role:'tag'}));
@@ -1982,8 +1997,8 @@ function wireLiveCanvasSync(){
   // cidade vai pros CHIPS abaixo do título; o banner só é atualizado se já
   // existir na arte (a cidade faz parte do texto padrão dele)
   $('#cidade').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('banner'); syncRoleAcrossFormats('localLinha'); });
-  // no modelo Clássico o horário vive no chip (rebuild completo); no modelo
-  // Faixas ele também é uma peça própria (role 'horario') — atualiza os dois.
+  // o horário agora vive nos cards nos dois modelos (rebuild completo);
+  // syncRole atualiza a peça própria (role 'horario') de artes antigas.
   $('#horario').addEventListener('input', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('horario'); });
   $('#contratacao').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
   $('#regime').addEventListener('change', ()=>{ syncTagsAcrossFormats(); syncRoleAcrossFormats('localLinha'); });
@@ -3040,12 +3055,22 @@ function buildFaixasTallLayout(fmt, data, col){
   els.push(cargoBar.el);
   y += cargoBar.h + cardH*0.022;
 
-  // "Local: cidade · contratação · regime" em texto simples (sem chips)
-  const extrasF = [data.contratacao, data.regime].filter(Boolean).join('  ·  ');
-  const localLine = data.cidade ? `Local:  ${data.cidade}${extrasF?'   ·   '+extrasF:''}` : extrasF;
-  if(localLine){
-    els.push(newTextEl(lx, y, lw, localLine, {fontSize:cardW*0.018, fontWeight:500, color:'#374151', align:'left', role:'localLinha'}));
-    y += cardW*0.018*1.3 + cardH*0.028;
+  // Local, contratação, regime e horário viram CARDS (chips) coloridos na
+  // paleta da Effect — mesmo estilo do modelo Clássico — em vez da antiga
+  // linha "Local: cidade · CLT · Presencial" de texto simples.
+  const tagsFT = tagList(data);
+  if(tagsFT.length){
+    const tagFontPx = cardW*0.019;
+    const tagFontF = `600 ${Math.round(tagFontPx)}px ${fam}`;
+    const tagHF = cardW*0.033, tagPadXF = cardW*0.014, tagGapXF = cardW*0.01, tagRowGapF = cardH*0.011;
+    let tx=lx, ty=y, usedW=0;
+    tagsFT.forEach((t,i)=>{
+      const w = measureChipWidth(ctx, t, tagFontF, tagPadXF);
+      if(usedW+w>lw && usedW>0){ tx=lx; ty+=tagHF+tagRowGapF; usedW=0; }
+      els.push(newTextEl(tx, ty, w, t, {fontSize:tagFontPx, fontWeight:600, color:col.primary, bg:tint(i%2?col.tertiary:col.secondary,0.65), align:'center', radius:tagHF/2, role:'tag'}));
+      tx += w+tagGapXF; usedW += w+tagGapXF;
+    });
+    y = ty+tagHF + cardH*0.028;
   }
 
   const bodyFont = cardW*0.019;
@@ -3069,7 +3094,8 @@ function buildFaixasTallLayout(fmt, data, col){
     if(data.salario) bodyText(data.salario, 'salario', 800, '#111827');
     if(data.beneficios.length) bodyText(data.beneficios.join('\n'), 'beneficios');
   }
-  if(data.horario){ sectionBar('HORÁRIO'); bodyText(data.horario, 'horario'); }
+  // Horário agora vive nos cards abaixo do título (como no modelo Clássico) —
+  // não gera mais uma seção "HORÁRIO" separada.
 
   // ---- foto: começa logo abaixo da faixa do topo, cola na borda direita,
   // pára onde a faixa do rodapé começa. Canto inferior-esquerdo bem curvo.
@@ -3159,7 +3185,7 @@ function buildFaixasWideLayout(fmt, data, col){
   els.push(newTextEl(lx, y, lw, data.cargo.toUpperCase(), {fontSize:titleFit.size, fontWeight:800, color:col.primary, align:'left', lineHeight:1.1, role:'cargo'}));
   y += titleFit.lines.length*titleFit.size*1.1 + cardH*0.026;
 
-  const tagsF = [data.contratacao, data.regime, data.cidade].filter(Boolean);
+  const tagsF = tagList(data); // inclui horário — vira card, sem seção separada
   if(tagsF.length){
     const tagFont = `600 ${Math.round(cardW*0.012)}px ${fam}`;
     const tagH = cardW*0.022, tagPadX = cardW*0.009, gapX = cardW*0.007;
@@ -3202,7 +3228,7 @@ function buildFaixasWideLayout(fmt, data, col){
     if(data.salario) bodyText(data.salario, 'salario', 800, '#111827');
     if(data.beneficios.length) bodyText(data.beneficios.join('\n'), 'beneficios');
   }
-  if(data.horario){ pill('HORÁRIO'); bodyText(data.horario, 'horario'); }
+  // Horário agora vive nos cards abaixo do título — sem seção separada.
   if(data.atividades.length){ pill('ATIVIDADES'); bodyText(data.atividades.join('\n'), 'atividades'); }
 
   // foto: cola no topo e na borda direita do cartão, parando antes do rodapé.
