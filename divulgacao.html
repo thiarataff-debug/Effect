@@ -250,7 +250,7 @@
   <div class="topbar-undo-group">
     <button type="button" id="btnUndoTop" title="Desfazer (Ctrl+Z)">↶ Desfazer</button>
     <button type="button" id="btnRedoTop" title="Refazer (Ctrl+Shift+Z)">↷ Refazer</button>
-    <button type="button" id="generateLayoutTop" title="Limpa cargo, salário, requisitos e benefícios — mantém layout, cabeçalho e rodapé" style="background:#7c3aed">🪄 Recriar do zero</button>
+    <button type="button" id="generateLayoutTop" title="Limpa cargo, salário, requisitos e benefícios — mantém layout, cabeçalho, rodapé e o espaço da foto exatamente como estão (só a foto sai)" style="background:#7c3aed">🪄 Recriar do zero</button>
   </div>
   <a class="voltar" href="/inbox"><i class="fas fa-arrow-left"></i> Lia</a>
   <div class="sub">Effect Pessoas &amp; Performance</div>
@@ -443,7 +443,7 @@
       <button type="button" class="toggle-link" id="removeJobPhoto" style="margin-top:6px;">Remover foto</button>
       <div class="hint">Ao escolher a foto ela já entra direto na arte atual como uma camada nova (dá pra mover/redimensionar depois) — <b>não precisa clicar em "Gerar arte" pra isso</b>.</div>
 
-      <div class="hint" style="margin-top:12px;">Pra recomeçar o design do zero a partir dos dados acima, use o botão <b>🪄 Recriar do zero</b> no topo da página (isso apaga a customização da arte atual).</div>
+      <div class="hint" style="margin-top:12px;">Pra recomeçar o design do zero a partir dos dados acima, use o botão <b>🪄 Recriar do zero</b> no topo da página (cabeçalho, rodapé e o espaço da foto ficam exatamente como estão — só a foto sai; o resto da arte é limpo).</div>
     </div>
 
     <div class="card">
@@ -3743,11 +3743,12 @@ function generateDefaultLayout(fmtKey){
 function confirmAndGenerate(fmtKey){
   const els = getElements(fmtKey);
   if(els.length){
-    // "Recriar do zero" = RESET SUAVE: mantém layout, cabeçalho e rodapé.
-    // Sobram só o banner do nome da vaga (com "NOME DA VAGA") e o banner do
-    // salário (vazio). Saem: foto, cards coloridos (cada vaga usa os seus),
-    // requisitos, benefícios e os textos da vaga anterior. Tudo editável.
-    if(!confirm('Recriar do zero: mantém o layout. O cabeçalho e o rodapé voltam ao padrão Effect (e ficam travados 🔒 — destrave nas camadas pra editar).\nFicam só o banner do nome da vaga e o banner do salário.\nSaem: foto, cards coloridos e os textos da vaga anterior.\n\nContinuar?')) return;
+    // "Recriar do zero" = RESET SUAVE: mantém layout, e o cabeçalho, o rodapé
+    // e o espaço da foto ficam EXATAMENTE como estão na arte atual (nada é
+    // reconstruído). Sobram só o banner do nome da vaga (com "NOME DA VAGA")
+    // e o banner do salário (vazio). Saem: a foto (o espaço dela fica),
+    // cards coloridos e os textos da vaga anterior. Tudo editável.
+    if(!confirm('Recriar do zero: mantém o layout. Cabeçalho, rodapé e o espaço da foto continuam exatamente como estão (ficam travados 🔒 — destrave nas camadas pra editar).\nFicam só o banner do nome da vaga e o banner do salário.\nSaem: a foto, os cards coloridos e os textos da vaga anterior.\n\nContinuar?')) return;
     pushHistory();
     // limpa os campos que mudam de vaga pra vaga
     ['cargo','salario','requisitos','beneficios','horario','cidade','contratacao','regime'].forEach(id=>{
@@ -3755,42 +3756,13 @@ function confirmAndGenerate(fmtKey){
     });
     ['cargo','salario','requisitos','beneficios','horario'].forEach(r=> syncRoleAcrossFormats(r));
     syncTagsAcrossFormats(); // campos vazios → cards coloridos saem
-    // foto sai (o painel volta a ser o quadro colorido da categoria)
+    // foto sai — o painel/espaço dela permanece EXATAMENTE onde está (mesma
+    // posição, tamanho e cantos), só voltando a mostrar o quadro da categoria
     jobPhotoDataUrl = null;
     if($('#jobPhotoPreview')) $('#jobPhotoPreview').innerHTML = '—';
     aplicarFotoPainel(null);
-    // RECONSTRÓI cabeçalho e rodapé no padrão atual da Effect (substitui os
-    // antigos salvos na arte, em todos os formatos) — sem isso, arte salva
-    // ficava pra sempre com o cabeçalho/rodapé da época em que foi criada.
-    Object.keys(FORMATS).forEach(fk=>{
-      const arr = getElements(fk);
-      if(!arr.length) return;
-      const Hf = FORMATS[fk].h;
-      const ehTopo = el => el.role!=='banner' && (((el.y||0)+(el.h||0)) <= Hf*0.15 || el.role==='faixaTopo');
-      const ehRodape = el => (el.y||0) >= Hf*0.82 || el.role==='faixaRodape';
-      const fresco = generateDefaultLayout(fk);
-      const topoNovo = fresco.filter(ehTopo);
-      const rodapeNovo = fresco.filter(el=> ehRodape(el) && !ehTopo(el));
-      for(let i=arr.length-1;i>=0;i--){ if(ehTopo(arr[i]) || ehRodape(arr[i])) arr.splice(i,1); }
-      arr.splice(Math.min(1, arr.length), 0, ...topoNovo);
-      arr.push(...rodapeNovo);
-    });
-    // atualiza a marca antiga salva na arte e tira ícones soltos do cabeçalho
-    // e do rodapé (ex.: o caminhãozinho) — o do painel da foto fica
-    Object.keys(FORMATS).forEach(fk=>{
-      const arr = getElements(fk), Hfmt = FORMATS[fk].h;
-      for(let i=arr.length-1;i>=0;i--){
-        const el = arr[i];
-        if(el.type==='text' && /^effect$/i.test((el.text||'').trim())){
-          el.text = 'Effect Pessoas\n& Performance';
-          el.fontSize = Math.round(el.fontSize*0.6);
-          el.lineHeight = 1.15;
-          el.runs = null;
-        } else if(el.type==='icon' && el.role!=='fotoIcon' && ((el.y||0) < Hfmt*0.14 || (el.y||0) > Hfmt*0.8)){
-          arr.splice(i,1);
-        }
-      }
-    });
+    // CABEÇALHO e RODAPÉ: NÃO são reconstruídos — ficam exatamente como
+    // estão na arte atual (posições, textos, cores e peças preservados).
     // FIXA cabeçalho, rodapé e o painel da foto nos tamanhos/posições atuais:
     // peças travadas (🔒) não podem ser arrastadas nem redimensionadas por
     // acidente. Pra mexer nelas, destrave no cadeado da lista de camadas.
