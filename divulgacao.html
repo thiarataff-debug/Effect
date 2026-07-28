@@ -138,6 +138,17 @@
   .btn-toggle{background:#fff; color:var(--navy); border:1px solid #d7dbe0;}
   .btn-toggle.active{background:var(--navy); color:#fff; border-color:var(--navy);}
   .hint{font-size:11.5px; color:var(--gray); margin-top:4px; line-height:1.4;}
+  /* caixinha de formatação estilo Word */
+  .fmt-ribbon{position:sticky; top:8px; z-index:50; display:flex; align-items:center; gap:2px;
+    background:#fff; border:1px solid #d8dce3; border-radius:10px; padding:5px 8px;
+    margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .fmt-ribbon button{background:transparent; border:none; border-radius:6px; padding:4px 9px;
+    cursor:pointer; font-size:14px; color:#2a2a2e; line-height:1; display:inline-flex; align-items:center;}
+  .fmt-ribbon button sup{font-size:8px; margin-left:1px;}
+  .fmt-ribbon button:hover:not(:disabled){background:#eef1f6;}
+  .fmt-ribbon button:disabled{opacity:0.35; cursor:default;}
+  .fmt-ribbon .fmt-sep{width:1px; height:18px; background:#d8dce3; margin:0 6px;}
+  .fmt-ribbon .fmt-label{font-size:10.5px; color:var(--gray); margin-left:auto; padding-left:8px;}
   #companyEditPanel{display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #e5e7eb;}
   #companyEditPanel.open{display:block;}
   .toggle-link{
@@ -312,6 +323,28 @@
     <div class="card">
       <h2>Dados da vaga</h2>
 
+      <!-- Caixinha de formatação estilo Word: selecione um trecho em qualquer
+           campo abaixo e clique. Fica grudada no topo enquanto o form rola. -->
+      <div class="fmt-ribbon" id="fmtRibbon">
+        <button type="button" id="fmtBold" title="Negrito no trecho selecionado"><b>N</b></button>
+        <button type="button" id="fmtGrow" title="Aumentar a letra do trecho selecionado">A<sup>▲</sup></button>
+        <button type="button" id="fmtShrink" title="Diminuir a letra do trecho selecionado">A<sup>▼</sup></button>
+        <button type="button" id="fmtClear" title="Limpar a formatação do trecho selecionado">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 2h7M8.5 2 6 11"/><path d="m2.5 10.5 4 4M6.5 10.5l-4 4"/></svg>
+        </button>
+        <span class="fmt-sep"></span>
+        <button type="button" id="fmtLeft" title="Alinhar bloco à esquerda (na arte)">
+          <svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3h12M2 6.3h8M2 9.7h12M2 13h8"/></svg>
+        </button>
+        <button type="button" id="fmtCenter" title="Centralizar bloco (na arte)">
+          <svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3h12M4 6.3h8M2 9.7h12M4 13h8"/></svg>
+        </button>
+        <button type="button" id="fmtRight" title="Alinhar bloco à direita (na arte)">
+          <svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3h12M6 6.3h8M2 9.7h12M6 13h8"/></svg>
+        </button>
+        <span class="fmt-label">selecione um trecho e clique</span>
+      </div>
+
       <label class="first">Cargo</label>
       <input type="text" id="cargo" placeholder="Ex: Auxiliar de Logística">
       <div class="hint">O ícone é escolhido automaticamente conforme o cargo digitado.</div>
@@ -354,7 +387,7 @@
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
-      <div class="hint">💡 <b>Negrito:</b> envolva o trecho com asteriscos em qualquer campo — ex.: R$ 2.300,00 *(Fixo R$ 1.800 + R$ 500 assiduidade)* — e ele sai <b>em negrito</b> na arte.</div>
+      <div class="hint">💡 <b>Formatação:</b> selecione qualquer trecho digitado e use a caixinha no topo do formulário — <b>N</b> (negrito), <b>A▲</b>/<b>A▼</b> (tamanho) e alinhamento.</div>
 
       <label>Requisitos (um por linha)</label>
       <textarea id="requisitos" placeholder="Ensino médio completo&#10;Experiência mínima de 1 ano&#10;Disponibilidade de horário"></textarea>
@@ -2009,6 +2042,117 @@ function wireLiveCanvasSync(){
 }
 
 /* ===========================================================
+   CAIXINHA DE FORMATAÇÃO (estilo Word) DO FORMULÁRIO
+   ---------------------------------------------------------
+   Barra fixa no topo do card "Dados da vaga" (#fmtRibbon no HTML): selecione
+   um trecho em qualquer campo de texto e clique — N (negrito), A▲/A▼ (sobe/
+   desce o tamanho do trecho em degraus: normal → +30% → +60%), limpar, e
+   alinhamento esq/centro/dir (aplicado ao bloco inteiro na arte). Por baixo
+   dos panos os botões inserem/removem a marcação (*negrito*, ^maior^,
+   ^^bem maior^^) — quem preferir ainda pode digitá-la à mão.
+=========================================================== */
+const FMT_FIELDS = ['cargo','horario','cidade','banner','salario','requisitos','atividades','beneficios','cta','contato'];
+const FMT_FIELD_ROLE = {cargo:'cargo', salario:'salario', requisitos:'requisitos', atividades:'atividades',
+  beneficios:'beneficios', horario:'horario', contato:'contato', cta:'cta', banner:'banner'};
+
+function fmtWrapSelection(input, mark){
+  const s = input.selectionStart, e = input.selectionEnd;
+  if(s==null || e==null || s===e) return;
+  const v = input.value, sel = v.slice(s,e), before = v.slice(0,s), after = v.slice(e);
+  if(before.endsWith(mark) && after.startsWith(mark)){
+    // já estava marcado com esse marcador: clicar de novo REMOVE (toggle)
+    input.value = before.slice(0, before.length-mark.length) + sel + after.slice(mark.length);
+    input.setSelectionRange(s-mark.length, e-mark.length);
+  } else {
+    input.value = before + mark + sel + mark + after;
+    input.setSelectionRange(s+mark.length, e+mark.length);
+  }
+  input.dispatchEvent(new Event('input', {bubbles:true}));
+  input.focus();
+}
+
+function fmtClearSelection(input){
+  const s = input.selectionStart, e = input.selectionEnd;
+  if(s==null || e==null || s===e) return;
+  const v = input.value;
+  // tira marcadores dentro do trecho e também os que envolvem o trecho
+  let a = s, b = e;
+  while(a>0 && /[*^]/.test(v[a-1])) a--;
+  while(b<v.length && /[*^]/.test(v[b])) b++;
+  const cleaned = v.slice(a,b).replace(/[*^]/g,'');
+  input.value = v.slice(0,a) + cleaned + v.slice(b);
+  input.setSelectionRange(a, a+cleaned.length);
+  input.dispatchEvent(new Event('input', {bubbles:true}));
+  input.focus();
+}
+
+function fmtSetAlign(fieldId, align){
+  const role = FMT_FIELD_ROLE[fieldId];
+  if(!role) return;
+  let t = false;
+  Object.keys(FORMATS).forEach(fk=>{
+    getElements(fk).forEach(el=>{
+      if(el.type==='text' && el.role===role && el.align!==align){ el.align = align; if(fk===currentFormat) t = true; }
+    });
+  });
+  if(t){ draw(); saveState(); }
+}
+
+// Sobe (dir=+1) ou desce (dir=-1) o tamanho do trecho selecionado em degraus:
+// sem marca (normal) → ^trecho^ (+30%) → ^^trecho^^ (+60%).
+function fmtSizeStep(input, dir){
+  const s = input.selectionStart, e = input.selectionEnd;
+  if(s==null || e==null || s===e) return;
+  const v = input.value, sel = v.slice(s,e);
+  let before = v.slice(0,s), after = v.slice(e);
+  const lvl = (before.endsWith('^^') && after.startsWith('^^')) ? 2
+            : (before.endsWith('^')  && after.startsWith('^'))  ? 1 : 0;
+  const novo = Math.max(0, Math.min(2, lvl+dir));
+  if(novo===lvl) return;
+  before = before.slice(0, before.length-lvl); after = after.slice(lvl);
+  const mark = '^'.repeat(novo);
+  input.value = before + mark + sel + mark + after;
+  const ns = before.length + mark.length;
+  input.setSelectionRange(ns, ns+sel.length);
+  input.dispatchEvent(new Event('input', {bubbles:true}));
+  input.focus();
+}
+
+function initFmtBar(){
+  const bar = $('#fmtRibbon');
+  if(!bar) return;
+  let last = null; // último campo de texto em que o usuário mexeu
+  const temSelecao = ()=> last && last.selectionStart!=null && last.selectionStart!==last.selectionEnd;
+  const refresh = ()=>{
+    const hasSel = !!temSelecao();
+    ['fmtBold','fmtGrow','fmtShrink','fmtClear'].forEach(id=>{ const b=$('#'+id); if(b) b.disabled = !hasSel; });
+    const alignOk = !!(last && FMT_FIELD_ROLE[last.id]);
+    ['fmtLeft','fmtCenter','fmtRight'].forEach(id=>{ const b=$('#'+id); if(b) b.disabled = !alignOk; });
+  };
+  FMT_FIELDS.forEach(id=>{
+    const inp = $('#'+id);
+    if(!inp || inp.tagName==='SELECT') return;
+    ['mouseup','keyup','select','focus'].forEach(ev=> inp.addEventListener(ev, ()=>{ last = inp; refresh(); }));
+  });
+  // mousedown com preventDefault: clicar no botão NÃO tira o foco nem a
+  // seleção do campo — igual à barrinha do Word.
+  const on = (id, fn)=>{
+    const b = $('#'+id);
+    if(!b) return;
+    b.addEventListener('mousedown', ev=> ev.preventDefault());
+    b.addEventListener('click', ()=>{ if(!last) return; fn(last); refresh(); });
+  };
+  on('fmtBold',   inp=> fmtWrapSelection(inp,'*'));
+  on('fmtGrow',   inp=> fmtSizeStep(inp, +1));
+  on('fmtShrink', inp=> fmtSizeStep(inp, -1));
+  on('fmtClear',  inp=> fmtClearSelection(inp));
+  on('fmtLeft',   inp=> fmtSetAlign(inp.id,'left'));
+  on('fmtCenter', inp=> fmtSetAlign(inp.id,'center'));
+  on('fmtRight',  inp=> fmtSetAlign(inp.id,'right'));
+  refresh();
+}
+
+/* ===========================================================
    MOTOR DE CANVAS LIVRE (estilo Canva) — objetos independentes
 =========================================================== */
 
@@ -2131,25 +2275,44 @@ function fontString(el){
   return `${el.italic?'italic ':''}${el.fontWeight||500} ${Math.round(el.fontSize)}px 'Poppins', Arial, sans-serif`;
 }
 
-/* ---------- Negrito por asteriscos no formulário ----------
-   *trecho* (ou **trecho**) digitado em QUALQUER campo do formulário vira
-   negrito na arte: os asteriscos são removidos do texto e viram runs prontos
-   (índices já sobre o texto limpo). Sem marcação → runs:null (estilo base). */
+/* ---------- Negrito e tamanho por marcação no formulário ----------
+   Digitado em QUALQUER campo do formulário:
+     *trecho* ou **trecho**  → negrito
+     ^trecho^                → 30% maior
+     ^^trecho^^              → 60% maior
+   Marcações podem se combinar (ex.: *^R$ 2.300^*). Os marcadores são
+   removidos do texto e viram runs prontos (índices sobre o texto limpo).
+   Sem marcação → runs:null (estilo base do elemento). */
 function parseBoldMarks(raw){
   const text = String(raw==null?'':raw);
-  if(text.indexOf('*')<0) return {text, runs:null};
-  const re = /\*\*([^*]+)\*\*|\*([^*\n]+)\*/g;
-  let out='', last=0, m; const runs=[];
-  while((m=re.exec(text))){
-    out += text.slice(last, m.index);
-    const trecho = m[1]!=null ? m[1] : m[2];
-    runs.push({start:out.length, end:out.length+trecho.length, bold:true, color:null});
-    out += trecho;
-    last = m.index + m[0].length;
+  if(!/[*^]/.test(text)) return {text, runs:null};
+  let chars = text.split('').map(c=>({c, bold:null, scale:null}));
+  function pass(re, apply){
+    const plain = chars.map(o=>o.c).join('');
+    const keep = new Array(chars.length).fill(true);
+    let m, any=false;
+    while((m=re.exec(plain))){
+      any = true;
+      const inner = m[1]!=null ? m[1] : m[2];
+      const markLen = (m[0].length-inner.length)/2;
+      for(let i=0;i<markLen;i++){ keep[m.index+i]=false; keep[m.index+m[0].length-1-i]=false; }
+      for(let i=m.index+markLen;i<m.index+m[0].length-markLen;i++) apply(chars[i], m[1]!=null);
+    }
+    if(any) chars = chars.filter((o,i)=>keep[i]);
   }
-  out += text.slice(last);
-  if(!runs.length) return {text, runs:null};
-  return {text:out, runs};
+  pass(/\*\*([^*]+)\*\*|\*([^*\n]+)\*/g, (o)=>{ o.bold = true; });
+  pass(/\^\^([^^]+)\^\^|\^([^^\n]+)\^/g, (o,duplo)=>{ o.scale = duplo ? 1.6 : 1.3; });
+  const outText = chars.map(o=>o.c).join('');
+  // converte os estilos por caractere em runs contínuos
+  const runs = []; let cur = null;
+  chars.forEach((o,i)=>{
+    if(o.bold==null && o.scale==null){ cur = null; return; }
+    if(cur && cur.bold===o.bold && cur.scale===o.scale && cur.end===i){ cur.end = i+1; return; }
+    cur = {start:i, end:i+1, bold:o.bold, color:null, scale:o.scale};
+    runs.push(cur);
+  });
+  if(!runs.length) return {text:outText, runs:null};
+  return {text:outText, runs};
 }
 
 /* ---------- Formatação parcial (negrito/cor só de um trecho, dentro do mesmo texto) ----------
@@ -2165,15 +2328,15 @@ function normalizeRuns(text, runs){
   sorted.forEach(r=>{
     const rs = Math.max(0, Math.min(r.start, len));
     const re = Math.max(rs, Math.min(r.end, len));
-    if(rs>pos) out.push({start:pos, end:rs, bold:null, color:null});
-    if(re>rs) out.push({start:rs, end:re, bold: r.bold!=null?r.bold:null, color: r.color||null});
+    if(rs>pos) out.push({start:pos, end:rs, bold:null, color:null, scale:null});
+    if(re>rs) out.push({start:rs, end:re, bold: r.bold!=null?r.bold:null, color: r.color||null, scale: r.scale!=null?r.scale:null});
     pos = Math.max(pos, re);
   });
-  if(pos<len) out.push({start:pos, end:len, bold:null, color:null});
-  return out.length ? out : [{start:0, end:len, bold:null, color:null}];
+  if(pos<len) out.push({start:pos, end:len, bold:null, color:null, scale:null});
+  return out.length ? out : [{start:0, end:len, bold:null, color:null, scale:null}];
 }
 
-function sameRunStyle(a,b){ return a.bold===b.bold && a.color===b.color; }
+function sameRunStyle(a,b){ return a.bold===b.bold && a.color===b.color && (a.scale||null)===(b.scale||null); }
 
 function mergeRuns(el){
   if(!el.runs || !el.runs.length) return;
@@ -2185,7 +2348,7 @@ function mergeRuns(el){
     else out.push({...r});
   });
   el.runs = out.filter(r=>r.end>r.start);
-  const isTrivial = el.runs.length<=1 && el.runs.every(r=>r.bold==null && r.color==null);
+  const isTrivial = el.runs.length<=1 && el.runs.every(r=>r.bold==null && r.color==null && r.scale==null);
   if(!el.runs.length || isTrivial) el.runs = null;
 }
 
@@ -2199,7 +2362,7 @@ function splitRunsAt(el, pos){
   for(let i=0;i<runs.length;i++){
     const r = runs[i];
     if(pos>r.start && pos<r.end){
-      runs.splice(i+1, 0, {start:pos, end:r.end, bold:r.bold, color:r.color});
+      runs.splice(i+1, 0, {start:pos, end:r.end, bold:r.bold, color:r.color, scale:(r.scale!=null?r.scale:null)});
       r.end = pos;
       return;
     }
@@ -2252,7 +2415,7 @@ function splitParagraphIntoGroups(text, runs){
     const piece = text.slice(r.start, r.end);
     const re = /\S+|\s+/g; let m;
     while((m = re.exec(piece))){
-      atoms.push({text:m[0], isSpace:/^\s/.test(m[0]), bold:r.bold, color:r.color});
+      atoms.push({text:m[0], isSpace:/^\s/.test(m[0]), bold:r.bold, color:r.color, scale:r.scale});
     }
   });
   const groups = []; let cur = null;
@@ -2264,16 +2427,25 @@ function splitParagraphIntoGroups(text, runs){
   return groups;
 }
 
-function fontForChunk(bold, fontPx, family){ return `${bold?800:500} ${Math.round(fontPx)}px ${family}`; }
+function fontForChunk(bold, fontPx, family, scale){ return `${bold?800:500} ${Math.round(fontPx*(scale||1))}px ${family}`; }
 
 function measureGroupWidth(ctx, g, fontPx, family, baseBold){
   if(g.space){ ctx.font = fontForChunk(baseBold, fontPx, family); return ctx.measureText(g.text).width; }
   let w=0;
   g.chunks.forEach(c=>{
-    ctx.font = fontForChunk(c.bold!=null?c.bold:baseBold, fontPx, family);
+    ctx.font = fontForChunk(c.bold!=null?c.bold:baseBold, fontPx, family, c.scale);
     w += ctx.measureText(c.text).width;
   });
   return w;
+}
+
+// maior "scale" presente numa linha (grupos) — usado pra altura da linha
+function lineMaxScale(groups){
+  let s = 1;
+  (groups||[]).forEach(g=>{
+    if(!g.space && g.chunks) g.chunks.forEach(c=>{ if(c.scale && c.scale>s) s = c.scale; });
+  });
+  return s;
 }
 
 function wrapRichGroups(ctx, text, runs, maxWidth, fontPx, family, baseBold){
@@ -2308,7 +2480,7 @@ function drawRichLine(ctx, groups, startX, baselineY, fontPx, family, baseBold, 
     g.chunks.forEach(c=>{
       const bold = c.bold!=null ? c.bold : baseBold;
       const color = c.color || baseColor;
-      ctx.font = fontForChunk(bold, fontPx, family);
+      ctx.font = fontForChunk(bold, fontPx, family, c.scale);
       ctx.fillStyle = color;
       ctx.textAlign='left'; ctx.textBaseline='alphabetic';
       ctx.fillText(c.text, x, baselineY);
@@ -2336,14 +2508,17 @@ function drawTextElement(ctx, el){
     const localRuns = (el.runs||[]).map(r=>({
       start: Math.max(0, Math.min(r.start-offset, p.length)),
       end: Math.max(0, Math.min(r.end-offset, p.length)),
-      bold:r.bold, color:r.color
+      bold:r.bold, color:r.color, scale:(r.scale!=null?r.scale:null)
     })).filter(r=>r.end>r.start);
     const wrapped = wrapRichGroups(ctx, p, localRuns, wrapW, el.fontSize, family, baseBold);
     wrapped.forEach(g=> paraLines.push(g));
     offset += p.length+1;
   });
   const lines = paraLines.length ? paraLines : [[]];
-  el.h = lines.length*lineH + padY*2;
+  // altura de cada linha acompanha o maior "scale" presente nela (trechos
+  // aumentados via ^marcação^/menu não invadem a linha de cima)
+  const lineHs = lines.map(g=> lineH*lineMaxScale(g));
+  el.h = lineHs.reduce((a,b)=>a+b,0) + padY*2;
 
   withTransform(ctx, el, ()=>{
     if(el.bg){
@@ -2351,12 +2526,15 @@ function drawTextElement(ctx, el){
       roundRectPath(ctx, el.x, el.y, el.w, el.h, r);
       ctx.fillStyle = el.bg; ctx.fill();
     }
+    let ly = el.y+padY;
     lines.forEach((groups,i)=>{
       const lw = lineGroupsWidth(ctx, groups, el.fontSize, family, baseBold);
       let tx = el.x+padX;
       if(el.align==='center') tx = el.x+el.w/2-lw/2;
       else if(el.align==='right') tx = el.x+el.w-padX-lw;
-      drawRichLine(ctx, groups, tx, el.y+padY+el.fontSize*0.85+i*lineH, el.fontSize, family, baseBold, baseColor);
+      const sc = lineMaxScale(groups);
+      drawRichLine(ctx, groups, tx, ly+el.fontSize*0.85*sc, el.fontSize, family, baseBold, baseColor);
+      ly += lineHs[i];
     });
   });
 }
@@ -4473,6 +4651,7 @@ async function init(){
   wireCompanyPanel();
   wireJobPhoto();
   wireLiveCanvasSync();
+  initFmtBar();
   wireJobDivulgacaoActions();
   wireCronograma();
   wireDownloads();
