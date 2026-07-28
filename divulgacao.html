@@ -314,6 +314,9 @@
         <label>Instagram (opcional)</label>
         <input type="text" id="companyInstagram" placeholder="@empresa">
 
+        <label>E-mail (rodapé da arte, opcional)</label>
+        <input type="text" id="companyEmail" placeholder="recrutamento@empresa.com">
+
         <label>Texto de chamada (CTA) padrão</label>
         <input type="text" id="companyCta" placeholder="Ex: Envie seu currículo pelo WhatsApp">
 
@@ -1000,6 +1003,7 @@ function seedDefaultCompany(){
     cidadePadrao:'',
     whatsapp:'',
     instagram:'@effectpessoaseperformance',
+    email:'effect.recrutamento@gmail.com',
     ctaPadrao:'Envie seu currículo pelo WhatsApp',
     bannerPadrao:''
   };
@@ -1078,6 +1082,7 @@ function fillCompanyEditPanel(c){
   $('#companyCity').value = c.cidadePadrao||'';
   $('#companyWhatsapp').value = c.whatsapp||'';
   $('#companyInstagram').value = c.instagram||'';
+  $('#companyEmail').value = c.email||'';
   $('#companyCta').value = c.ctaPadrao||'';
   $('#companyBanner').value = c.bannerPadrao||'';
   const prev = $('#logoPreview');
@@ -3469,13 +3474,10 @@ function buildFaixasTallLayout(fmt, data, col){
     role:'faixaTopo'
   }));
 
-  // selo "Vaga Disponível" (círculo branco + texto branco) dentro da faixa
+  // "› Vaga / Disponível" direto na faixa, sem círculo com ícone
   const badgeSize = topBarH*0.52;
   const badgeY = cardY+(topBarH-badgeSize)/2;
-  const badgeX = cardX+cardW*0.04;
-  els.push(newEllipseEl(badgeX, badgeY, badgeSize, badgeSize, {fill:'#ffffff'}));
-  els.push(newIconEl(badgeX+badgeSize*0.16, badgeY+badgeSize*0.16, badgeSize*0.68, badgeSize*0.68, 'generico', col.primary, {}));
-  const badgeTx = badgeX+badgeSize+cardW*0.018;
+  const badgeTx = cardX+cardW*0.04;
   els.push(newTextEl(badgeTx, badgeY-topBarH*0.02, cardW*0.3, '›  Vaga', {fontSize:cardW*0.017, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', lineHeight:1.05}));
   els.push(newTextEl(badgeTx, badgeY+topBarH*0.32, cardW*0.3, 'Disponível', {fontSize:cardW*0.024, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.05}));
 
@@ -3589,17 +3591,19 @@ function buildFaixasTallLayout(fmt, data, col){
     role:'faixaRodape'
   }));
 
-  // esquerda: Instagram da empresa, se tiver cadastrado
+  // esquerda: @ do Instagram e e-mail da empresa (sem ícones), empilhados
   const insta = (currentCompany && currentCompany.instagram) ? currentCompany.instagram : '';
+  const emailEmp = (currentCompany && currentCompany.email) ? currentCompany.email : '';
   if(insta){
-    // sem ícone — só o @ da empresa, alinhado à esquerda
-    const ry = footerY+footerH*0.42-footerH*0.08;
-    els.push(newTextEl(lx, ry, lw, insta, {fontSize:cardW*0.014, fontWeight:600, color:'#ffffff', align:'left'}));
+    els.push(newTextEl(lx, footerY+footerH*0.30, lw, insta, {fontSize:cardW*0.016, fontWeight:700, color:'#ffffff', align:'left'}));
+  }
+  if(emailEmp){
+    els.push(newTextEl(lx, footerY+footerH*(insta?0.54:0.38), lw, emailEmp, {fontSize:cardW*0.015, fontWeight:500, color:'#ffffff', align:'left'}));
   }
 
-  // direita: telefone em destaque + CTA, sob a foto
-  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.26, fw*0.85, data.contato||'', {fontSize:cardW*0.022, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
-  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.58, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.013, fontWeight:600, color:'rgba(255,255,255,0.85)', align:'left', role:'cta'}));
+  // direita: CTA em cima (maiúsculas) e telefone GRANDE embaixo
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.18, fw*0.85, (data.cta||'Envie seu currículo').toUpperCase(), {fontSize:cardW*0.015, fontWeight:700, color:'#ffffff', align:'left', lineHeight:1.2, role:'cta'}));
+  els.push(newTextEl(fx+fw*0.09, footerY+footerH*0.55, fw*0.85, data.contato||'', {fontSize:cardW*0.03, fontWeight:800, color:'#ffffff', align:'left', role:'contato'}));
 
   return els;
 }
@@ -4592,7 +4596,7 @@ function wireCompanyPanel(){
   $('#companySelect').addEventListener('change', ()=>{
     const v = $('#companySelect').value;
     if(v==='__new__'){
-      currentCompany = { id:'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1', corBannerTexto:'#ffffff', corBannerFundo:'#141414', cidadePadrao:'', whatsapp:'', instagram:'', ctaPadrao:'', bannerPadrao:'', logoDataUrl:null };
+      currentCompany = { id:'c-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), nome:'', corPrimaria:'#1f3a5f', corSecundaria:'#7fb8e6', corTerciaria:'#8ed1b2', corDestaque:'#f4afa1', corBannerTexto:'#ffffff', corBannerFundo:'#141414', cidadePadrao:'', whatsapp:'', instagram:'', email:'', ctaPadrao:'', bannerPadrao:'', logoDataUrl:null };
       fillCompanyEditPanel(currentCompany);
       $('#companyEditPanel').classList.add('open');
       $('#companyName').focus();
@@ -4644,6 +4648,7 @@ function wireCompanyPanel(){
       cidadePadrao: $('#companyCity').value.trim(),
       whatsapp: $('#companyWhatsapp').value.trim(),
       instagram: $('#companyInstagram').value.trim(),
+      email: $('#companyEmail').value.trim(),
       ctaPadrao: $('#companyCta').value.trim(),
       bannerPadrao: $('#companyBanner').value.trim(),
     });
