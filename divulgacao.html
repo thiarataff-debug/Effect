@@ -396,6 +396,14 @@
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
+      <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
+        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
+          <input type="color" id="salarioBg" value="#1f3a5f" style="width:36px; height:26px; padding:1px;"> Fundo do salário
+        </label>
+        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
+          <input type="color" id="salarioTx" value="#ffffff" style="width:36px; height:26px; padding:1px;"> Texto do salário
+        </label>
+      </div>
       <div class="hint">💡 <b>Formatação:</b> selecione qualquer trecho digitado e use a caixinha no topo do formulário — <b>N</b> (negrito), <b>A▲</b>/<b>A▼</b> (tamanho) e alinhamento.</div>
 
       <label>Requisitos (um por linha)</label>
@@ -1072,6 +1080,9 @@ function applyCompanyToJobFields(c){
   // cores do selo de destaque desta arte partem do padrão da empresa
   $('#bannerBg').value = c.corBannerFundo || '#141414';
   $('#bannerTx').value = c.corBannerTexto || '#ffffff';
+  // faixa do salário parte da cor primária da empresa
+  $('#salarioBg').value = c.corPrimaria || '#1f3a5f';
+  $('#salarioTx').value = '#ffffff';
 }
 
 /* ---------------------------------------------------------
@@ -1938,7 +1949,7 @@ function syncRoleAcrossFormats(role){
       }
       if(ay===null) ay = cardY+cardH*0.42;
       const opts = role==='salario'
-        ? {fontSize:fontPx, fontWeight:800, color:'#ffffff', bg:'#1f2937', radius:cardW*0.012, align:'center', role}
+        ? {fontSize:fontPx, fontWeight:800, color:(($('#salarioTx')&&$('#salarioTx').value)||'#ffffff'), bg:(($('#salarioBg')&&$('#salarioBg').value)||'#1f2937'), radius:cardW*0.012, align:'center', role}
         : role==='localLinha'
         ? {fontSize:fontPx, fontWeight:600, color:'#4b5563', align:'left', role}
         : role==='horario'
@@ -2066,6 +2077,36 @@ function wireLiveCanvasSync(){
   };
   $('#bannerBg').addEventListener('input', syncBannerColors);
   $('#bannerTx').addEventListener('input', syncBannerColors);
+  // cores da faixa do salário: pinta a faixa (rect role 'salarioBg') e o texto
+  // (role 'salario') ao vivo. Em arte antiga a faixa não tinha role — adota o
+  // retângulo baixinho que contém o texto do salário.
+  const syncSalarioColors = ()=>{
+    let t = false;
+    Object.keys(FORMATS).forEach(fk=>{
+      const els = getElements(fk);
+      const salTxt = els.find(el=>el.type==='text' && el.role==='salario');
+      if(salTxt && !salTxt.bg && !els.some(el=>el.role==='salarioBg')){
+        const rect = els.find(el=> el.type==='rect' && !el.role &&
+          salTxt.x>=el.x-2 && salTxt.y>=el.y-2 && salTxt.x<=el.x+el.w && salTxt.y<=el.y+el.h &&
+          el.h < salTxt.fontSize*6);
+        if(rect) rect.role = 'salarioBg';
+      }
+      // No modelo Faixas o salário é texto solto sobre o cartão branco — sem
+      // faixa/fundo, NÃO recolore o texto (viraria branco invisível).
+      const temFaixa = els.some(el=>el.role==='salarioBg') || (salTxt && !!salTxt.bg);
+      els.forEach(el=>{
+        if(el.role==='salario' && el.type==='text' && temFaixa){
+          el.color = $('#salarioTx').value;
+          if(el.bg) el.bg = $('#salarioBg').value;
+          if(fk===currentFormat) t = true;
+        }
+        if(el.role==='salarioBg'){ el.fill = $('#salarioBg').value; if(fk===currentFormat) t = true; }
+      });
+    });
+    if(t){ draw(); saveState(); }
+  };
+  $('#salarioBg').addEventListener('input', syncSalarioColors);
+  $('#salarioTx').addEventListener('input', syncSalarioColors);
 }
 
 /* ===========================================================
@@ -3092,8 +3133,10 @@ function buildTallLayout(fmt, data, col){
     const salFont = cardW*0.026;
     const salLineH = salFont*1.25;
     const salTextY = by + (salH-salLineH)/2;
-    els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:col.primary, radiusPct:0.24}));
-    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:'#ffffff', align:'left', lineHeight:1.25, role:'salario'}));
+    const salBgCor = ($('#salarioBg') && $('#salarioBg').value) || col.primary;
+    const salTxCor = ($('#salarioTx') && $('#salarioTx').value) || '#ffffff';
+    els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:salBgCor, radiusPct:0.24, role:'salarioBg'}));
+    els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:salTxCor, align:'left', lineHeight:1.25, role:'salario'}));
     by += salH+cardH*0.022;
   }
 
