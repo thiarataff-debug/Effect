@@ -396,10 +396,10 @@
       <label>Frase de destaque (selo sobre a foto)</label>
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
       <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap;">
           <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="bannerBg" style="background:#141414;"></button><input type="text" class="hexinput" id="bannerBg" value="#141414" spellcheck="false"></span> Fundo do selo
         </span>
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap;">
           <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="bannerTx" style="background:#ffffff;"></button><input type="text" class="hexinput" id="bannerTx" value="#ffffff" spellcheck="false"></span> Texto do selo
         </span>
       </div>
@@ -408,10 +408,10 @@
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
       <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap;">
           <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="salarioBg" style="background:#1f3a5f;"></button><input type="text" class="hexinput" id="salarioBg" value="#1f3a5f" spellcheck="false"></span> Fundo do salário
         </span>
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap;">
           <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="salarioTx" style="background:#ffffff;"></button><input type="text" class="hexinput" id="salarioTx" value="#ffffff" spellcheck="false"></span> Texto do salário
         </span>
       </div>
@@ -1072,6 +1072,7 @@ function fillCompanyEditPanel(c){
   $('#colorAccent').value = c.corDestaque||'#f4afa1';
   $('#colorBannerTexto').value = c.corBannerTexto||'#ffffff';
   $('#colorBannerFundo').value = c.corBannerFundo||'#141414';
+  if(window.refreshHexSwatches) window.refreshHexSwatches();
   $('#companyCity').value = c.cidadePadrao||'';
   $('#companyWhatsapp').value = c.whatsapp||'';
   $('#companyInstagram').value = c.instagram||'';
@@ -2146,6 +2147,42 @@ function setSavedColors(list){
   try{ localStorage.setItem('effectCoresSalvas', JSON.stringify(list.slice(0,24))); }catch(e){}
 }
 
+// Converte os <input type="color"> nativos (painel do elemento, cores da
+// empresa) no mesmo esquema quadradinho + código HEX — estilo Canva, em
+// QUALQUER texto ou elemento. Mantém os ids, então todos os listeners e
+// leituras de .value continuam funcionando sem mudança.
+const HEX_UPGRADE_IDS = ['elColor','elBgColor','elColorSel','elFill','elGrad1','elGrad2','elIconColor','elIconBg',
+  'colorPrimary','colorSecondary','colorTertiary','colorAccent','colorBannerTexto','colorBannerFundo'];
+function upgradeColorInputs(){
+  HEX_UPGRADE_IDS.forEach(id=>{
+    const inp = $('#'+id);
+    if(!inp || inp.dataset.hexUpgraded) return;
+    inp.dataset.hexUpgraded = '1';
+    const wrap = document.createElement('span'); wrap.className = 'hexwrap';
+    const sw = document.createElement('button');
+    sw.type = 'button'; sw.className = 'hexswatch'; sw.dataset.hexfor = id;
+    sw.style.background = hexOr(inp.value, '#ffffff');
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(sw); wrap.appendChild(inp);
+    inp.type = 'text'; inp.classList.add('hexinput'); inp.spellcheck = false;
+  });
+}
+
+// Cores já usadas na arte atual — a seção "Cores desse design" (como no Canva)
+function coresDoDesign(){
+  const out = [];
+  try{
+    getElements(currentFormat).forEach(el=>{
+      [el.color, el.bg, el.fill, el.gradient && el.gradient[0], el.gradient && el.gradient[1]].forEach(v=>{
+        const h = hexOr(typeof toHexColor==='function' ? toHexColor(v) : v, null);
+        if(h && !out.includes(h)) out.push(h);
+      });
+      (el.runs||[]).forEach(r=>{ const h = hexOr(r.color, null); if(h && !out.includes(h)) out.push(h); });
+    });
+  }catch(e){}
+  return out.slice(0,14);
+}
+
 function initHexInputs(){
   let pop = null, popFor = null;
   const closePop = ()=>{ if(pop){ pop.remove(); pop = null; popFor = null; } };
@@ -2181,7 +2218,12 @@ function initHexInputs(){
       });
       return g;
     };
-    const h1 = document.createElement('h4'); h1.textContent = 'Paleta Effect';
+    const doDesign = coresDoDesign();
+    if(doDesign.length){
+      const h0 = document.createElement('h4'); h0.textContent = 'Cores desse design';
+      pop.appendChild(h0); pop.appendChild(mkGrid(doDesign, false));
+    }
+    const h1 = document.createElement('h4'); h1.textContent = 'Paleta Effect'; if(doDesign.length) h1.style.marginTop = '8px';
     pop.appendChild(h1); pop.appendChild(mkGrid(EFFECT_PALETTE, false));
     const h2 = document.createElement('h4'); h2.textContent = 'Minhas cores'; h2.style.marginTop = '8px';
     pop.appendChild(h2);
@@ -2199,6 +2241,16 @@ function initHexInputs(){
       buildPop(id, anchor);
     });
     pop.appendChild(save);
+    // conta-gotas (Chrome/Edge): pega cor de qualquer lugar da tela
+    if(window.EyeDropper){
+      const eyed = document.createElement('button');
+      eyed.type = 'button'; eyed.className = 'btn btn-outline btn-sm btnsave';
+      eyed.textContent = '🖉 Conta-gotas';
+      eyed.addEventListener('click', ()=>{
+        new EyeDropper().open().then(res=>{ apply(id, res.sRGBHex); closePop(); }).catch(()=>{});
+      });
+      pop.appendChild(eyed);
+    }
     document.body.appendChild(pop);
     const r = anchor.getBoundingClientRect();
     pop.style.left = (window.scrollX + r.left) + 'px';
@@ -2207,6 +2259,9 @@ function initHexInputs(){
   document.querySelectorAll('.hexswatch[data-hexfor]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.dataset.hexfor;
+      // "Cor da seleção" precisa capturar o trecho selecionado no textarea
+      // ANTES do clique roubar o foco — mesmo truque do listener original.
+      $('#'+id).dispatchEvent(new Event('mousedown'));
       if(popFor===id) closePop(); else buildPop(id, btn);
     });
   });
@@ -4123,7 +4178,8 @@ function syncElPanel(){
     $('#elColor').value = el.color || '#2a2a2e';
     $('#elBgToggle').checked = !!el.bg;
     $('#elBgColor').value = toHexColor(el.bg) || '#1f3a5f';
-    $('#elBgColor').style.visibility = el.bg ? 'visible':'hidden';
+    const bgW = $('#elBgColor').closest('.hexwrap') || $('#elBgColor');
+    bgW.style.visibility = el.bg ? 'visible':'hidden';
     const lh = Math.round((el.lineHeight||1.25)*100);
     $('#elLineH').value = lh; $('#elLineHVal').textContent = lh+'%';
     document.querySelectorAll('#elAlignRow button').forEach(b=> b.classList.toggle('active', b.dataset.align===(el.align||'left')));
@@ -4158,6 +4214,8 @@ function syncElPanel(){
   $('#elOpacity').value = op; $('#elOpacityVal').textContent = op+'%';
   const rot = Math.round(el.rotation||0);
   $('#elRotation').value = rot; $('#elRotVal').textContent = rot+'°';
+  // quadradinhos de cor do painel acompanham o elemento selecionado
+  if(window.refreshHexSwatches) window.refreshHexSwatches();
 }
 
 function toHexColor(v){
@@ -4233,7 +4291,7 @@ function wireElPanel(){
   $('#elBold').addEventListener('change', withHistory((el,e)=>{ el.fontWeight = e.target.checked ? 800 : 500; }));
   $('#elItalic').addEventListener('change', withHistory((el,e)=>{ el.italic = e.target.checked; }));
   $('#elColor').addEventListener('input', withHistory((el,e)=>{ el.color = e.target.value; }));
-  $('#elBgToggle').addEventListener('change', withHistory((el,e)=>{ el.bg = e.target.checked ? $('#elBgColor').value : null; $('#elBgColor').style.visibility = el.bg?'visible':'hidden'; }));
+  $('#elBgToggle').addEventListener('change', withHistory((el,e)=>{ el.bg = e.target.checked ? $('#elBgColor').value : null; const w = $('#elBgColor').closest('.hexwrap') || $('#elBgColor'); w.style.visibility = el.bg?'visible':'hidden'; }));
   $('#elBgColor').addEventListener('input', withHistory((el,e)=>{ if(el.bg) el.bg = e.target.value; }));
   $('#elLineH').addEventListener('input', withHistory((el,e)=>{ el.lineHeight = parseInt(e.target.value,10)/100; $('#elLineHVal').textContent = e.target.value+'%'; }));
 
@@ -4842,6 +4900,7 @@ async function init(){
   wireJobPhoto();
   wireLiveCanvasSync();
   initFmtBar();
+  upgradeColorInputs(); // troca os seletores nativos por quadradinho + HEX
   initHexInputs();
   wireJobDivulgacaoActions();
   wireCronograma();
