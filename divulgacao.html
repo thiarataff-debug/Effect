@@ -149,6 +149,17 @@
   .fmt-ribbon button:disabled{opacity:0.35; cursor:default;}
   .fmt-ribbon .fmt-sep{width:1px; height:18px; background:#d8dce3; margin:0 6px;}
   .fmt-ribbon .fmt-label{font-size:10.5px; color:var(--gray); margin-left:auto; padding-left:8px;}
+  /* seletor de cor por código HEX + cores salvas */
+  .hexwrap{display:inline-flex; align-items:center; gap:5px;}
+  .hexswatch{width:26px; height:26px; border-radius:6px; border:1px solid #c9ced8; cursor:pointer; padding:0; flex:none;}
+  .hexinput{width:78px !important; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:12px !important; padding:4px 6px !important;}
+  .hexpop{position:absolute; z-index:9999; background:#fff; border:1px solid #d8dce3; border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18); padding:10px; width:200px;}
+  .hexpop h4{margin:0 0 4px; font-size:11px; color:var(--gray); font-weight:600;}
+  .hexpop .swgrid{display:flex; flex-wrap:wrap;}
+  .hexpop .sw{width:20px; height:20px; border-radius:5px; border:1px solid rgba(0,0,0,0.15); cursor:pointer; padding:0; margin:2px;}
+  .hexpop .btnsave{margin-top:8px; width:100%;}
+  .hexpop .semcor{font-size:11px; color:#9aa1ad; margin:2px;}
   #companyEditPanel{display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #e5e7eb;}
   #companyEditPanel.open{display:block;}
   .toggle-link{
@@ -385,24 +396,24 @@
       <label>Frase de destaque (selo sobre a foto)</label>
       <input type="text" id="banner" placeholder="Preenchido pela empresa (editável)">
       <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
-        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
-          <input type="color" id="bannerBg" value="#141414" style="width:36px; height:26px; padding:1px;"> Fundo do selo
-        </label>
-        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
-          <input type="color" id="bannerTx" value="#ffffff" style="width:36px; height:26px; padding:1px;"> Texto do selo
-        </label>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+          <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="bannerBg" style="background:#141414;"></button><input type="text" class="hexinput" id="bannerBg" value="#141414" spellcheck="false"></span> Fundo do selo
+        </span>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+          <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="bannerTx" style="background:#ffffff;"></button><input type="text" class="hexinput" id="bannerTx" value="#ffffff" spellcheck="false"></span> Texto do selo
+        </span>
       </div>
       <div class="hint">As cores do selo valem pra esta arte — mudar aqui atualiza o selo na hora. O padrão vem do cadastro da empresa.</div>
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
       <div style="display:flex; gap:16px; margin-top:6px; align-items:center;">
-        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
-          <input type="color" id="salarioBg" value="#1f3a5f" style="width:36px; height:26px; padding:1px;"> Fundo do salário
-        </label>
-        <label style="display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; font-weight:normal; font-size:12px;">
-          <input type="color" id="salarioTx" value="#ffffff" style="width:36px; height:26px; padding:1px;"> Texto do salário
-        </label>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+          <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="salarioBg" style="background:#1f3a5f;"></button><input type="text" class="hexinput" id="salarioBg" value="#1f3a5f" spellcheck="false"></span> Fundo do salário
+        </span>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px;">
+          <span class="hexwrap"><button type="button" class="hexswatch" data-hexfor="salarioTx" style="background:#ffffff;"></button><input type="text" class="hexinput" id="salarioTx" value="#ffffff" spellcheck="false"></span> Texto do salário
+        </span>
       </div>
       <div class="hint">💡 <b>Formatação:</b> selecione qualquer trecho digitado e use a caixinha no topo do formulário — <b>N</b> (negrito), <b>A▲</b>/<b>A▼</b> (tamanho) e alinhamento.</div>
 
@@ -1083,6 +1094,7 @@ function applyCompanyToJobFields(c){
   // faixa do salário parte da cor primária da empresa
   $('#salarioBg').value = c.corPrimaria || '#1f3a5f';
   $('#salarioTx').value = '#ffffff';
+  if(window.refreshHexSwatches) window.refreshHexSwatches();
 }
 
 /* ---------------------------------------------------------
@@ -1703,8 +1715,8 @@ function getColors(){
     accent: c.corDestaque || '#f4afa1',
     // cores do selo: o seletor do formulário (por arte) manda; o cadastro da
     // empresa é só o ponto de partida (applyCompanyToJobFields preenche).
-    bannerText: ($('#bannerTx') && $('#bannerTx').value) || c.corBannerTexto || '#ffffff',
-    bannerBg: ($('#bannerBg') && $('#bannerBg').value) || c.corBannerFundo || '#141414',
+    bannerText: hexOr($('#bannerTx') && $('#bannerTx').value, c.corBannerTexto || '#ffffff'),
+    bannerBg: hexOr($('#bannerBg') && $('#bannerBg').value, c.corBannerFundo || '#141414'),
     logo: c.logoDataUrl || null,
     nome: c.nome || ''
   };
@@ -1949,7 +1961,7 @@ function syncRoleAcrossFormats(role){
       }
       if(ay===null) ay = cardY+cardH*0.42;
       const opts = role==='salario'
-        ? {fontSize:fontPx, fontWeight:800, color:(($('#salarioTx')&&$('#salarioTx').value)||'#ffffff'), bg:(($('#salarioBg')&&$('#salarioBg').value)||'#1f2937'), radius:cardW*0.012, align:'center', role}
+        ? {fontSize:fontPx, fontWeight:800, color:hexOr($('#salarioTx')&&$('#salarioTx').value,'#ffffff'), bg:hexOr($('#salarioBg')&&$('#salarioBg').value,'#1f2937'), radius:cardW*0.012, align:'center', role}
         : role==='localLinha'
         ? {fontSize:fontPx, fontWeight:600, color:'#4b5563', align:'left', role}
         : role==='horario'
@@ -2067,10 +2079,12 @@ function wireLiveCanvasSync(){
   // cores do selo de destaque (banner): pinta as peças existentes ao vivo,
   // em todos os formatos — sem precisar recriar a arte.
   const syncBannerColors = ()=>{
+    const bg = hexOr($('#bannerBg').value, null), tx = hexOr($('#bannerTx').value, null);
+    if(!bg || !tx) return; // código HEX ainda incompleto — não pinta nada
     let t = false;
     Object.keys(FORMATS).forEach(fk=>{
       getElements(fk).forEach(el=>{
-        if(el.role==='banner'){ el.bg = $('#bannerBg').value; el.color = $('#bannerTx').value; if(fk===currentFormat) t = true; }
+        if(el.role==='banner'){ el.bg = bg; el.color = tx; if(fk===currentFormat) t = true; }
       });
     });
     if(t){ draw(); saveState(); }
@@ -2081,6 +2095,8 @@ function wireLiveCanvasSync(){
   // (role 'salario') ao vivo. Em arte antiga a faixa não tinha role — adota o
   // retângulo baixinho que contém o texto do salário.
   const syncSalarioColors = ()=>{
+    const bg = hexOr($('#salarioBg').value, null), tx = hexOr($('#salarioTx').value, null);
+    if(!bg || !tx) return; // código HEX ainda incompleto — não pinta nada
     let t = false;
     Object.keys(FORMATS).forEach(fk=>{
       const els = getElements(fk);
@@ -2096,17 +2112,121 @@ function wireLiveCanvasSync(){
       const temFaixa = els.some(el=>el.role==='salarioBg') || (salTxt && !!salTxt.bg);
       els.forEach(el=>{
         if(el.role==='salario' && el.type==='text' && temFaixa){
-          el.color = $('#salarioTx').value;
-          if(el.bg) el.bg = $('#salarioBg').value;
+          el.color = tx;
+          if(el.bg) el.bg = bg;
           if(fk===currentFormat) t = true;
         }
-        if(el.role==='salarioBg'){ el.fill = $('#salarioBg').value; if(fk===currentFormat) t = true; }
+        if(el.role==='salarioBg'){ el.fill = bg; if(fk===currentFormat) t = true; }
       });
     });
     if(t){ draw(); saveState(); }
   };
   $('#salarioBg').addEventListener('input', syncSalarioColors);
   $('#salarioTx').addEventListener('input', syncSalarioColors);
+}
+
+/* ===========================================================
+   COR POR CÓDIGO HEX + "MINHAS CORES"
+   ---------------------------------------------------------
+   Os seletores de cor do formulário (selo e salário) são um quadradinho de
+   cor + campo de código HEX. Clicar no quadradinho abre a paleta da Effect
+   e as cores salvas pelo usuário ("Minhas cores", guardadas no navegador).
+   ★ salva a cor atual; clique direito numa cor salva remove.
+=========================================================== */
+// devolve v se for HEX válido (#rrggbb), senão o fallback
+function hexOr(v, fb){ return (v && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : fb; }
+
+const EFFECT_PALETTE = ['#1f3a5f','#7fb8e6','#8ed1b2','#f4afa1','#141414','#2a2a2e','#a1a1aa','#f5f7fa','#ffffff'];
+
+function getSavedColors(){
+  try{ return JSON.parse(localStorage.getItem('effectCoresSalvas')||'[]').filter(c=>hexOr(c,null)); }
+  catch(e){ return []; }
+}
+function setSavedColors(list){
+  try{ localStorage.setItem('effectCoresSalvas', JSON.stringify(list.slice(0,24))); }catch(e){}
+}
+
+function initHexInputs(){
+  let pop = null, popFor = null;
+  const closePop = ()=>{ if(pop){ pop.remove(); pop = null; popFor = null; } };
+  function refreshSwatch(id){
+    const b = document.querySelector('.hexswatch[data-hexfor="'+id+'"]');
+    const v = hexOr($('#'+id).value, null);
+    if(b && v) b.style.background = v;
+  }
+  window.refreshHexSwatches = ()=> document.querySelectorAll('.hexswatch[data-hexfor]').forEach(b=> refreshSwatch(b.dataset.hexfor));
+  const apply = (id, cor)=>{
+    const inp = $('#'+id);
+    inp.value = cor;
+    refreshSwatch(id);
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  };
+  function buildPop(id, anchor){
+    closePop();
+    popFor = id;
+    pop = document.createElement('div'); pop.className = 'hexpop';
+    const mkGrid = (cores, removivel)=>{
+      const g = document.createElement('div'); g.className = 'swgrid';
+      cores.forEach(c=>{
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'sw'; b.style.background = c;
+        b.title = c + (removivel ? '  (clique direito remove)' : '');
+        b.addEventListener('click', ()=>{ apply(id, c); closePop(); });
+        if(removivel) b.addEventListener('contextmenu', (e)=>{
+          e.preventDefault();
+          setSavedColors(getSavedColors().filter(x=>x!==c));
+          buildPop(id, anchor);
+        });
+        g.appendChild(b);
+      });
+      return g;
+    };
+    const h1 = document.createElement('h4'); h1.textContent = 'Paleta Effect';
+    pop.appendChild(h1); pop.appendChild(mkGrid(EFFECT_PALETTE, false));
+    const h2 = document.createElement('h4'); h2.textContent = 'Minhas cores'; h2.style.marginTop = '8px';
+    pop.appendChild(h2);
+    const salvas = getSavedColors();
+    if(salvas.length) pop.appendChild(mkGrid(salvas, true));
+    else { const p = document.createElement('div'); p.className='semcor'; p.textContent = 'Nenhuma cor salva ainda.'; pop.appendChild(p); }
+    const save = document.createElement('button');
+    save.type = 'button'; save.className = 'btn btn-outline btn-sm btnsave';
+    save.textContent = '★ Salvar cor atual';
+    save.addEventListener('click', ()=>{
+      const v = hexOr($('#'+id).value, null);
+      if(!v) return;
+      const l = getSavedColors().filter(x=>x!==v);
+      l.unshift(v); setSavedColors(l);
+      buildPop(id, anchor);
+    });
+    pop.appendChild(save);
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.left = (window.scrollX + r.left) + 'px';
+    pop.style.top  = (window.scrollY + r.bottom + 6) + 'px';
+  }
+  document.querySelectorAll('.hexswatch[data-hexfor]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.hexfor;
+      if(popFor===id) closePop(); else buildPop(id, btn);
+    });
+  });
+  // digitação: aceita com ou sem "#", só considera quando completar 6 dígitos
+  document.querySelectorAll('.hexinput').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      let v = inp.value.trim();
+      if(v && v[0]!=='#') v = '#'+v;
+      if(hexOr(v,null)){ if(inp.value!==v) inp.value = v; refreshSwatch(inp.id); }
+    });
+    inp.addEventListener('blur', ()=>{
+      if(!hexOr(inp.value.trim(),null)){ /* valor incompleto: volta pra cor do quadradinho */
+        const b = document.querySelector('.hexswatch[data-hexfor="'+inp.id+'"]');
+        if(b){ const cor = toHexColor ? (toHexColor(b.style.background)||'') : ''; if(cor) inp.value = cor; }
+      }
+    });
+  });
+  document.addEventListener('mousedown', (e)=>{
+    if(pop && !pop.contains(e.target) && !(e.target.classList && e.target.classList.contains('hexswatch'))) closePop();
+  });
 }
 
 /* ===========================================================
@@ -3133,8 +3253,8 @@ function buildTallLayout(fmt, data, col){
     const salFont = cardW*0.026;
     const salLineH = salFont*1.25;
     const salTextY = by + (salH-salLineH)/2;
-    const salBgCor = ($('#salarioBg') && $('#salarioBg').value) || col.primary;
-    const salTxCor = ($('#salarioTx') && $('#salarioTx').value) || '#ffffff';
+    const salBgCor = hexOr($('#salarioBg') && $('#salarioBg').value, col.primary);
+    const salTxCor = hexOr($('#salarioTx') && $('#salarioTx').value, '#ffffff');
     els.push(newRectEl(cardX+pad, by, cardW-pad*2, salH, {fill:salBgCor, radiusPct:0.24, role:'salarioBg'}));
     els.push(newTextEl(cardX+pad+salH*0.22, salTextY, cardW-pad*2-salH*0.4, data.salario, {fontSize:salFont, fontWeight:800, color:salTxCor, align:'left', lineHeight:1.25, role:'salario'}));
     by += salH+cardH*0.022;
@@ -4722,6 +4842,7 @@ async function init(){
   wireJobPhoto();
   wireLiveCanvasSync();
   initFmtBar();
+  initHexInputs();
   wireJobDivulgacaoActions();
   wireCronograma();
   wireDownloads();
