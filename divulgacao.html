@@ -354,6 +354,7 @@
 
       <label>Salário</label>
       <input type="text" id="salario" placeholder="Texto livre — ex: Salário: R$ 2.200,00 ou 'A combinar' (deixe vazio para ocultar)">
+      <div class="hint">💡 <b>Negrito:</b> envolva o trecho com asteriscos em qualquer campo — ex.: R$ 2.300,00 *(Fixo R$ 1.800 + R$ 500 assiduidade)* — e ele sai <b>em negrito</b> na arte.</div>
 
       <label>Requisitos (um por linha)</label>
       <textarea id="requisitos" placeholder="Ensino médio completo&#10;Experiência mínima de 1 ano&#10;Disponibilidade de horário"></textarea>
@@ -1819,14 +1820,17 @@ function syncRoleAcrossFormats(role){
     return;
   }
   let currentTouched = false;
+  // *negrito* nos campos: separa texto limpo + runs uma vez só; cada peça
+  // recebe uma CÓPIA dos runs (mexer no negrito de uma arte não vaza pra outra).
+  const parsedRole = parseBoldMarks(newText);
   Object.keys(FORMATS).forEach(fmtKey=>{
     const els = getElements(fmtKey);
     if(!els.length) return; // arte ainda não gerada nesse formato — nada a sincronizar
     let achou = false;
     els.forEach(el=>{
       if(el.type==='text' && el.role===role){
-        el.text = newText;
-        el.runs = null;
+        el.text = parsedRole.text;
+        el.runs = parsedRole.runs ? parsedRole.runs.map(r=>({...r})) : null;
         achou = true;
         if(fmtKey===currentFormat) currentTouched = true;
       }
@@ -1846,7 +1850,7 @@ function syncRoleAcrossFormats(role){
       // Arte antiga (sem "role" nas peças): adota a peça de texto que parece ser o salário
       const cand = els.find(el=>el.type==='text' && !el.role && /r\$|sal[áa]ri|combinar/i.test(el.text||''));
       if(cand){
-        cand.role='salario'; cand.text=newText; cand.runs=null; achou=true;
+        cand.role='salario'; cand.text=parsedRole.text; cand.runs=parsedRole.runs?parsedRole.runs.map(r=>({...r})):null; achou=true;
         if(fmtKey===currentFormat) currentTouched = true;
       }
     }
@@ -2082,6 +2086,12 @@ function newTextEl(x,y,w,text,opts){
     text: text||'Texto', fontSize: 42, fontWeight:500, italic:false,
     color:'#2a2a2e', align:'left', lineHeight:1.25, bg:null, radius:null
   }, opts||{});
+  // *negrito* digitado no formulário: converte a marcação em runs
+  if(el.runs==null && typeof el.text==='string' && el.text.indexOf('*')>=0){
+    const p = parseBoldMarks(el.text);
+    el.text = p.text;
+    if(p.runs) el.runs = p.runs;
+  }
   return el;
 }
 function newRectEl(x,y,w,h,opts){
@@ -2119,6 +2129,27 @@ function withTransform(ctx, el, fn){
 
 function fontString(el){
   return `${el.italic?'italic ':''}${el.fontWeight||500} ${Math.round(el.fontSize)}px 'Poppins', Arial, sans-serif`;
+}
+
+/* ---------- Negrito por asteriscos no formulário ----------
+   *trecho* (ou **trecho**) digitado em QUALQUER campo do formulário vira
+   negrito na arte: os asteriscos são removidos do texto e viram runs prontos
+   (índices já sobre o texto limpo). Sem marcação → runs:null (estilo base). */
+function parseBoldMarks(raw){
+  const text = String(raw==null?'':raw);
+  if(text.indexOf('*')<0) return {text, runs:null};
+  const re = /\*\*([^*]+)\*\*|\*([^*\n]+)\*/g;
+  let out='', last=0, m; const runs=[];
+  while((m=re.exec(text))){
+    out += text.slice(last, m.index);
+    const trecho = m[1]!=null ? m[1] : m[2];
+    runs.push({start:out.length, end:out.length+trecho.length, bold:true, color:null});
+    out += trecho;
+    last = m.index + m[0].length;
+  }
+  out += text.slice(last);
+  if(!runs.length) return {text, runs:null};
+  return {text:out, runs};
 }
 
 /* ---------- Formatação parcial (negrito/cor só de um trecho, dentro do mesmo texto) ----------
