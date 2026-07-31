@@ -495,6 +495,12 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
 .fin-nf-alert{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:600;color:#a16207;margin-bottom:12px;display:none}
 .fin-nf-alert.show{display:block}
 
+
+@keyframes fadeIn {
+  from { opacity:0;transform:scale(0.95) }
+  to { opacity:1;transform:scale(1) }
+}
+
 </style>
 </head>
 <body>
@@ -534,6 +540,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
     <div class="topbar-actions">
       <button class="btn btn-outline" onclick="openNovaVaga()"><i class="fas fa-plus"></i> Nova Vaga</button>
       <button class="btn btn-primary" onclick="openModal(vagasData[0])"><i class="fas fa-user-plus"></i> Novo Candidato</button>
+      <button class="btn btn-outline" onclick="abrirFormularioCliente()" style="background:rgba(142,209,178,0.1);color:#8ed1b2;border:2px solid #8ed1b2"><i class="fas fa-clipboard-list"></i> Formulário Vagas</button>
+      <button class="btn btn-outline" onclick="abrirAcessoContratos()" style="background:rgba(31,165,255,0.1);color:var(--blue);border:2px solid var(--blue)"><i class="fas fa-file-contract"></i> Contratos</button>
+    
     </div>
   </div>
 
@@ -2155,6 +2164,52 @@ function openNovaVaga(){window.open('https://effect-production.up.railway.app/cl
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
 });
+
+// ===== FORMULÁRIO VAGAS =====
+function abrirFormularioCliente() {
+  const modalId = 'form-access-modal-' + Date.now();
+  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
+    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:520px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📋 Formulário de Vagas</h3>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong style="color:var(--navy)">Clientes preenchem:</strong> Dados da vaga, localização, salário, regime, prazo, justificativa, orçamento...</p>
+      <div style="background:rgba(142,209,178,0.05);padding:16px;border-radius:10px;border-left:3px solid #8ed1b2;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">📊 Status: ${vagasData.length} vagas cadastradas</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');document.getElementById('${modalId}').remove()" style="flex:1;background:#8ed1b2;color:#2a2a2b;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">🔗 Abrir Formulário</button>
+        <button onclick="document.getElementById('${modalId}').remove()" style="flex:1;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', conteudo);
+}
+
+// ===== CONTRATOS =====
+function abrirAcessoContratos() {
+  const modalId = 'contratos-modal-' + Date.now();
+  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
+    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:540px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📄 Contratos & Minutas</h3>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong style="color:var(--navy)">Gerados automaticamente com:</strong> Razão social, CNPJ, honorários, pagamento, minuta legal...</p>
+      <div style="background:rgba(31,165,255,0.05);padding:16px;border-radius:10px;border-left:3px solid var(--blue);margin-bottom:24px">
+        <div style="font-size:11px;color:#666;font-weight:600">✅ Minuta automática com cláusulas legais, tabela de honorários e campos para assinatura</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-direction:column">
+        <button onclick="window.open('https://effect-production.up.railway.app/cliente/contratos','_blank')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">📄 Ver Todos os Contratos</button>
+        <button onclick="document.getElementById('${modalId}').remove()" style="width:100%;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', conteudo);
+}
+
+
 </script>
 
 <!-- MODAL LANÇAMENTO -->
@@ -2693,6 +2748,52 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(ov) ov.addEventListener('click', e=>{ if(e.target===ov) btFecharModal(); });
 });
 // ═════════════════════════════════════════════════════════════════════════
+
+// ===== FORMULÁRIO VAGAS =====
+function abrirFormularioCliente() {
+  const modalId = 'form-access-modal-' + Date.now();
+  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
+    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:520px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📋 Formulário de Vagas</h3>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong style="color:var(--navy)">Clientes preenchem:</strong> Dados da vaga, localização, salário, regime, prazo, justificativa, orçamento...</p>
+      <div style="background:rgba(142,209,178,0.05);padding:16px;border-radius:10px;border-left:3px solid #8ed1b2;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">📊 Status: ${vagasData.length} vagas cadastradas</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');document.getElementById('${modalId}').remove()" style="flex:1;background:#8ed1b2;color:#2a2a2b;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">🔗 Abrir Formulário</button>
+        <button onclick="document.getElementById('${modalId}').remove()" style="flex:1;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', conteudo);
+}
+
+// ===== CONTRATOS =====
+function abrirAcessoContratos() {
+  const modalId = 'contratos-modal-' + Date.now();
+  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
+    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:540px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📄 Contratos & Minutas</h3>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
+      </div>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong style="color:var(--navy)">Gerados automaticamente com:</strong> Razão social, CNPJ, honorários, pagamento, minuta legal...</p>
+      <div style="background:rgba(31,165,255,0.05);padding:16px;border-radius:10px;border-left:3px solid var(--blue);margin-bottom:24px">
+        <div style="font-size:11px;color:#666;font-weight:600">✅ Minuta automática com cláusulas legais, tabela de honorários e campos para assinatura</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-direction:column">
+        <button onclick="window.open('https://effect-production.up.railway.app/cliente/contratos','_blank')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">📄 Ver Todos os Contratos</button>
+        <button onclick="document.getElementById('${modalId}').remove()" style="width:100%;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', conteudo);
+}
+
+
 </script>
 
 <!-- MODAL BANCO DE TALENTOS -->
