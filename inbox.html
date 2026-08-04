@@ -937,7 +937,10 @@ font-family:'Montserrat',sans-serif
         <textarea id="msg-input" placeholder="A Lia responde automaticamente..." rows="1"
           oninput="autoResize(this)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMsg()}"></textarea>
-        <button class="send-btn" id="send-btn" onclick="enviarMsg()">➤</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="send-btn" id="send-btn" onclick="enviarMsg()">➤</button>
+          <button id="btn-retomar-conversa" style="display:none;background:#10b981;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap" onclick="retomarConversa24h()" title="Reabre a janela de 24h do WhatsApp para enviar mensagens">🔄 Retomar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1992,6 +1995,7 @@ function carregarLocalData(){
     nomeOverrides=JSON.parse(localStorage.getItem('effect_nome_overrides_v1')||'{}');
     vagaExclusoes=JSON.parse(localStorage.getItem('effect_vaga_exclusoes_v1')||'{}');
     window.vagasEncerradas=JSON.parse(localStorage.getItem('effect_vagas_encerradas_v1')||'{}');
+    window.retomadas=JSON.parse(localStorage.getItem('effect_retomadas_v1')||'{}');
   }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};nomeOverrides={};vagaExclusoes={};}
   // Restaurar dados do servidor em background (merge com localStorage)
   restaurarDoServidor().then(() => {
@@ -2026,6 +2030,7 @@ function salvarLocal(){
     localStorage.setItem('effect_nome_overrides_v1',JSON.stringify(nomeOverrides));
     localStorage.setItem('effect_vaga_exclusoes_v1',JSON.stringify(vagaExclusoes));
     localStorage.setItem('effect_vagas_encerradas_v1',JSON.stringify(window.vagasEncerradas||{}));
+    localStorage.setItem('effect_retomadas_v1',JSON.stringify(window.retomadas||{}));
   }catch(e){}
 }
 
@@ -2053,6 +2058,7 @@ function sincronizarComServidor() {
         nomeOverrides,
         vagaExclusoes,
         vagasEncerradas: window.vagasEncerradas||{},
+        retomadas: window.retomadas||{},
         lembretes: (typeof _lembretes !== 'undefined') ? _lembretes : []
       };
       await fetch('/inbox/agenda-sync', {
@@ -2074,7 +2080,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,vagasEncerradas:window.vagasEncerradas||{},lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,vagasEncerradas:window.vagasEncerradas||{},retomadas:window.retomadas||{},lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -2837,6 +2843,14 @@ function abrirConversa(tel){ _scrollPinned=true; // nova conversa → sempre mos
   // Template button: aparece apenas em conversas com +24h sem resposta do candidato
   const btnTpl=document.getElementById('item-template');
   if(btnTpl)btnTpl.style.display=isAlerta24h(tel,s)?'inline-flex':'none';
+
+  // Botão "Retomar Conversa": aparece quando passaram 24h sem resposta
+  const btnRetomar=document.getElementById('btn-retomar-conversa');
+  if(btnRetomar){
+    const precisa24h=isAlerta24h(tel,s);
+    btnRetomar.style.display=precisa24h?'block':'none';
+  }
+
   renderQuickReplies();
   renderMsgs(s);
   setMeta(tel,{ultimaMsgVista:hist.length});
@@ -4359,6 +4373,43 @@ function excluirCandidatoDaVaga(tel,chave,nomeAtual){
   salvarLocal();
   toast('🗑️ Candidato removido desta vaga','success');
   renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── RETOMAR CONVERSA (REABRIR JANELA 24H) ──
+async function retomarConversa24h(){
+  if(!sessaoAtual){toast('Selecione uma conversa primeiro','error');return;}
+  const s=todasSessoes[sessaoAtual];
+  const nome=s?.nome||s?.ultimaAnalise?.nome||telDisplay(sessaoAtual)||'Candidato';
+
+  if(!confirm(`Retomar conversa com ${nome}?\n\nIsso reabre a janela de 24h do WhatsApp Business API, permitindo que você envie novas mensagens.`))return;
+
+  toast('🔄 Reabrindo conversa...','info');
+  try{
+    const r=await fetch(`${API}/inbox/retomar-conversa`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefone:sessaoAtual})
+    });
+    const d=await r.json().catch(()=>({}));
+
+    if(d&&d.ok===false){
+      toast('❌ Erro ao retomar: '+(d.erro||'A conversa pode já estar ativa'),'error');
+      return;
+    }
+
+    toast('✅ Conversa retomada! Janela de 24h reaberta.','success');
+    // Registra o horário de retomada para referência
+    if(!window.retomadas)window.retomadas={};
+    window.retomadas[sessaoAtual]=new Date().toISOString();
+    salvarLocal();
+
+    // Esconde o botão após retomar
+    const btn=document.getElementById('btn-retomar-conversa');
+    if(btn)btn.style.display='none';
+  }catch(e){
+    console.error('Erro ao retomar conversa:',e);
+    toast('❌ Erro ao retomar conversa. Tente novamente.','error');
+  }
 }
 
 // ── ENCERRAR VAGA ──
