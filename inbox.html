@@ -1991,6 +1991,7 @@ function carregarLocalData(){
     arquivadas=JSON.parse(localStorage.getItem('effect_arquivadas_v1')||'{}');
     nomeOverrides=JSON.parse(localStorage.getItem('effect_nome_overrides_v1')||'{}');
     vagaExclusoes=JSON.parse(localStorage.getItem('effect_vaga_exclusoes_v1')||'{}');
+    window.vagasEncerradas=JSON.parse(localStorage.getItem('effect_vagas_encerradas_v1')||'{}');
   }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};nomeOverrides={};vagaExclusoes={};}
   // Restaurar dados do servidor em background (merge com localStorage)
   restaurarDoServidor().then(() => {
@@ -2024,6 +2025,7 @@ function salvarLocal(){
     localStorage.setItem('effect_arquivadas_v1',JSON.stringify(arquivadas));
     localStorage.setItem('effect_nome_overrides_v1',JSON.stringify(nomeOverrides));
     localStorage.setItem('effect_vaga_exclusoes_v1',JSON.stringify(vagaExclusoes));
+    localStorage.setItem('effect_vagas_encerradas_v1',JSON.stringify(window.vagasEncerradas||{}));
   }catch(e){}
 }
 
@@ -2050,6 +2052,7 @@ function sincronizarComServidor() {
         horariosConfig,
         nomeOverrides,
         vagaExclusoes,
+        vagasEncerradas: window.vagasEncerradas||{},
         lembretes: (typeof _lembretes !== 'undefined') ? _lembretes : []
       };
       await fetch('/inbox/agenda-sync', {
@@ -2071,7 +2074,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,vagasEncerradas:window.vagasEncerradas||{},lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -4242,7 +4245,12 @@ function renderPainelVagas(busca){
   const div=document.getElementById('pv-lista');
   if(!vagasCache||!vagasCache.length){div.innerHTML='<div class="empty">Nenhuma vaga ativa encontrada</div>';return;}
   const b=(busca||'').toLowerCase().trim();
+  // Inicializa objeto de vagas encerradas se não existir
+  if(!window.vagasEncerradas)window.vagasEncerradas={};
   const lista=vagasCache.filter(v=>{
+    const idVaga=v.idVaga||v['ID Vaga']||v.ID||'';
+    // Filtra vagas encerradas
+    if(window.vagasEncerradas[idVaga])return false;
     if(!b)return true;
     // Busca ampliada: também considera bairro/local completo, benefícios e requisitos
     const txt=[
@@ -4271,10 +4279,12 @@ function renderPainelVagas(busca){
           ${empresa?`<div style="font-size:11px;color:#4f46e5;font-weight:600">🏢 ${empresa}</div>`:''}
           ${idVaga?`<div style="font-size:10px;color:var(--muted)">ID: ${idVaga}</div>`:''}
         </div>
-        <div style="display:flex;gap:4px;align-items:center">
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           ${discPerfilVagas[idVaga]?`<span style="background:#7c3aed;color:#fff;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700">📊 ${discPerfilVagas[idVaga]}</span>`:''}
           <button onclick="abrirSetDiscVaga('${idVaga}')" title="Definir perfil DISC" style="background:#f3e8ff;color:#7c3aed;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">💡</button>
+          <button onclick="irParaDivulgacao('${idVaga}')" title="Divulgar vaga" style="background:#e91e63;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">📢 Divulgar</button>
           <button onclick="usarVagaRef(${vagasCache.indexOf(v)})" style="background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">📤 Enviar</button>
+          <button onclick="encerrarVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Encerrar vaga" style="background:#f87171;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🔒 Encerrar</button>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:#374151">
@@ -4349,6 +4359,33 @@ function excluirCandidatoDaVaga(tel,chave,nomeAtual){
   salvarLocal();
   toast('🗑️ Candidato removido desta vaga','success');
   renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── ENCERRAR VAGA ──
+function encerrarVaga(idVaga, cargo){
+  const msg=`Tem certeza que deseja encerrar a vaga de ${cargo}?\n\nA vaga será marcada como encerrada e não aparecerá mais nas listas ativas.`;
+  if(!confirm(msg))return;
+
+  // Armazena localmente que esta vaga foi encerrada
+  if(!window.vagasEncerradas)window.vagasEncerradas={};
+  window.vagasEncerradas[idVaga]=true;
+  salvarLocal();
+
+  // Remove da cache de vagas ativas
+  if(vagasCache){
+    vagasCache=vagasCache.filter(v=>(v.idVaga||v.ID||v['ID Vaga'])!==idVaga);
+  }
+
+  toast('🔒 Vaga encerrada com sucesso','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── NAVEGAR PARA DIVULGAÇÃO ──
+function irParaDivulgacao(vagaId){
+  // Armazena a vaga selecionada para divulgação
+  sessionStorage.setItem('vagaParaDivulgar',vagaId);
+  window.open('/divulgacao','_blank');
+  toast('🎨 Abrindo página de divulgação...','success');
 }
 
 function usarVagaRef(idx){
