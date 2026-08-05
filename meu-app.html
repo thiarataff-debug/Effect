@@ -371,9 +371,6 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-evt:hover{filter:brightness(.96)}
 .ag-evt .ag-evt-hora{font-weight:800;opacity:.8;font-size:10px}
 .ag-evt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;flex-shrink:0}
-/* Tooltip customizado */
-[title]{position:relative}
-[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 8px);left:0;background:#1f2937;color:#fff;padding:6px 10px;border-radius:5px;font-size:11px;white-space:pre-wrap;word-break:break-word;z-index:1000;font-weight:normal;max-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.3)}.ag-mes-cell[title]:hover::after,.ag-semana-col[title]:hover::after{max-width:180px}
 
 /* Semana */
 .ag-semana-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -3294,9 +3291,21 @@ async function agFetchRange(inicioISO, fimISO){
 function agEvtChip(e, diaTodo){
   const cor = AG_CATEGORIA_COR[agCategoriaDoEvento(e)] || AG_CATEGORIA_COR.outro;
   const hora = diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  // Tooltip com horário
-  const tooltipText = `${hora} - ${agEsc(e.titulo)}`;
-  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor}" onclick="agAbrirDetalhe('${e.id}')" title="${tooltipText}"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+  const concluido = agEventoConcluido(e.id);
+  const estiloConcluido = concluido ? 'opacity:0.6;text-decoration:line-through' : '';
+  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" onclick="agAbrirDetalhe('${e.id}')" ondblclick="event.stopPropagation();agAlternarConcluido('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+}
+
+function agEventoConcluido(eventId){
+  const concluidos = JSON.parse(localStorage.getItem('ag-concluidos') || '{}');
+  return concluidos[eventId] === true;
+}
+
+function agAlternarConcluido(eventId){
+  const concluidos = JSON.parse(localStorage.getItem('ag-concluidos') || '{}');
+  concluidos[eventId] = !concluidos[eventId];
+  localStorage.setItem('ag-concluidos', JSON.stringify(concluidos));
+  agRender();
 }
 
 async function agRenderDia(main){
@@ -3335,13 +3344,7 @@ async function agRenderSemana(main){
     const iso=agISO(d);
     const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
     const cTipo=agCicloTipo(d);
-    // Tooltip com horários da semana
-    const tooltipSemana = evs.map(e=>{
-      const hora = e.diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      return `${hora} - ${agEsc(e.titulo)}`;
-    }).join('\\n');
-    const titleAttrSemana = tooltipSemana ? `title="${tooltipSemana}"` : '';
-    html += `<div class="ag-semana-col ${iso===hojeISO?'hoje':''}" ${titleAttrSemana}><div class="ag-semana-head">${AG_DOW[i]}<b>${d.getDate()} ${agCicloIcone(cTipo)}</b></div>`;
+    html += `<div class="ag-semana-col ${iso===hojeISO?'hoje':''}"><div class="ag-semana-head">${AG_DOW[i]}<b>${d.getDate()} ${agCicloIcone(cTipo)}</b></div>`;
     evs.forEach(e=>{ html += agEvtChip(e, e.diaTodo); });
     html += `</div>`;
   }
@@ -3365,13 +3368,7 @@ async function agRenderMes(main){
     const evs=agEventos.filter(e=>agEventoNoDia(e, iso));
     const outroMes=cursor.getMonth()!==m;
     const cTipo=agCicloTipo(cursor);
-    // Gera tooltip com horários
-    const tooltip = evs.map(e=>{
-      const hora = e.diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      return `${hora} - ${agEsc(e.titulo)}`;
-    }).join('\\n');
-    const titleAttr = tooltip ? `title="${tooltip}"` : '';
-    html += `<div class="ag-mes-cell ${outroMes?'outro-mes':''} ${iso===hojeISO?'hoje':''}" onclick="agIrParaDia('${iso}')" ${titleAttr}><div class="ag-mes-num">${cursor.getDate()} ${agCicloIcone(cTipo)}</div><div class="ag-mes-dots">`;
+    html += `<div class="ag-mes-cell ${outroMes?'outro-mes':''} ${iso===hojeISO?'hoje':''}" onclick="agIrParaDia('${iso}')"><div class="ag-mes-num">${cursor.getDate()} ${agCicloIcone(cTipo)}</div><div class="ag-mes-dots">`;
     evs.slice(0,3).forEach(e=>{ const cor=AG_CATEGORIA_COR[agCategoriaDoEvento(e)]||AG_CATEGORIA_COR.outro; html+=`<span class="ag-evt-dot" style="background:${cor}"></span>`; });
     html += `</div>`;
     if(evs.length>3) html += `<div class="ag-mes-mais">+${evs.length-3}</div>`;
