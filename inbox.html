@@ -2011,6 +2011,30 @@ function notificarMeuApp(){
       iframe.contentWindow.postMessage({tipo:'entrevista_salva'}, '*');
     }
   }catch(e){}
+
+  // NOVO: Também envia para o iframe da Agenda Pessoal
+  try{
+    const iframeAgenda = document.getElementById('iframe-agenda-pessoal');
+    if(iframeAgenda && iframeAgenda.contentWindow){
+      // Envia as entrevistas para a agenda pessoal renderizar
+      const todasEntrevistas = [];
+      Object.entries(entrevistas).forEach(([tel, ents]) => {
+        (ents||[]).forEach(e => {
+          const s = todasSessoes[tel]||{};
+          todasEntrevistas.push({
+            ...e,
+            telefone: tel,
+            nome: s.nome||s.ultimaAnalise?.nome||tel,
+            cargo: s.ultimaAnalise?.vagaInteresse||e.vagaTitulo||'—'
+          });
+        });
+      });
+      iframeAgenda.contentWindow.postMessage({
+        tipo: 'atualizar_entrevistas',
+        entrevistas: todasEntrevistas
+      }, '*');
+    }
+  }catch(e){}
 }
 
 function salvarLocal(){
