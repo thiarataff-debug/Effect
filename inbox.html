@@ -652,7 +652,7 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
     <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🧠 PSI</button>
     <a class="rbtn" href="/divulgacao" target="_blank" style="text-decoration:none;background:#e11d48;color:#fff;font-weight:800" id="nav-divulgacao">🖼️ Divulgação</a>
-  <a class="rbtn" href="/visualizador-vagas" target="_blank" style="text-decoration:none;background:#8ed1b2;color:#fff;font-weight:800" id="nav-vagas">🔍 Vagas Rápido</a>
+  <a class="rbtn" href="/visualizador-vagas" target="_blank" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return false;" style="text-decoration:none;background:#8ed1b2;color:#fff;font-weight:800" id="nav-vagas">🔍 Vagas Rápido</a>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <!-- ALERTA DE QUOTA GEMINI — aparece quando detecta erros recorrentes de rate limit -->
