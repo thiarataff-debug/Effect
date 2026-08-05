@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contratos de Clientes — Effect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a2a4a;
+      --white: #ffffff;
+      --bg: #f5f7fa;
+      --green: #8ed1b2;
+      --blue: #1fa5ff;
+      --red: #f4afa1;
+      --text: #2a2a2b;
+      --border: #e5e7eb;
+    }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    .nav-logo {
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+    }
+    .nav-logo span {
+      color: var(--green);
+    }
+    .nav-back {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+    }
+    .nav-back:hover {
+      background: rgba(255,255,255,.2);
+    }
+
+    /* CONTAINER */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    /* HEADER SECTION */
+    .header {
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 32px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #999;
+      font-size: 14px;
+    }
+
+    /* FILTRO */
+    .filtros {
+      background: var(--white);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filtro-grupo {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filtro-grupo label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--navy);
+    }
+    .filtro-grupo input,
+    .filtro-grupo select {
+      padding: 8px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border .2s;
+    }
+    .filtro-grupo input:focus,
+    .filtro-grupo select:focus {
+      border-color: var(--blue);
+    }
+
+    /* LISTA */
+    .lista {
+      display: grid;
+      gap: 16px;
+    }
+    .contrato-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 24px;
+      border-left: 4px solid var(--green);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      transition: all .2s;
+      cursor: pointer;
+    }
+    .contrato-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      transform: translateY(-2px);
+    }
+
+    /* CARD HEADER */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .card-titulo {
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--navy);
+    }
+    .card-data {
+      font-size: 11px;
+      color: #999;
+      font-weight: 600;
+    }
+
+    /* GRID INFO */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .info-item {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+    .info-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+    .info-valor {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    /* VAGAS */
+    .vagas-list {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .vagas-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #999;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .vaga-item {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .vaga-cargo {
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .vaga-detalhes {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: 12px;
+    }
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .empty-titulo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .empty-desc {
+      color: #999;
+      font-size: 13px;
+    }
+
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .container { padding: 20px 16px; }
+      .header h1 { font-size: 24px; }
+      .filtros { flex-direction: column; align-items: stretch; }
+      .filtro-grupo { width: 100%; }
+      .info-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-logo">Effect<span>.</span>Contratos</div>
+    <button class="nav-back" onclick="history.back()">← Voltar</button>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <h1>📋 Contratos de Clientes</h1>
+      <p>Visualize todas as solicitações de vagas recebidas</p>
+    </div>
+
+    <div class="filtros">
+      <div class="filtro-grupo">
+        <label>Empresa</label>
+        <input type="text" id="filtro-empresa" placeholder="Ex: Santuzzi, Interage...">
+      </div>
+      <div class="filtro-grupo">
+        <label>Cargo</label>
+        <input type="text" id="filtro-cargo" placeholder="Ex: Assistente, Vigilante...">
+      </div>
+      <div class="filtro-grupo">
+        <label>Ordenar</label>
+        <select id="ordenar">
+          <option value="recente">Mais Recente</option>
+          <option value="antigo">Mais Antigo</option>
+          <option value="empresa">Empresa (A-Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="conteudo" class="lista"></div>
+  </div>
+
+  <script>
+    let contratos = [];
+
+    async function carregar() {
+      document.getElementById('conteudo').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+      try {
+        const res = await fetch('/contratos/lista');
+        const data = await res.json();
+        contratos = data.contratos || [];
+        filtrar();
+      } catch (e) {
+        document.getElementById('conteudo').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-titulo">Erro ao carregar</div>
+            <div class="empty-desc">${e.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    function filtrar() {
+      const empresa = document.getElementById('filtro-empresa').value.toLowerCase();
+      const cargo = document.getElementById('filtro-cargo').value.toLowerCase();
+      const ordem = document.getElementById('ordenar').value;
+
+      let filtrados = contratos.filter(c => {
+        const nomeEmpresa = (c.empresa_nome || '').toLowerCase();
+        const cargoPrincipal = (c.vaga_cargo || '').toLowerCase();
+
+        return nomeEmpresa.includes(empresa) && cargoPrincipal.includes(cargo);
+      });
+
+      if (ordem === 'antigo') {
+        filtrados.reverse();
+      } else if (ordem === 'empresa') {
+        filtrados.sort((a, b) => (a.empresa_nome || '').localeCompare(b.empresa_nome || ''));
+      }
+
+      renderizar(filtrados);
+    }
+
+    function renderizar(lista) {
+      const container = document.getElementById('conteudo');
+
+      if (lista.length === 0) {
+        container.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-titulo">Nenhum contrato encontrado</div>
+            <div class="empty-desc">Tente ajustar os filtros</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = lista.map(c => {
+        const vagas = Array.isArray(c.vagas) ? c.vagas : [{
+          cargo: c.vaga_cargo,
+          quantidade: c.vaga_quantidade,
+          cidade: c.vaga_cidade,
+          salario: c.vaga_salario,
+          horario: c.vaga_horario
+        }];
+
+        const data = new Date(c.criadoEm || c.timestamp);
+        const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        return `
+          <div class="contrato-card">
+            <div class="card-header">
+              <div class="card-titulo">${c.empresa_nome || 'Sem nome'}</div>
+              <div class="card-data">${dataFormatada}</div>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Responsável</div>
+                <div class="info-valor">${c.responsavel_nome || '—'}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">WhatsApp</div>
+                <div class="info-valor"><a href="https://wa.me/${c.responsavel_whatsapp}" target="_blank" style="color: var(--blue); text-decoration: none;">${c.responsavel_whatsapp || '—'}</a></div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">E-mail</div>
+                <div class="info-valor"><a href="mailto:${c.responsavel_email}" style="color: var(--blue); text-decoration: none;">${c.responsavel_email || '—'}</a></div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Segmento</div>
+                <div class="info-valor">${c.segmento || '—'}</div>
+              </div>
+            </div>
+
+            <div class="vagas-list">
+              <label class="vagas-label">💼 ${vagas.length} vaga${vagas.length !== 1 ? 's' : ''}</label>
+              ${vagas.map(v => `
+                <div class="vaga-item">
+                  <div class="vaga-cargo">${v.cargo || 'Cargo não informado'}</div>
+                  <div class="vaga-detalhes">
+                    ${v.quantidade ? `<span>📌 ${v.quantidade} vaga(s)</span>` : ''}
+                    ${v.cidade ? `<span>📍 ${v.cidade}</span>` : ''}
+                    ${v.salario ? `<span>💰 ${v.salario}</span>` : ''}
+                    ${v.horario ? `<span>🕐 ${v.horario}</span>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Event listeners
+    document.getElementById('filtro-empresa').addEventListener('input', filtrar);
+    document.getElementById('filtro-cargo').addEventListener('input', filtrar);
+    document.getElementById('ordenar').addEventListener('change', filtrar);
+
+    // Carregar ao iniciar
+    carregar();
+  </script>
+</body>
+</html>

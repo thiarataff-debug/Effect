@@ -3989,6 +3989,22 @@ app.post("/cliente/disponibilidade", async (req, res) => {
 });
 
 // ============================================================
+// ROTAS — CONSULTA DE CONTRATOS DE CLIENTES
+// ============================================================
+
+app.get("/contratos", (req, res) => res.sendFile(path.join(__dirname, "contratos.html")));
+
+app.get("/contratos/lista", (req, res) => {
+  try {
+    const contratos = lerContratos();
+    res.json({ ok: true, contratos });
+  } catch (e) {
+    console.error("Erro ao listar contratos:", e.message);
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// ============================================================
 // ROTA — TRANSIÇÃO LIA → LAURA
 // ============================================================
 
