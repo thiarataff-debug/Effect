@@ -4375,6 +4375,155 @@ function excluirCandidatoDaVaga(tel,chave,nomeAtual){
   renderPainelVagas(document.getElementById('pv-busca')?.value||'');
 }
 
+// ── GERAR PAUTA DO DIA ──
+function gerarPautaDia(data){
+  const {ents} = ag2PorData(data);
+  if(!ents.length){toast('Nenhuma entrevista neste dia','error');return;}
+
+  // Ordena por horário
+  ents.sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+
+  // Formata a data
+  const [ano,mes,dia] = data.split('-');
+  const dataObj = new Date(ano,mes-1,dia);
+  const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dataFormatada = `${dia} de ${mesesNome[mes-1]} de ${ano} - ${diasSemana[dataObj.getDay()]}`;
+
+  // Monta HTML da pauta (formato simples e limpo)
+  let html = `<div style="font-family:'Courier New','Montserrat',Arial,sans-serif;padding:24px;background:#fff;border-radius:10px;max-width:900px;line-height:1.8">
+    <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid var(--navy)">
+      <h1 style="margin:0;color:var(--navy);font-size:20px;font-weight:700">📅 PAUTA DE ENTREVISTAS</h1>
+      <p style="margin:8px 0 0 0;color:var(--text);font-size:14px;font-weight:600">${dataFormatada}</p>
+    </div>
+
+    <div style="margin-bottom:20px;padding:12px;background:#f0f4f8;border-radius:6px;border-left:4px solid var(--navy)">
+      <label style="display:block;font-weight:700;color:var(--navy);font-size:12px;margin-bottom:6px">👤 GESTOR RESPONSÁVEL:</label>
+      <input type="text" id="pauta-gestor-input" placeholder="Digite o nome do gestor responsável" style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-family:inherit;font-size:13px;box-sizing:border-box">
+    </div>
+
+    <div style="margin-bottom:20px">`;
+
+  ents.forEach((e)=>{
+    html += `<div style="padding:12px 0;border-bottom:1px solid #e5e7eb;display:flex;gap:16px;align-items:center">
+      <span style="color:var(--navy);font-weight:700;font-size:14px;min-width:70px">${e.hora||'—'}</span>
+      <span style="font-weight:600;color:var(--text);flex:1;font-size:13px">${e.nome||'—'}</span>
+      <span style="color:#666;font-size:12px;flex:1">${e.cargo||'—'}</span>
+      <span style="color:#666;font-size:12px;font-family:monospace;flex:1">${e.telefone||'—'}</span>
+      <span style="color:#666;font-size:12px;flex:0.8">${e.responsavel||'—'}</span>
+    </div>`;
+  });
+
+  html += `</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button onclick="imprimirPauta()" style="background:var(--navy);color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px">🖨️ Imprimir</button>
+      <button onclick="copiarPautaClipboard()" style="background:#4f46e5;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px">📋 Copiar</button>
+      <button onclick="exportarPautaCSV('${data}')" style="background:#10b981;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px">📥 Exportar CSV</button>
+      <button onclick="fecharPauta()" style="background:#f5f5f5;color:var(--text);border:1px solid #ddd;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px">Fechar</button>
+    </div>
+  </div>`;
+
+  // Abre o modal
+  const modal = document.createElement('div');
+  modal.id = 'modal-pauta-dia';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px';
+  modal.onclick = function(e){if(e.target===this)fecharPauta()};
+  modal.innerHTML = `<div style="background:#fff;border-radius:12px;max-height:90vh;overflow-y:auto;width:100%;max-width:1000px">${html}</div>`;
+  document.body.appendChild(modal);
+
+  window._pautaHtml = html;
+  window._pautaData = data;
+}
+
+function fecharPauta(){
+  const modal = document.getElementById('modal-pauta-dia');
+  if(modal)modal.remove();
+}
+
+function imprimirPauta(){
+  const modal = document.getElementById('modal-pauta-dia');
+  if(!modal)return;
+  const conteudo = modal.querySelector('div').innerHTML;
+  const janela = window.open('','','height=600,width=900');
+  janela.document.write('<html><head><title>Pauta de Entrevistas</title>');
+  janela.document.write('<style>body{font-family:Arial,sans-serif;padding:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:10px;text-align:left}</style>');
+  janela.document.write('</head><body>');
+  janela.document.write(conteudo);
+  janela.document.write('</body></html>');
+  janela.document.close();
+  setTimeout(()=>janela.print(),500);
+}
+
+function copiarPautaClipboard(){
+  const gestorInput = document.getElementById('pauta-gestor-input');
+  const gestorNome = gestorInput ? gestorInput.value.trim() : '';
+
+  const {ents} = ag2PorData(window._pautaData);
+  if(!ents.length){toast('Erro ao copiar pauta','error');return;}
+
+  const [ano,mes,dia] = window._pautaData.split('-');
+  const dataObj = new Date(ano,mes-1,dia);
+  const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dataFormatada = `${dia} de ${mesesNome[mes-1]} de ${ano} - ${diasSemana[dataObj.getDay()]}`;
+
+  ents.sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+
+  let texto = '📅 PAUTA DE ENTREVISTAS\n';
+  texto += dataFormatada + '\n';
+  if(gestorNome) texto += `Gestor Responsável: ${gestorNome}\n`;
+  texto += '='.repeat(80) + '\n\n';
+
+  ents.forEach(e=>{
+    texto += `${e.hora||'—'} | ${e.nome||'—'} | ${e.cargo||'—'} | ${e.telefone||'—'}\n`;
+  });
+
+  const temp = document.createElement('textarea');
+  temp.value = texto;
+  document.body.appendChild(temp);
+  temp.select();
+  document.execCommand('copy');
+  document.body.removeChild(temp);
+  toast('📋 Pauta copiada para clipboard','success');
+}
+
+function exportarPautaCSV(data){
+  const {ents} = ag2PorData(data);
+  if(!ents.length){toast('Nenhuma entrevista neste dia','error');return;}
+
+  const gestorInput = document.getElementById('pauta-gestor-input');
+  const gestorNome = gestorInput ? gestorInput.value.trim() : '';
+
+  ents.sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+
+  const [ano,mes,dia] = data.split('-');
+  const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dataObj = new Date(ano,mes-1,dia);
+  const dataFormatada = `${dia} de ${mesesNome[mes-1]} de ${ano} - ${diasSemana[dataObj.getDay()]}`;
+
+  let csv = 'PAUTA DE ENTREVISTAS\n';
+  csv += dataFormatada + '\n';
+  if(gestorNome) csv += `GESTOR RESPONSÁVEL: ${gestorNome}\n`;
+  csv += '=' .repeat(80) + '\n\n';
+  csv += 'HORÁRIO | CANDIDATO | CARGO | TELEFONE | GESTOR INDIVIDUAL\n';
+  csv += '-'.repeat(80) + '\n';
+
+  ents.forEach(e=>{
+    csv += `${(e.hora||'—').padEnd(7)} | ${(e.nome||'—').padEnd(30)} | ${(e.cargo||'—').padEnd(20)} | ${(e.telefone||'—').padEnd(15)} | ${e.responsavel||'—'}\n`;
+  });
+
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.setAttribute('href',URL.createObjectURL(blob));
+  link.setAttribute('download',`pauta_${data}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast('📥 Pauta exportada em CSV','success');
+}
+
 // ── RETOMAR CONVERSA (REABRIR JANELA 24H) ──
 async function retomarConversa24h(){
   if(!sessaoAtual){toast('Selecione uma conversa primeiro','error');return;}
@@ -4929,7 +5078,11 @@ function salvarEntrevista(){
     fecharModal('modal-entrevista');
     toast('✏️ Entrevista atualizada','success');
     renderPainelDireito();renderLista();
-    if(document.getElementById('view-agenda')&&document.getElementById('view-agenda').style.display==='flex')renderAgenda();
+    // IMPORTANTE: Forçar renderização da agenda mesmo que não esteja visível
+    if(typeof renderAgendaAtual==='function')renderAgendaAtual();
+
+    // NOVO: Mostrar pauta do dia atualizada
+    setTimeout(()=>gerarPautaDia(data),300);
     _entEditandoId=null;
     return;
   }
@@ -4948,7 +5101,11 @@ function salvarEntrevista(){
   toast(`📅 Entrevista agendada: ${nomeCand} — ${formatarDataBr(data)} às ${hora}`,'success');
   renderPainelDireito();renderLista();
   if(rpTab==='entrevista'&&sessaoAtual===tel)renderPainelEntrevista(todasSessoes[tel]);
-  if(document.getElementById('view-agenda')&&document.getElementById('view-agenda').style.display==='flex')renderAgenda();
+  // IMPORTANTE: Forçar renderização da agenda mesmo que não esteja visível
+  if(typeof renderAgendaAtual==='function')renderAgendaAtual();
+
+  // NOVO: Mostrar pauta do dia automaticamente
+  setTimeout(()=>gerarPautaDia(data),300);
 
   // Abre a mensagem de confirmação pronta para revisão — só vai pro candidato quando
   // ela clicar em "Enviar ao candidato" na modal (nada é disparado automaticamente sem essa confirmação)
