@@ -38,14 +38,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 /* ── HEADER ── */
 header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;flex-shrink:0;height:82px}
 .header-row{display:flex;align-items:center;justify-content:space-between;width:100%}
-.header-row2{display:flex;align-items:center;gap:8px;width:100%;padding-top:5px;margin-top:1px;border-top:1px solid rgba(255,255,255,.12)}
+.header-row2{display:flex;align-items:center;gap:4px;width:100%;padding-top:5px;margin-top:1px;border-top:1px solid rgba(255,255,255,.12);flex-wrap:wrap}
 .hlogo{font-weight:800;font-size:15px}.hlogo span{color:var(--green)}
 .hright{display:flex;align-items:center;gap:6px}
 .dot-live{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .hstatus{font-size:11px;color:rgba(255,255,255,.7)}
 .upd{font-size:10px;color:rgba(255,255,255,.4)}
-.rbtn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:5px 8px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap}
+.rbtn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:4px 6px;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap}
 .rbtn:hover{background:rgba(255,255,255,.22)}
 
 /* ── LAYOUT ── */
@@ -654,7 +654,7 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
    <a class="rbtn" href="/nf-upload.html" id="nav-nf" style="cursor:pointer;">📄 Lançar NF</a>
     <a class="rbtn" href="/divulgacao" target="_blank" style="text-decoration:none;background:#e11d48;color:#fff;font-weight:800" id="nav-divulgacao">🖼️ Divulgação</a>
   <a class="rbtn" href="/visualizador-vagas" target="_blank" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return false;" style="text-decoration:none;background:#8ed1b2;color:#fff;font-weight:800" id="nav-vagas">🔍 Vagas Rápido</a>
-  <a class="rbtn" href="/contratos" style="text-decoration:none;background:#3b82f6;color:#fff;font-weight:800;white-space:nowrap;padding:5px 12px" id="nav-contratos">📋 Contratos</a>
+  <a class="rbtn" href="/contratos" style="text-decoration:none;background:#3b82f6;color:#fff;font-weight:800" id="nav-contratos">📋 Contratos</a>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
     <!-- ALERTA DE QUOTA GEMINI — aparece quando detecta erros recorrentes de rate limit -->
@@ -5915,7 +5915,16 @@ async function toggleGemini() {
 }
 
 // Carregar status da IA ao abrir o inbox
-document.addEventListener('DOMContentLoaded', () => { setTimeout(carregarStatusIA, 2000); });
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(carregarStatusIA, 2000);
+  // Adicionar botão Contratos
+  setTimeout(() => {
+    const navContratos = document.getElementById('nav-contratos');
+    if (navContratos && navContratos.parentElement) {
+      navContratos.style.display = 'inline-block';
+    }
+  }, 100);
+});
 
 // ── DEEP LINK: /inbox?view=agenda abre direto na Agenda (usado pelo iframe do Meu App) ──
 // Também aceita ?embed=1 para esconder o cabeçalho e a barra lateral de navegação,
