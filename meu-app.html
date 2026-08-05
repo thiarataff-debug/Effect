@@ -3241,6 +3241,43 @@ async function agFetchRange(inicioISO, fimISO){
     } else {
       statusEl.style.display='none';
       agEventos=j.eventos||[];
+
+      // NOVO: Adicionar entrevistas do Inbox ao calendário
+      if(window._entrevistasFromInbox && window._entrevistasFromInbox.length){
+        const [anoInicio, mesInicio, diaInicio] = inicioISO.split('-').map(Number);
+        const [anoFim, mesFim, diaFim] = fimISO.split('-').map(Number);
+        const dataInicio = new Date(anoInicio, mesInicio-1, diaInicio);
+        const dataFim = new Date(anoFim, mesFim-1, diaFim);
+
+        window._entrevistasFromInbox.forEach(ent => {
+          if(!ent.data || !ent.hora) return;
+          const [entAno, entMes, entDia] = ent.data.split('-').map(Number);
+          const dataEnt = new Date(entAno, entMes-1, entDia);
+
+          // Incluir entrevista se estiver no range
+          if(dataEnt >= dataInicio && dataEnt <= dataFim){
+            const [h, m] = (ent.hora||'09:00').split(':').map(Number);
+            const inicio = new Date(entAno, entMes-1, entDia, h, m);
+            const fim = new Date(inicio.getTime() + 60*60*1000); // 1h de duração
+
+            agEventos.push({
+              id: 'ent_' + ent.id,
+              titulo: '🤝 ' + (ent.nome||'Entrevista'),
+              inicio: inicio.toISOString(),
+              fim: fim.toISOString(),
+              diaTodo: false,
+              local: (ent.telefone||'') + ' · ' + (ent.cargo||''),
+              descricao: 'Tipo: ' + (ent.tipo||'—') + '\nResponsável: ' + (ent.responsavel||'—'),
+              origem: 'entrevista',
+              tituloOriginal: '🤝 ' + (ent.nome||'Entrevista')
+            });
+          }
+        });
+
+        // Ordena por data/hora
+        agEventos.sort((a,b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+      }
+
       agRangeCache={inicio:inicioISO,fim:fimISO};
     }
   }catch(e){
@@ -4112,6 +4149,19 @@ function psiRenderMedChecklist(){
     }
   }
 }
+
+// ── LISTENER PARA ENTREVISTAS DO INBOX ──
+window._entrevistasFromInbox = [];
+window.addEventListener('message', function(e){
+  if(e.data && e.data.tipo === 'atualizar_entrevistas'){
+    window._entrevistasFromInbox = e.data.entrevistas || [];
+    console.log('[Agenda] Entrevistas recebidas do Inbox:', window._entrevistasFromInbox.length);
+    // Se a agenda está ativa, re-renderiza com as novas entrevistas
+    if(typeof agRender === 'function'){
+      agRender();
+    }
+  }
+}, false);
 
 </script>
 <div id="save-toast"></div>
