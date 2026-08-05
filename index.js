@@ -19,6 +19,7 @@ const nodemailer = require("nodemailer");
 const compression = require("compression");
 const calendar   = require("./calendar");
 const supervisor = require("./supervisor");
+const nfRoutes = require("./nf-routes");
 
 const app = express();
 // Desliga o ETag automático do Express — ele é o que fazia o navegador (e
@@ -47,7 +48,7 @@ app.use((req, res, next) => {
   }
   next();
 });
-
+app.use(nfRoutes);
 const PORT = process.env.PORT || 3000;
 const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
 try { fs.mkdirSync(CURRICULOS_DIR, { recursive: true }); } catch (e) { console.error("Erro criando pasta local de currículos:", e.message); }
