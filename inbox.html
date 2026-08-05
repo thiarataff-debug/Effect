@@ -1996,6 +1996,7 @@ function carregarLocalData(){
     vagaExclusoes=JSON.parse(localStorage.getItem('effect_vaga_exclusoes_v1')||'{}');
     window.vagasEncerradas=JSON.parse(localStorage.getItem('effect_vagas_encerradas_v1')||'{}');
     window.retomadas=JSON.parse(localStorage.getItem('effect_retomadas_v1')||'{}');
+    window._vagasPausadas=JSON.parse(localStorage.getItem('effect_vagas_pausadas_v1')||'{}');
   }catch(e){metaDados={};entrevistas={};notas={};statusMap={};intervencoes={};marcadosRetorno={};nomeOverrides={};vagaExclusoes={};}
   // Restaurar dados do servidor em background (merge com localStorage)
   restaurarDoServidor().then(() => {
@@ -2055,6 +2056,7 @@ function salvarLocal(){
     localStorage.setItem('effect_vaga_exclusoes_v1',JSON.stringify(vagaExclusoes));
     localStorage.setItem('effect_vagas_encerradas_v1',JSON.stringify(window.vagasEncerradas||{}));
     localStorage.setItem('effect_retomadas_v1',JSON.stringify(window.retomadas||{}));
+    localStorage.setItem('effect_vagas_pausadas_v1',JSON.stringify(window._vagasPausadas||{}));
   }catch(e){}
 }
 
@@ -2083,6 +2085,7 @@ function sincronizarComServidor() {
         vagaExclusoes,
         vagasEncerradas: window.vagasEncerradas||{},
         retomadas: window.retomadas||{},
+        vagasPausadas: window._vagasPausadas||{},
         lembretes: (typeof _lembretes !== 'undefined') ? _lembretes : []
       };
       await fetch('/inbox/agenda-sync', {
@@ -2104,7 +2107,7 @@ async function restaurarDoServidor() {
       const temDadosLocais = Object.keys(entrevistas).length > 0 || Object.keys(statusMap).length > 0 || Object.keys(notas).length > 0;
       if (temDadosLocais) {
         console.log('🔄 Bootstrap sync: enviando dados ao servidor SEM debounce...');
-        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,vagasEncerradas:window.vagasEncerradas||{},retomadas:window.retomadas||{},lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
+        const payload = {entrevistas,statusMap,pipelineMap,notas,metaDados,discPerfilVagas,vagaMap,intervencoes,marcadosRetorno,arquivadas,horariosConfig,nomeOverrides,vagaExclusoes,vagasEncerradas:window.vagasEncerradas||{},retomadas:window.retomadas||{},vagasPausadas:window._vagasPausadas||{},lembretes:(typeof _lembretes!=='undefined')?_lembretes:[]};
         fetch('/inbox/agenda-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
           .then(r=>r.json())
           .then(d=>{ if(d.persistido) console.log('✅ Bootstrap gravado no Volume'); else console.warn('⚠️ Volume indisponível — dados só em memória'); })
@@ -4322,6 +4325,14 @@ function renderPainelVagas(busca){
           <button onclick="abrirSetDiscVaga('${idVaga}')" title="Definir perfil DISC" style="background:#f3e8ff;color:#7c3aed;border:1px solid #c4b5fd;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">💡</button>
           <button onclick="irParaDivulgacao('${idVaga}')" title="Divulgar vaga" style="background:#e91e63;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">📢 Divulgar</button>
           <button onclick="usarVagaRef(${vagasCache.indexOf(v)})" style="background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">📤 Enviar</button>
+
+          <!-- NOVOS BOTÕES -->
+          <button onclick="abrirEditarVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Editar vaga" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✏️ Editar</button>
+          ${window._vagasPausadas && window._vagasPausadas['${idVaga}']
+            ? `<button onclick="reativarVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Reativar vaga" style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">▶️ Reativar</button>`
+            : `<button onclick="pausarVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Pausar vaga" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">⏸️ Pausar</button>`
+          }
+          <button onclick="excluirVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Excluir vaga" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🗑️ Excluir</button>
           <button onclick="encerrarVaga('${idVaga}','${cargo.replace(/'/g,"\\'")}')" title="Encerrar vaga" style="background:#f87171;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🔒 Encerrar</button>
         </div>
       </div>
@@ -4359,7 +4370,8 @@ function renderPainelVagas(busca){
                 <span onclick="abrirConversa('${c.tel}')" style="font-weight:600;color:#1e3a5f;cursor:pointer;flex:1" title="Abrir conversa">${c.nome}</span>
                 <span style="font-size:9px;color:#fff;background:${PIPELINE_CORES[c.etapa]||'#64748b'};padding:2px 6px;border-radius:4px;margin-right:6px">${c.etapa}</span>
                 <span onclick="event.stopPropagation();renomearCandidatoVaga('${c.tel}')" style="cursor:pointer;margin-right:6px" title="Editar nome do candidato">✏️</span>
-                <span onclick="event.stopPropagation();excluirCandidatoDaVaga('${c.tel}','${chave.replace(/'/g,"\\'")}','${c.nome.replace(/'/g,"\\'")}')" style="cursor:pointer" title="Remover candidato desta vaga (não apaga o candidato)">🗑️</span>
+                <span onclick="event.stopPropagation();excluirCandidatoDaVaga('${c.tel}','${chave.replace(/'/g,"\\'")}','${c.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;margin-right:6px;font-size:9px;background:#fbbf24;color:#000;padding:2px 5px;border-radius:4px;font-weight:700" title="Remover candidato desta vaga">🗑️ Vaga</span>
+                <span onclick="event.stopPropagation();excluirCandidatoCompleto('${c.tel}','${c.nome.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:9px;background:#ef4444;color:#fff;padding:2px 5px;border-radius:4px;font-weight:700" title="Excluir candidato completamente do sistema">🗑️ Excluir</span>
               </div>`).join('')
           }
         </div>`;
@@ -4397,6 +4409,35 @@ function excluirCandidatoDaVaga(tel,chave,nomeAtual){
   salvarLocal();
   toast('🗑️ Candidato removido desta vaga','success');
   renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── EXCLUIR CANDIDATO COMPLETAMENTE ──
+function excluirCandidatoCompleto(tel, nomeAtual){
+  if(!confirm(`⚠️ EXCLUIR "${nomeAtual}" COMPLETAMENTE?\n\nEsta ação é IRREVERSÍVEL. O candidato, currículo, conversa e histórico serão deletados.`))return;
+
+  // Remove de todasSessoes
+  delete todasSessoes[tel];
+
+  // Remove de mapas
+  delete statusMap[tel];
+  delete pipelineMap[tel];
+  delete vagaMap[tel];
+  delete nomeOverrides[tel];
+  delete metaDados[tel];
+
+  // Remove de arquivadas
+  if(arquivadas[tel])delete arquivadas[tel];
+
+  // Remove de entrevistas
+  if(entrevistas[tel])delete entrevistas[tel];
+
+  // Remove de notas
+  if(notas[tel])delete notas[tel];
+
+  salvarLocal();
+  renderLista();
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+  toast('🗑️ Candidato excluído completamente','success');
 }
 
 // ── GERAR PAUTA DO DIA ──
@@ -4583,6 +4624,69 @@ async function retomarConversa24h(){
     console.error('Erro ao retomar conversa:',e);
     toast('❌ Erro ao retomar conversa. Tente novamente.','error');
   }
+}
+
+// ── EDITAR VAGA ──
+function abrirEditarVaga(idVaga, cargo){
+  const vaga = vagasCache.find(v => (v.idVaga||v.ID||v['ID Vaga']) === idVaga);
+  if(!vaga){toast('Vaga não encontrada','error');return;}
+
+  const novoNome = prompt('Nome/Cargo da vaga:', cargo);
+  if(novoNome === null) return;
+  if(!novoNome.trim()){toast('Nome não pode ficar vazio','error');return;}
+
+  const novoSalario = prompt('Salário:', vaga.salario||vaga.Salário||'');
+  if(novoSalario === null) return;
+
+  // Atualiza a vaga
+  vaga.cargo = novoNome.trim();
+  vaga.Cargo = novoNome.trim();
+  if(novoSalario.trim()) vaga.salario = novoSalario.trim();
+
+  salvarLocal();
+  toast('✏️ Vaga atualizada','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── PAUSAR VAGA ──
+function pausarVaga(idVaga, cargo){
+  if(!confirm(`Pausar a vaga de ${cargo}?\n\nEla não aparecerá mais nas buscas, mas não será deletada.`))return;
+
+  if(!window._vagasPausadas)window._vagasPausadas={};
+  window._vagasPausadas[idVaga]=true;
+  salvarLocal();
+
+  toast('⏸️ Vaga pausada','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── REATIVAR VAGA ──
+function reativarVaga(idVaga, cargo){
+  if(!confirm(`Reativar a vaga de ${cargo}?`))return;
+
+  if(window._vagasPausadas)delete window._vagasPausadas[idVaga];
+  salvarLocal();
+
+  toast('▶️ Vaga reativada','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
+}
+
+// ── EXCLUIR VAGA ──
+function excluirVaga(idVaga, cargo){
+  if(!confirm(`⚠️ EXCLUIR a vaga de ${cargo}?\n\nEsta ação é IRREVERSÍVEL. A vaga será removida completamente.`))return;
+
+  // Remove da cache
+  if(vagasCache){
+    vagasCache=vagasCache.filter(v=>(v.idVaga||v.ID||v['ID Vaga'])!==idVaga);
+  }
+
+  // Remove de qualquer status
+  if(window._vagasPausadas)delete window._vagasPausadas[idVaga];
+  if(window.vagasEncerradas)delete window.vagasEncerradas[idVaga];
+
+  salvarLocal();
+  toast('🗑️ Vaga excluída','success');
+  renderPainelVagas(document.getElementById('pv-busca')?.value||'');
 }
 
 // ── ENCERRAR VAGA ──
