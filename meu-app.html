@@ -412,8 +412,9 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
 .ag-modal-overlay.show{display:flex}
 .ag-modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
-.ag-modal-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px;position:relative;padding-right:30px}
-.ag-modal-close{position:absolute;right:0;top:0;background:none;border:none;font-size:20px;cursor:pointer;padding:0;color:var(--navy)}
+.ag-modal-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.ag-modal-close{background:none;border:none;font-size:24px;cursor:pointer;padding:0;color:var(--navy);line-height:1;opacity:0.6;transition:opacity 0.2s}
+.ag-modal-close:hover{opacity:1}
 .ag-modal-row{display:flex;gap:8px}
 .ag-modal-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
 .ag-btn-cancel{padding:9px 16px;background:#f3f4f6;color:var(--muted);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
@@ -555,7 +556,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <!-- MODAL: COMPROMISSO PESSOAL -->
 <div class="ag-modal-overlay" id="ag-modal-overlay" onclick="if(event.target===this)agFecharModal()">
   <div class="ag-modal">
-    <div class="ag-modal-title" id="ag-modal-title">📅 Novo compromisso<button class="ag-modal-close" onclick="agFecharModal()">✕</button></div>
+    <div class="ag-modal-title" id="ag-modal-title">📅 Novo compromisso</div>
     <input type="hidden" id="ag-f-id">
     <div class="modal-field">
       <label class="modal-label">Título</label>
@@ -602,8 +603,9 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     </div>
     <div class="ag-modal-actions">
       <button class="ag-btn-del" id="ag-f-del-btn" onclick="agExcluirAtual()" style="display:none">🗑️ Excluir</button>
+      <button class="ag-btn-cancel" id="ag-f-concluir-btn" onclick="agMarcarConcluido()" style="background:#10b981;color:white;display:none">✓ Concluído</button>
       <div style="flex:1"></div>
-      <button class="ag-btn-cancel" onclick="agFecharModal()">Cancelar</button>
+      <button class="ag-btn-cancel" onclick="agFecharModal()">✕ Fechar</button>
       <button class="ag-btn-save" onclick="agSalvar()">Salvar</button>
     </div>
   </div>
@@ -3295,19 +3297,7 @@ function agEvtChip(e, diaTodo){
   const concluido = agEventoConcluido(e.id);
   const estiloConcluido = concluido ? 'opacity:0.6;text-decoration:line-through' : '';
   const resumo = agEsc(e.titulo).trim().split(/[\n\r]/)[0].substring(0,50);
-  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" title="${hora} - ${resumo}" onclick="agClicarEvento('${e.id}')" ondblclick="event.stopPropagation();agAlternarConcluido('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
-}
-
-function agClicarEvento(eventId){
-  // Detecta duplo clique esperando 250ms
-  if(!window.agUltimoClique) window.agUltimoClique = {};
-  const agora = Date.now();
-  if(agora - (window.agUltimoClique[eventId]||0) < 250) {
-    agAlternarConcluido(eventId);
-  } else {
-    agAbrirDetalhe(eventId);
-  }
-  window.agUltimoClique[eventId] = agora;
+  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" title="${hora} - ${resumo}" onclick="agAbrirDetalhe('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
 }
 
 function agEventoConcluido(eventId){
@@ -3320,6 +3310,14 @@ function agAlternarConcluido(eventId){
   concluidos[eventId] = !concluidos[eventId];
   localStorage.setItem('ag-concluidos', JSON.stringify(concluidos));
   agRender();
+}
+
+function agMarcarConcluido(){
+  const eventId = document.getElementById('ag-f-id').value;
+  if(eventId) {
+    agAlternarConcluido(eventId);
+    agFecharModal();
+  }
 }
 
 async function agRenderDia(main){
@@ -3481,6 +3479,11 @@ function agAbrirDetalhe(id){
   // Google Calendar, fora do app). Exclusão é uma ação segura em qualquer evento (apaga
   // o mesmo evento no Calendar); só a EDIÇÃO de campos fica restrita ao que a Lia criou.
   document.getElementById('ag-f-del-btn').style.display = 'inline-block';
+  // Botão de concluído
+  const concluido = agEventoConcluido(id);
+  const btnConcluir = document.getElementById('ag-f-concluir-btn');
+  btnConcluir.style.display = 'inline-block';
+  btnConcluir.textContent = concluido ? '↻ Desmarcar' : '✓ Concluído';
   ['ag-f-data','ag-f-categoria','ag-f-hora-inicio','ag-f-hora-fim','ag-f-dia-todo','ag-f-local','ag-f-notas'].forEach(id2=>{ document.getElementById(id2).disabled=!editavel; });
   let lw=document.getElementById('ag-f-link-wrap');
   if(!lw){ lw=document.createElement('div'); lw.id='ag-f-link-wrap'; lw.style.margin='2px 0 10px'; document.querySelector('.ag-modal').insertBefore(lw, document.querySelector('.ag-modal-actions')); }
