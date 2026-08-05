@@ -412,7 +412,8 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
 .ag-modal-overlay.show{display:flex}
 .ag-modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
-.ag-modal-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px}
+.ag-modal-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px;position:relative;padding-right:30px}
+.ag-modal-close{position:absolute;right:0;top:0;background:none;border:none;font-size:20px;cursor:pointer;padding:0;color:var(--navy)}
 .ag-modal-row{display:flex;gap:8px}
 .ag-modal-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
 .ag-btn-cancel{padding:9px 16px;background:#f3f4f6;color:var(--muted);border:none;border-radius:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
@@ -554,7 +555,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 <!-- MODAL: COMPROMISSO PESSOAL -->
 <div class="ag-modal-overlay" id="ag-modal-overlay" onclick="if(event.target===this)agFecharModal()">
   <div class="ag-modal">
-    <div class="ag-modal-title" id="ag-modal-title">📅 Novo compromisso</div>
+    <div class="ag-modal-title" id="ag-modal-title">📅 Novo compromisso<button class="ag-modal-close" onclick="agFecharModal()">✕</button></div>
     <input type="hidden" id="ag-f-id">
     <div class="modal-field">
       <label class="modal-label">Título</label>
@@ -3293,7 +3294,20 @@ function agEvtChip(e, diaTodo){
   const hora = diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const concluido = agEventoConcluido(e.id);
   const estiloConcluido = concluido ? 'opacity:0.6;text-decoration:line-through' : '';
-  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" onclick="agAbrirDetalhe('${e.id}')" ondblclick="event.stopPropagation();agAlternarConcluido('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+  const resumo = agEsc(e.titulo).trim().split(/[\n\r]/)[0].substring(0,50);
+  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" title="${hora} - ${resumo}" onclick="agClicarEvento('${e.id}')" ondblclick="event.stopPropagation();agAlternarConcluido('${e.id}')"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+}
+
+function agClicarEvento(eventId){
+  // Detecta duplo clique esperando 250ms
+  if(!window.agUltimoClique) window.agUltimoClique = {};
+  const agora = Date.now();
+  if(agora - (window.agUltimoClique[eventId]||0) < 250) {
+    agAlternarConcluido(eventId);
+  } else {
+    agAbrirDetalhe(eventId);
+  }
+  window.agUltimoClique[eventId] = agora;
 }
 
 function agEventoConcluido(eventId){
