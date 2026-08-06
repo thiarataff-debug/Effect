@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vagas Rápido — Effect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a2a4a;
+      --white: #ffffff;
+      --bg: #f5f7fa;
+      --green: #8ed1b2;
+      --blue: #1fa5ff;
+      --red: #f4afa1;
+      --text: #2a2a2b;
+      --border: #e5e7eb;
+    }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    .nav-logo {
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+    }
+    .nav-logo span {
+      color: var(--green);
+    }
+    .nav-back {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+    }
+    .nav-back:hover {
+      background: rgba(255,255,255,.2);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .header {
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 32px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #999;
+      font-size: 14px;
+    }
+
+    .filtros {
+      background: var(--white);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filtro-grupo {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filtro-grupo label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--navy);
+    }
+    .filtro-grupo input,
+    .filtro-grupo select {
+      padding: 8px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border .2s;
+    }
+    .filtro-grupo input:focus,
+    .filtro-grupo select:focus {
+      border-color: var(--blue);
+    }
+
+    .lista {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .vaga-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 24px;
+      border-left: 4px solid var(--green);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      transition: all .2s;
+    }
+    .vaga-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      transform: translateY(-2px);
+    }
+
+    .vaga-cargo {
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .vaga-empresa {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .vaga-info {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #999;
+      min-width: 60px;
+    }
+    .info-valor {
+      color: var(--text);
+    }
+
+    .beneficios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .beneficio-tag {
+      background: rgba(142,209,178,.2);
+      color: #1a6644;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: 12px;
+      grid-column: 1 / -1;
+    }
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .empty-titulo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .empty-desc {
+      color: #999;
+      font-size: 13px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      grid-column: 1 / -1;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 20px 16px; }
+      .header h1 { font-size: 24px; }
+      .filtros { flex-direction: column; align-items: stretch; }
+      .filtro-grupo { width: 100%; }
+      .lista { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-logo">Effect<span>.</span>Vagas</div>
+    <button class="nav-back" onclick="history.back()">← Voltar</button>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Vagas Rápido</h1>
+      <p>Visualize todas as vagas abertas em tempo real</p>
+    </div>
+
+    <div class="filtros">
+      <div class="filtro-grupo">
+        <label>Cargo</label>
+        <input type="text" id="filtro-cargo" placeholder="Ex: Assistente, Vigilante...">
+      </div>
+      <div class="filtro-grupo">
+        <label>Cidade</label>
+        <input type="text" id="filtro-cidade" placeholder="Ex: Serra, Vitória...">
+      </div>
+      <div class="filtro-grupo">
+        <label>Empresa</label>
+        <input type="text" id="filtro-empresa" placeholder="Ex: Santuzzi...">
+      </div>
+    </div>
+
+    <div id="conteudo" class="lista"></div>
+  </div>
+
+  <script>
+    let vagas = [];
+
+    async function carregar() {
+      document.getElementById('conteudo').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+      try {
+        const res = await fetch('/sheets/vagas');
+        const data = await res.json();
+        vagas = data.vagas || [];
+        filtrar();
+      } catch (e) {
+        document.getElementById('conteudo').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-titulo">Erro ao carregar</div>
+            <div class="empty-desc">${e.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    function filtrar() {
+      const cargo = document.getElementById('filtro-cargo').value.toLowerCase();
+      const cidade = document.getElementById('filtro-cidade').value.toLowerCase();
+      const empresa = document.getElementById('filtro-empresa').value.toLowerCase();
+
+      let filtrados = vagas.filter(v => {
+        const cargoBusca = (v.cargo || '').toLowerCase();
+        const cidadeBusca = (v.cidade || '').toLowerCase();
+        const empresaBusca = (v.cliente || v.empresa || '').toLowerCase();
+
+        return cargoBusca.includes(cargo) && cidadeBusca.includes(cidade) && empresaBusca.includes(empresa);
+      });
+
+      renderizar(filtrados);
+    }
+
+    function renderizar(lista) {
+      const container = document.getElementById('conteudo');
+
+      if (lista.length === 0) {
+        container.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-titulo">Nenhuma vaga encontrada</div>
+            <div class="empty-desc">Tente ajustar os filtros</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = lista.map(v => `
+        <div class="vaga-card">
+          <div class="vaga-cargo">${v.cargo || 'Cargo não informado'}</div>
+          <div class="vaga-empresa">${v.cliente || v.empresa || 'Empresa'}</div>
+
+          <div class="vaga-info">
+            ${v.cidade ? `
+              <div class="info-item">
+                <span class="info-label">📍 Local</span>
+                <span class="info-valor">${v.cidade}</span>
+              </div>
+            ` : ''}
+
+            ${v.quantidade ? `
+              <div class="info-item">
+                <span class="info-label">👥 Vagas</span>
+                <span class="info-valor">${v.quantidade}</span>
+              </div>
+            ` : ''}
+
+            ${v.salario ? `
+              <div class="info-item">
+                <span class="info-label">💰 Salário</span>
+                <span class="info-valor">${v.salario}</span>
+              </div>
+            ` : ''}
+
+            ${v.horario ? `
+              <div class="info-item">
+                <span class="info-label">🕐 Horário</span>
+                <span class="info-valor">${v.horario}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          ${v.beneficios ? `
+            <div class="beneficios">
+              ${v.beneficios.split(',').map(b => `<span class="beneficio-tag">${b.trim()}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('filtro-cargo').addEventListener('input', filtrar);
+    document.getElementById('filtro-cidade').addEventListener('input', filtrar);
+    document.getElementById('filtro-empresa').addEventListener('input', filtrar);
+
+    carregar();
+  </script>
+</body>
+</html>

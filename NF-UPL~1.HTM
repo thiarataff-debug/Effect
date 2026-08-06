@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lançar Nota Fiscal — Effect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a2a4a;
+      --white: #ffffff;
+      --bg: #f5f7fa;
+      --green: #8ed1b2;
+      --blue: #1fa5ff;
+      --red: #f4afa1;
+      --text: #2a2a2b;
+      --border: #e5e7eb;
+    }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    .nav-logo {
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+    }
+    .nav-logo span {
+      color: var(--green);
+    }
+    .nav-back {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+    }
+    .nav-back:hover {
+      background: rgba(255,255,255,.2);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 32px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #999;
+      font-size: 14px;
+    }
+
+    .upload-area {
+      background: var(--white);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      transition: all .2s;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      border-color: var(--blue);
+      background: rgba(31,165,255,.02);
+    }
+    .upload-area.dragover {
+      border-color: var(--green);
+      background: rgba(142,209,178,.05);
+    }
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .upload-titulo {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .upload-desc {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 16px;
+    }
+    .upload-input {
+      display: none;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--green);
+      color: var(--navy);
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn:hover {
+      background: #7dc4a4;
+      transform: translateY(-2px);
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .info-box {
+      background: rgba(31,165,255,.05);
+      border-left: 4px solid var(--blue);
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .info-box strong {
+      color: var(--navy);
+    }
+
+    .arquivo-selecionado {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .arquivo-selecionado.ativo {
+      display: block;
+    }
+    .arquivo-nome {
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .arquivo-tamanho {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .resultado {
+      background: var(--white);
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 24px;
+      display: none;
+    }
+    .resultado.ativo {
+      display: block;
+    }
+    .resultado.sucesso {
+      border-left: 4px solid var(--green);
+    }
+    .resultado.erro {
+      border-left: 4px solid var(--red);
+    }
+    .resultado-titulo {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    .resultado-conteudo {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 24px;
+      display: none;
+    }
+    .loading.ativo {
+      display: block;
+    }
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 20px 16px; }
+      .header h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-logo">Effect<span>.</span>NF</div>
+    <button class="nav-back" onclick="history.back()">← Voltar</button>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <h1>📄 Lançar Nota Fiscal</h1>
+      <p>Envie um PDF de nota fiscal para processar automaticamente</p>
+    </div>
+
+    <div class="info-box">
+      ℹ️ <strong>Como funciona:</strong> Arraste um PDF ou clique para selecionar. A IA extrai automaticamente número, cliente, valor, datas e benefícios.
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-icon">📎</div>
+      <div class="upload-titulo">Arraste seu PDF aqui</div>
+      <div class="upload-desc">ou clique para selecionar um arquivo</div>
+      <input type="file" id="uploadInput" class="upload-input" accept=".pdf" />
+    </div>
+
+    <div class="arquivo-selecionado" id="arquivoSelecionado">
+      <div class="arquivo-nome" id="arquivoNome"></div>
+      <div class="arquivo-tamanho" id="arquivoTamanho"></div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>Processando nota fiscal...</div>
+    </div>
+
+    <div class="resultado" id="resultado">
+      <div class="resultado-titulo" id="resultadoTitulo"></div>
+      <div class="resultado-conteudo" id="resultadoConteudo"></div>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <button class="btn" id="enviarBtn" onclick="enviar()" style="display: none;">✓ Processar PDF</button>
+    </div>
+  </div>
+
+  <script>
+    let arquivoSelecionado = null;
+
+    const uploadArea = document.getElementById('uploadArea');
+    const uploadInput = document.getElementById('uploadInput');
+    const arquivoSelecionadoDiv = document.getElementById('arquivoSelecionado');
+    const enviarBtn = document.getElementById('enviarBtn');
+    const loading = document.getElementById('loading');
+    const resultado = document.getElementById('resultado');
+
+    uploadArea.addEventListener('click', () => uploadInput.click());
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        selecionarArquivo(files[0]);
+      }
+    });
+
+    uploadInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        selecionarArquivo(e.target.files[0]);
+      }
+    });
+
+    function selecionarArquivo(file) {
+      if (file.type !== 'application/pdf') {
+        alert('Por favor, selecione um arquivo PDF');
+        return;
+      }
+
+      arquivoSelecionado = file;
+      document.getElementById('arquivoNome').textContent = file.name;
+      document.getElementById('arquivoTamanho').textContent = `${(file.size / 1024).toFixed(2)} KB`;
+      arquivoSelecionadoDiv.classList.add('ativo');
+      enviarBtn.style.display = 'inline-block';
+      resultado.classList.remove('ativo');
+    }
+
+    async function enviar() {
+      if (!arquivoSelecionado) return;
+
+      enviarBtn.disabled = true;
+      loading.classList.add('ativo');
+      resultado.classList.remove('ativo');
+
+      try {
+        const formData = new FormData();
+        formData.append('pdf', arquivoSelecionado);
+
+        const claudeKey = prompt('Cole sua chave Claude API:', '');
+        if (!claudeKey) {
+          throw new Error('Chave da API não fornecida');
+        }
+
+        formData.append('claudeApiKey', claudeKey);
+
+        const res = await fetch('/nf/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        loading.classList.remove('ativo');
+
+        if (data.sucesso) {
+          mostrarResultado(true, data.mensagem, data.dados);
+        } else {
+          mostrarResultado(false, 'Erro ao processar', data.erro);
+        }
+      } catch (e) {
+        loading.classList.remove('ativo');
+        mostrarResultado(false, 'Erro', e.message);
+      } finally {
+        enviarBtn.disabled = false;
+      }
+    }
+
+    function mostrarResultado(sucesso, titulo, conteudo) {
+      documento.getElementById('resultadoTitulo').textContent = titulo;
+
+      if (typeof conteudo === 'object') {
+        document.getElementById('resultadoConteudo').textContent = JSON.stringify(conteudo, null, 2);
+      } else {
+        document.getElementById('resultadoConteudo').textContent = conteudo;
+      }
+
+      resultado.classList.add('ativo');
+      resultado.classList.toggle('sucesso', sucesso);
+      resultado.classList.toggle('erro', !sucesso);
+    }
+  </script>
+</body>
+</html>
