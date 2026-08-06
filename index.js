@@ -4004,6 +4004,9 @@ app.get("/contratos/lista", (req, res) => {
   }
 });
 
+app.get("/visualizador-vagas", (req, res) => res.sendFile(path.join(__dirname, "visualizador-vagas-rapido.html")));
+app.get("/nf-upload.html", (req, res) => res.sendFile(path.join(__dirname, "nf-upload.html")));
+
 // ============================================================
 // ROTA — TRANSIÇÃO LIA → LAURA
 // ============================================================
