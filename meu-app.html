@@ -370,6 +370,12 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .ag-evt{border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer;border-left:4px solid;transition:filter .1s;line-height:1.35}
 .ag-evt:hover{filter:brightness(.96)}
 .ag-evt .ag-evt-hora{font-weight:800;opacity:.8;font-size:10px}
+/* TOOLTIP PARA EVENTOS DA AGENDA */
+.ag-evt-tooltip{position:fixed;background:rgba(26,42,74,0.97);color:#fff;padding:12px 14px;border-radius:10px;font-size:12px;font-weight:500;white-space:normal;max-width:280px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);line-height:1.5}
+.ag-evt-tooltip.visible{opacity:1}
+.ag-evt-tooltip-hora{font-weight:700;color:#8ed1b2;margin-bottom:4px;display:block}
+.ag-evt-tooltip-titulo{display:block;color:#fff;word-wrap:break-word}
+.ag-evt-tooltip-categoria{display:block;font-size:10px;color:rgba(255,255,255,0.7);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
 .ag-evt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;flex-shrink:0}
 
 /* Semana */
@@ -3296,8 +3302,8 @@ function agEvtChip(e, diaTodo){
   const hora = diaTodo ? 'Dia todo' : new Date(e.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const concluido = agEventoConcluido(e.id);
   const estiloConcluido = concluido ? 'opacity:0.6;text-decoration:line-through' : '';
-  const resumo = agEsc(e.titulo).trim().split(/[\n\r]/)[0].substring(0,50);
-  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" title="${hora} - ${resumo}" onclick="agAbrirDetalhe('${e.id}')" ondblclick="agAlternarConcluido('${e.id}');return false;"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
+  const categoria = agCategoriaDoEvento(e);
+  return `<div class="ag-evt" style="background:${cor}22;border-color:${cor};color:${cor};${estiloConcluido};cursor:pointer" data-tooltip-hora="${hora}" data-tooltip-titulo="${agEsc(e.titulo)}" data-tooltip-categoria="${categoria}" onmouseenter="agMostrarTooltip(event)" onmouseleave="agEsconderTooltip()" onclick="agAbrirDetalhe('${e.id}')" ondblclick="agAlternarConcluido('${e.id}');return false;"><span class="ag-evt-hora">${hora}</span> ${agEsc(e.titulo)}</div>`;
 }
 
 function agEventoConcluido(eventId){
@@ -4193,6 +4199,56 @@ window.addEventListener('message', function(e){
     }
   }
 }, false);
+
+/* TOOLTIP PARA EVENTOS DA AGENDA */
+let agTooltipEl = null;
+
+function agMostrarTooltip(event) {
+  const el = event.currentTarget;
+  const hora = el.getAttribute('data-tooltip-hora');
+  const titulo = el.getAttribute('data-tooltip-titulo');
+  const categoria = el.getAttribute('data-tooltip-categoria');
+
+  if (!agTooltipEl) {
+    agTooltipEl = document.createElement('div');
+    agTooltipEl.className = 'ag-evt-tooltip';
+    document.body.appendChild(agTooltipEl);
+  }
+
+  agTooltipEl.innerHTML = `
+    <span class="ag-evt-tooltip-hora">🕐 ${hora}</span>
+    <span class="ag-evt-tooltip-titulo">${titulo}</span>
+    <span class="ag-evt-tooltip-categoria">${categoria}</span>
+  `;
+
+  const rect = el.getBoundingClientRect();
+  const tooltipWidth = 280;
+  const tooltipHeight = 80;
+
+  let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+  let top = rect.top - tooltipHeight - 10;
+
+  if (left < 10) left = 10;
+  if (left + tooltipWidth > window.innerWidth - 10) {
+    left = window.innerWidth - tooltipWidth - 10;
+  }
+  if (top < 10) {
+    top = rect.bottom + 10;
+  }
+
+  agTooltipEl.style.left = left + 'px';
+  agTooltipEl.style.top = top + 'px';
+
+  setTimeout(() => {
+    agTooltipEl.classList.add('visible');
+  }, 50);
+}
+
+function agEsconderTooltip() {
+  if (agTooltipEl) {
+    agTooltipEl.classList.remove('visible');
+  }
+}
 
 </script>
 <div id="save-toast"></div>
