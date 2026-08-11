@@ -2859,7 +2859,7 @@ app.post("/inbox/enviar", async (req, res) => {
     // Agora verifica a janela de 24h ANTES: se a última mensagem do candidato
     // foi há mais de 24h, envia direto o template aprovado.
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const janelaFechada = foraDaJanela24h(sessao);
+    const janelaFechada = foraDaJanela24h(sessoes[resolverTelefoneCanonico(telefone)] || sessao);
     try {
       if (janelaFechada) throw new Error("[131047] Janela de 24h fechada (verificação proativa)");
       await enviarMensagem(telefone, mensagem);
@@ -5611,7 +5611,7 @@ app.post("/inbox/reativar-banco", async (req, res) => {
       try {
         // Verificação PROATIVA: candidato inativo = janela de 24h fechada.
         // A Meta aceita mensagem livre e descarta em silêncio, então nem tenta.
-        if (foraDaJanela24h(sessoes[tel])) throw new Error("[131047] Janela de 24h fechada (verificação proativa)");
+        if (foraDaJanela24h(sessoes[resolverTelefoneCanonico(tel)] || sessoes[tel])) throw new Error("[131047] Janela de 24h fechada (verificação proativa)");
         await enviarMensagem(tel, mensagem);
       } catch (e) {
         const foraJanela = String(e.message || "").includes("131047") ||
@@ -5811,8 +5811,37 @@ function formatarLista(texto) {
   return partes.length === 0 ? texto : partes.map(p => `• ${p}`).join("\n");
 }
 
+// ── PROBLEMA DO 9º DÍGITO BRASILEIRO ─────────────────────────────────────────
+// A Meta registra números BR às vezes SEM o 9 extra (ex.: 552796556776) enquanto
+// planilhas/currículos trazem COM o 9 (5527996556776). Para a Meta são números
+// DIFERENTES: enviar para a variante que nunca mandou mensagem cai "fora da
+// janela de 24h" (erro 131047) mesmo com o candidato ativo. Antes de enviar,
+// escolhe a variante que tem mensagem RECEBIDA do candidato (wa_id real).
+function resolverTelefoneCanonico(telOriginal) {
+  const t = limparTelefone(telOriginal);
+  if (!t.startsWith("55") || (t.length !== 12 && t.length !== 13)) return t;
+  const com9 = t.length === 13 ? t : t.slice(0, 4) + "9" + t.slice(4);
+  const sem9 = t.length === 12 ? t : (t[4] === "9" ? t.slice(0, 4) + t.slice(5) : t);
+  const variantes = [...new Set([t, com9, sem9])];
+  let melhor = t, melhorTs = -1;
+  for (const v of variantes) {
+    const s = (typeof sessoes !== "undefined") ? sessoes[v] : null;
+    if (!s || !Array.isArray(s.historico)) continue;
+    for (let i = s.historico.length - 1; i >= 0; i--) {
+      const ev = s.historico[i];
+      if (ev && ev.role === "user") {
+        const ts = Number(ev.timestampMs || 0);
+        if (ts > melhorTs) { melhorTs = ts; melhor = v; }
+        break;
+      }
+    }
+  }
+  if (melhor !== t) console.log(`[TELEFONE] Corrigido 9º dígito: ${t} → ${melhor} (wa_id real do candidato)`);
+  return melhor;
+}
+
 async function enviarMensagem(toOriginal, body) {
-  const to = limparTelefone(toOriginal);
+  const to = resolverTelefoneCanonico(toOriginal);
   if (!to) return;
   try {
     const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
@@ -5828,7 +5857,7 @@ async function enviarMensagem(toOriginal, body) {
 }
 
 async function enviarTemplate(telefone, templateName = "effect_reengajamento_candidatos", languageCode = "pt_BR") {
-  const to = limparTelefone(telefone);
+  const to = resolverTelefoneCanonico(telefone);
   if (!to) return { sucesso: false, erro: "Telefone inválido" };
   try {
     const url = `https://graph.facebook.com/v20.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
