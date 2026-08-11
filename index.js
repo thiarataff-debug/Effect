@@ -2775,6 +2775,12 @@ Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "A
   }
 });
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CORREÇÃO RÁPIDA: Fazer mensagens funcionar FORA da janela 24h
+//
+// LOCAL: Substituir linha 2778 a 2815 do index.js
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 app.post("/inbox/enviar", async (req, res) => {
   try {
     const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
@@ -2789,27 +2795,82 @@ app.post("/inbox/enviar", async (req, res) => {
     sessao.pausado = true;
     sessao.motivoPausa = sessao.motivoPausa || "Atendimento assumido manualmente";
 
-    // Primeiro envia para o WhatsApp.
-    await enviarMensagem(telefone, mensagem);
+    let msgEnviada = false;
+    let erroOriginal = null;
+    let usouTemplate = false;
 
-    // Depois grava imediatamente no histórico do servidor.
-    // Isso permite que o Inbox recarregue e já encontre a mensagem enviada.
-    const eventoSalvo = registrarEntradaSessao(sessao, "assistant", mensagem);
-    marcarConversaRespondida(sessao);
-    sessao.historico = sessao.historico.slice(-500);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // NOVO: Tentar mensagem livre PRIMEIRO
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    try {
+      await enviarMensagem(telefone, mensagem);
+      msgEnviada = true;
+      console.log(`[ENVIAR] ✅ Mensagem livre enviada: ${telefone}`);
+    } catch (e) {
+      erroOriginal = e.message;
 
-    await salvarMensagemSheets(telefone, "assistant", mensagem, sessao.nome);
-    await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+      // Se falhar com erro 131047 (fora da janela 24h), tentar TEMPLATE
+      const foraJanela = String(e.message || "").includes("131047") ||
+                        String(e.message || "").toLowerCase().includes("re-engagement");
 
-    return res.json({
-      ok: true,
-      telefone,
-      modo: "manual",
-      pausado: true,
-      mensagem: eventoSalvo,
-      historicoLength: sessao.historico.length
-    });
+      if (foraJanela) {
+        console.log(`[ENVIAR] ⚠️  Fora da janela 24h, tentando template...`);
+
+        const resultTemplate = await enviarTemplate(
+          telefone,
+          CONFIG.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos",
+          "pt_BR"
+        );
+
+        if (resultTemplate.sucesso) {
+          msgEnviada = true;
+          usouTemplate = true;
+          console.log(`[ENVIAR] ✅ Enviado via TEMPLATE: ${telefone}`);
+        } else {
+          console.error(`[ENVIAR] ❌ Template falhou: ${resultTemplate.erro}`);
+          return res.json({
+            ok: false,
+            erro: `Não foi possível enviar: ${resultTemplate.erro}`,
+            detalhes: `Mensagem livre falhou: ${erroOriginal} | Template também falhou`
+          });
+        }
+      } else {
+        // Erro não é "fora da janela", é outro erro
+        return res.json({ ok: false, erro: erroOriginal });
+      }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Se conseguiu enviar (livre ou template), registrar no histórico
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (msgEnviada) {
+      const textoRegistro = usouTemplate
+        ? `[Enviado via Template - fora da janela 24h]\n\n${mensagem}`
+        : mensagem;
+
+      const eventoSalvo = registrarEntradaSessao(sessao, "assistant", textoRegistro);
+      marcarConversaRespondida(sessao);
+      sessao.historico = sessao.historico.slice(-500);
+
+      await salvarMensagemSheets(telefone, "assistant", textoRegistro, sessao.nome);
+      await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome);
+
+      return res.json({
+        ok: true,
+        telefone,
+        modo: "manual",
+        pausado: true,
+        mensagem: eventoSalvo,
+        historicoLength: sessao.historico.length,
+        metodo: usouTemplate ? "template" : "mensagem_livre",
+        status: "✅ Enviado com sucesso"
+      });
+    }
+
+    return res.json({ ok: false, erro: "Falha desconhecida ao enviar" });
+
   } catch (erro) {
+    console.error(`[ENVIAR] Erro: ${erro.message}`);
     return res.json({ ok: false, erro: erro.message });
   }
 });
