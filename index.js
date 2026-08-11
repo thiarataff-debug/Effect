@@ -5537,20 +5537,38 @@ app.post("/inbox/reativar-banco", async (req, res) => {
       sessoes[tel].pausado = false;
       sessoes[tel].modo = "automatico";
       atendimentosManuais.delete(tel);
-      // Envia mensagem WhatsApp
-      const r = await enviarMensagem(tel, mensagem);
+      // Envia mensagem WhatsApp.
+      // BUG CORRIGIDO: candidatos inativos estão fora da janela de 24h da Meta,
+      // então mensagem livre falha com erro 131047 e eles nunca recebiam nada.
+      // Agora, se a mensagem livre falhar por janela fechada, cai para o
+      // template aprovado (mesmo comportamento do /inbox/enviar).
+      let usouTemplate = false;
+      try {
+        await enviarMensagem(tel, mensagem);
+      } catch (e) {
+        const foraJanela = String(e.message || "").includes("131047") ||
+                           String(e.message || "").toLowerCase().includes("re-engagement");
+        if (!foraJanela) throw e;
+        const t = await enviarTemplate(tel, CONFIG.TEMPLATE_DIVULGACAO_VAGA || "effect_reengajamento_candidatos", "pt_BR");
+        if (!t.sucesso) throw new Error(`Fora da janela 24h e template falhou: ${t.erro}`);
+        usouTemplate = true;
+      }
       // Registra no histórico
       const nomeCand = sessoes[tel].nome || tel;
-      registrarEntradaSessao(sessoes[tel], "assistant", mensagem);
-      await salvarMensagemSheets(tel, "assistant", mensagem, nomeCand);
-      resultados.push({ telefone: tel, ok: true });
+      const textoRegistro = usouTemplate ? `[Enviado via Template - fora da janela 24h]\n\n${mensagem}` : mensagem;
+      registrarEntradaSessao(sessoes[tel], "assistant", textoRegistro);
+      await salvarMensagemSheets(tel, "assistant", textoRegistro, nomeCand);
+      resultados.push({ telefone: tel, ok: true, metodo: usouTemplate ? "template" : "mensagem_livre" });
     } catch(e) {
       resultados.push({ telefone: tel, ok: false, erro: e.message });
     }
+    // Pausa entre envios para não estourar rate limit da Meta
+    await new Promise(r => setTimeout(r, 1100));
   }
   const enviados = resultados.filter(r => r.ok).length;
-  console.log(`[REATIVAR-BANCO] Enviado para ${enviados}/${telefones.length} candidatos — cargo: ${cargo}`);
-  res.json({ ok: true, total: telefones.length, enviados, resultados });
+  const falhas = resultados.filter(r => !r.ok);
+  console.log(`[REATIVAR-BANCO] Enviado para ${enviados}/${telefones.length} candidatos — cargo: ${cargo}${falhas.length ? ` — ${falhas.length} falha(s): ${falhas[0].erro}` : ""}`);
+  res.json({ ok: true, total: telefones.length, enviados, falhas: falhas.length, resultados });
 });
 
 // Monitoramento automático de créditos Railway a cada 6h
