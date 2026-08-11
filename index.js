@@ -2775,12 +2775,6 @@ Próxima ação: [o que deve ser feito a seguir — ex: "Agendar entrevista", "A
   }
 });
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// CORREÇÃO RÁPIDA: Fazer mensagens funcionar FORA da janela 24h
-//
-// LOCAL: Substituir linha 2778 a 2815 do index.js
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 app.post("/inbox/enviar", async (req, res) => {
   try {
     const telefone = limparTelefone(req.body.telefone || req.body.phone || req.body.from || req.body.numero || req.body.whatsapp);
@@ -2840,9 +2834,9 @@ app.post("/inbox/enviar", async (req, res) => {
       }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Se conseguiu enviar (livre ou template), registrar no histórico
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (msgEnviada) {
       const textoRegistro = usouTemplate
         ? `[Enviado via Template - fora da janela 24h]\n\n${mensagem}`
