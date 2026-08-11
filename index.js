@@ -1748,9 +1748,68 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
+// ── ALARME DE ENTREGA ────────────────────────────────────────────────────────
+// A Meta envia neste mesmo webhook o STATUS de cada mensagem enviada (sent,
+// delivered, read, failed). Antes o código ignorava tudo isso — quando uma
+// entrega falhava (janela 24h, número sem WhatsApp, limite da Meta etc.), a
+// falha era invisível: aparecia como "enviada" no Inbox e ninguém ficava
+// sabendo. Agora, toda falha dispara alarme no WhatsApp da Thiara e registra
+// aviso na conversa do candidato.
+const ERROS_META_EXPLICACAO = {
+  131047: "Fora da janela de 24h — só é possível enviar template aprovado",
+  131026: "Mensagem não entregável — número pode não ter WhatsApp ou bloqueou o contato",
+  131048: "Limite de spam atingido — qualidade do número em risco",
+  131049: "Meta limitou o envio para proteger o engajamento do usuário",
+  130472: "Usuário faz parte de experimento da Meta — envio bloqueado",
+  131053: "Falha no upload de mídia",
+  100: "Parâmetro inválido no envio (verificar template/telefone)"
+};
+const ALERTAS_FALHA_ENVIADOS = {}; // { telefone: timestampMs } — evita spam de alarme
+const INTERVALO_MIN_ALERTA_FALHA_MS = 30 * 60 * 1000; // no máx. 1 alarme por candidato a cada 30min
+
+async function tratarStatusEntrega(st) {
+  try {
+    if (!st || st.status !== "failed") return;
+    const tel = limparTelefone(st.recipient_id || "");
+    if (!tel) return;
+    const erros = Array.isArray(st.errors) ? st.errors : [];
+    const detalhes = erros.map(e => {
+      const explicacao = ERROS_META_EXPLICACAO[e.code] || e.error_data?.details || e.message || e.title || "";
+      return `[${e.code}] ${e.title || ""}${explicacao ? " — " + explicacao : ""}`.trim();
+    }).join("\n") || "Motivo não informado pela Meta";
+
+    console.error(`[ENTREGA FALHOU] ${tel}: ${detalhes}`);
+    try { supervisor.registrarErroMeta(`Entrega falhou: ${detalhes}`, tel); } catch (_) {}
+
+    // Registra o aviso DENTRO da conversa do candidato (visível no Inbox)
+    const sessao = garantirSessao(tel);
+    registrarEntradaSessao(sessao, "assistant", `⚠️ [ALERTA DO SISTEMA] A última mensagem NÃO FOI ENTREGUE a este candidato.\nMotivo: ${detalhes}`);
+    sessao.unreadCount = Number(sessao.unreadCount || 0) + 1; // destaca a conversa como não lida
+    salvarMensagemSheets(tel, "assistant", `[FALHA DE ENTREGA] ${detalhes}`, sessao.nome || "").catch(() => {});
+
+    // Alarme no WhatsApp da Thiara (com trava anti-spam por candidato)
+    const agora = Date.now();
+    if (agora - (ALERTAS_FALHA_ENVIADOS[tel] || 0) > INTERVALO_MIN_ALERTA_FALHA_MS) {
+      ALERTAS_FALHA_ENVIADOS[tel] = agora;
+      const nome = sessao.nome || "Nome não identificado";
+      const alerta = `🚨 *MENSAGEM NÃO ENTREGUE*\n\n👤 Candidato: ${nome}\n📱 +${tel}\n\n❌ Motivo:\n${detalhes}\n\n👉 Abra o Inbox e verifique esta conversa.`;
+      await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta).catch(e => console.error("Erro ao enviar alarme de entrega:", e.message));
+    }
+  } catch (e) {
+    console.error("Erro em tratarStatusEntrega:", e.message);
+  }
+}
+
 app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
   try {
+    // Eventos de STATUS de entrega (sent/delivered/read/failed)
+    const statuses = req.body.entry?.[0]?.changes?.[0]?.value?.statuses;
+    if (Array.isArray(statuses) && statuses.length) {
+      for (const st of statuses) await tratarStatusEntrega(st);
+      return;
+    }
+
     const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return;
     if (message.id && mensagensProcessadas.has(message.id)) return;
@@ -2794,9 +2853,15 @@ app.post("/inbox/enviar", async (req, res) => {
     let usouTemplate = false;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // NOVO: Tentar mensagem livre PRIMEIRO
+    // BUG CORRIGIDO: antes só caía para template se a Meta RECUSASSE o envio
+    // na hora. Mas a Meta muitas vezes aceita (200) e descarta depois — a
+    // mensagem aparecia como enviada no Inbox e o candidato nunca recebia.
+    // Agora verifica a janela de 24h ANTES: se a última mensagem do candidato
+    // foi há mais de 24h, envia direto o template aprovado.
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const janelaFechada = foraDaJanela24h(sessao);
     try {
+      if (janelaFechada) throw new Error("[131047] Janela de 24h fechada (verificação proativa)");
       await enviarMensagem(telefone, mensagem);
       msgEnviada = true;
       console.log(`[ENVIAR] ✅ Mensagem livre enviada: ${telefone}`);
@@ -5544,6 +5609,9 @@ app.post("/inbox/reativar-banco", async (req, res) => {
       // template aprovado (mesmo comportamento do /inbox/enviar).
       let usouTemplate = false;
       try {
+        // Verificação PROATIVA: candidato inativo = janela de 24h fechada.
+        // A Meta aceita mensagem livre e descarta em silêncio, então nem tenta.
+        if (foraDaJanela24h(sessoes[tel])) throw new Error("[131047] Janela de 24h fechada (verificação proativa)");
         await enviarMensagem(tel, mensagem);
       } catch (e) {
         const foraJanela = String(e.message || "").includes("131047") ||
@@ -5771,6 +5839,26 @@ async function enviarTemplate(telefone, templateName = "effect_reengajamento_can
     console.error("Erro ao enviar template:", JSON.stringify(e.response?.data || e.message));
     return { sucesso: false, erro: e.message };
   }
+}
+
+// Verifica PROATIVAMENTE se o candidato está fora da janela de 24h da Meta.
+// Necessário porque a Meta muitas vezes ACEITA o envio de mensagem livre na API
+// (retorna 200) e só falha depois, via webhook de status — ou seja, o try/catch
+// no envio não pega o erro 131047 e a mensagem "some" sem ninguém perceber.
+// Olha a última mensagem RECEBIDA do candidato (role user) no histórico.
+function foraDaJanela24h(sessao) {
+  const JANELA_MS = 24 * 60 * 60 * 1000;
+  const historico = (sessao && sessao.historico) || [];
+  let ultimaDoCandidato = 0;
+  for (let i = historico.length - 1; i >= 0; i--) {
+    if (historico[i] && historico[i].role === "user") {
+      ultimaDoCandidato = Number(historico[i].timestampMs || 0);
+      break;
+    }
+  }
+  // Sem mensagem do candidato registrada = não há janela aberta
+  if (!ultimaDoCandidato) return true;
+  return (Date.now() - ultimaDoCandidato) > JANELA_MS;
 }
 
 async function coletarTelefonesReengajamento() {
