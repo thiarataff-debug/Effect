@@ -63,6 +63,16 @@ const CONFIG = {
   VERIFY_TOKEN: process.env.VERIFY_TOKEN || "effect_lia_2026",
   VAGAS_URL: process.env.VAGAS_URL,
   THIARA_WHATSAPP: "5527997925288",
+
+  // ── REDIRECIONAMENTO TOTAL DE ATENDIMENTO ──────────────────────────────────
+  // Quando ativo, a Lia PARA de conduzir qualquer fluxo (vagas, currículo,
+  // pré-triagem etc.) e responde toda mensagem recebida apenas com um convite
+  // para continuar a conversa no novo número de WhatsApp abaixo.
+  // Para voltar ao atendimento normal da Lia, basta trocar para false.
+  REDIRECIONAMENTO_ATIVO: true,
+  NUMERO_REDIRECIONAMENTO: "5527995175557", // (27) 99517-5557
+  MENSAGEM_REDIRECIONAMENTO:
+    "Oi! 😊 Estamos com um novo número de atendimento.\n\nPra continuar sua conversa e dar andamento à sua candidatura, me chama por aqui:\n\n📲 https://wa.me/5527995175557\n\nAté já! 💙",
   DRIVE_ROOT_FOLDER_ID: process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD",
   DRIVE_SCRIPT_URL: process.env.DRIVE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYrDTUtz01uIEHbCaQwEqHWg--f6oA48RCUFntFOZn2LcqhyZMK6zxIdUGPhBXJPt3GQ/exec",
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
@@ -976,6 +986,30 @@ async function enviarAlertaSimplesThiara(telefoneOriginal, titulo, mensagem) {
   await enviarMensagem(CONFIG.THIARA_WHATSAPP, alerta);
 }
 
+// ── REDIRECIONAMENTO TOTAL: responde qualquer mensagem recebida apenas com o
+// convite para o novo número de WhatsApp, sem rodar o fluxo normal da Lia
+// (sem chamar IA, sem perguntar vaga/currículo etc.). Controlado por
+// CONFIG.REDIRECIONAMENTO_ATIVO — ver comentário junto da config.
+async function tratarRedirecionamentoTotal(telefoneOriginal, conteudoRecebido, messageTimestampMs) {
+  const telefone = limparTelefone(telefoneOriginal);
+  const sessao = garantirSessao(telefone);
+
+  registrarEntradaSessao(sessao, "user", conteudoRecebido, messageTimestampMs);
+  marcarMensagemRecebida(sessao, messageTimestampMs);
+  sessao.historico = sessao.historico.slice(-500);
+  await salvarMensagemSheets(telefone, "user", conteudoRecebido, sessao.nome || "", messageTimestampMs);
+
+  const resposta = CONFIG.MENSAGEM_REDIRECIONAMENTO;
+  registrarEntradaSessao(sessao, "assistant", resposta);
+  marcarConversaRespondida(sessao);
+  sessao.historico = sessao.historico.slice(-500);
+  await salvarMensagemSheets(telefone, "assistant", resposta, sessao.nome || "");
+  await salvarConversaCompletaSheets(telefone, sessao.historico, sessao.nome || "");
+
+  await enviarMensagem(telefone, resposta);
+  console.log(`[REDIRECIONAMENTO TOTAL] ${telefone} → ${CONFIG.NUMERO_REDIRECIONAMENTO}`);
+}
+
 async function pausarPorTrava(telefoneOriginal, motivo, ultimaMensagem, respostaSegura = null) {
   const telefone = limparTelefone(telefoneOriginal);
   const sessao = garantirSessao(telefone);
@@ -1818,6 +1852,19 @@ app.post("/webhook", async (req, res) => {
     const from = limparTelefone(message.from);
     const sessaoAtual = garantirSessao(from);
     const messageTimestampMs = message.timestamp ? Number(message.timestamp) * 1000 : Date.now();
+
+    // ── REDIRECIONAMENTO TOTAL: se ativo, ignora todo o fluxo normal da Lia
+    // (texto, áudio ou documento) e responde só com o convite pro novo número.
+    if (CONFIG.REDIRECIONAMENTO_ATIVO) {
+      const conteudoRecebido = message.text?.body
+        ? message.text.body
+        : message.audio
+        ? "[Áudio recebido]"
+        : "[Documento/Currículo recebido]";
+      await tratarRedirecionamentoTotal(from, conteudoRecebido, messageTimestampMs);
+      return;
+    }
+
     if (message.text?.body) {
       const texto = message.text.body;
       registrarEntradaSessao(sessaoAtual, "user", texto, messageTimestampMs);
