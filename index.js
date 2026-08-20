@@ -20,6 +20,8 @@ const compression = require("compression");
 const calendar   = require("./calendar");
 const supervisor = require("./supervisor");
 const nfRoutes = require("./nf-routes");
+const finRoutes = require("./financeiro-routes");
+const { criarStoreCacheado } = require("./drive-json-store");
 
 const app = express();
 // Desliga o ETag automático do Express — ele é o que fazia o navegador (e
@@ -49,6 +51,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(nfRoutes);
+app.use(finRoutes);
 const PORT = process.env.PORT || 3000;
 const CURRICULOS_DIR = process.env.CURRICULOS_DIR || path.join("/tmp", "effect-curriculos");
 try { fs.mkdirSync(CURRICULOS_DIR, { recursive: true }); } catch (e) { console.error("Erro criando pasta local de currículos:", e.message); }
@@ -1491,22 +1494,27 @@ function carregarSessoesLocal() {
 }
 let inboxDataCache = null;
 
+// Persistência do Inbox: Google Drive (pasta "Inbox"), não mais disco local —
+// disco local some em hospedagens gratuitas a cada deploy/hibernação. Na
+// primeira execução com este código, se ainda existir o arquivo antigo do
+// Volume do Railway (INBOX_DATA_PATH), ele é migrado automaticamente pro
+// Drive uma única vez, sem perder nada do que já estava salvo.
+// lerDadosInbox()/gravarDadosInbox() continuam com a MESMA assinatura de
+// antes (síncronas) — só o armazenamento por baixo mudou — então nenhuma das
+// rotas que já usam essas funções precisou ser alterada.
+const inboxDriveStore = criarStoreCacheado({
+  nomeArquivo: "inbox-data.json",
+  pastaNome: "Inbox",
+  valorPadrao: null,
+  migrarDeArquivoLocal: process.env.INBOX_DATA_PATH || "/data/inbox-data.json"
+});
+
 function lerDadosInbox() {
-  try {
-    if (!fs.existsSync(INBOX_DATA_PATH)) return null;
-    const raw = fs.readFileSync(INBOX_DATA_PATH, "utf8");
-    return JSON.parse(raw);
-  } catch(e) { console.error("lerDadosInbox:", e.message); return null; }
+  return inboxDriveStore.ler();
 }
 
 function gravarDadosInbox(dados) {
-  try {
-    // Garantir que o diretório existe
-    const dir = require("path").dirname(INBOX_DATA_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(INBOX_DATA_PATH, JSON.stringify(dados), "utf8");
-    return true;
-  } catch(e) { console.error("gravarDadosInbox:", e.message); return false; }
+  return inboxDriveStore.gravar(dados);
 }
 
 // Carregar n
@@ -3493,22 +3501,27 @@ app.post("/inbox/encaminhar", async (req, res) => {
 // ROTA — PORTAL DO CLIENTE
 // ============================================================
 
-// Dados de contrato ficam salvos em /data/contratos.json (Railway Volume
-// persistente — mesmo padrão usado para inbox/vagas). Sem Volume montado em
-// /data, o arquivo cai em /tmp e dura só a sessão atual do processo.
-const CONTRATOS_PATH = process.env.CONTRATOS_PATH || "/data/contratos.json";
+// Dados de contrato ficam salvos no Google Drive (pasta "Contratos"), não
+// mais em disco local — hospedagens gratuitas apagam o disco a cada deploy.
+// Se já existir /data/contratos.json (Volume antigo do Railway), o conteúdo é
+// migrado pro Drive automaticamente na primeira execução com este código.
+const contratosDriveStore = criarStoreCacheado({
+  nomeArquivo: "contratos.json",
+  pastaNome: "Contratos",
+  valorPadrao: [],
+  migrarDeArquivoLocal: process.env.CONTRATOS_PATH || "/data/contratos.json"
+});
 
 function lerContratos() {
-  try { return JSON.parse(fs.readFileSync(CONTRATOS_PATH, "utf8")); }
-  catch (e) { return []; }
+  return contratosDriveStore.ler() || [];
 }
 
 function salvarContrato(registro) {
   try {
     const lista = lerContratos();
     lista.unshift(registro);
-    fs.writeFileSync(CONTRATOS_PATH, JSON.stringify(lista.slice(0, 500)), "utf8");
-  } catch (e) { console.error("Erro salvando contrato local:", e.message); }
+    contratosDriveStore.gravar(lista.slice(0, 500));
+  } catch (e) { console.error("Erro salvando contrato:", e.message); }
 }
 
 function escapeHtml(v) {
@@ -5310,25 +5323,22 @@ app.get("/divulgacao", (req, res) => res.sendFile(path.join(__dirname, "divulgac
 // pessoa só (localStorage). O mesmo cadastro de empresa cliente (nome, CNPJ
 // se vier a ser adicionado, cores, logo, contato) serve tanto pra montar o
 // anúncio de vaga quanto, futuramente, pra emissão de contrato.
-const VAGAS_EMPRESAS_PATH = process.env.VAGAS_EMPRESAS_PATH || "/data/vagas-empresas.json";
+// Persistência no Google Drive (pasta "Vagas"), migrando automaticamente do
+// Volume antigo do Railway (VAGAS_EMPRESAS_PATH) se existir — ver drive-json-store.js.
+const empresasVagasDriveStore = criarStoreCacheado({
+  nomeArquivo: "vagas-empresas.json",
+  pastaNome: "Vagas",
+  valorPadrao: [],
+  migrarDeArquivoLocal: process.env.VAGAS_EMPRESAS_PATH || "/data/vagas-empresas.json"
+});
 
 function lerEmpresasVagas() {
-  try {
-    if (fs.existsSync(VAGAS_EMPRESAS_PATH)) {
-      const lista = JSON.parse(fs.readFileSync(VAGAS_EMPRESAS_PATH, "utf8"));
-      return Array.isArray(lista) ? lista : [];
-    }
-  } catch (e) { console.error("lerEmpresasVagas:", e.message); }
-  return [];
+  const lista = empresasVagasDriveStore.ler();
+  return Array.isArray(lista) ? lista : [];
 }
 
 function gravarEmpresasVagas(lista) {
-  try {
-    const dir = path.dirname(VAGAS_EMPRESAS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(VAGAS_EMPRESAS_PATH, JSON.stringify(lista), "utf8");
-    return true;
-  } catch (e) { console.error("gravarEmpresasVagas:", e.message); return false; }
+  return empresasVagasDriveStore.gravar(lista);
 }
 
 // Lista todas as empresas clientes cadastradas (nome, cores, logo, contato).
@@ -5351,25 +5361,20 @@ app.post("/vagas/empresas", (req, res) => {
 // e registrar, com data/hora, cada vez que ela foi divulgada (postada em
 // grupo, Instagram, etc.). Mesmo padrão de arquivo JSON no Volume das
 // empresas clientes acima — salvo no servidor, compartilhado pelo time.
-const VAGAS_DIVULGACOES_PATH = process.env.VAGAS_DIVULGACOES_PATH || "/data/vagas-divulgacoes.json";
+const vagasDivulgacaoDriveStore = criarStoreCacheado({
+  nomeArquivo: "vagas-divulgacoes.json",
+  pastaNome: "Vagas",
+  valorPadrao: [],
+  migrarDeArquivoLocal: process.env.VAGAS_DIVULGACOES_PATH || "/data/vagas-divulgacoes.json"
+});
 
 function lerVagasDivulgacao() {
-  try {
-    if (fs.existsSync(VAGAS_DIVULGACOES_PATH)) {
-      const lista = JSON.parse(fs.readFileSync(VAGAS_DIVULGACOES_PATH, "utf8"));
-      return Array.isArray(lista) ? lista : [];
-    }
-  } catch (e) { console.error("lerVagasDivulgacao:", e.message); }
-  return [];
+  const lista = vagasDivulgacaoDriveStore.ler();
+  return Array.isArray(lista) ? lista : [];
 }
 
 function gravarVagasDivulgacao(lista) {
-  try {
-    const dir = path.dirname(VAGAS_DIVULGACOES_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(VAGAS_DIVULGACOES_PATH, JSON.stringify(lista), "utf8");
-    return true;
-  } catch (e) { console.error("gravarVagasDivulgacao:", e.message); return false; }
+  return vagasDivulgacaoDriveStore.gravar(lista);
 }
 
 // Lista todas as vagas salvas (nome, cargo, empresa vinculada, histórico de divulgações).
@@ -5405,25 +5410,20 @@ app.post("/vagas/divulgacoes/:id/registrar", (req, res) => {
 // no painel /divulgacao deve ser usado — plano fixo de postagem, salvo no
 // servidor e visível/editável por todo o time. Mesmo padrão de JSON no Volume
 // dos blocos de empresas e vagas acima. Formato: { "Nome do Canal": [0,2,4] }.
-const VAGAS_CRONOGRAMA_PATH = process.env.VAGAS_CRONOGRAMA_PATH || "/data/vagas-cronograma.json";
+const vagasCronogramaDriveStore = criarStoreCacheado({
+  nomeArquivo: "vagas-cronograma.json",
+  pastaNome: "Vagas",
+  valorPadrao: {},
+  migrarDeArquivoLocal: process.env.VAGAS_CRONOGRAMA_PATH || "/data/vagas-cronograma.json"
+});
 
 function lerVagasCronograma() {
-  try {
-    if (fs.existsSync(VAGAS_CRONOGRAMA_PATH)) {
-      const obj = JSON.parse(fs.readFileSync(VAGAS_CRONOGRAMA_PATH, "utf8"));
-      return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
-    }
-  } catch (e) { console.error("lerVagasCronograma:", e.message); }
-  return {};
+  const obj = vagasCronogramaDriveStore.ler();
+  return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
 }
 
 function gravarVagasCronograma(obj) {
-  try {
-    const dir = path.dirname(VAGAS_CRONOGRAMA_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(VAGAS_CRONOGRAMA_PATH, JSON.stringify(obj), "utf8");
-    return true;
-  } catch (e) { console.error("gravarVagasCronograma:", e.message); return false; }
+  return vagasCronogramaDriveStore.gravar(obj);
 }
 
 // Lista o cronograma inteiro (canal -> dias da semana em que deve ser usado).
@@ -5445,25 +5445,20 @@ app.post("/vagas/cronograma", (req, res) => {
 // Designs prontos salvos pelo time no painel /divulgacao: cada template guarda
 // os 4 formatos (Feed, Retrato, Stories, LinkedIn) sem a foto da vaga.
 // Mesmo padrão de JSON no Volume dos dois blocos acima.
-const VAGAS_TEMPLATES_PATH = process.env.VAGAS_TEMPLATES_PATH || "/data/vagas-templates.json";
+const vagasTemplatesDriveStore = criarStoreCacheado({
+  nomeArquivo: "vagas-templates.json",
+  pastaNome: "Vagas",
+  valorPadrao: [],
+  migrarDeArquivoLocal: process.env.VAGAS_TEMPLATES_PATH || "/data/vagas-templates.json"
+});
 
 function lerVagasTemplates() {
-  try {
-    if (fs.existsSync(VAGAS_TEMPLATES_PATH)) {
-      const lista = JSON.parse(fs.readFileSync(VAGAS_TEMPLATES_PATH, "utf8"));
-      return Array.isArray(lista) ? lista : [];
-    }
-  } catch (e) { console.error("lerVagasTemplates:", e.message); }
-  return [];
+  const lista = vagasTemplatesDriveStore.ler();
+  return Array.isArray(lista) ? lista : [];
 }
 
 function gravarVagasTemplates(lista) {
-  try {
-    const dir = path.dirname(VAGAS_TEMPLATES_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(VAGAS_TEMPLATES_PATH, JSON.stringify(lista), "utf8");
-    return true;
-  } catch (e) { console.error("gravarVagasTemplates:", e.message); return false; }
+  return vagasTemplatesDriveStore.gravar(lista);
 }
 
 app.get("/vagas/templates", (req, res) => {
@@ -6119,27 +6114,29 @@ supervisor.iniciarSupervisor();
 // SYNC DE DADOS DO INBOX NO GOOGLE DRIVE
 // Persiste entrevistas, status, pipeline, notas — sobrevive a deploys e trocas de dispositivo
 // ══════════════════════════════════════════════════════════════════════════════
-// ── INBOX PERSISTENCE (Railway Volume) ──────────────────────────────────────
-// Dados do Inbox são salvos em /data/inbox-data.json (Railway Volume persistente).
-// O Volume sobrevive a qualquer deploy. Configure em Railway → seu serviço → Volumes
-// e monte em /data. Sem Volume, o arquivo fica em /tmp e dura apenas a sessão atual.
-const INBOX_DATA_PATH = process.env.INBOX_DATA_PATH || "/data/inbox-data.json";
+// ── INBOX PERSISTENCE (Google Drive — ver drive-json-store.js) ─────────────
+// inboxDriveStore (criado lá em cima, perto de lerDadosInbox/gravarDadosInbox)
+// já cuida de ler/gravar no Drive. Aqui só restauramos o geminiAtivo salvo
+// assim que o carregamento inicial do Drive terminar.
 
-// ── RESTAURA geminiAtivo DO VOLUME AO LIGAR O SERVIDOR ──────────────────────
-// BUG CRÍTICO CORRIGIDO: geminiAtivo era sempre resetado para `true` a cada
-// deploy/restart do Railway, mesmo quando o estado salvo no Volume era `false`.
-// Isso fazia a Lia voltar a responder sozinha depois de qualquer redeploy,
-// mesmo com o botão "IA OFF" marcado (o botão mostrava o último estado salvo
-// no navegador, mas o servidor já tinha voltado a chamar o Gemini normalmente).
-try {
+// ── RESTAURA geminiAtivo DO DRIVE AO LIGAR O SERVIDOR ───────────────────────
+// BUG CRÍTICO CORRIGIDO (histórico): geminiAtivo era sempre resetado para
+// `true` a cada deploy/restart, mesmo quando o estado salvo era `false`. Isso
+// fazia a Lia voltar a responder sozinha depois de qualquer redeploy, mesmo
+// com o botão "IA OFF" marcado. Como o carregamento do Drive é assíncrono,
+// esperamos ele terminar (prontoPromise) antes de restaurar o estado — nos
+// primeiros instantes após o servidor subir, geminiAtivo mantém o valor
+// padrão (true) até essa Promise resolver, o que leva no máximo alguns
+// segundos.
+inboxDriveStore.prontoPromise.then(() => {
   const dadosSalvos = lerDadosInbox();
   if (dadosSalvos && typeof dadosSalvos.geminiAtivo === "boolean") {
     geminiAtivo = dadosSalvos.geminiAtivo;
     inboxDataCache = dadosSalvos;
-    console.log(`[IA] Estado restaurado do Volume ao iniciar: geminiAtivo = ${geminiAtivo}`);
+    console.log(`[IA] Estado restaurado do Drive ao iniciar: geminiAtivo = ${geminiAtivo}`);
   }
-} catch (e) {
-  console.error("[IA] Erro ao restaurar geminiAtivo do Volume:", e.message);
-}
+}).catch(e => {
+  console.error("[IA] Erro ao restaurar geminiAtivo do Drive:", e.message);
+});
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

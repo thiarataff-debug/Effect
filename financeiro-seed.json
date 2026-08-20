@@ -1,0 +1,1433 @@
+{
+ "entries": [
+  {
+   "id": 1,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Janeiro",
+   "valor": 2000,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 2,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Fevereiro",
+   "valor": 3174,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 3,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Março",
+   "valor": 9591.43,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 4,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Abril",
+   "valor": 12201,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 5,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Junho",
+   "valor": 6163.33,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 6,
+   "tipo": "rec",
+   "cat": "Effect Consultoria",
+   "mes": "Agosto",
+   "valor": 5000,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 7,
+   "tipo": "rec",
+   "cat": "Box",
+   "mes": "Janeiro",
+   "valor": 2300,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 8,
+   "tipo": "rec",
+   "cat": "Box",
+   "mes": "Agosto",
+   "valor": 2565,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 9,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Janeiro",
+   "valor": 7212.75,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 10,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Fevereiro",
+   "valor": 6572.58,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 11,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Março",
+   "valor": 1189.14,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 12,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Abril",
+   "valor": 5891.99,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 13,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Junho",
+   "valor": 3204.65,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 14,
+   "tipo": "rec",
+   "cat": "PB Embalagens",
+   "mes": "Agosto",
+   "valor": 4408.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 15,
+   "tipo": "rec",
+   "cat": "Kepa",
+   "mes": "Janeiro",
+   "valor": 2337.46,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 16,
+   "tipo": "rec",
+   "cat": "Kepa",
+   "mes": "Março",
+   "valor": 1175.82,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 17,
+   "tipo": "rec",
+   "cat": "Kepa",
+   "mes": "Abril",
+   "valor": 1017.97,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 18,
+   "tipo": "rec",
+   "cat": "Kepa",
+   "mes": "Agosto",
+   "valor": 500,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 19,
+   "tipo": "rec",
+   "cat": "Outros",
+   "mes": "Abril",
+   "valor": 103.61,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 20,
+   "tipo": "rec",
+   "cat": "Saldo Anterior",
+   "mes": "Março",
+   "valor": 584.91,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 21,
+   "tipo": "rec",
+   "cat": "Saldo Anterior",
+   "mes": "Abril",
+   "valor": 200.88,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 22,
+   "tipo": "rec",
+   "cat": "Saldo Anterior",
+   "mes": "Agosto",
+   "valor": 236,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 23,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Fevereiro",
+   "valor": 100,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 24,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Abril",
+   "valor": 135.56,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 25,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Maio",
+   "valor": 135.56,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 26,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Junho",
+   "valor": 135.56,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 27,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Julho",
+   "valor": 135.56,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 28,
+   "tipo": "cus",
+   "cat": "Ballet",
+   "mes": "Agosto",
+   "valor": 135.56,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 29,
+   "tipo": "cus",
+   "cat": "MP Extra",
+   "mes": "Abril",
+   "valor": 1892.15,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 30,
+   "tipo": "cus",
+   "cat": "MP Extra",
+   "mes": "Maio",
+   "valor": 415.35,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 31,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Fevereiro",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 32,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Março",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 33,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Abril",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 34,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Maio",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 35,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Junho",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 36,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Julho",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 37,
+   "tipo": "cus",
+   "cat": "Escola Henrique",
+   "mes": "Agosto",
+   "valor": 1276.54,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 38,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Janeiro",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 39,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Fevereiro",
+   "valor": 1548.89,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 40,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Março",
+   "valor": 1548.89,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 41,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Abril",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 42,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Maio",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 43,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Junho",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 44,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Julho",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 45,
+   "tipo": "cus",
+   "cat": "Escola Maria",
+   "mes": "Agosto",
+   "valor": 1358.9,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 46,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Janeiro",
+   "valor": 1900,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 47,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Fevereiro",
+   "valor": 1834.18,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 48,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Março",
+   "valor": 1800,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 49,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Abril",
+   "valor": 1490.66,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 50,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Junho",
+   "valor": 1487.51,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 51,
+   "tipo": "cus",
+   "cat": "Plano de Saúde",
+   "mes": "Agosto",
+   "valor": 1488.96,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 52,
+   "tipo": "cus",
+   "cat": "EDP",
+   "mes": "Janeiro",
+   "valor": 160,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 53,
+   "tipo": "cus",
+   "cat": "EDP",
+   "mes": "Fevereiro",
+   "valor": 207,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 54,
+   "tipo": "cus",
+   "cat": "EDP",
+   "mes": "Março",
+   "valor": 220.03,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 55,
+   "tipo": "cus",
+   "cat": "EDP",
+   "mes": "Abril",
+   "valor": 220.03,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 56,
+   "tipo": "cus",
+   "cat": "EDP",
+   "mes": "Agosto",
+   "valor": 191.87,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 57,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Janeiro",
+   "valor": 1062.53,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 58,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Fevereiro",
+   "valor": 412.8,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 59,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Março",
+   "valor": 592.69,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 60,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Abril",
+   "valor": 294.4,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 61,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Junho",
+   "valor": 223.72,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 62,
+   "tipo": "cus",
+   "cat": "Mercado Pago Jho",
+   "mes": "Agosto",
+   "valor": 299.21,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 63,
+   "tipo": "cus",
+   "cat": "Sky",
+   "mes": "Abril",
+   "valor": 120,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 64,
+   "tipo": "cus",
+   "cat": "Sky",
+   "mes": "Maio",
+   "valor": 120,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 65,
+   "tipo": "cus",
+   "cat": "Sky",
+   "mes": "Junho",
+   "valor": 120,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 66,
+   "tipo": "cus",
+   "cat": "Sky",
+   "mes": "Julho",
+   "valor": 120,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 67,
+   "tipo": "cus",
+   "cat": "Sky",
+   "mes": "Agosto",
+   "valor": 120,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 68,
+   "tipo": "cus",
+   "cat": "Divulgações",
+   "mes": "Abril",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 69,
+   "tipo": "cus",
+   "cat": "Divulgações",
+   "mes": "Maio",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 70,
+   "tipo": "cus",
+   "cat": "Divulgações",
+   "mes": "Junho",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 71,
+   "tipo": "cus",
+   "cat": "Divulgações",
+   "mes": "Julho",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 72,
+   "tipo": "cus",
+   "cat": "Vigia",
+   "mes": "Abril",
+   "valor": 30,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 73,
+   "tipo": "cus",
+   "cat": "Vigia",
+   "mes": "Maio",
+   "valor": 30,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 74,
+   "tipo": "cus",
+   "cat": "Vigia",
+   "mes": "Junho",
+   "valor": 30,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 75,
+   "tipo": "cus",
+   "cat": "Vigia",
+   "mes": "Julho",
+   "valor": 30,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 76,
+   "tipo": "cus",
+   "cat": "Vigia",
+   "mes": "Agosto",
+   "valor": 30,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 77,
+   "tipo": "cus",
+   "cat": "Cartão Mercado Pago Jho",
+   "mes": "Março",
+   "valor": 661.51,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 78,
+   "tipo": "cus",
+   "cat": "Cartão Mercado Pago Jho",
+   "mes": "Abril",
+   "valor": 661.51,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 79,
+   "tipo": "cus",
+   "cat": "Cartão Mercado Pago Jho",
+   "mes": "Agosto",
+   "valor": 609.95,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 80,
+   "tipo": "cus",
+   "cat": "Dentista",
+   "mes": "Abril",
+   "valor": 180,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 81,
+   "tipo": "cus",
+   "cat": "Dentista",
+   "mes": "Maio",
+   "valor": 180,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 82,
+   "tipo": "cus",
+   "cat": "Dentista",
+   "mes": "Junho",
+   "valor": 180,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 83,
+   "tipo": "cus",
+   "cat": "Dentista",
+   "mes": "Julho",
+   "valor": 180,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 84,
+   "tipo": "cus",
+   "cat": "Dentista",
+   "mes": "Agosto",
+   "valor": 180,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 85,
+   "tipo": "cus",
+   "cat": "Futsal",
+   "mes": "Abril",
+   "valor": 140,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 86,
+   "tipo": "cus",
+   "cat": "Futsal",
+   "mes": "Junho",
+   "valor": 140,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 87,
+   "tipo": "cus",
+   "cat": "Contabilidade",
+   "mes": "Abril",
+   "valor": 150,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 88,
+   "tipo": "cus",
+   "cat": "Contabilidade",
+   "mes": "Maio",
+   "valor": 150,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 89,
+   "tipo": "cus",
+   "cat": "Contabilidade",
+   "mes": "Junho",
+   "valor": 250,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 90,
+   "tipo": "cus",
+   "cat": "Contabilidade",
+   "mes": "Julho",
+   "valor": 150,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 91,
+   "tipo": "cus",
+   "cat": "Contabilidade",
+   "mes": "Agosto",
+   "valor": 150,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 92,
+   "tipo": "cus",
+   "cat": "Imposto Jhonny",
+   "mes": "Abril",
+   "valor": 184.4,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 93,
+   "tipo": "cus",
+   "cat": "Imposto Jhonny",
+   "mes": "Agosto",
+   "valor": 938.92,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 94,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Janeiro",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 95,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Fevereiro",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 96,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Março",
+   "valor": 74.21,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 97,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Abril",
+   "valor": 74.21,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 98,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Junho",
+   "valor": 80,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 99,
+   "tipo": "cus",
+   "cat": "Cesan",
+   "mes": "Agosto",
+   "valor": 71.86,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 100,
+   "tipo": "cus",
+   "cat": "MEI",
+   "mes": "Agosto",
+   "valor": 86.05,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 101,
+   "tipo": "cus",
+   "cat": "Mercado Pago Thi",
+   "mes": "Março",
+   "valor": 434,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 102,
+   "tipo": "cus",
+   "cat": "Mercado Pago Thi",
+   "mes": "Abril",
+   "valor": 434,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 103,
+   "tipo": "cus",
+   "cat": "Combustível",
+   "mes": "Janeiro",
+   "valor": 500,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 104,
+   "tipo": "cus",
+   "cat": "Combustível",
+   "mes": "Março",
+   "valor": 100,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 105,
+   "tipo": "cus",
+   "cat": "Supermercado",
+   "mes": "Março",
+   "valor": 2500,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 106,
+   "tipo": "cus",
+   "cat": "Poupança",
+   "mes": "Março",
+   "valor": 2600,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 107,
+   "tipo": "cus",
+   "cat": "Poupança",
+   "mes": "Abril",
+   "valor": 5150,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 108,
+   "tipo": "poup",
+   "cat": "Poupança",
+   "mes": "Março",
+   "valor": 2600,
+   "desc": "importado da planilha 2026"
+  },
+  {
+   "id": 109,
+   "tipo": "poup",
+   "cat": "Poupança",
+   "mes": "Abril",
+   "valor": 5150,
+   "desc": "importado da planilha 2026"
+  }
+ ],
+ "notas": [
+  {
+   "id": 1,
+   "num": "5471",
+   "cli": "CIDADE MARAVILHOSA",
+   "valor": 39900,
+   "valorProdutos": 39900,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 77)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-17",
+     "val": 39900.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "num": "5476",
+   "cli": "CIDADE MARAVILHOSA",
+   "valor": 35760,
+   "valorProdutos": 35760,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 78)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-17",
+     "val": 35760.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "num": "5757",
+   "cli": "VERSATIL ALIMENTOS",
+   "valor": 11955.2,
+   "valorProdutos": 11955.2,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 97)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-03",
+     "val": 3985.07,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-10",
+     "val": 3985.07,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-08-17",
+     "val": 3985.07,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "num": "5790",
+   "cli": "ENGAGE",
+   "valor": 28230,
+   "valorProdutos": 28230,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 98)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-21",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-28",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-04",
+     "val": 9410.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "num": "5791",
+   "cli": "ENGAGE",
+   "valor": 28230,
+   "valorProdutos": 28230,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 99)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-21",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-28",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-04",
+     "val": 9410.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "num": "5792",
+   "cli": "ENGAGE",
+   "valor": 28230,
+   "valorProdutos": 28230,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 100)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-21",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-28",
+     "val": 9410.0,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-04",
+     "val": 9410.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "num": "5793",
+   "cli": "ENGAGE",
+   "valor": 22974,
+   "valorProdutos": 22974,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 101)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-21",
+     "val": 7658.0,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-28",
+     "val": 7658.0,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-04",
+     "val": 7658.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "num": "5812",
+   "cli": "CIDADE MARAVILHOSA",
+   "valor": 32160,
+   "valorProdutos": 32160,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 102)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-10-05",
+     "val": 32160.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "num": "5813",
+   "cli": "CIDADE MARAVILHOSA",
+   "valor": 39900,
+   "valorProdutos": 39900,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 103)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-10-05",
+     "val": 39900.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "num": "5831",
+   "cli": "EBEYBE",
+   "valor": 1530,
+   "valorProdutos": 1530,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 104)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-21",
+     "val": 510.0,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-28",
+     "val": 510.0,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-04",
+     "val": 510.0,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "num": "5854",
+   "cli": "EBEYBE",
+   "valor": 16325.64,
+   "valorProdutos": 16325.64,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 105)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-26",
+     "val": 5441.88,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-02",
+     "val": 5441.88,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-09",
+     "val": 5441.88,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "num": "5863",
+   "cli": "ENGAGE",
+   "valor": 1876.21,
+   "valorProdutos": 1876.21,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 106)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-27",
+     "val": 625.4,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-03",
+     "val": 625.4,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-10",
+     "val": 625.4,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "num": "5866",
+   "cli": "ENGAGE",
+   "valor": 19145,
+   "valorProdutos": 19145,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 107)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-27",
+     "val": 6381.67,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-03",
+     "val": 6381.67,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-10",
+     "val": 6381.67,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "num": "5882",
+   "cli": "DOUTOR NATURE",
+   "valor": 15312.48,
+   "valorProdutos": 15312.48,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 108)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-24",
+     "val": 5104.16,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-31",
+     "val": 5104.16,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-07",
+     "val": 5104.16,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "num": "5891",
+   "cli": "ENGAGE",
+   "valor": 8691.83,
+   "valorProdutos": 8691.83,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 109)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-01",
+     "val": 2897.28,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-08",
+     "val": 2897.28,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-15",
+     "val": 2897.28,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "num": "5896",
+   "cli": "DOUTOR NATURE",
+   "valor": 14970.48,
+   "valorProdutos": 14970.48,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 110)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-08-24",
+     "val": 4990.16,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-08-31",
+     "val": 4990.16,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-07",
+     "val": 4990.16,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "num": "5958",
+   "cli": "VERSATIL ALIMENTOS",
+   "valor": 5632,
+   "valorProdutos": 5632,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 111)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-08",
+     "val": 1877.33,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-15",
+     "val": 1877.33,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-22",
+     "val": 1877.33,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "num": "5959",
+   "cli": "EBEYBE",
+   "valor": 17638,
+   "valorProdutos": 17638,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 112)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-15",
+     "val": 5879.33,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-22",
+     "val": 5879.33,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-29",
+     "val": 5879.33,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "num": "5963",
+   "cli": "ENGAGE",
+   "valor": 19252.86,
+   "valorProdutos": 19252.86,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 113)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-16",
+     "val": 6417.62,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-23",
+     "val": 6417.62,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-09-30",
+     "val": 6417.62,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "num": "5973",
+   "cli": "VERSATIL ALIMENTOS",
+   "valor": 2464.09,
+   "valorProdutos": 2464.09,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 114)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-10",
+     "val": 1232.05,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-17",
+     "val": 1232.05,
+     "status": "pendente"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "num": "5972",
+   "cli": "ENGAGE",
+   "valor": 32316.76,
+   "valorProdutos": 32316.76,
+   "emis": "",
+   "origem": "relançada automaticamente a partir da planilha JHO (linha 115)",
+   "parcelas": [
+    {
+     "n": 1,
+     "venc": "2026-09-19",
+     "val": 10772.25,
+     "status": "pendente"
+    },
+    {
+     "n": 2,
+     "venc": "2026-09-24",
+     "val": 10772.25,
+     "status": "pendente"
+    },
+    {
+     "n": 3,
+     "venc": "2026-10-01",
+     "val": 10772.25,
+     "status": "pendente"
+    }
+   ]
+  }
+ ]
+}

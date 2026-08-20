@@ -5,22 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Controle Financeiro</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.33.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* ── PALETA EFFECT ──────────────────────────────────────────────────────
+   Usa exclusivamente as cores de marca da Effect (nunca outras cores):
+   #ffffff · #f5f7fa · #2a2a2b · #a1a1aa · #8ed1b2 · #f4afa1
+   Os papéis de "azul" e "roxo" do layout original foram reaproveitados
+   com o neutro escuro (#2a2a2b) e o cinza (#a1a1aa), já que não há azul/
+   roxo aprovados na paleta. Tipografia: título em Montserrat Negrito,
+   subtítulo/corpo em Montserrat padrão. */
 :root{
-  --bg:#fff;--bg2:#f5f5f5;--bg3:#ececec;
-  --tx:#1a1a1a;--tx2:#666;--tx3:#999;
-  --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.18);
+  --bg:#ffffff;--bg2:#f5f7fa;--bg3:#f5f7fa;
+  --tx:#2a2a2b;--tx2:rgba(42,42,43,.62);--tx3:#a1a1aa;
+  --bd:rgba(42,42,43,.1);--bd2:rgba(42,42,43,.18);
   --rm:8px;--rl:12px;
-  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --grn:#1d9e75;--red:#e24b4a;--blu:#378add;--amb:#ba7517;--pur:#8e44ad;
-  --grn-bg:#eaf3de;--red-bg:#fcebeb;--blu-bg:#e6f1fb;--amb-bg:#faeeda;--pur-bg:#f5eef8;
+  --font:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-title:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --grn:#8ed1b2;--red:#f4afa1;--blu:#2a2a2b;--amb:#a1a1aa;--pur:#2a2a2b;
+  --grn-bg:rgba(142,209,178,.28);--red-bg:rgba(244,175,161,.30);--blu-bg:rgba(42,42,43,.06);--amb-bg:rgba(161,161,170,.22);--pur-bg:rgba(42,42,43,.06);
+  --grn-tx:#2a2a2b;--red-tx:#2a2a2b;--blu-tx:#2a2a2b;--amb-tx:#2a2a2b;--pur-tx:#2a2a2b;
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#1e1e1e;--bg2:#2a2a2a;--bg3:#333;
-  --tx:#f0f0f0;--tx2:#aaa;--tx3:#666;
-  --bd:rgba(255,255,255,.09);--bd2:rgba(255,255,255,.18);
-  --grn-bg:#0f3d2b;--red-bg:#3d1515;--blu-bg:#0d2740;--amb-bg:#3d2800;--pur-bg:#2d1540;
+  --bg:#2a2a2b;--bg2:rgba(245,247,250,.05);--bg3:rgba(245,247,250,.08);
+  --tx:#f5f7fa;--tx2:rgba(245,247,250,.68);--tx3:#a1a1aa;
+  --bd:rgba(245,247,250,.09);--bd2:rgba(245,247,250,.18);
+  --grn:#8ed1b2;--red:#f4afa1;--blu:#f5f7fa;--amb:#a1a1aa;--pur:#f5f7fa;
+  --grn-bg:rgba(142,209,178,.18);--red-bg:rgba(244,175,161,.18);--blu-bg:rgba(245,247,250,.08);--amb-bg:rgba(161,161,170,.18);--pur-bg:rgba(245,247,250,.08);
+  --grn-tx:#8ed1b2;--red-tx:#f4afa1;--blu-tx:#f5f7fa;--amb-tx:#f5f7fa;--pur-tx:#f5f7fa;
 }}
+h1,.ct,.kpi-l,.lmh-name,.pipe-col-title,.tab{font-family:var(--font-title);font-weight:700}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);font-size:13px;color:var(--tx);background:var(--bg2);padding:16px}
 .wrap{max-width:980px;margin:0 auto;background:var(--bg);border-radius:16px;padding:20px;border:.5px solid var(--bd)}
@@ -28,7 +43,7 @@ body{font-family:var(--font);font-size:13px;color:var(--tx);background:var(--bg2
 .topbar h1{font-size:15px;font-weight:500;display:flex;align-items:center;gap:8px}
 .score-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;cursor:help;position:relative}
 .score-badge:hover .score-tip{display:block}
-.score-tip{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rl);padding:10px 13px;width:240px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:99;text-align:left}
+.score-tip{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rl);padding:10px 13px;width:240px;box-shadow:0 4px 16px rgba(42,42,43,.12);z-index:99;text-align:left}
 .score-tip-title{font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 .score-tip-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px}
 .score-tip-row:last-child{margin-bottom:0}
@@ -60,7 +75,7 @@ select:focus,input:focus{outline:2px solid var(--blu);outline-offset:-1px}
 .r2{grid-template-columns:1fr 1fr}
 .btn{height:32px;padding:0 14px;font-size:12px;font-family:inherit;border:.5px solid var(--bd2);border-radius:var(--rm);cursor:pointer;background:var(--bg);color:var(--tx);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .btn-p{background:var(--grn);border-color:var(--grn);color:#fff;font-weight:500}
-.btn-p:hover{background:#0f6e56}
+.btn-p:hover{filter:brightness(.92)}
 .btn-sm{height:24px;padding:0 8px;font-size:11px}
 .btn-d{border-color:var(--red);color:var(--red);background:none}
 .btn-d:hover{background:var(--red-bg)}
@@ -70,11 +85,11 @@ select:focus,input:focus{outline:2px solid var(--blu);outline-offset:-1px}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tbody tr:hover td{background:var(--bg2)}
 .pill{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;font-weight:500}
-.p-rec{background:var(--grn-bg);color:#3b6d11}.p-cus{background:var(--red-bg);color:#a32d2d}
-.p-poup{background:var(--blu-bg);color:#185fa5}.p-pend{background:var(--amb-bg);color:#854f0b}
-.p-ok{background:var(--grn-bg);color:#3b6d11}.p-venc{background:var(--red-bg);color:#a32d2d}
-.p-prop{background:var(--pur-bg);color:#5b2c8e}.p-cont{background:var(--blu-bg);color:#185fa5}
-.p-ent{background:var(--amb-bg);color:#854f0b}.p-rec2{background:var(--grn-bg);color:#3b6d11}
+.p-rec{background:var(--grn-bg);color:var(--grn-tx)}.p-cus{background:var(--red-bg);color:var(--red-tx)}
+.p-poup{background:var(--blu-bg);color:var(--blu-tx)}.p-pend{background:var(--amb-bg);color:var(--amb-tx)}
+.p-ok{background:var(--grn-bg);color:var(--grn-tx)}.p-venc{background:var(--red-bg);color:var(--red-tx)}
+.p-prop{background:var(--pur-bg);color:var(--pur-tx)}.p-cont{background:var(--blu-bg);color:var(--blu-tx)}
+.p-ent{background:var(--amb-bg);color:var(--amb-tx)}.p-rec2{background:var(--grn-bg);color:var(--grn-tx)}
 .bar-bg{height:6px;background:var(--bd);border-radius:3px;overflow:hidden}
 .bar-fill{height:100%;border-radius:3px}
 .mbar{margin-bottom:10px}
@@ -110,9 +125,9 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
 .chip{padding:3px 11px;border-radius:20px;font-size:11px;cursor:pointer;border:.5px solid var(--bd2);background:var(--bg);color:var(--tx2);font-family:inherit;transition:all .12s}
 .chip:hover{border-color:var(--bd2);color:var(--tx)}
 .chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx);font-weight:500}
-.chip.on-rec{background:var(--grn-bg);color:#3b6d11;border-color:#9fd070;font-weight:500}
-.chip.on-cus{background:var(--red-bg);color:#a32d2d;border-color:#f0a0a0;font-weight:500}
-.chip.on-poup{background:var(--blu-bg);color:#185fa5;border-color:#90bce8;font-weight:500}
+.chip.on-rec{background:var(--grn-bg);color:var(--grn-tx);border-color:var(--grn);font-weight:500}
+.chip.on-cus{background:var(--red-bg);color:var(--red-tx);border-color:var(--red);font-weight:500}
+.chip.on-poup{background:var(--blu-bg);color:var(--blu-tx);border-color:var(--blu);font-weight:500}
 /* Barra de entrada — formulário horizontal limpo */
 .add-bar{display:flex;gap:6px;align-items:center;padding:10px 14px;border:.5px solid var(--bd);border-radius:var(--rl);background:var(--bg);margin-bottom:8px}
 .add-bar-type{display:flex;border:.5px solid var(--bd2);border-radius:var(--rm);overflow:hidden;flex-shrink:0}
@@ -129,20 +144,20 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
 .add-bar-val{flex:0 0 110px;text-align:right}
 .add-bar-val input{text-align:right}
 .add-bar-submit{width:30px;height:30px;border-radius:50%;border:none;background:var(--grn);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:background .12s}
-.add-bar-submit:hover{background:#0f6e56}
+.add-bar-submit:hover{filter:brightness(.92)}
 /* Faixa de vencimentos pendentes */
 .venc-strip{margin-bottom:8px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
 .venc-strip:empty{display:none}
 .venc-strip::-webkit-scrollbar{height:3px}.venc-strip::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
 .venc-chip{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:var(--rm);border:.5px solid;white-space:nowrap;flex-shrink:0;font-size:11px}
 .venc-chip.vc-ok{background:var(--bg2);border-color:var(--bd);color:var(--tx2)}
-.venc-chip.vc-warn{background:var(--amb-bg);border-color:#e8c060;color:#7a4300}
-.venc-chip.vc-late{background:var(--red-bg);border-color:#f0a0a0;color:#8b1a1a}
+.venc-chip.vc-warn{background:var(--amb-bg);border-color:var(--amb);color:var(--amb-tx)}
+.venc-chip.vc-late{background:var(--red-bg);border-color:var(--red);color:var(--red-tx)}
 .venc-chip-name{font-weight:500}
 .venc-chip-val{color:inherit;opacity:.75}
 .venc-chip-day{font-size:10px;opacity:.7}
-.venc-chip button{height:20px;padding:0 7px;font-size:10px;font-family:inherit;border:none;border-radius:4px;cursor:pointer;background:rgba(0,0,0,.08);color:inherit;font-weight:500}
-.venc-chip button:hover{background:rgba(0,0,0,.18)}
+.venc-chip button{height:20px;padding:0 7px;font-size:10px;font-family:inherit;border:none;border-radius:4px;cursor:pointer;background:rgba(42,42,43,.08);color:inherit;font-weight:500}
+.venc-chip button:hover{background:rgba(42,42,43,.18)}
 /* Ledger body */
 .ledger{border:.5px solid var(--bd);border-radius:var(--rl);overflow:hidden}
 .ledger-month-hdr{display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--bg2);border-bottom:.5px solid var(--bd)}
@@ -422,30 +437,36 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
   <div class="card">
     <div class="ct">Nova Nota Fiscal <span style="font-size:10px;color:var(--tx2)">Comiss&#227;o calculada automaticamente (3%)</span></div>
     <!-- PDF UPLOAD -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--blu-bg);border-radius:var(--rm);border:.5px solid rgba(55,138,221,.2)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--blu-bg);border-radius:var(--rm);border:.5px solid var(--bd2)">
       <i class="ti ti-upload" style="color:var(--blu);font-size:18px"></i>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:500;color:var(--tx)">Anexar DANFE (PDF)</div>
-        <div style="font-size:10px;color:var(--tx2);margin-top:1px">Selecione o PDF da nota fiscal e os campos ser&#227;o preenchidos automaticamente</div>
+        <div style="font-size:10px;color:var(--tx2);margin-top:1px">Anexe 1 ou v&#225;rios PDFs de nota fiscal &#8212; a NF &#233; lan&#231;ada automaticamente (voc&#234; s&#243; precisa conferir se algum vier incompleto)</div>
       </div>
       <label style="cursor:pointer">
-        <input type="file" id="nf-pdf-input" accept=".pdf" style="display:none" onchange="importarNFPDF(this)">
-        <span class="btn btn-b btn-sm"><i class="ti ti-file-type-pdf"></i> Selecionar PDF</span>
+        <input type="file" id="nf-pdf-input" accept=".pdf" multiple style="display:none" onchange="importarNFPDF(this)">
+        <span class="btn btn-b btn-sm"><i class="ti ti-file-type-pdf"></i> Selecionar PDF(s)</span>
       </label>
-      <div id="nf-pdf-status" style="font-size:11px;color:var(--tx2)"></div>
+      <div id="nf-pdf-status" style="font-size:11px;color:var(--tx2);max-width:320px"></div>
     </div>
-    <div class="row r5" style="margin-bottom:8px">
+    <div class="row r3" style="margin-bottom:8px">
       <div class="fg"><label>N&#186; da NF</label><input type="text" id="nf-num" placeholder="5589"></div>
       <div class="fg"><label>Cliente</label><input type="text" id="nf-cli" placeholder="ENGAGE..."></div>
-      <div class="fg"><label>Valor da NF R$</label><input type="number" id="nf-val" placeholder="16.651,05" oninput="calcNFComis()"></div>
-      <div class="fg"><label>N&#186; de parcelas</label><select id="nf-parc" onchange="buildVencFields()"><option value="1">1x</option><option value="2">2x</option><option value="3" selected>3x</option><option value="4">4x</option></select></div>
       <div class="fg"><label>Emiss&#227;o</label><input type="date" id="nf-emis"></div>
     </div>
-    <div id="nf-venc-fields" class="row r4" style="margin-bottom:8px"></div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-      <div style="background:var(--bg2);padding:8px 14px;border-radius:var(--rm);font-size:12px">
-        Comiss&#227;o total: <strong id="nf-com-tot" style="color:var(--grn)">R$ 0,00</strong> &nbsp;|&nbsp; Por parcela: <strong id="nf-com-par" style="color:var(--grn)">R$ 0,00</strong>
+    <div class="row r4" style="margin-bottom:8px">
+      <div class="fg"><label>Total da nota R$</label><input type="number" id="nf-val" placeholder="16.651,05" oninput="calcNFComis()"></div>
+      <div class="fg"><label>Valor total dos produtos R$ <span style="font-weight:400;color:var(--tx3)" title="Base da comiss&#227;o de 3%">(base da comiss&#227;o)</span></label><input type="number" id="nf-prod" placeholder="16.651,05" oninput="calcNFComis()"></div>
+      <div class="fg"><label>N&#186; de parcelas</label><select id="nf-parc" onchange="buildVencFields()"><option value="1">1x</option><option value="2">2x</option><option value="3" selected>3x</option></select></div>
+      <div class="fg" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <div style="background:var(--bg2);padding:0 10px;height:32px;border-radius:var(--rm);font-size:11px;display:flex;align-items:center;white-space:nowrap">
+          Comiss&#227;o: <strong id="nf-com-tot" style="color:var(--grn-tx);margin:0 4px">R$ 0,00</strong> &middot; parcela <strong id="nf-com-par" style="color:var(--grn-tx);margin-left:4px">R$ 0,00</strong>
+        </div>
       </div>
+    </div>
+    <div id="nf-venc-fields" class="row r4" style="margin-bottom:10px"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
       <button class="btn btn-p" onclick="addNF()"><i class="ti ti-file-plus"></i> Registrar NF</button>
     </div>
   </div>
@@ -611,11 +632,46 @@ const CATS={
   poup:['Poupança','Reserva de Emergência']
 };
 const REC_PLAN=[13850,6573,9825,19121,0,9368,0,0,0,0,0,0];
-const CLRS=['#e24b4a','#ba7517','#378add','#1d9e75','#8e44ad','#e67e22','#2e86c1','#f39c12','#c0392b','#27ae60','#7d3c98','#1a5276'];
+// Paleta Effect (só as cores de marca, em variações de opacidade para dar 12 tons distintos)
+const CLRS=['#8ed1b2','#f4afa1','#2a2a2b','#a1a1aa','rgba(142,209,178,.55)','rgba(244,175,161,.55)','rgba(42,42,43,.55)','rgba(161,161,170,.55)','rgba(142,209,178,.3)','rgba(244,175,161,.3)','rgba(42,42,43,.3)','rgba(161,161,170,.3)'];
 function fmt(v){return'R$ '+Math.round(v).toLocaleString('pt-BR')}
 function fmtF(v){return'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
-function save(k,v){try{localStorage.setItem('ef_'+k,JSON.stringify(v))}catch(e){}}
+// ── PERSISTÊNCIA CENTRAL (servidor) ─────────────────────────────────────
+// Antes, tudo isso só ficava salvo no localStorage do navegador (preso a um
+// único computador/navegador). Agora save() continua gravando local (pra
+// tela responder na hora) e também manda uma cópia pro servidor — que grava
+// no Volume do Railway (sobrevive a deploys e é o mesmo dado em qualquer
+// dispositivo). Ver financeiro-routes.js.
+function save(k,v){
+  try{localStorage.setItem('ef_'+k,JSON.stringify(v))}catch(e){}
+  try{
+    fetch('/financeiro/api/store/'+encodeURIComponent(k),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({value:v})
+    }).catch(function(e){console.warn('[financeiro] falha ao sincronizar "'+k+'" com o servidor (ficou salvo só localmente por enquanto):',e.message)});
+  }catch(e){}
+}
 function load(k,def){try{const s=localStorage.getItem('ef_'+k);return s?JSON.parse(s):def}catch(e){return def}}
+// Na primeira carga desta aba/sessão, busca o que está salvo no servidor e,
+// se for diferente do que está no navegador, atualiza o localStorage e
+// recarrega a página uma vez (assim as telas nascem já com o dado certo,
+// sem precisar reescrever toda a lógica de renderização de cada aba).
+(function syncFromServer(){
+  try{
+    if(sessionStorage.getItem('ef_synced'))return;
+    fetch('/financeiro/api/store').then(function(r){return r.json()}).then(function(j){
+      sessionStorage.setItem('ef_synced','1');
+      if(!j||!j.ok||!j.store)return;
+      var mudou=false;
+      Object.keys(j.store).forEach(function(k){
+        var novo=JSON.stringify(j.store[k]);
+        if(localStorage.getItem('ef_'+k)!==novo){localStorage.setItem('ef_'+k,novo);mudou=true}
+      });
+      if(mudou)location.reload();
+    }).catch(function(e){console.warn('[financeiro] sem conexão com o servidor agora — usando dados locais deste navegador:',e.message)});
+  }catch(e){}
+})();
 const SEED=[
   {id:1,tipo:'rec',cat:'Effect Consultoria',mes:'Janeiro',valor:2000,desc:''},
   {id:2,tipo:'rec',cat:'PB Embalagens',mes:'Janeiro',valor:7212.75,desc:''},
@@ -688,7 +744,7 @@ let nxtVId=Math.max(...vencimentos.map(function(v){return v.id}),11)+1;
 // vencValores: {vencId:{mes:valor}} — valor de cada conta fixa por mês (variações mês a mês)
 let vencValores=load('vencValores',{});
 const SEED_NF=[
-  {id:1,num:'5589',cli:'ENGAGE ELETRO',valor:16651.05,emis:'2026-06-09',status:'pendente',
+  {id:1,num:'5589',cli:'ENGAGE ELETRO',valor:16651.05,valorProdutos:16651.05,emis:'2026-06-09',status:'pendente',
    parcelas:[{n:1,venc:'2026-07-07',val:5550.35},{n:2,venc:'2026-07-14',val:5550.35},{n:3,venc:'2026-07-21',val:5550.35}]}
 ];
 let notas=load('notas',JSON.parse(JSON.stringify(SEED_NF)));
@@ -723,8 +779,8 @@ function calcBM(){
 }
 var ch={rv:null,sal:null,pct:null,gd:null,sc:null,rent:null,comp:null,sim:null,effectSrc:null};
 function isDark(){return matchMedia('(prefers-color-scheme:dark)').matches}
-function txC(){return isDark()?'rgba(255,255,255,.5)':'rgba(0,0,0,.4)'}
-function gcC(){return isDark()?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)'}
+function txC(){return isDark()?'rgba(255,255,255,.5)':'rgba(42,42,43,.4)'}
+function gcC(){return isDark()?'rgba(255,255,255,.06)':'rgba(42,42,43,.06)'}
 function bOpts(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmt(c.raw)}}}},scales:{x:{ticks:{color:txC(),autoSkip:false,maxRotation:0,font:{size:10}},grid:{display:false}},y:{ticks:{color:txC(),font:{size:10},callback:function(v){return v>=1000?'R$'+Math.round(v/1000)+'k':fmt(v)}},grid:{color:gcC()}}}}}
 function rDash(){
   var bm=calcBM();
@@ -743,17 +799,17 @@ function rDash(){
   var sals=MESES.map(function(m){return bm[m].rec-bm[m].cus});
   if(ch.rv)ch.rv.destroy();
   ch.rv=new Chart(document.getElementById('c-rv'),{type:'bar',data:{labels:lbs,datasets:[
-    {label:'Receita',data:recs,backgroundColor:'#1d9e75',borderRadius:3,barPercentage:.4},
-    {label:'Custo',data:cuss,backgroundColor:'#e24b4a',borderRadius:3,barPercentage:.4}
+    {label:'Receita',data:recs,backgroundColor:'#8ed1b2',borderRadius:3,barPercentage:.4},
+    {label:'Custo',data:cuss,backgroundColor:'#f4afa1',borderRadius:3,barPercentage:.4}
   ]},options:bOpts()});
   if(ch.sal)ch.sal.destroy();
-  ch.sal=new Chart(document.getElementById('c-sal'),{type:'line',data:{labels:lbs,datasets:[{label:'Saldo',data:sals,borderColor:'#378add',backgroundColor:'rgba(55,138,221,.08)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:sals.map(function(v){return v>=0?'#1d9e75':'#e24b4a'})}]},options:bOpts()});
+  ch.sal=new Chart(document.getElementById('c-sal'),{type:'line',data:{labels:lbs,datasets:[{label:'Saldo',data:sals,borderColor:'#2a2a2b',backgroundColor:'rgba(42,42,43,.06)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:sals.map(function(v){return v>=0?'#8ed1b2':'#f4afa1'})}]},options:bOpts()});
   var pcts=MESES.map(function(m,i){return REC_PLAN[i]>0?Math.round(bm[m].rec/REC_PLAN[i]*100):0});
   if(ch.pct)ch.pct.destroy();
   var pOpts=bOpts();
   pOpts.scales.y.ticks.callback=function(v){return v+'%'};
   pOpts.plugins.tooltip.callbacks.label=function(c){return c.raw+'%'};
-  ch.pct=new Chart(document.getElementById('c-pct'),{type:'bar',data:{labels:lbs,datasets:[{label:'%',data:pcts,backgroundColor:pcts.map(function(v){return v>=100?'#1d9e75':v>=70?'#ba7517':'#e24b4a'}),borderRadius:3,barPercentage:.55}]},options:pOpts});
+  ch.pct=new Chart(document.getElementById('c-pct'),{type:'bar',data:{labels:lbs,datasets:[{label:'%',data:pcts,backgroundColor:pcts.map(function(v){return v>=100?'#8ed1b2':v>=70?'#a1a1aa':'#f4afa1'}),borderRadius:3,barPercentage:.55}]},options:pOpts});
   // ─── BLOCO EFFECT ───
   // Receita por categoria e mês
   var recCats=CATS.rec.filter(function(c){return c!=='Saldo Anterior'});
@@ -776,7 +832,7 @@ function rDash(){
     '<div class="kpi"><div class="kpi-l">Demais fontes</div><div class="kpi-v" style="color:var(--blu)">'+fmt(totalOthers)+'</div><div class="kpi-s">'+(100-pctEffect)+'% do total</div></div>';
   // Gráfico empilhado por origem — top 4 categorias + Outros agrupados
   var topCats=['Effect Consultoria','PB Embalagens','Kepa','Box'];
-  var COLORS=['#1d9e75','#378add','#ba7517','#8e44ad','#aaa'];
+  var COLORS=['#8ed1b2','#2a2a2b','#f4afa1','rgba(142,209,178,.55)','#a1a1aa'];
   var catDatasets=topCats.map(function(cat,ci){
     return{label:cat,data:MESES.map(function(m){
       return entries.filter(function(e){return e.tipo==='rec'&&e.cat===cat&&e.mes===m})
@@ -800,7 +856,7 @@ function rDash(){
     {label:'PB Embalagens',val:entries.filter(function(e){return e.tipo==='rec'&&e.cat==='PB Embalagens'}).reduce(function(s,e){return s+e.valor},0),color:'var(--blu)'},
     {label:'Kepa',val:entries.filter(function(e){return e.tipo==='rec'&&e.cat==='Kepa'}).reduce(function(s,e){return s+e.valor},0),color:'var(--amb)'},
     {label:'Box',val:entries.filter(function(e){return e.tipo==='rec'&&e.cat==='Box'}).reduce(function(s,e){return s+e.valor},0),color:'var(--pur)'},
-    {label:'Outros',val:entries.filter(function(e){return e.tipo==='rec'&&e.cat!=='Saldo Anterior'&&['Effect Consultoria','PB Embalagens','Kepa','Box'].indexOf(e.cat)<0}).reduce(function(s,e){return s+e.valor},0),color:'#aaa'}
+    {label:'Outros',val:entries.filter(function(e){return e.tipo==='rec'&&e.cat!=='Saldo Anterior'&&['Effect Consultoria','PB Embalagens','Kepa','Box'].indexOf(e.cat)<0}).reduce(function(s,e){return s+e.valor},0),color:'var(--tx3)'}
   ].filter(function(b){return b.val>0}).sort(function(a,b){return b.val-a.val});
   var maxBar=Math.max.apply(null,barsData.map(function(b){return b.val}));
   barsEl.innerHTML=barsData.map(function(b){
@@ -1221,9 +1277,9 @@ function rTbl(){
     html+='<div class="ledger-month-hdr"><span class="lmh-name">'+mes+'</span><div class="lmh-line"></div><div class="lmh-tots">'+tots+'</div></div>';
     // Sub-agrupar por tipo dentro do mês
     var TYPE_ORDER=[
-      {k:'rec', label:'Receitas', color:'var(--grn)', bg:'var(--grn-bg)', tc:'#3b6d11'},
-      {k:'cus', label:'Custos',   color:'var(--red)', bg:'var(--red-bg)', tc:'#a32d2d'},
-      {k:'poup',label:'Poupança', color:'var(--blu)', bg:'var(--blu-bg)', tc:'#185fa5'}
+      {k:'rec', label:'Receitas', color:'var(--grn)', bg:'var(--grn-bg)', tc:'var(--grn-tx)'},
+      {k:'cus', label:'Custos',   color:'var(--red)', bg:'var(--red-bg)', tc:'var(--red-tx)'},
+      {k:'poup',label:'Poupança', color:'var(--blu)', bg:'var(--blu-bg)', tc:'var(--blu-tx)'}
     ];
     TYPE_ORDER.forEach(function(tp){
       var sub=rows.filter(function(e){return e.tipo===tp.k});
@@ -1376,59 +1432,110 @@ function rScore(){
   chSc=new Chart(document.getElementById('c-sc'),{type:'radar',data:{labels:items.map(function(i){return i.label}),datasets:[{data:items.map(function(i){return Math.min(i.val/i.meta*100,100)}),borderColor:sc,backgroundColor:sc.replace(')',',0.1)').replace('var','').replace('(','rgba('),borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{ticks:{display:false},grid:{color:gcC()},pointLabels:{color:txC(),font:{size:9}},min:0,max:100}},plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return Math.round(c.raw)+'%'}}}}}});
 }
 // ─── IMPORTAR NF VIA PDF ───
-function importarNFPDF(input) {
-  var file = input.files[0];
-  if (!file) return;
+// Extrai o texto (linha a linha, na ordem visual) de um único arquivo PDF.
+function extrairTextoPDF(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var data = new Uint8Array(e.target.result);
+      pdfjsLib.getDocument({data: data}).promise.then(function(pdf) {
+        var textPromises = [];
+        for (var i = 1; i <= pdf.numPages; i++) {
+          textPromises.push(pdf.getPage(i).then(function(page) {
+            return page.getTextContent().then(function(tc) {
+              // Agrupar itens por linha (Y similar = mesma linha visual)
+              var items = tc.items.filter(function(it) { return it.str.trim(); });
+              var linhas = [];
+              items.forEach(function(it) {
+                var y = Math.round(it.transform[5]);
+                var linha = linhas.find(function(l) { return Math.abs(l.y - y) < 4; });
+                if (linha) { linha.items.push(it); }
+                else { linhas.push({y: y, items: [it]}); }
+              });
+              // Ordenar de cima para baixo (Y decrescente = topo da página)
+              linhas.sort(function(a, b) { return b.y - a.y; });
+              // Dentro de cada linha, ordenar da esquerda para a direita
+              linhas.forEach(function(l) {
+                l.items.sort(function(a, b) { return a.transform[4] - b.transform[4]; });
+              });
+              return linhas.map(function(l) {
+                return l.items.map(function(it) { return it.str; }).join(' ');
+              }).join('\n');
+            });
+          }));
+        }
+        return Promise.all(textPromises);
+      }).then(function(pages) { resolve(pages.join('\n')); }).catch(reject);
+    };
+    reader.onerror = function() { reject(new Error('Falha ao ler o arquivo')); };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Envia o PDF original pro servidor pra ficar salvo (mesmo Volume persistente
+// dos outros dados financeiros) e devolve {url,nome} pra guardar na nota.
+// Se o servidor não responder por algum motivo, a nota ainda é lançada (só
+// sem o PDF anexado) — nunca trava o lançamento por causa do upload do arquivo.
+function enviarAnexoNF(file) {
+  var fd = new FormData();
+  fd.append('pdf', file, file.name);
+  return fetch('/financeiro/api/anexo', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) { return (j && j.ok) ? { url: j.url, nome: j.nome } : null; })
+    .catch(function() { return null; });
+}
+// Guarda o último anexo enviado que ainda não foi vinculado a uma nota — usado
+// quando o PDF precisa de conferência manual antes de clicar em "Registrar NF".
+var _nfAnexoAtual = null;
+
+// Anexa 1 ou mais PDFs de NF e lança automaticamente: lê cada PDF, preenche os
+// campos (parseDanfe) e, se todos os dados essenciais vieram completos (nº,
+// cliente, total da nota, valor dos produtos e ao menos 1 vencimento) e a NF
+// ainda não estiver cadastrada, chama addNF() sozinho — sem precisar clicar em
+// "Registrar NF". Só cai pra conferência manual quando falta algo (ex.: notas
+// da Cidade Maravilhosa, que não trazem vencimento no PDF) ou já existe uma NF
+// igual cadastrada (evita lançar a mesma nota 2x).
+async function importarNFPDF(input) {
+  var files = Array.prototype.slice.call(input.files || []);
+  if (!files.length) return;
   var status = document.getElementById('nf-pdf-status');
-  status.textContent = 'Lendo PDF...';
-  status.style.color = 'var(--blu)';
-  // Configurar PDF.js
   if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var data = new Uint8Array(e.target.result);
-    pdfjsLib.getDocument({data: data}).promise.then(function(pdf) {
-      var textPromises = [];
-      for (var i = 1; i <= pdf.numPages; i++) {
-        textPromises.push(pdf.getPage(i).then(function(page) {
-          return page.getTextContent().then(function(tc) {
-            // Agrupar itens por linha (Y similar = mesma linha visual)
-            var items = tc.items.filter(function(it) { return it.str.trim(); });
-            var linhas = [];
-            items.forEach(function(it) {
-              var y = Math.round(it.transform[5]);
-              var linha = linhas.find(function(l) { return Math.abs(l.y - y) < 4; });
-              if (linha) { linha.items.push(it); }
-              else { linhas.push({y: y, items: [it]}); }
-            });
-            // Ordenar de cima para baixo (Y decrescente = topo da página)
-            linhas.sort(function(a, b) { return b.y - a.y; });
-            // Dentro de cada linha, ordenar da esquerda para a direita
-            linhas.forEach(function(l) {
-              l.items.sort(function(a, b) { return a.transform[4] - b.transform[4]; });
-            });
-            return linhas.map(function(l) {
-              return l.items.map(function(it) { return it.str; }).join(' ');
-            }).join('\n');
-          });
-        }));
+  var registradas = [], revisao = [], erros = [];
+  for (var idx = 0; idx < files.length; idx++) {
+    var file = files[idx];
+    status.textContent = 'Lendo ' + (idx + 1) + '/' + files.length + ': ' + file.name + '…';
+    status.style.color = 'var(--blu-tx)';
+    try {
+      var texto = await extrairTextoPDF(file);
+      var r = parseDanfe(texto);
+      var anexo = await enviarAnexoNF(file); // sempre salva o PDF original, mesmo se os campos vierem incompletos
+      var completa = !r.isCM && r.num && r.cli && r.valor > 0 && r.valorProdutos > 0 && r.parcelas.length >= 1;
+      var duplicada = notas.some(function(n) { return n.num === r.num && n.cli === r.cli; });
+      if (completa && !duplicada) {
+        addNF(anexo);
+        registradas.push('NF ' + r.num + ' (' + r.cli.split(' ')[0] + ')');
+      } else if (duplicada) {
+        revisao.push('NF ' + r.num + ' já estava cadastrada, não lancei de novo');
+      } else {
+        _nfAnexoAtual = anexo ? { url: anexo.url, nome: anexo.nome, num: r.num, cli: r.cli } : null;
+        revisao.push((r.num ? 'NF ' + r.num : file.name) + ' — confira os campos e clique em "Registrar NF"' + (anexo ? ' (PDF já está salvo)' : ''));
       }
-      return Promise.all(textPromises);
-    }).then(function(pages) {
-      var texto = pages.join('\n');
-      parseDanfe(texto, status);
-      // Limpar input para permitir reuso
-      input.value = '';
-    }).catch(function(err) {
-      status.textContent = 'Erro ao ler PDF: ' + err.message;
-      status.style.color = 'var(--red)';
-    });
-  };
-  reader.readAsArrayBuffer(file);
+    } catch (err) {
+      erros.push(file.name + ': ' + err.message);
+    }
+  }
+  input.value = ''; // permite reanexar o mesmo arquivo depois, se precisar
+  var msgs = [];
+  if (registradas.length) msgs.push('✓ lançada(s) automaticamente: ' + registradas.join(', '));
+  if (revisao.length) msgs.push('⚠ ' + revisao.join(' · '));
+  if (erros.length) msgs.push('✗ erro ao ler: ' + erros.join(' · '));
+  status.innerHTML = msgs.join('<br>') || 'Não foi possível extrair dados de nenhum arquivo.';
+  status.style.color = erros.length ? 'var(--red-tx)' : (revisao.length && !registradas.length ? 'var(--amb-tx)' : 'var(--grn-tx)');
+  rNF();
 }
-function parseDanfe(texto, status) {
+function parseDanfe(texto) {
   var resultado = {num: '', cli: '', valor: 0, emis: '', parcelas: []};
   // Número da NF: padrão "Nº 5.589" ou "N° 5589"
   var mNum = texto.match(/N[ºo°°]\s*[:\.]?\s*([\d\.]+)/i);
@@ -1472,50 +1579,47 @@ function parseDanfe(texto, status) {
   }).filter(function(v) { return v > 0 && v < 99999999; });
   var vMax = valores.length ? Math.max.apply(null, valores) : 0;
 
-  // Estratégia: valor sempre vem de "VALOR TOTAL DOS PRODUTOS"
-  // É o último rótulo de uma linha de cabeçalhos; valor = último número da linha seguinte.
+  // Estratégia: procura os dois rótulos separadamente —
+  // "VALOR TOTAL DOS PRODUTOS" (base da comissão de 3%) e "VALOR TOTAL DA NOTA"
+  // (total da nota). Na maioria das notas os dois valores coincidem (sem
+  // ICMS-ST/frete/desconto), mas quando divergem cada campo fica com o valor certo.
   var linhasTexto = texto.split('\n');
-  var vtNota = 0;
 
   function ultimoNum(linha) {
     var ns = linha.match(/[\d\.]+,\d{2}/g);
     return ns ? parseFloat(ns[ns.length - 1].replace(/\./g, '').replace(',', '.')) : 0;
   }
 
-  // 1ª prioridade: VALOR TOTAL DOS PRODUTOS
-  for (var li = 0; li < linhasTexto.length; li++) {
-    if (/VALOR\s+TOTAL\s+DOS\s+PRODUTOS/i.test(linhasTexto[li])) {
-      var vSame = ultimoNum(linhasTexto[li]);
-      if (vSame > 0) { vtNota = vSame; break; }
-      for (var lj = li + 1; lj < Math.min(li + 4, linhasTexto.length); lj++) {
-        var vNext = ultimoNum(linhasTexto[lj]);
-        if (vNext > 0) { vtNota = vNext; break; }
-      }
-      break;
-    }
-  }
-
-  // 2ª: VALOR TOTAL DA NOTA (fallback caso o campo anterior não exista)
-  if (!vtNota) {
-    for (var li2 = 0; li2 < linhasTexto.length; li2++) {
-      if (/VALOR\s+TOTAL\s+DA\s+NOTA\b/i.test(linhasTexto[li2])) {
-        var vSame2 = ultimoNum(linhasTexto[li2]);
-        if (vSame2 > 0) { vtNota = vSame2; break; }
-        for (var lj2 = li2 + 1; lj2 < Math.min(li2 + 4, linhasTexto.length); lj2++) {
-          var vNext2 = ultimoNum(linhasTexto[lj2]);
-          if (vNext2 > 0) { vtNota = vNext2; break; }
+  function acharValorApos(rotuloRegex) {
+    for (var li = 0; li < linhasTexto.length; li++) {
+      if (rotuloRegex.test(linhasTexto[li])) {
+        var vSame = ultimoNum(linhasTexto[li]);
+        if (vSame > 0) return vSame;
+        for (var lj = li + 1; lj < Math.min(li + 4, linhasTexto.length); lj++) {
+          var vNext = ultimoNum(linhasTexto[lj]);
+          if (vNext > 0) return vNext;
         }
-        break;
+        return 0;
       }
     }
+    return 0;
   }
 
-  // 3ª: maior valor do documento acima de R$ 10
-  if (!vtNota) {
+  var vProdutos = acharValorApos(/VALOR\s+TOTAL\s+DOS\s+PRODUTOS/i);
+  var vNota = acharValorApos(/VALOR\s+TOTAL\s+DA\s+NOTA\b/i);
+
+  // Fallback: se só um dos dois foi encontrado, usa o mesmo valor para ambos.
+  if (!vProdutos && vNota) vProdutos = vNota;
+  if (!vNota && vProdutos) vNota = vProdutos;
+
+  // Último recurso: maior valor do documento acima de R$ 10.
+  if (!vProdutos && !vNota) {
     var vGrandes = valores.filter(function(v) { return v > 10; });
-    vtNota = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
+    var vFallback = vGrandes.length ? Math.max.apply(null, vGrandes) : vMax;
+    vProdutos = vFallback; vNota = vFallback;
   }
-  resultado.valor = vtNota;
+  resultado.valor = vNota;           // Total da nota
+  resultado.valorProdutos = vProdutos; // Base da comissão (3%)
 
   // Detecta Cidade Maravilhosa — vencimentos serão preenchidos manualmente
   var isCM = /CIDADE\s*MARAVILHOSA/i.test(resultado.cli);
@@ -1541,20 +1645,16 @@ function parseDanfe(texto, status) {
   if (resultado.num) document.getElementById('nf-num').value = resultado.num;
   if (resultado.cli) document.getElementById('nf-cli').value = resultado.cli;
   if (resultado.valor) document.getElementById('nf-val').value = resultado.valor;
+  if (resultado.valorProdutos) document.getElementById('nf-prod').value = resultado.valorProdutos;
   if (resultado.emis) document.getElementById('nf-emis').value = resultado.emis;
-  // Ajustar nº parcelas
-  var nParc = Math.max(resultado.parcelas.length, 1);
-  nParc = Math.min(nParc, 4);
-  document.getElementById('nf-parc').value = String(nParc);
-  buildVencFields();
-  // Ajustar nº parcelas e preencher datas
+  // Ajustar nº parcelas (máx. 3, conforme o fluxo de comissão da Thiara)
   if (isCM) {
     // Cidade Maravilhosa: mantém 1 parcela, sem datas — preenchimento manual
     document.getElementById('nf-parc').value = '1';
     buildVencFields();
   } else {
     var nParc = Math.max(resultado.parcelas.length, 1);
-    nParc = Math.min(nParc, 4);
+    nParc = Math.min(nParc, 3);
     document.getElementById('nf-parc').value = String(nParc);
     buildVencFields();
     resultado.parcelas.forEach(function(p, i) {
@@ -1563,25 +1663,8 @@ function parseDanfe(texto, status) {
     });
   }
   calcNFComis();
-  // Feedback
-  var found = [];
-  if (resultado.num) found.push('NF ' + resultado.num);
-  if (resultado.cli) found.push(resultado.cli.split(' ')[0]);
-  if (resultado.valor) found.push('R$ ' + resultado.valor.toLocaleString('pt-BR'));
-  if (isCM) {
-    status.textContent = '✓ ' + found.join(' · ') + ' — Cidade Maravilhosa: preencha os vencimentos manualmente';
-    status.style.color = 'var(--amb)';
-  } else if (resultado.parcelas.length) {
-    found.push(resultado.parcelas.length + ' parcela(s)');
-    status.textContent = '✓ ' + found.join(' · ');
-    status.style.color = 'var(--grn)';
-  } else if (found.length) {
-    status.textContent = '✓ ' + found.join(' · ');
-    status.style.color = 'var(--grn)';
-  } else {
-    status.textContent = 'Não foi possível extrair dados. Preencha manualmente.';
-    status.style.color = 'var(--amb)';
-  }
+  resultado.isCM = isCM; // Cidade Maravilhosa não traz vencimento no PDF — sempre exige conferência manual
+  return resultado;
 }
 function buildVencFields(){
   var n=parseInt(document.getElementById('nf-parc').value);
@@ -1589,21 +1672,37 @@ function buildVencFields(){
   document.getElementById('nf-venc-fields').innerHTML=html;
   calcNFComis();
 }
+// Base da comissão = "Valor total dos produtos" (campo próprio). Se ainda não
+// preenchido, cai para o Total da nota — em muitas notas os dois valores são
+// iguais (sem ICMS-ST/frete/desconto), mas quando divergem a comissão deve
+// usar sempre o valor dos produtos.
 function calcNFComis(){
+  var prod=parseFloat(document.getElementById('nf-prod').value)||0;
   var val=parseFloat(document.getElementById('nf-val').value)||0;
+  var base=prod||val;
   var n=parseInt(document.getElementById('nf-parc').value);
-  var com=val*0.03;
+  var com=base*0.03;
   document.getElementById('nf-com-tot').textContent=fmtF(com);
   document.getElementById('nf-com-par').textContent=fmtF(n>0?com/n:0);
 }
-function addNF(){
+// anexo (opcional): {url,nome} do PDF já salvo no servidor pra vincular a essa nota.
+// Se não vier, usa o último PDF que ficou pendente de conferência (_nfAnexoAtual),
+// contanto que seja da mesma NF que está sendo registrada agora.
+function addNF(anexo){
   var num=document.getElementById('nf-num').value.trim(),cli=document.getElementById('nf-cli').value.trim();
-  var val=parseFloat(document.getElementById('nf-val').value)||0,emis=document.getElementById('nf-emis').value;
+  var val=parseFloat(document.getElementById('nf-val').value)||0;
+  var prod=parseFloat(document.getElementById('nf-prod').value)||0;
+  var emis=document.getElementById('nf-emis').value;
   var n=parseInt(document.getElementById('nf-parc').value);
-  if(!num||!cli||!val){alert('Preencha: nº NF, cliente e valor.');return}
+  if(!num||!cli||!val){alert('Preencha: nº NF, cliente e Total da nota.');return}
+  if(!prod)prod=val; // sem "valor dos produtos" informado, assume igual ao total da nota
+  if(!anexo && _nfAnexoAtual && (!_nfAnexoAtual.num || _nfAnexoAtual.num===num)) anexo=_nfAnexoAtual;
+  _nfAnexoAtual=null;
   var parcelas=[];for(var i=0;i<n;i++){var d=document.getElementById('nv-'+i);parcelas.push({n:i+1,venc:d?d.value:'',val:val/n,status:'pendente'})}
-  notas.push({id:nxtNId++,num:num,cli:cli,valor:val,emis:emis,parcelas:parcelas});save('notas',notas);
-  document.getElementById('nf-num').value='';document.getElementById('nf-cli').value='';document.getElementById('nf-val').value='';
+  var nota={id:nxtNId++,num:num,cli:cli,valor:val,valorProdutos:prod,emis:emis,parcelas:parcelas};
+  if(anexo && anexo.url) nota.anexo={url:anexo.url,nome:anexo.nome||''};
+  notas.push(nota);save('notas',notas);
+  document.getElementById('nf-num').value='';document.getElementById('nf-cli').value='';document.getElementById('nf-val').value='';document.getElementById('nf-prod').value='';
   rNF();
 }
 function setNFStatus(id,st){var n=notas.find(function(n){return n.id===id});if(n){n.status=st;n.parcelas.forEach(function(p){p.status=st});save('notas',notas);rNF()}}
@@ -1618,24 +1717,27 @@ function rNF(){
   notas.forEach(function(n){
     n.parcelas.forEach(function(p){ if(!p.status) p.status = n.status || 'pendente'; });
   });
+  // valorProdutos = base da comissão (3%). Notas antigas sem esse campo usam o valor da nota (valor).
+  function baseComissao(n){ return (n.valorProdutos!=null && n.valorProdutos>0) ? n.valorProdutos : n.valor; }
   var fil=document.getElementById('nf-fil').value;
   var totV=notas.reduce(function(s,n){return s+n.valor},0);
-  var totC=notas.reduce(function(s,n){return s+n.valor*0.03},0);
+  var totC=notas.reduce(function(s,n){return s+baseComissao(n)*0.03},0);
   var totP=0,parcelasAbertas=0;
   notas.forEach(function(n){
-    var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
+    var comParc=baseComissao(n)*0.03/Math.max(n.parcelas.length,1);
     n.parcelas.forEach(function(p){
       if(p.status!=='pago'){totP+=comParc;parcelasAbertas++;}
     });
   });
   document.getElementById('nf-kpis').innerHTML=
     '<div class="kpi"><div class="kpi-l">Total NFs</div><div class="kpi-v">'+notas.length+'</div><div class="kpi-s">'+fmtF(totV)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-l">Comissão total</div><div class="kpi-v" style="color:var(--grn)">'+fmtF(totC)+'</div><div class="kpi-s">3% de '+fmtF(totV)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb)">'+fmtF(totP)+'</div><div class="kpi-s">'+parcelasAbertas+' parcela(s) em aberto</div></div>';
+    '<div class="kpi"><div class="kpi-l">Comissão total</div><div class="kpi-v" style="color:var(--grn-tx)">'+fmtF(totC)+'</div><div class="kpi-s">3% do valor dos produtos</div></div>'+
+    '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb-tx)">'+fmtF(totP)+'</div><div class="kpi-s">'+parcelasAbertas+' parcela(s) em aberto</div></div>';
   // ── Comissão por mês ──────────────────────────────
-  // Regra: venc dia 1-15 → comissão no mês seguinte (M+1)
-  //        venc dia 16-31 → comissão em dois meses (M+2)
-  // Exemplo: venc 06/07 → comissão em Agosto; venc 20/07 → comissão em Setembro
+  // Regra da Thiara: vencimento do dia 16 de um mês até o dia 15 do mês
+  // seguinte cai na comissão do mês seguinte. Ou seja: venc dia 1-15 → comissão
+  // no MESMO mês do vencimento; venc dia 16-31 → comissão no mês SEGUINTE.
+  // Ex.: venc 16/08 a 15/09 → comissão de Setembro; venc 16/09 a 15/10 → comissão de Outubro.
   var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var hoje=new Date();
   var mesAtualKey=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
@@ -1655,10 +1757,10 @@ function rNF(){
   var semVencPrev=0, semVencConf=0;
   var mesMapa={};
   notas.forEach(function(n){
-    var comParc=n.valor*0.03/Math.max(n.parcelas.length,1);
+    var comParc=baseComissao(n)*0.03/Math.max(n.parcelas.length,1);
     if(!n.parcelas.length){
       var isPagoNF=n.status==='pago';
-      if(isPagoNF) semVencConf+=n.valor*0.03; else semVencPrev+=n.valor*0.03;
+      if(isPagoNF) semVencConf+=baseComissao(n)*0.03; else semVencPrev+=baseComissao(n)*0.03;
       return;
     }
     n.parcelas.forEach(function(p){
@@ -1709,15 +1811,18 @@ function rNF(){
   if(!notas.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
   var rowsHtml='',any=false;
   notas.forEach(function(n){
-    var comTotal=n.valor*0.03;
+    var comTotal=baseComissao(n)*0.03;
     var comParc=comTotal/Math.max(n.parcelas.length,1);
     var idxsFiltrados=[];
     n.parcelas.forEach(function(p,idx){ if(fil==='all'||p.status===fil) idxsFiltrados.push(idx); });
     if(!idxsFiltrados.length) return;
     any=true;
+    var prodTxt = (n.valorProdutos!=null && n.valorProdutos!==n.valor) ? (' &middot; Produtos '+fmtF(n.valorProdutos)) : '';
+    var pdfLink = (n.anexo && n.anexo.url) ? (' <a href="'+n.anexo.url+'" target="_blank" rel="noopener" style="color:var(--blu-tx);text-decoration:underline" title="Abrir o PDF anexado desta nota"><i class="ti ti-file-type-pdf"></i> PDF</a>') : '';
     rowsHtml+='<tr style="background:var(--bg2)"><td colspan="6" style="padding:8px 9px;font-weight:600">'+
       'NF '+n.num+' &middot; '+n.cli+' &middot; Emiss&#227;o '+(n.emis||'&#8212;')+
-      ' &middot; Valor '+fmtF(n.valor)+' &middot; Comiss&#227;o total '+fmtF(comTotal)+
+      ' &middot; Total da nota '+fmtF(n.valor)+prodTxt+' &middot; Comiss&#227;o total '+fmtF(comTotal)+pdfLink+
+      (n.origem?' <span style="color:var(--tx3);font-weight:400">&middot; '+n.origem+'</span>':'')+
       '</td><td style="text-align:right"><button class="btn btn-sm btn-d" onclick="delNF('+n.id+')" title="Excluir NF inteira"><i class="ti ti-trash"></i></button></td></tr>';
     idxsFiltrados.forEach(function(idx){
       var p=n.parcelas[idx];
@@ -1787,8 +1892,8 @@ function rRent(){
   document.getElementById('rent-tbl').innerHTML='<table class="tbl"><thead><tr><th>Serviço</th><th>Faturado</th><th>Custo</th><th>Margem R$</th><th>Margem %</th><th>Horas</th><th>R$/hora</th></tr></thead><tbody>'+trows+'</tbody></table>';
   if(chRent)chRent.destroy();
   chRent=new Chart(document.getElementById('c-rent'),{type:'bar',data:{labels:rows.map(function(r){return r[0]}),datasets:[
-    {label:'Faturado',data:rows.map(function(r){return r[1].fat}),backgroundColor:'#1d9e75',borderRadius:3,barPercentage:.35},
-    {label:'Margem',data:rows.map(function(r){return r[1].fat-r[1].cus}),backgroundColor:'#378add',borderRadius:3,barPercentage:.35}
+    {label:'Faturado',data:rows.map(function(r){return r[1].fat}),backgroundColor:'#8ed1b2',borderRadius:3,barPercentage:.35},
+    {label:'Margem',data:rows.map(function(r){return r[1].fat-r[1].cus}),backgroundColor:'#2a2a2b',borderRadius:3,barPercentage:.35}
   ]},options:bOpts()});
 }
 // ─── VAGAS EFFECT: pipeline de recrutamento, NF Effect, admitidos/garantia, dados da empresa ───
@@ -2018,9 +2123,9 @@ function rComp(){
   if(chComp)chComp.destroy();
   var lopts=bOpts();lopts.plugins.legend={display:true,labels:{font:{size:10},color:txC(),boxWidth:10,boxHeight:2}};
   chComp=new Chart(document.getElementById('c-comp'),{type:'line',data:{labels:ativos.map(function(m){return m.slice(0,3)}),datasets:[
-    {label:'Receita',data:ativos.map(function(m){return bm[m].rec}),borderColor:'#1d9e75',tension:.4,pointRadius:3,fill:false},
-    {label:'Custo',data:ativos.map(function(m){return bm[m].cus}),borderColor:'#e24b4a',tension:.4,pointRadius:3,fill:false},
-    {label:'Saldo',data:ativos.map(function(m){return bm[m].rec-bm[m].cus}),borderColor:'#378add',tension:.4,pointRadius:3,borderDash:[4,3],fill:false}
+    {label:'Receita',data:ativos.map(function(m){return bm[m].rec}),borderColor:'#8ed1b2',tension:.4,pointRadius:3,fill:false},
+    {label:'Custo',data:ativos.map(function(m){return bm[m].cus}),borderColor:'#f4afa1',tension:.4,pointRadius:3,fill:false},
+    {label:'Saldo',data:ativos.map(function(m){return bm[m].rec-bm[m].cus}),borderColor:'#2a2a2b',tension:.4,pointRadius:3,borderDash:[4,3],fill:false}
   ]},options:lopts});
 }
 var chSim=null;
@@ -2038,7 +2143,7 @@ function rSim(){
   var pts=[],a=atual;
   for(var i=0;i<=Math.min(meses,120);i++){pts.push(Math.round(a));a=a*(1+rm)+pm}
   if(chSim)chSim.destroy();
-  chSim=new Chart(document.getElementById('c-sim'),{type:'line',data:{labels:pts.map(function(_,i){return i===0?'Hoje':i%12===0?i/12+'a':''}),datasets:[{data:pts,borderColor:'#1d9e75',backgroundColor:'rgba(29,158,117,.08)',fill:true,tension:.4,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtF(c.raw)}}}},scales:{x:{ticks:{color:txC(),font:{size:9}},grid:{display:false}},y:{ticks:{color:txC(),font:{size:9},callback:function(v){return fmt(v)}},grid:{color:gcC()}}}}});
+  chSim=new Chart(document.getElementById('c-sim'),{type:'line',data:{labels:pts.map(function(_,i){return i===0?'Hoje':i%12===0?i/12+'a':''}),datasets:[{data:pts,borderColor:'#8ed1b2',backgroundColor:'rgba(142,209,178,.14)',fill:true,tension:.4,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtF(c.raw)}}}},scales:{x:{ticks:{color:txC(),font:{size:9}},grid:{display:false}},y:{ticks:{color:txC(),font:{size:9},callback:function(v){return fmt(v)}},grid:{color:gcC()}}}}});
 }
 function showAddMeta(){var d=document.getElementById('add-meta');d.style.display=d.style.display==='none'?'block':'none'}
 function addMeta(){
