@@ -31,12 +31,39 @@ const { google } = require("googleapis");
 
 const DRIVE_ROOT_FOLDER_ID = process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD";
 const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
+const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+const GOOGLE_OAUTH_REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
 let driveClient = null;
 function getDriveClient() {
   if (driveClient) return driveClient;
+
+  // PREFERÊNCIA: OAuth2 de uma conta Google de verdade (via refresh token).
+  // Contas de Serviço (Service Account) do Google não têm cota de
+  // armazenamento própria — desde 2025 o Google passou a bloquear a CRIAÇÃO
+  // de arquivos/pastas novas por Service Accounts fora de Shared Drives
+  // (erro "Service Accounts do not have storage quota"), mesmo quando a
+  // pasta de destino foi compartilhada com ela. Autenticando como uma conta
+  // de usuário real (que tem espaço no Drive dela) via OAuth2, os
+  // arquivos/pastas passam a ser criados normalmente, contando no
+  // armazenamento dessa conta.
+  if (GOOGLE_OAUTH_CLIENT_ID && GOOGLE_OAUTH_CLIENT_SECRET && GOOGLE_OAUTH_REFRESH_TOKEN) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET);
+      oauth2Client.setCredentials({ refresh_token: GOOGLE_OAUTH_REFRESH_TOKEN });
+      driveClient = google.drive({ version: "v3", auth: oauth2Client });
+      return driveClient;
+    } catch (e) {
+      console.error("[drive-json-store] erro ao iniciar Google Drive client via OAuth2:", e.message);
+    }
+  }
+
+  // Alternativa: Service Account direta — só cria arquivo/pasta se
+  // DRIVE_ROOT_FOLDER_ID for uma Shared Drive (Google Workspace) ou a conta
+  // tiver delegação de domínio. Sem isso, mantida como último recurso.
   if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
-    console.error("[drive-json-store] GOOGLE_SERVICE_ACCOUNT_JSON ausente — nada será salvo até isso ser configurado.");
+    console.error("[drive-json-store] Nem GOOGLE_OAUTH_* nem GOOGLE_SERVICE_ACCOUNT_JSON configurados — nada será salvo até isso ser configurado.");
     return null;
   }
   try {

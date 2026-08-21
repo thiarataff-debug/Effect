@@ -46,15 +46,38 @@ const router = express.Router();
 const SEED_PATH = path.join(__dirname, "financeiro-seed.json");
 const DRIVE_ROOT_FOLDER_ID = process.env.DRIVE_ROOT_FOLDER_ID || "18ZHM0HgSsYmgDK84aynw96KNlRYlT6YD";
 const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
+const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+const GOOGLE_OAUTH_REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
 const uploadAnexo = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 // ── Cliente Drive (mesmo mecanismo usado pros currículos em index.js) ─────
+// PREFERÊNCIA: OAuth2 de uma conta Google real (via refresh token). Contas de
+// Serviço não têm cota de armazenamento própria — desde 2025 o Google bloqueia
+// a CRIAÇÃO de arquivos/pastas novas por Service Accounts fora de Shared
+// Drives ("Service Accounts do not have storage quota"), mesmo com a pasta
+// compartilhada. Autenticando como uma conta de usuário real, os arquivos
+// passam a contar no armazenamento dela normalmente.
 let driveClient = null;
 function getDriveClient() {
   if (driveClient) return driveClient;
+
+  if (GOOGLE_OAUTH_CLIENT_ID && GOOGLE_OAUTH_CLIENT_SECRET && GOOGLE_OAUTH_REFRESH_TOKEN) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET);
+      oauth2Client.setCredentials({ refresh_token: GOOGLE_OAUTH_REFRESH_TOKEN });
+      driveClient = google.drive({ version: "v3", auth: oauth2Client });
+      return driveClient;
+    } catch (e) {
+      console.error("[financeiro] erro ao iniciar Google Drive client via OAuth2:", e.message);
+    }
+  }
+
+  // Alternativa: Service Account direta (só funciona em Shared Drive ou com
+  // delegação de domínio — mantida como último recurso).
   if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
-    console.error("[financeiro] Drive: variável GOOGLE_SERVICE_ACCOUNT_JSON ausente — o Financeiro não vai conseguir salvar nada até isso ser configurado.");
+    console.error("[financeiro] Drive: nem GOOGLE_OAUTH_* nem GOOGLE_SERVICE_ACCOUNT_JSON configurados — o Financeiro não vai conseguir salvar nada até isso ser configurado.");
     return null;
   }
   try {
