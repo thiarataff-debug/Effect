@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Effect — Lia Inbox</title>
+<title>Effect — Inbox</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -614,7 +614,7 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
 <div id="login">
   <div class="lbox">
     <div class="llogo">Effect <span>Pessoas</span></div>
-    <div class="lsub">Inbox da Lia — Acesso restrito</div>
+    <div class="lsub">Acesso restrito</div>
     <div class="pwd-wrap">
       <input type="password" id="pwd" placeholder="Senha de acesso"
         onkeydown="if(event.key==='Enter')entrar()"
@@ -631,11 +631,6 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
 </div>
 
 <!-- ALERTA ENTREVISTA -->
-<!-- BANNER GEMINI OFF — aparece quando IA está desativada -->
-<div id="banner-gemini-off" style="display:none!important;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;text-align:center;padding:8px 16px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;letter-spacing:.3px;cursor:pointer" onclick="toggleGemini()" title="Clique para reativar a IA">
-  🔴 IA GEMINI DESATIVADA — LIA não está respondendo. Clique aqui para reativar.
-</div>
-
 <div class="alerta-entrevista" id="alerta-entrevista">
   <span>🔔</span>
   <span id="alerta-texto">Entrevista em breve</span>
@@ -646,94 +641,29 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
 <header>
  <div class="header-row">
   <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none">
-    <div class="hlogo" style="flex-shrink:0">Effect <span>Lia</span></div>
-    <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
-    <button class="rbtn" onclick="mostrarView('notas')" id="nav-notas">🗒️ Notas</button>
+    <div class="hlogo" style="flex-shrink:0">Effect <span>Pessoas</span></div>
+    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda Pessoal</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
-    <button class="rbtn" onclick="mostrarView('meu-app')" id="nav-meuapp">🧠 PSI</button>
+    <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
    <a class="rbtn" href="/nf-upload.html" id="nav-nf" style="cursor:pointer;">📄 Lançar NF</a>
     <a class="rbtn" href="/divulgacao" target="_blank" style="text-decoration:none;background:#e11d48;color:#fff;font-weight:800" id="nav-divulgacao">🖼️ Divulgação</a>
   <a class="rbtn" href="/visualizador-vagas" target="_blank" onclick="event.stopPropagation(); window.open(this.href, '_blank'); return false;" style="text-decoration:none;background:#8ed1b2;color:#fff;font-weight:800" id="nav-vagas">🔍 Vagas Rápido</a>
   <a class="rbtn" href="/contratos" style="text-decoration:none;background:#3b82f6;color:#fff;font-weight:800" id="nav-contratos">📋 Contratos</a>
   </div>
   <div class="hright" style="flex-shrink:0;margin-left:10px">
-    <!-- ALERTA DE QUOTA GEMINI — aparece quando detecta erros recorrentes de rate limit -->
-    <a id="gemini-quota-alerta" href="https://aistudio.google.com/app/usage" target="_blank"
-       style="display:none;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:#f59e0b;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;color:#fff;text-decoration:none;flex-shrink:0;animation:pulse 1.5s infinite"
-       title="Créditos Gemini baixos — clique para verificar">
-      ⚡ Gemini
-    </a>
-    <!-- BOTÃO SALDO GEMINI -->
-    <div style="position:relative;flex-shrink:0">
-      <button id="btn-gemini-uso" onclick="togglePopupGemini()" title="Ver uso da IA Gemini"
-        style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;transition:all .2s">
-        💎 Gemini
-      </button>
-      <div id="popup-gemini-uso" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:240px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);padding:14px 16px;z-index:9999;font-family:'Montserrat',sans-serif">
-        <div style="font-size:12px;font-weight:800;color:#1e3a5f;margin-bottom:10px">💎 Uso da IA Gemini</div>
-        <div style="display:flex;flex-direction:column;gap:7px;font-size:11px;color:#374151">
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:#6b7280">Chamadas (sessão)</span>
-            <span id="gu-calls" style="font-weight:700">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:#6b7280">Erros de quota (429)</span>
-            <span id="gu-erros" style="font-weight:700">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:#6b7280">Último erro</span>
-            <span id="gu-ultimo" style="font-weight:700;font-size:10px">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="color:#6b7280">Status quota</span>
-            <span id="gu-status" style="font-weight:800">—</span>
-          </div>
-        </div>
-        <div style="margin-top:12px;border-top:1px solid #f3f4f6;padding-top:10px;display:flex;flex-direction:column;gap:6px">
-          <a href="https://aistudio.google.com/app/usage" target="_blank"
-             style="display:block;text-align:center;padding:7px;border-radius:8px;background:#1e3a5f;color:#fff;font-size:11px;font-weight:700;text-decoration:none">
-            📊 Ver uso no AI Studio
-          </a>
-          <a href="https://console.cloud.google.com/billing" target="_blank"
-             style="display:block;text-align:center;padding:7px;border-radius:8px;background:#f3f4f6;color:#1e3a5f;font-size:11px;font-weight:700;text-decoration:none">
-            💳 Billing Google Cloud
-          </a>
-        </div>
-        <div id="gu-atualizado" style="font-size:9px;color:#9ca3af;text-align:right;margin-top:8px">—</div>
-      </div>
-    </div>
-    <!-- RAILWAY -->
-    <a href="https://railway.app/account/billing" target="_blank" title="Ver billing e créditos Railway" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,0.12);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;text-decoration:none">
-      🚂 Railway
-    </a>
     <span class="upd" id="upd"></span>
     <button class="rbtn" onclick="carregarSessoes()">⟳</button>
-    <button class="rbtn" style="background:#f59e0b;color:#fff;font-weight:700" onclick="assumirTodasParaLaura()" title="Assumir todas as conversas ativas para Laura">👩 Assumir p/ Laura</button>
-    <button class="rbtn rbtn-reativar" onclick="reativarTodas()" title="Devolver TODAS as conversas para a Lia">🤖 Reativar p/ Lia</button>
     <div class="hmais-wrap">
       <button class="rbtn" onclick="toggleHmais(event)">⋯ Mais</button>
       <div class="hmais-menu" id="hmais-menu">
         <button class="hmais-btn" style="color:#4f46e5" onclick="abrirPainelVagas();fecharHmais()">📋 Vagas</button>
         <button class="hmais-btn" style="color:#0ea5e9" onclick="abrirAvaliacao();fecharHmais()">📋 Avaliar Candidato</button>
-        <button class="hmais-btn" style="color:#7c3aed" onclick="abrirBancoTalentos();fecharHmais()">🌟 Banco de Talentos</button>
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:4px 0">
-        <button class="hmais-btn" style="color:#059669" onclick="exportarDados();fecharHmais()">💾 Backup dos dados</button>
-        <label class="hmais-btn" style="color:#7c3aed;cursor:pointer">📥 Restaurar backup<input type="file" accept=".json" onchange="importarDados(event);fecharHmais()" style="display:none"></label>
-        <button class="hmais-btn" onclick="fazerBackupManual();fecharHmais()">💾 Backup</button>
-        <button class="hmais-btn" style="color:#dc2626;font-weight:800" onclick="recarregarDoSheets();fecharHmais()">🔄 Recarregar do Sheets</button>
         <hr style="border:none;border-top:1px solid #f1f5f9;margin:4px 0">
         <button class="hmais-btn" style="color:#0d9488" onclick="mostrarView('dashboard');fecharHmais()">📊 Dashboard</button>
         <button class="hmais-btn" style="color:#6366f1" onclick="mostrarView('ats');fecharHmais()">📑 ATS Viewer</button>
       </div>
     </div>
   </div>
- </div>
- <div class="header-row2">
-    <button id="btn-gemini-toggle" onclick="toggleGemini()" title="Clique para ligar/desligar a IA Gemini" style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:none;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;cursor:pointer;background:#22c55e;color:#fff;transition:all .2s;flex-shrink:0">
-      <span id="gemini-dot" style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
-      <span id="gemini-label">🤖 IA ON</span>
-    </button>
-    <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda Pessoal</button>
  </div>
 </header>
 
@@ -1950,6 +1880,7 @@ function entrar(senhaOverride){
       try{localStorage.setItem('effect_saved_pwd',btoa(senha));localStorage.setItem('effect_lembrar','1');}catch(e){}
     }
     document.getElementById('login').classList.add('hidden');
+    mostrarView('agenda');
     carregarLocalData();
     carregarSessoes();
     setInterval(carregarSessoes, 5000);
@@ -2200,7 +2131,7 @@ function abrirTelefoneDaUrl(){
 function atualizarTitulo(){
   try{
     const naoLidas=Object.entries(todasSessoes||{}).filter(([t,s])=>contarNaoLidas(t,s)>0).length;
-    document.title=naoLidas>0?`(${naoLidas}) Effect — Lia Inbox`:'Effect — Lia Inbox';
+    document.title=naoLidas>0?`(${naoLidas}) Effect — Inbox`:'Effect — Inbox';
   }catch(e){}
 }
 
@@ -4164,7 +4095,7 @@ async function enviarMsg(){
   };
 
   try{
-    // Mostra imediatamente na tela, sem esperar o Sheets/Railway devolver.
+    // Mostra imediatamente na tela, sem esperar o Sheets/Render devolver.
     if(todasSessoes[telefoneAtual]){
       if(!Array.isArray(todasSessoes[telefoneAtual].historico))todasSessoes[telefoneAtual].historico=[];
       todasSessoes[telefoneAtual].historico.push(eventoLocal);
@@ -5495,7 +5426,7 @@ async function fazerBackupManual(){
       if(btn)btn.textContent='✅ Backup OK';
       setTimeout(()=>{if(btn){btn.textContent='💾 Backup';btn.disabled=false;}},4000);
     }else{
-      const motivo=d.erro||'Drive indisponível — verifique GOOGLE_SERVICE_ACCOUNT_JSON no Railway';
+      const motivo=d.erro||'Drive indisponível — verifique GOOGLE_OAUTH_CLIENT_ID/GOOGLE_OAUTH_CLIENT_SECRET/GOOGLE_OAUTH_REFRESH_TOKEN no Render';
       toast(`❌ Backup falhou: ${motivo}`,'error');
       console.error('Backup erro:', motivo);
       if(btn){btn.textContent='⚠️ Backup';btn.disabled=false;}
@@ -5524,7 +5455,7 @@ async function abrirReengajamento(){
     if(!d.configurado){
       document.getElementById('reeng-btn-disparar').disabled=true;
       document.getElementById('reeng-log').style.display='block';
-      document.getElementById('reeng-log').textContent='⚠️ META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Railway.';
+      document.getElementById('reeng-log').textContent='⚠️ META_ACCESS_TOKEN ou PHONE_NUMBER_ID não configurados no Render.';
     }
   }catch(e){
     document.getElementById('reeng-total').textContent='?';
@@ -5646,21 +5577,6 @@ async function toggleNovasManual(){
     toast(novaConversaIniciaManual?'🆕 Novas conversas iniciarão em modo MANUAL':'🆕 Novas conversas iniciarão com a Lia','success');
   }catch(e){toast('Erro ao alterar configuração','error');}
 }
-async function assumirTodasParaLaura(){
-  const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
-  if(!tels.length){toast('Todas as conversas já estão com Laura','success');return;}
-  if(!confirm(`Assumir ${tels.length} conversa(s) para Laura (modo manual)?`))return;
-  toast(`⏳ Assumindo ${tels.length} conversas para Laura...`,'success');
-  for(const tel of tels){
-    try{
-      await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,pausado:true,modo:'manual'})});
-      if(todasSessoes[tel]){todasSessoes[tel].modo='manual';todasSessoes[tel].pausado=true;todasSessoes[tel].motivoPausa='Assumido para Laura via botão em massa';}
-    }catch(e){console.error('Erro assumir',tel,e);}
-  }
-  renderLista();
-  if(sessaoAtual)renderPainelDireito();
-  toast(`👩 ${tels.length} conversa${tels.length>1?'s':''} assumida${tels.length>1?'s':''} para Laura`,'success');
-}
 async function pausarTodas(){
   const tels=Object.entries(todasSessoes).filter(([t,s])=>!(s.modo==='manual'||s.pausado===true)).map(([t])=>t);
   if(!tels.length){toast('Nenhuma conversa em modo Lia','success');return;}
@@ -5676,22 +5592,6 @@ async function pausarTodas(){
   if(sessaoAtual)renderPainelDireito();
   toast(`✅ ${tels.length} conversas pausadas`,'success');
 }
-async function reativarTodas(){
-  const tels=Object.entries(todasSessoes).filter(([t,s])=>s.modo==='manual'||s.pausado===true).map(([t])=>t);
-  if(!tels.length){toast('Nenhuma conversa em modo manual','success');return;}
-  // Sem confirmação — ação instantânea
-  toast(`⏳ Reativando ${tels.length} conversas...`,'success');
-  for(const tel of tels){
-    try{
-      await fetch(`${API}/inbox/pausar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,pausado:false,modo:'lia'})});
-      if(todasSessoes[tel]){todasSessoes[tel].modo='automatico';todasSessoes[tel].pausado=false;todasSessoes[tel].motivoPausa='';}
-    }catch(e){}
-  }
-  renderLista();
-  if(sessaoAtual)renderPainelDireito();
-  toast(`✅ ${tels.length} conversas reativadas`,'success');
-}
-
 // ─── TEMPLATE DE RETOMADA ───
 const TEMPLATES_RETOMADA=[
   {titulo:'Retomada gentil',texto:`Olá! Tudo bem? 😊 Passando para saber se ainda tem interesse na oportunidade que conversamos. Quando puder, é só me responder por aqui! 💙`},
@@ -5807,116 +5707,8 @@ const DISC_PERFIS = {
   C:{nome:'Analítico',emoji:'🔵',cor:'#1fa5ff'}
 };
 
-// ── CONTROLE DE IA (toggle Gemini sem deploy) ─────────────────────────────────
-let _geminiAtivo = true;
-
-async function carregarStatusIA() {
-  try {
-    const r = await fetch('/admin/status');
-    const data = await r.json();
-    _geminiAtivo = data.geminiAtivo;
-    atualizarBotaoIA();
-
-    // Exibir link Railway (API não expõe saldo, mas confirma que token está ok)
-    const divCreditos = document.getElementById('railway-creditos');
-    const spanSaldo = document.getElementById('railway-saldo');
-    if (data.railway && data.railway.conectado) {
-      if (divCreditos) divCreditos.style.display = 'flex';
-      if (spanSaldo) spanSaldo.textContent = '🚂 Billing';
-    } else if (divCreditos) {
-      divCreditos.style.display = 'none';
-    }
-
-    // ── Alerta de quota Gemini ──────────────────────────────────────────────
-    const gemini = data.gemini || {};
-    const divGeminiAlerta = document.getElementById('gemini-quota-alerta');
-    if (divGeminiAlerta) {
-      if (gemini.quotaAlerta) {
-        divGeminiAlerta.style.display = 'flex';
-        divGeminiAlerta.title = `${gemini.erros429} erros de quota detectados. Último: ${gemini.ultimoErro429 ? new Date(gemini.ultimoErro429).toLocaleString('pt-BR') : '—'}`;
-      } else {
-        divGeminiAlerta.style.display = 'none';
-      }
-    }
-
-    // ── Popup de uso Gemini ─────────────────────────────────────────────────
-    _geminiUsoData = gemini;
-    const erros = Number(gemini.erros429 || 0);
-    const el = id => document.getElementById(id);
-    if (el('gu-calls'))    el('gu-calls').textContent    = gemini.totalCalls ?? '—';
-    if (el('gu-erros'))  { el('gu-erros').textContent    = erros; el('gu-erros').style.color = erros > 0 ? '#dc2626' : '#16a34a'; }
-    if (el('gu-ultimo'))   el('gu-ultimo').textContent   = gemini.ultimoErro429 ? new Date(gemini.ultimoErro429).toLocaleString('pt-BR') : 'Nenhum';
-    if (el('gu-status')) { el('gu-status').textContent   = gemini.quotaAlerta ? '⚠️ Alerta' : '✅ OK'; el('gu-status').style.color = gemini.quotaAlerta ? '#d97706' : '#16a34a'; }
-    if (el('gu-atualizado')) el('gu-atualizado').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
-    // Muda cor do botão se tiver alerta
-    const btnUso = document.getElementById('btn-gemini-uso');
-    if (btnUso) btnUso.style.background = gemini.quotaAlerta ? '#f59e0b' : 'rgba(255,255,255,0.15)';
-  } catch(e) { /* sem Railway token ou server offline */ }
-}
-
-let _geminiUsoData = {};
-let _popupGeminiAberto = false;
-function togglePopupGemini() {
-  const popup = document.getElementById('popup-gemini-uso');
-  if (!popup) return;
-  _popupGeminiAberto = !_popupGeminiAberto;
-  popup.style.display = _popupGeminiAberto ? 'block' : 'none';
-  if (_popupGeminiAberto) {
-    // fecha ao clicar fora
-    setTimeout(() => document.addEventListener('click', _fecharPopupGemini), 10);
-  }
-}
-function _fecharPopupGemini(e) {
-  const popup = document.getElementById('popup-gemini-uso');
-  const btn   = document.getElementById('btn-gemini-uso');
-  if (popup && !popup.contains(e.target) && e.target !== btn) {
-    popup.style.display = 'none';
-    _popupGeminiAberto = false;
-    document.removeEventListener('click', _fecharPopupGemini);
-  }
-}
-
-// Renovar créditos a cada 10 minutos
-setInterval(carregarStatusIA, 10 * 60 * 1000);
-
-function atualizarBotaoIA() {
-  const btn = document.getElementById('btn-gemini-toggle');
-  const label = document.getElementById('gemini-label');
-  const banner = document.getElementById('banner-gemini-off');
-  if (_geminiAtivo) {
-    if(btn)   { btn.style.background='#22c55e'; btn.style.animation=''; btn.title='IA ativa — clique para DESATIVAR em emergência de créditos'; }
-    if(label) label.textContent = '🤖 IA ON';
-    if(banner) banner.style.display = 'none';
-  } else {
-    if(btn)   { btn.style.background='#dc2626'; btn.title='IA DESATIVADA — clique para reativar'; btn.style.animation='pulse 1.5s infinite'; }
-    if(label) label.textContent = '🔴 IA OFF';
-    // banner removido — o botão vermelho piscando já indica o estado
-  }
-}
-
-async function toggleGemini() {
-  try {
-    const novoEstado = !_geminiAtivo;
-    const confirma = novoEstado
-      ? confirm('Reativar a IA Gemini? A LIA voltará a responder automaticamente.')
-      : confirm('⚠️ Desativar a IA Gemini?\n\nA LIA ficará em silêncio — nenhuma mensagem automática será enviada.\n\nUse isso quando os créditos estiverem acabando.');
-    if (!confirma) return;
-
-    const r = await fetch('/admin/gemini-toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ativo: novoEstado })
-    });
-    const data = await r.json();
-    _geminiAtivo = data.geminiAtivo;
-    atualizarBotaoIA();
-    toast(data.mensagem, _geminiAtivo ? 'success' : 'error', 5000);
-  } catch(e) { toast('Erro ao alterar estado da IA: ' + e.message, 'error'); }
-}
-
 // Carregar status da IA ao abrir o inbox
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(carregarStatusIA, 2000);
   // Adicionar botão Contratos
   setTimeout(() => {
     const navContratos = document.getElementById('nav-contratos');
