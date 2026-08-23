@@ -1943,6 +1943,7 @@ app.post("/webhook", async (req, res) => {
 app.get("/painel", (req, res) => res.sendFile(path.join(__dirname, "painel.html")));
 app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/sheets", (req, res) => res.sendFile(path.join(__dirname, "sheets-viewer.html")));
+app.get("/nf-upload.html", (req, res) => res.sendFile(path.join(__dirname, "nf-upload.html")));
 
 // Banco de Talentos: lê do Volume (statusMap persistido pelo browser) + enriquece com sessoes
 app.get("/sheets/banco-talentos", (req, res) => {
