@@ -361,7 +361,7 @@
     }
 
     function mostrarResultado(sucesso, titulo, conteudo) {
-      documento.getElementById('resultadoTitulo').textContent = titulo;
+      document.getElementById('resultadoTitulo').textContent = titulo;
 
       if (typeof conteudo === 'object') {
         document.getElementById('resultadoConteudo').textContent = JSON.stringify(conteudo, null, 2);
