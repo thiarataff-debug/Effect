@@ -479,12 +479,16 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
   </div>
   <div class="grid3" id="nf-kpis" style="margin-bottom:12px"></div>
   <div class="card" style="margin-bottom:12px">
-    <div class="ct">Comissão prevista por mês <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">NFs pendentes, agrupadas por vencimento</span></div>
-    <div id="nf-com-meses"><div class="empty">Nenhuma comissão agendada.</div></div>
+    <div class="ct">Comissões por mês <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">o mês vigente vem aberto por padrão &middot; meses futuros mostram só a prévia &middot; histórico fica recolhido</span></div>
+    <div id="nf-meses-nav"><div class="empty">Nenhuma comissão agendada.</div></div>
   </div>
   <div class="card">
-    <div class="ct">Notas registradas <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">clique no lápis pra editar qualquer campo — inclusive marcar como cancelada</span>
+    <div class="ct">Notas — <span id="nf-mes-ativo-label"></span> <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">clique no lápis pra editar qualquer campo — inclusive marcar como cancelada</span>
       <select id="nf-fil" style="height:26px;font-size:11px;padding:0 6px;width:auto" onchange="rNF()"><option value="all">Todos os status</option><option value="pendente">Pendentes</option><option value="pago">Pagas</option><option value="atrasado">Atrasadas</option><option value="cancelada">Canceladas</option></select>
+      <label style="cursor:pointer;margin-left:8px" title="Substitui TODAS as notas atuais pelo arquivo da planilha completa (uso único, para reconciliar com o Excel)">
+        <input type="file" id="nf-import-input" accept=".json" style="display:none" onchange="importarNotasJSON(this)">
+        <span class="btn btn-sm"><i class="ti ti-upload"></i> Importar base completa (.json)</span>
+      </label>
     </div>
     <div id="nf-tbl" style="overflow-x:auto"></div>
   </div>
@@ -1726,6 +1730,28 @@ function setParcelaStatus(nid,idx,st){
   p.status=st;save('notas',notas);rNF();
 }
 function delNF(id){notas=notas.filter(function(n){return n.id!==id});save('notas',notas);rNF()}
+// Importação única da base reconciliada com a planilha Excel (Comissões Jho) — SUBSTITUI todas as notas
+// atuais pelo arquivo .json gerado a partir da planilha completa. Usar uma vez só, na reconciliação.
+function importarNotasJSON(input){
+  var file=input.files&&input.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var novasNotas;
+    try{ novasNotas=JSON.parse(e.target.result); }
+    catch(err){ alert('Arquivo inválido: '+err.message); input.value=''; return; }
+    if(!Array.isArray(novasNotas)){ alert('O arquivo precisa conter uma lista de notas.'); input.value=''; return; }
+    if(!confirm('Isso vai SUBSTITUIR as '+notas.length+' notas atuais por '+novasNotas.length+' notas do arquivo importado. Essa ação não pode ser desfeita por aqui (mas nada é apagado do seu Excel). Continuar?')){ input.value=''; return; }
+    notas=novasNotas;
+    nxtNId=Math.max.apply(null,[0].concat(notas.map(function(n){return n.id}))) + 1;
+    save('notas',notas);
+    input.value='';
+    alert('Importação concluída: '+notas.length+' notas carregadas.');
+    rNF(); rDash();
+  };
+  reader.onerror=function(){ alert('Não consegui ler o arquivo.'); input.value=''; };
+  reader.readAsText(file,'utf-8');
+}
 // Regra da Thiara: vencimento do dia 16 de um mês até o dia 15 do mês
 // seguinte cai na comissão do mês seguinte. Ou seja: venc dia 1-15 → comissão
 // no MESMO mês do vencimento; venc dia 16-31 → comissão no mês SEGUINTE.
@@ -1742,11 +1768,94 @@ function keyComissao(vencStr) {
 }
 function nfBaseComissao(n){ return (n.valorProdutos!=null && n.valorProdutos>0) ? n.valorProdutos : n.valor; }
 function nfStPill(st){ return st==='pago'?'p-ok':st==='atrasado'?'p-venc':st==='cancelada'?'p-canc':'p-pend'; }
+// Uma nota é considerada cancelada quando TODAS as parcelas estão marcadas como 'cancelada'.
+function nfCancelada(n){ var ativas=n.parcelas.filter(function(p){return p.status!=='cancelada'}); return ativas.length===0 && n.parcelas.length>0; }
+// notas importadas da planilha (reconciliação de ago/2026) trazem n.comissaoMeses = {"2026-09":355.89,...}
+// com o valor EXATO que já estava calculado/ajustado manualmente na planilha da Thiara (inclui casos como
+// nota que venceu mas não foi paga e a comissão foi empurrada pro mês seguinte). Nesses casos usamos esse
+// valor pronto em vez de recalcular 3% por parcela — evita durante duplicar a lógica de vencimento que já
+// tinha exceções manuais na planilha original.
+function nfComissaoTotalNota(n){
+  if(n.comissaoMeses) return Object.values(n.comissaoMeses).reduce(function(s,v){return s+v},0);
+  return nfBaseComissao(n)*0.03;
+}
+// "Mês vigente": segue a MESMA regra da comissão (dia 1-15 = mês corrente, 16-31 = mês seguinte)
+// aplicada à data de HOJE. Ou seja, se hoje é dia 20/08, o que está "em aberto pra fechar" já é
+// a comissão de Setembro — é essa a visão que deve abrir por padrão na tela.
+function mesVigenteKey(){
+  var hoje=new Date();
+  var dia=hoje.getDate(), mes=hoje.getMonth(), ano=hoje.getFullYear();
+  var offset=dia<=15?0:1;
+  var m=mes+offset, a=ano;
+  if(m>11){m-=12;a++;}
+  return a+'-'+String(m+1).padStart(2,'0');
+}
+// Comissão de uma nota, agrupada por mês de comissão — usada tanto nos totais (nfTotais/nfTotaisMes)
+// quanto na tabela detalhada e na navegação por mês.
+function comissaoPorMes(n){
+  var out={};
+  if(nfCancelada(n)) return out;
+  if(n.comissaoMeses){
+    var statusGeral=n.parcelas.every(function(p){return p.status==='pago'})?'pago':(n.parcelas.some(function(p){return p.status==='atrasado'})?'atrasado':'pendente');
+    Object.keys(n.comissaoMeses).forEach(function(k){ out[k]={valor:n.comissaoMeses[k],statuses:[statusGeral]}; });
+    return out;
+  }
+  var comParcNom=nfBaseComissao(n)*0.03/Math.max(n.parcelas.length,1);
+  n.parcelas.forEach(function(p){
+    if(!p.venc||p.status==='cancelada') return;
+    // p.mesComissao (opcional) sobrepõe o cálculo automático — usado quando a parcela venceu mas
+    // o cliente não pagou dentro do mês, e a comissão foi remanejada manualmente pro mês seguinte.
+    var k=p.mesComissao||keyComissao(p.venc);
+    if(!out[k]) out[k]={valor:0,statuses:[]};
+    out[k].valor+=comParcNom; out[k].statuses.push(p.status);
+  });
+  return out;
+}
+function nfMesLabel(k){
+  var partes=k.split('-'), y=parseInt(partes[0]), m=parseInt(partes[1]);
+  var hoje=new Date();
+  return NF_MESES[m-1]+(y!==hoje.getFullYear()?' '+y:'');
+}
+function nfProximoMes(k){
+  var partes=k.split('-'), a=parseInt(partes[0]), m=parseInt(partes[1]);
+  m+=1; if(m>12){m=1;a+=1;}
+  return a+'-'+String(m).padStart(2,'0');
+}
+// Remaneja a comissão de UMA nota, de um mês pro mês seguinte — uso: cliente não pagou dentro
+// do prazo, então a comissão só vai "fechar" no mês seguinte. Funciona tanto pra notas importadas
+// da planilha (comissaoMeses) quanto pra notas lançadas manualmente (parcelas com mesComissao).
+function nfRemanejarMes(nid, deMes){
+  var n=notas.find(function(x){return x.id===nid}); if(!n) return;
+  var paraMes=nfProximoMes(deMes);
+  if(!confirm('Mover a comissão de '+nfMesLabel(deMes)+' desta nota (Nº '+n.num+') pra '+nfMesLabel(paraMes)+'?\n\nUse isso quando o cliente não pagou dentro do mês e a comissão só deve contar no mês seguinte.')) return;
+  if(n.comissaoMeses){
+    if(n.comissaoMeses[deMes]!=null){
+      n.comissaoMeses[paraMes]=(n.comissaoMeses[paraMes]||0)+n.comissaoMeses[deMes];
+      delete n.comissaoMeses[deMes];
+    }
+  } else {
+    n.parcelas.forEach(function(p){
+      var atual=p.mesComissao||(p.venc?keyComissao(p.venc):null);
+      if(atual===deMes) p.mesComissao=paraMes;
+    });
+  }
+  save('notas',notas);
+  rNF();
+}
+var _nfMesAtivo=null, _nfHistExpandido=false;
 // Comissão total/pendente de todas as NFs — parcelas 'cancelada' não contam (a nota deixou de valer).
 // Compartilhado entre a aba NF Tracker e o card-resumo na Visão geral (não depende de qual rodou primeiro).
 function nfTotais(){
   var totC=0,totP=0,parcelasAbertas=0;
   notas.forEach(function(n){
+    if(nfCancelada(n)) return;
+    if(n.comissaoMeses){
+      var totNota=nfComissaoTotalNota(n);
+      totC+=totNota;
+      var todasPagas=n.parcelas.length>0 && n.parcelas.every(function(p){return p.status==='pago'});
+      if(!todasPagas){ totP+=totNota; parcelasAbertas+=n.parcelas.filter(function(p){return p.status!=='pago' && p.status!=='cancelada';}).length || 1; }
+      return;
+    }
     var comParcNom=nfBaseComissao(n)*0.03/Math.max(n.parcelas.length,1);
     n.parcelas.forEach(function(p){
       if(p.status==='cancelada') return;
@@ -1755,6 +1864,21 @@ function nfTotais(){
     });
   });
   return {totC:totC,totP:totP,parcelasAbertas:parcelasAbertas};
+}
+// Mesmo resultado de nfTotais(), mas restrito a UM mês de comissão (usa comissaoPorMes, definida
+// dentro de rNF() — como é função aninhada com "function", o JS já hoisteia ela pro topo do rNF).
+function nfTotaisMes(mesKey){
+  var totC=0,totP=0,qtdNotas=0,parcelasAbertas=0;
+  notas.forEach(function(n){
+    if(nfCancelada(n)) return;
+    var cm=comissaoPorMes(n);
+    var c=cm[mesKey];
+    if(!c||c.valor<=0.004) return;
+    qtdNotas++; totC+=c.valor;
+    var todasPagas=c.statuses.length>0 && c.statuses.every(function(s){return s==='pago'});
+    if(!todasPagas){ totP+=c.valor; parcelasAbertas+=c.statuses.filter(function(s){return s!=='pago'&&s!=='cancelada'}).length||1; }
+  });
+  return {totC:totC,totP:totP,qtdNotas:qtdNotas,parcelasAbertas:parcelasAbertas};
 }
 
 // ── Edição inline de uma NF já registrada (rascunho em memória até salvar) ──
@@ -1768,7 +1892,7 @@ function nfEditToggle(id){
     _editingNFDraft={
       num:n.num, cli:n.cli, emis:n.emis||'',
       valor:n.valor, valorProdutos:(n.valorProdutos!=null?n.valorProdutos:n.valor),
-      parcelas:n.parcelas.map(function(p){return {venc:p.venc||'',val:p.val,status:p.status||'pendente'};})
+      parcelas:n.parcelas.map(function(p){return {venc:p.venc||'',val:p.val,status:p.status||'pendente',mesComissao:p.mesComissao||''};})
     };
   }
   rNF();
@@ -1786,11 +1910,12 @@ function nfSyncDraftFromDom(){
     if(g('nfe-venc-'+i)) p.venc=g('nfe-venc-'+i).value;
     if(g('nfe-parval-'+i)) p.val=parseFloat(g('nfe-parval-'+i).value)||0;
     if(g('nfe-st-'+i)) p.status=g('nfe-st-'+i).value;
+    if(g('nfe-mes-'+i)) p.mesComissao=g('nfe-mes-'+i).value||'';
   });
 }
 function nfDraftAddParcela(){
   nfSyncDraftFromDom();
-  _editingNFDraft.parcelas.push({venc:'',val:0,status:'pendente'});
+  _editingNFDraft.parcelas.push({venc:'',val:0,status:'pendente',mesComissao:''});
   rNF();
 }
 function nfDraftDelParcela(idx){
@@ -1806,7 +1931,7 @@ function nfSaveEdit(id){
   if(!d.num.trim()||!d.cli.trim()||!d.valor){alert('Preencha nº, cliente e Total da nota.');return}
   n.num=d.num.trim(); n.cli=d.cli.trim(); n.emis=d.emis; n.valor=d.valor;
   n.valorProdutos=d.valorProdutos||d.valor;
-  n.parcelas=d.parcelas.map(function(p,i){return {n:i+1,venc:p.venc,val:p.val,status:p.status||'pendente'};});
+  n.parcelas=d.parcelas.map(function(p,i){var obj={n:i+1,venc:p.venc,val:p.val,status:p.status||'pendente'}; if(p.mesComissao) obj.mesComissao=p.mesComissao; return obj;});
   save('notas',notas);
   _editingNFId=null; _editingNFDraft=null;
   rNF();
@@ -1823,92 +1948,55 @@ function rNF(){
   });
   var fil=document.getElementById('nf-fil').value;
   var totV=notas.reduce(function(s,n){return s+n.valor},0);
-  var tot=nfTotais(), totC=tot.totC, totP=tot.totP, parcelasAbertas=tot.parcelasAbertas;
+
+  // ── Descobre todos os meses com comissão e monta a navegação (histórico recolhido,
+  // mês vigente aberto, meses futuros com prévia) ──────────────────────────────
+  var monthSet={};
+  notas.forEach(function(n){ var cm=comissaoPorMes(n); Object.keys(cm).forEach(function(k){ if(cm[k].valor>0.004) monthSet[k]=true; }); });
+  var monthKeysAll=Object.keys(monthSet).sort();
+  var mesVig=mesVigenteKey();
+  if(_nfMesAtivo && monthKeysAll.indexOf(_nfMesAtivo)<0) _nfMesAtivo=null; // mês selecionado não existe mais (ex.: depois de reimportar)
+  var mesAtivoDefault = monthKeysAll.indexOf(mesVig)>=0 ? mesVig : (monthKeysAll.filter(function(k){return k>=mesVig})[0] || monthKeysAll[monthKeysAll.length-1] || mesVig);
+  var mesAtivo = _nfMesAtivo || mesAtivoDefault;
+  var historico = monthKeysAll.filter(function(k){return k<mesVig});
+  var futuros = monthKeysAll.filter(function(k){return k>mesVig});
+
+  function totalDoMes(k){ var v=0; notas.forEach(function(n){ var cm=comissaoPorMes(n); if(cm[k]) v+=cm[k].valor; }); return v; }
+  function pillMes(k,ativo,vigente){
+    var v=totalDoMes(k);
+    var bg = ativo ? 'var(--grn)' : 'var(--bg2)';
+    var cor = ativo ? '#fff' : 'var(--tx)';
+    return '<button class="btn btn-sm" style="margin:0 6px 6px 0;background:'+bg+';color:'+cor+';border-color:transparent" onclick="_nfMesAtivo=\''+k+'\';rNF()">'+
+      nfMesLabel(k)+(vigente?' &middot; vigente':'')+'<span style="opacity:.85;margin-left:6px">'+fmtF(v)+'</span></button>';
+  }
+  var navHtml='';
+  if(historico.length){
+    navHtml+='<button class="btn btn-sm" style="margin:0 6px 6px 0" onclick="_nfHistExpandido=!_nfHistExpandido;rNF()">'+(_nfHistExpandido?'&#9662;':'&#9656;')+' Histórico ('+historico.length+' m&ecirc;s(es))</button>';
+    if(_nfHistExpandido){ historico.forEach(function(k){ navHtml+=pillMes(k, k===mesAtivo, false); }); }
+  }
+  if(monthKeysAll.indexOf(mesVig)>=0) navHtml+=pillMes(mesVig, mesVig===mesAtivo, true);
+  futuros.forEach(function(k){ navHtml+=pillMes(k, k===mesAtivo, false); });
+  document.getElementById('nf-meses-nav').innerHTML = navHtml || '<div class="empty">Nenhuma comissão agendada.</div>';
+  document.getElementById('nf-mes-ativo-label').textContent = monthKeysAll.length ? nfMesLabel(mesAtivo) : 'sem lançamentos';
+
+  // ── KPIs do mês selecionado (não do histórico inteiro) ──────────────────────
+  var totM=nfTotaisMes(mesAtivo), totC=totM.totC, totP=totM.totP, parcelasAbertas=totM.parcelasAbertas;
   document.getElementById('nf-kpis').innerHTML=
-    '<div class="kpi"><div class="kpi-l">Total NFs</div><div class="kpi-v">'+notas.length+'</div><div class="kpi-s">'+fmtF(totV)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-l">Comissão total</div><div class="kpi-v" style="color:var(--grn-tx)">'+fmtF(totC)+'</div><div class="kpi-s">3% do valor dos produtos &middot; exclui canceladas</div></div>'+
+    '<div class="kpi"><div class="kpi-l">NFs em '+nfMesLabel(mesAtivo)+'</div><div class="kpi-v">'+totM.qtdNotas+'</div><div class="kpi-s">de '+notas.length+' notas no total</div></div>'+
+    '<div class="kpi"><div class="kpi-l">Comissão de '+nfMesLabel(mesAtivo)+'</div><div class="kpi-v" style="color:var(--grn-tx)">'+fmtF(totC)+'</div><div class="kpi-s">3% do valor dos produtos &middot; exclui canceladas</div></div>'+
     '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb-tx)">'+fmtF(totP)+'</div><div class="kpi-s">'+parcelasAbertas+' parcela(s) em aberto</div></div>';
 
-  // ── Comissão por mês (resumo rápido) ──────────────────────────────
-  var hoje=new Date();
-  var mesAtualKey=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
-  var semVencPrev=0, semVencConf=0;
-  var mesMapa={};
-  notas.forEach(function(n){
-    var comParc=nfBaseComissao(n)*0.03/Math.max(n.parcelas.length,1);
-    if(!n.parcelas.length){
-      if(n.status==='cancelada') return;
-      if(n.status==='pago') semVencConf+=nfBaseComissao(n)*0.03; else semVencPrev+=nfBaseComissao(n)*0.03;
-      return;
-    }
-    n.parcelas.forEach(function(p){
-      if(p.status==='cancelada') return;
-      var isPago=p.status==='pago';
-      if(!p.venc){
-        if(isPago) semVencConf+=comParc; else semVencPrev+=comParc;
-        return;
-      }
-      var key=keyComissao(p.venc);
-      if(!mesMapa[key]) mesMapa[key]={previsto:0,confirmado:0};
-      if(isPago) mesMapa[key].confirmado+=comParc; else mesMapa[key].previsto+=comParc;
-    });
-  });
-  var mesKeys=Object.keys(mesMapa).sort();
-  var mesHtml='';
-  if(mesKeys.length){
-    mesHtml='<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    mesKeys.forEach(function(k){
-      var parts=k.split('-');
-      var y=parseInt(parts[0]),m=parseInt(parts[1]);
-      var label='15 de '+NF_MESES[m-1]+(y!==hoje.getFullYear()?' '+y:'');
-      var isAtual=k===mesAtualKey;
-      var isPast=k<mesAtualKey;
-      var v=mesMapa[k];
-      var tagCor=isAtual?'var(--grn)':isPast?'var(--red)':'var(--tx)';
-      var badge=isAtual?'<span class="pill p-ok" style="margin-right:6px">Este mês</span>':isPast?'<span class="pill p-venc" style="margin-right:6px">Mês passado</span>':'';
-      var valCell='';
-      if(v.confirmado>0) valCell+='<span style="color:var(--grn);font-weight:600">'+fmtF(v.confirmado)+' confirmado</span>';
-      if(v.previsto>0) valCell+=(valCell?' + ':'')+'<span style="color:'+tagCor+'">'+fmtF(v.previsto)+' previsto</span>';
-      mesHtml+='<tr style="border-bottom:.5px solid var(--bd)">'+
-        '<td style="padding:8px 4px;font-weight:'+(isPast||isAtual?'600':'400')+';color:'+tagCor+'">'+badge+label+'</td>'+
-        '<td style="padding:8px 4px;text-align:right;font-weight:500">'+valCell+'</td>'+
-        '</tr>';
-    });
-    if(semVencPrev>0||semVencConf>0){
-      var semCell='';
-      if(semVencConf>0) semCell+='<span style="color:var(--grn);font-weight:600">'+fmtF(semVencConf)+' confirmado</span>';
-      if(semVencPrev>0) semCell+=(semCell?' + ':'')+'<span style="color:var(--amb)">'+fmtF(semVencPrev)+' previsto</span>';
-      mesHtml+='<tr><td style="padding:8px 4px;color:var(--amb)"><i class="ti ti-clock" style="margin-right:4px"></i>Vencimento a definir</td>'+
-        '<td style="padding:8px 4px;text-align:right">'+semCell+'</td></tr>';
-    }
-    mesHtml+='</table>';
-  } else {
-    mesHtml='<div class="empty">Nenhuma comissão agendada.</div>';
-  }
-  document.getElementById('nf-com-meses').innerHTML=mesHtml;
-
-  // ── Tabela detalhada estilo planilha: 1 linha por NF, colunas de vencimento
-  // e uma coluna por mês de comissão — igual à planilha Excel da Thiara, porém
-  // editável (clique no lápis) e com status colorido por parcela. ──
+  // ── Tabela detalhada estilo planilha, filtrada para o mês selecionado acima ──
   if(!notas.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
-  var notasVis=notas.filter(function(n){ return fil==='all' || n.parcelas.some(function(p){return p.status===fil}); });
-  if(!notasVis.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF para este filtro.</div>';return}
-  var maxParc=Math.max(1,Math.max.apply(null,notas.map(function(n){return n.parcelas.length})));
-  var monthSet={};
-  notas.forEach(function(n){ n.parcelas.forEach(function(p){ if(p.venc && p.status!=='cancelada') monthSet[keyComissao(p.venc)]=true; }); });
-  var monthKeys=Object.keys(monthSet).sort();
+  var notasVis=notas.filter(function(n){
+    var cm=comissaoPorMes(n);
+    if(!cm[mesAtivo] || cm[mesAtivo].valor<=0.004) return false;
+    return fil==='all' || n.parcelas.some(function(p){return p.status===fil});
+  });
+  if(!notasVis.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF para '+nfMesLabel(mesAtivo)+' com esse filtro.</div>';return}
+  var maxParc=Math.max(1,Math.max.apply(null,notasVis.map(function(n){return n.parcelas.length})));
+  var monthKeys=[mesAtivo];
 
-  function comissaoPorMes(n){
-    var comParcNom=nfBaseComissao(n)*0.03/Math.max(n.parcelas.length,1);
-    var out={};
-    n.parcelas.forEach(function(p){
-      if(!p.venc||p.status==='cancelada') return;
-      var k=keyComissao(p.venc);
-      if(!out[k]) out[k]={valor:0,statuses:[]};
-      out[k].valor+=comParcNom; out[k].statuses.push(p.status);
-    });
-    return out;
-  }
   function statusDaCelula(statuses){
     if(statuses.every(function(s){return s==='pago'})) return 'pago';
     if(statuses.some(function(s){return s==='atrasado'})) return 'atrasado';
@@ -1932,15 +2020,17 @@ function rNF(){
 
   var rowsHtml='';
   notasVis.forEach(function(n){
-    var comTotalNom=nfBaseComissao(n)*0.03;
+    var comTotalNom=nfComissaoTotalNota(n);
     var comParcNom=comTotalNom/Math.max(n.parcelas.length,1);
     var ativas=n.parcelas.filter(function(p){return p.status!=='cancelada'});
-    var comTotalAtivo=comParcNom*ativas.length;
-    var totalCanc=ativas.length===0 && n.parcelas.length>0;
+    var totalCanc=nfCancelada(n);
+    var comTotalAtivo=totalCanc?0:comTotalNom;
 
     if(n.id===_editingNFId){
       var d=_editingNFDraft;
       var colspanTot=3+maxParc+3+monthKeys.length+1;
+      var mesFixoPelaPlanilha = !!n.comissaoMeses; // notas importadas guardam o mês pronto — nesse caso o
+      // campo "mês" por parcela não se aplica; ela remaneja essas pelo botão 🔁 na coluna do mês, na tabela.
       var parcRows=d.parcelas.map(function(p,i){
         return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'+
           '<span style="font-size:10px;color:var(--tx3);width:16px">'+(i+1)+'&ordm;</span>'+
@@ -1949,6 +2039,9 @@ function rNF(){
           '<select id="nfe-st-'+i+'" style="height:28px;font-size:11px;width:auto">'+
           ['pendente','pago','atrasado','cancelada'].map(function(s){return'<option value="'+s+'"'+(p.status===s?' selected':'')+'>'+s+'</option>'}).join('')+
           '</select>'+
+          (mesFixoPelaPlanilha
+            ? '<span style="font-size:10px;color:var(--tx3);width:120px" title="Essa nota veio da importação — o mês da comissão já está definido. Pra remanejar, use o botão 🔁 na coluna do mês, na tabela.">mês: use o 🔁</span>'
+            : '<input type="month" id="nfe-mes-'+i+'" value="'+(p.mesComissao||'')+'" title="Mês da comissão — deixe vazio pra calcular automático pela data de vencimento (dia 1-15 = mesmo mês, 16-31 = mês seguinte). Preencha só se o cliente não pagou dentro do mês e a comissão deve remanejar." style="height:28px;font-size:11px;width:120px">')+
           '<button class="btn btn-sm btn-d" onclick="nfDraftDelParcela('+i+')" title="Remover parcela"><i class="ti ti-x"></i></button>'+
         '</div>';
       }).join('');
@@ -1962,7 +2055,7 @@ function rNF(){
           '<div class="fg"><label>Total da nota R$</label><input type="number" step="0.01" id="nfe-val" value="'+d.valor+'"></div>'+
           '<div class="fg"><label>Valor total dos produtos R$</label><input type="number" step="0.01" id="nfe-prod" value="'+d.valorProdutos+'"></div>'+
         '</div>'+
-        '<div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">Parcelas</div>'+
+        '<div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Parcelas <span style="text-transform:none;font-weight:400;color:var(--tx3)">&middot; o campo "mês" fica vazio por padrão (calcula sozinho); só preencha se o cliente não pagou no prazo e a comissão precisa remanejar pro mês seguinte</span></div>'+
         parcRows+
         '<button class="btn btn-sm" style="margin:4px 0 10px" onclick="nfDraftAddParcela()"><i class="ti ti-plus"></i> Adicionar parcela</button>'+
         '<div style="display:flex;gap:8px">'+
@@ -1989,7 +2082,7 @@ function rNF(){
     var cm=comissaoPorMes(n);
     monthKeys.forEach(function(k){
       var c=cm[k];
-      if(c && c.valor>0) rowsHtml+='<td style="text-align:right"><span class="pill '+nfStPill(statusDaCelula(c.statuses))+'">'+fmtF(c.valor)+'</span></td>';
+      if(c && c.valor>0) rowsHtml+='<td style="text-align:right;white-space:nowrap"><span class="pill '+nfStPill(statusDaCelula(c.statuses))+'">'+fmtF(c.valor)+'</span> <button class="btn btn-sm" style="padding:0 4px;height:18px;font-size:10px;vertical-align:middle" onclick="nfRemanejarMes('+n.id+',\''+k+'\')" title="Cliente não pagou dentro do mês? Mover essa comissão pra '+nfMesLabel(nfProximoMes(k))+'"><i class="ti ti-arrow-right"></i></button></td>';
       else rowsHtml+='<td style="color:var(--bd);text-align:center">&#8212;</td>';
     });
     rowsHtml+='<td style="white-space:nowrap"><button class="btn btn-sm" onclick="nfEditToggle('+n.id+')" title="Editar"><i class="ti ti-pencil"></i></button> '+
