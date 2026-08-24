@@ -510,7 +510,7 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
       <input type="file" id="nf-pgto-input" accept=".pdf" multiple style="display:none" onchange="conferirPagamentoPDF(this)">
       <span class="btn btn-b btn-sm"><i class="ti ti-file-type-pdf"></i> Selecionar PDF de conferência</span>
     </label>
-    <div id="nf-pgto-status" style="font-size:11px;color:var(--tx2);margin-top:8px;line-height:1.7"></div>
+    <div id="nf-pgto-status" style="font-size:11px;color:var(--tx2);margin-top:8px"></div>
   </div>
   <div class="card">
     <div class="ct">Notas — <span id="nf-mes-ativo-label"></span> <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">clique no lápis pra editar qualquer campo — inclusive marcar como cancelada</span>
@@ -1886,7 +1886,7 @@ async function conferirPagamentoPDF(input){
   var status=document.getElementById('nf-pgto-status');
   if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  var marcadas=[], naoEncontradas=[], jaEstavamPagas=0, somaCiclo=0;
+  var marcadas=[], naoEncontradas=[], erros=[], jaEstavamPagas=0, somaCiclo=0;
   for(var idx=0; idx<files.length; idx++){
     var file=files[idx];
     status.textContent='Lendo '+(idx+1)+'/'+files.length+': '+file.name+'…';
@@ -1897,7 +1897,7 @@ async function conferirPagamentoPDF(input){
       res.itens.forEach(function(item){
         if(item.valorComissaoCiclo!=null) somaCiclo+=item.valorComissaoCiclo;
         var nota=notas.find(function(n){return String(n.num)===String(item.nf);});
-        if(!nota){ naoEncontradas.push('NF '+item.nf+' ('+item.cliente.split(' ').slice(0,3).join(' ')+')'); return; }
+        if(!nota){ naoEncontradas.push({nf:item.nf, cliente:item.cliente, motivo:'NF não cadastrada no sistema'}); return; }
         // casa pela posição da parcela (ex.: "2-3" = a 2ª de 3) — mais confiável que a data, que
         // às vezes vem "ajustada" no PDF em relação à data original cadastrada.
         var p = (nota.parcelas.length===item.parcTotal) ? nota.parcelas[item.parcIdx-1] : null;
@@ -1906,24 +1906,50 @@ async function conferirPagamentoPDF(input){
           var vp=item.venc.split('/'); var vencISO=vp[2]+'-'+vp[1].padStart(2,'0')+'-'+vp[0].padStart(2,'0');
           p=nota.parcelas.find(function(x){return x.venc===vencISO;});
         }
-        if(!p){ naoEncontradas.push('NF '+item.nf+' parcela '+item.parcIdx+'/'+item.parcTotal+' — não achei essa parcela pra casar'); return; }
+        if(!p){ naoEncontradas.push({nf:item.nf, cliente:item.cliente, motivo:'parcela '+item.parcIdx+'/'+item.parcTotal+' não achada pra casar'}); return; }
         if(item.valorComissaoCiclo!=null){
           if(p.status==='pago') jaEstavamPagas++;
           else { p.status='pago'; marcadas.push('NF '+item.nf+' ('+fmtF(item.valorComissaoCiclo)+')'); }
         }
       });
     }catch(err){
-      naoEncontradas.push(file.name+': erro ao ler — '+err.message);
+      erros.push(file.name+': erro ao ler — '+err.message);
     }
   }
   input.value='';
   if(marcadas.length){ save('notas',notas); }
-  var msgs=[];
-  msgs.push('✓ '+marcadas.length+' parcela(s) marcada(s) como pago'+(jaEstavamPagas?' ('+jaEstavamPagas+' já estavam)':''));
-  msgs.push('Total conferido no PDF: '+fmtF(somaCiclo));
-  if(naoEncontradas.length) msgs.push('⚠ não encontrei no sistema: '+naoEncontradas.join(' · '));
-  status.innerHTML=msgs.join('<br>');
-  status.style.color=naoEncontradas.length?'var(--amb-tx)':'var(--grn-tx)';
+
+  // agrupa não-encontradas por NF+motivo, senão a mesma NF aparece uma vez por parcela e o
+  // relatório fica embolado — aqui mostra uma linha por NF com a contagem de parcelas afetadas.
+  var grupos={}, ordem=[];
+  naoEncontradas.forEach(function(it){
+    var k=it.nf+'|'+it.motivo;
+    if(!grupos[k]){ grupos[k]={nf:it.nf, cliente:it.cliente, motivo:it.motivo, qtd:0}; ordem.push(k); }
+    grupos[k].qtd++;
+  });
+  var listaGrupos=ordem.map(function(k){return grupos[k];});
+
+  var html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:'+((listaGrupos.length||erros.length)?'10px':'0')+'">'
+    +'<span class="pill '+(marcadas.length?'p-ok':'p-pend')+'">✓ '+marcadas.length+' parcela(s) marcada(s) como pago'+(jaEstavamPagas?' · '+jaEstavamPagas+' já estava(m)':'')+'</span>'
+    +'<span class="pill p-poup">total conferido no PDF: '+fmtF(somaCiclo)+'</span>'
+    +'</div>';
+  if(erros.length){
+    html+='<div style="padding:6px 10px;border-radius:var(--rm);background:var(--red-bg);color:var(--red-tx);font-size:11px;margin-bottom:'+(listaGrupos.length?'8px':'0')+'">'
+      +erros.map(function(e){return '⚠ '+e;}).join('<br>')+'</div>';
+  }
+  if(listaGrupos.length){
+    html+='<div style="border:.5px solid var(--bd);border-radius:var(--rm);max-height:240px;overflow-y:auto">'
+      +'<div style="padding:6px 10px;font-size:10px;color:var(--amb-tx);font-weight:600;background:var(--amb-bg);position:sticky;top:0">⚠ '+listaGrupos.length+' item(ns) do PDF não bateram com o sistema</div>';
+    listaGrupos.forEach(function(g){
+      html+='<div style="padding:6px 10px;border-top:.5px solid var(--bd);display:flex;justify-content:space-between;align-items:baseline;gap:10px">'
+        +'<span style="white-space:nowrap"><b>NF '+g.nf+'</b> <span style="color:var(--tx2)">'+(g.cliente?g.cliente.split(' ').slice(0,3).join(' '):'')+'</span></span>'
+        +'<span style="color:var(--tx3);font-size:10px;text-align:right">'+g.motivo+(g.qtd>1?' · '+g.qtd+' parcela(s)':'')+'</span>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+  status.innerHTML=html;
+  status.style.color='';
   rNF();
 }
 // Regra da Thiara: vencimento do dia 16 de um mês até o dia 15 do mês
