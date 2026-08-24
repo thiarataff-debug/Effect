@@ -1729,6 +1729,14 @@ function setParcelaStatus(nid,idx,st){
   var p=n.parcelas[idx];if(!p)return;
   p.status=st;save('notas',notas);rNF();
 }
+// Edita a data de vencimento de UMA parcela direto na tabela (sem precisar abrir o lápis da nota).
+// Se a nota veio da importação (comissaoMeses), o mês da comissão já está travado por lá — mudar
+// só a data de vencimento aqui não altera o mês; pra remanejar mês, usar o botão 🔁.
+function setParcelaVenc(nid,idx,val){
+  var n=notas.find(function(n){return n.id===nid});if(!n)return;
+  var p=n.parcelas[idx];if(!p)return;
+  p.venc=val;save('notas',notas);rNF();
+}
 function delNF(id){notas=notas.filter(function(n){return n.id!==id});save('notas',notas);rNF()}
 // Importação única da base reconciliada com a planilha Excel (Comissões Jho) — SUBSTITUI todas as notas
 // atuais pelo arquivo .json gerado a partir da planilha completa. Usar uma vez só, na reconciliação.
@@ -1768,6 +1776,12 @@ function keyComissao(vencStr) {
 }
 function nfBaseComissao(n){ return (n.valorProdutos!=null && n.valorProdutos>0) ? n.valorProdutos : n.valor; }
 function nfStPill(st){ return st==='pago'?'p-ok':st==='atrasado'?'p-venc':st==='cancelada'?'p-canc':'p-pend'; }
+function nfStCellStyle(st){
+  if(st==='pago') return 'background:var(--grn-bg);color:var(--grn-tx)';
+  if(st==='atrasado') return 'background:var(--red-bg);color:var(--red-tx)';
+  if(st==='cancelada') return 'background:var(--bg3);color:var(--tx3)';
+  return 'background:var(--amb-bg);color:var(--amb-tx)';
+}
 // Uma nota é considerada cancelada quando TODAS as parcelas estão marcadas como 'cancelada'.
 function nfCancelada(n){ var ativas=n.parcelas.filter(function(p){return p.status!=='cancelada'}); return ativas.length===0 && n.parcelas.length>0; }
 // notas importadas da planilha (reconciliação de ago/2026) trazem n.comissaoMeses = {"2026-09":355.89,...}
@@ -2073,7 +2087,11 @@ function rNF(){
     rowsHtml+='<td style="color:var(--tx2);font-size:11px">'+(n.emis?fmtDataBR(n.emis):'&#8212;')+'</td>';
     for(var vi2=0;vi2<maxParc;vi2++){
       var p2=n.parcelas[vi2];
-      if(p2) rowsHtml+='<td style="text-align:center;white-space:nowrap">'+(p2.venc?fmtDataBR(p2.venc):'&#8212;')+' <span class="pill '+nfStPill(p2.status)+'" style="margin-left:2px">'+p2.status.slice(0,3)+'</span></td>';
+      if(p2) rowsHtml+='<td style="text-align:center;white-space:nowrap">'+
+        '<input type="date" value="'+(p2.venc||'')+'" onchange="setParcelaVenc('+n.id+','+vi2+',this.value)" title="Data de vencimento — edite direto aqui" style="height:22px;font-size:10px;width:104px;padding:0 2px;border:.5px solid var(--bd);border-radius:4px;background:var(--bg)">'+
+        '<select onchange="setParcelaStatus('+n.id+','+vi2+',this.value)" title="Status da parcela — edite direto aqui" style="height:22px;font-size:9px;width:auto;margin-left:2px;padding:0 1px;border:none;border-radius:4px;font-weight:600;'+nfStCellStyle(p2.status)+'">'+
+        ['pendente','pago','atrasado','cancelada'].map(function(s){return '<option value="'+s+'"'+(p2.status===s?' selected':'')+'>'+s.slice(0,3)+'</option>'}).join('')+
+        '</select></td>';
       else rowsHtml+='<td style="color:var(--bd)">&#8212;</td>';
     }
     rowsHtml+='<td style="text-align:right;font-weight:500">'+fmtF(n.valor)+'</td>';
