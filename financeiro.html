@@ -238,6 +238,25 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
 </div>
 <!-- LANCAMENTOS -->
 <div id="p-lanc" class="pg">
+  <!-- COMISSÕES FIXAS DE OUTRAS FONTES: aqui só entra o total mensal + data prevista de pagamento +
+       data real de recebimento (sem detalhe por nota). Cai automaticamente no ledger geral abaixo,
+       como receita, e entra nos totais do Visão Geral — é a "planilha de controle financeiro maior". -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct">Comissões fixas de outras fontes <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">só o total do mês + data prevista + data real de recebimento</span></div>
+    <div class="row r4" style="margin-bottom:10px">
+      <div class="fg"><label>Fonte</label>
+        <select id="cf-fonte" onchange="document.getElementById('cf-fonte-outra').style.display=this.value==='__outra__'?'block':'none'">
+          <option>Kepa</option><option>Box</option><option value="__outra__">+ outra fonte&#8230;</option>
+        </select>
+        <input type="text" id="cf-fonte-outra" placeholder="Nome da fonte" style="display:none;margin-top:4px">
+      </div>
+      <div class="fg"><label>Valor total R$</label><input type="number" id="cf-val" step="0.01" placeholder="0,00"></div>
+      <div class="fg"><label>Data prevista de pagamento</label><input type="date" id="cf-prev"></div>
+      <div class="fg"><label>Data real de recebimento <span style="font-weight:400;color:var(--tx3)">(deixe vazio até receber)</span></label><input type="date" id="cf-real"></div>
+    </div>
+    <button class="btn btn-p" onclick="addComissaoOutraFonte()"><i class="ti ti-plus"></i> Lançar comissão</button>
+    <div id="cf-lista" style="margin-top:12px"></div>
+  </div>
   <!-- filtros -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap">
     <div class="msel" id="lf-mes-chips">
@@ -477,10 +496,18 @@ input[type=range]{height:4px;width:100%;accent-color:var(--blu)}
       <button class="btn btn-p" onclick="addNF()"><i class="ti ti-file-plus"></i> Registrar NF</button>
     </div>
   </div>
-  <div class="grid3" id="nf-kpis" style="margin-bottom:12px"></div>
+  <div class="grid4" id="nf-kpis" style="margin-bottom:12px"></div>
   <div class="card" style="margin-bottom:12px">
     <div class="ct">Comissões por mês <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">o mês vigente vem aberto por padrão &middot; meses futuros mostram só a prévia &middot; histórico fica recolhido</span></div>
     <div id="nf-meses-nav"><div class="empty">Nenhuma comissão agendada.</div></div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct">Conferir pagamento (PDF) <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">anexe o PDF de conferência que a empresa manda antes de pagar — marca "pago" sozinho e avisa o que não bateu</span></div>
+    <label style="cursor:pointer">
+      <input type="file" id="nf-pgto-input" accept=".pdf" multiple style="display:none" onchange="conferirPagamentoPDF(this)">
+      <span class="btn btn-b btn-sm"><i class="ti ti-file-type-pdf"></i> Selecionar PDF de conferência</span>
+    </label>
+    <div id="nf-pgto-status" style="font-size:11px;color:var(--tx2);margin-top:8px;line-height:1.7"></div>
   </div>
   <div class="card">
     <div class="ct">Notas — <span id="nf-mes-ativo-label"></span> <span style="font-size:10px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">clique no lápis pra editar qualquer campo — inclusive marcar como cancelada</span>
@@ -966,6 +993,61 @@ function addEntry(){
 function delEntry(id){
   entries=entries.filter(function(e){return e.id!==id});
   save('entries',entries);refresh();rVencStrip();
+}
+// ─── COMISSÕES FIXAS DE OUTRAS FONTES (Kepa, Box, etc.) ─────────────────────
+// Lançamento simplificado: só total do mês + data prevista + data real de recebimento (sem nota a
+// nota, ao contrário do NF Tracker). Cada lançamento vira uma "entries" normal (tipo:'rec'), então
+// entra automaticamente nos totais do Visão Geral e no ledger de Lançamentos — mesma planilha maior.
+// origemComissao:true só serve pra filtrar esses lançamentos aqui embaixo, sem mexer no resto.
+function mesNomeFromISO(iso){
+  if(!iso) return MESES[new Date().getMonth()];
+  var partes=iso.split('-');
+  return MESES[parseInt(partes[1],10)-1];
+}
+function addComissaoOutraFonte(){
+  var fonteSel=document.getElementById('cf-fonte').value;
+  var fonte=fonteSel==='__outra__'?document.getElementById('cf-fonte-outra').value.trim():fonteSel;
+  var val=parseFloat(document.getElementById('cf-val').value)||0;
+  var prev=document.getElementById('cf-prev').value;
+  var real=document.getElementById('cf-real').value;
+  if(!fonte){alert('Informe a fonte da comissão.');return}
+  if(!val||val<=0){alert('Informe o valor total.');return}
+  if(!prev){alert('Informe a data prevista de pagamento.');return}
+  entries.push({id:nxtId++,tipo:'rec',cat:fonte,mes:mesNomeFromISO(prev),valor:val,desc:'',origemComissao:true,dataPrevista:prev,dataReal:real||''});
+  save('entries',entries);
+  document.getElementById('cf-val').value='';document.getElementById('cf-prev').value='';document.getElementById('cf-real').value='';
+  document.getElementById('cf-fonte-outra').value='';
+  refresh();rComissoesOutras();rVencStrip();
+}
+function marcarComissaoRecebida(id,val){
+  var e=entries.find(function(x){return x.id===id});if(!e)return;
+  e.dataReal=val;save('entries',entries);refresh();rComissoesOutras();
+}
+function delComissaoOutraFonte(id){
+  if(!confirm('Excluir esse lançamento de comissão?'))return;
+  entries=entries.filter(function(e){return e.id!==id});
+  save('entries',entries);refresh();rComissoesOutras();rVencStrip();
+}
+function rComissoesOutras(){
+  var el=document.getElementById('cf-lista');if(!el)return;
+  var lista=entries.filter(function(e){return e.origemComissao}).sort(function(a,b){return (b.dataPrevista||'').localeCompare(a.dataPrevista||'');});
+  if(!lista.length){el.innerHTML='<div class="empty">Nenhuma comissão lançada ainda.</div>';return}
+  var hoje=new Date().toISOString().slice(0,10);
+  el.innerHTML='<table class="tbl"><thead><tr><th>Fonte</th><th>Mês</th><th>Valor</th><th>Prevista</th><th>Recebimento</th><th>Status</th><th></th></tr></thead><tbody>'+
+    lista.map(function(e){
+      var atrasado=!e.dataReal && e.dataPrevista && e.dataPrevista<hoje;
+      var statusHtml = e.dataReal
+        ? '<span class="pill p-ok">recebido</span>'
+        : atrasado ? '<span class="pill p-venc">atrasado</span>' : '<span class="pill p-pend">previsto</span>';
+      var recebCell = e.dataReal
+        ? fmtDataBR(e.dataReal)+' <button class="btn btn-sm" style="padding:0 4px;height:18px;font-size:9px" onclick="marcarComissaoRecebida('+e.id+',\'\')" title="Desfazer">&#8635;</button>'
+        : '<input type="date" style="height:24px;font-size:10px;width:118px" onchange="marcarComissaoRecebida('+e.id+',this.value)"> <span style="font-size:9px;color:var(--tx3)">marcar recebido</span>';
+      return '<tr><td style="font-weight:500">'+e.cat+'</td><td>'+e.mes+'</td><td style="text-align:right">'+fmtF(e.valor)+'</td>'+
+        '<td>'+(e.dataPrevista?fmtDataBR(e.dataPrevista):'&#8212;')+'</td>'+
+        '<td style="white-space:nowrap">'+recebCell+'</td>'+
+        '<td>'+statusHtml+'</td>'+
+        '<td><button class="btn btn-sm btn-d" onclick="delComissaoOutraFonte('+e.id+')" title="Excluir"><i class="ti ti-trash"></i></button></td></tr>';
+    }).join('')+'</tbody></table>';
 }
 // Lançar vencimento direto como custo (usa o valor editado daquele mês, se houver)
 function lancVenc(id){
@@ -1760,6 +1842,87 @@ function importarNotasJSON(input){
   reader.onerror=function(){ alert('Não consegui ler o arquivo.'); input.value=''; };
   reader.readAsText(file,'utf-8');
 }
+// ─── CONFERIR PAGAMENTO POR PDF ──────────────────────────────────────────
+// A empresa manda, antes de pagar, um PDF linha-a-linha: cliente, nº da NF, parcela (ex. "2-3" =
+// parcela 2 de 3), vencimento, observação e dois valores em R$ — o valor da parcela e, quando ela
+// ENTROU nesse ciclo de pagamento, o valor da comissão (3%) paga. Quando não entrou (ex.: nota
+// ainda pendente), esse segundo valor vem "-". No fim do PDF vem o total do PIX daquele ciclo.
+// Extrai o texto (reaproveita extrairTextoPDF, já usado pro DANFE) e casa cada linha com a nota
+// já cadastrada (por nº da NF + posição da parcela) pra marcar sozinho como "pago".
+function parseConferenciaPagamento(texto){
+  var linhas=texto.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  var itens=[], resumo=[];
+  linhas.forEach(function(l){
+    if(/^CLIENTE\s+NF/i.test(l)) return; // cabeçalho da tabela
+    if(/PIX|COMISS[ÃA]O REF|CORRE[ÇC][ÃA]O/i.test(l)){ resumo.push(l); return; }
+    var m=l.match(/^(.+?)\s+(\d{3,6})\s+(\d+)-(\d+)\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(.+)$/);
+    if(!m) return;
+    var resto=m[6];
+    var partes=resto.split('R$');
+    var obs=(partes[0]||'').trim();
+    function limpaNum(s){
+      if(!s) return null;
+      s=s.trim();
+      if(s==='-'||s==='') return null;
+      var s2=s.replace(/\s+/g,'').replace(/\./g,'').replace(',','.');
+      var v=parseFloat(s2);
+      return isNaN(v)?null:v;
+    }
+    itens.push({
+      cliente:m[1].trim(), nf:m[2], parcIdx:parseInt(m[3],10), parcTotal:parseInt(m[4],10),
+      venc:m[5], obs:obs,
+      valorParcela: partes.length>1?limpaNum(partes[1]):null,
+      valorComissaoCiclo: partes.length>2?limpaNum(partes[2]):null
+    });
+  });
+  return {itens:itens, resumo:resumo};
+}
+async function conferirPagamentoPDF(input){
+  var files=Array.prototype.slice.call(input.files||[]);
+  if(!files.length) return;
+  var status=document.getElementById('nf-pgto-status');
+  if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var marcadas=[], naoEncontradas=[], jaEstavamPagas=0, somaCiclo=0;
+  for(var idx=0; idx<files.length; idx++){
+    var file=files[idx];
+    status.textContent='Lendo '+(idx+1)+'/'+files.length+': '+file.name+'…';
+    status.style.color='var(--blu-tx)';
+    try{
+      var texto=await extrairTextoPDF(file);
+      var res=parseConferenciaPagamento(texto);
+      res.itens.forEach(function(item){
+        if(item.valorComissaoCiclo!=null) somaCiclo+=item.valorComissaoCiclo;
+        var nota=notas.find(function(n){return String(n.num)===String(item.nf);});
+        if(!nota){ naoEncontradas.push('NF '+item.nf+' ('+item.cliente.split(' ').slice(0,3).join(' ')+')'); return; }
+        // casa pela posição da parcela (ex.: "2-3" = a 2ª de 3) — mais confiável que a data, que
+        // às vezes vem "ajustada" no PDF em relação à data original cadastrada.
+        var p = (nota.parcelas.length===item.parcTotal) ? nota.parcelas[item.parcIdx-1] : null;
+        if(!p){
+          // fallback: casa pela data de vencimento
+          var vp=item.venc.split('/'); var vencISO=vp[2]+'-'+vp[1].padStart(2,'0')+'-'+vp[0].padStart(2,'0');
+          p=nota.parcelas.find(function(x){return x.venc===vencISO;});
+        }
+        if(!p){ naoEncontradas.push('NF '+item.nf+' parcela '+item.parcIdx+'/'+item.parcTotal+' — não achei essa parcela pra casar'); return; }
+        if(item.valorComissaoCiclo!=null){
+          if(p.status==='pago') jaEstavamPagas++;
+          else { p.status='pago'; marcadas.push('NF '+item.nf+' ('+fmtF(item.valorComissaoCiclo)+')'); }
+        }
+      });
+    }catch(err){
+      naoEncontradas.push(file.name+': erro ao ler — '+err.message);
+    }
+  }
+  input.value='';
+  if(marcadas.length){ save('notas',notas); }
+  var msgs=[];
+  msgs.push('✓ '+marcadas.length+' parcela(s) marcada(s) como pago'+(jaEstavamPagas?' ('+jaEstavamPagas+' já estavam)':''));
+  msgs.push('Total conferido no PDF: '+fmtF(somaCiclo));
+  if(naoEncontradas.length) msgs.push('⚠ não encontrei no sistema: '+naoEncontradas.join(' · '));
+  status.innerHTML=msgs.join('<br>');
+  status.style.color=naoEncontradas.length?'var(--amb-tx)':'var(--grn-tx)';
+  rNF();
+}
 // Regra da Thiara: vencimento do dia 16 de um mês até o dia 15 do mês
 // seguinte cai na comissão do mês seguinte. Ou seja: venc dia 1-15 → comissão
 // no MESMO mês do vencimento; venc dia 16-31 → comissão no mês SEGUINTE.
@@ -1975,13 +2138,14 @@ function rNF(){
   var historico = monthKeysAll.filter(function(k){return k<mesVig});
   var futuros = monthKeysAll.filter(function(k){return k>mesVig});
 
-  function totalDoMes(k){ var v=0; notas.forEach(function(n){ var cm=comissaoPorMes(n); if(cm[k]) v+=cm[k].valor; }); return v; }
   function pillMes(k,ativo,vigente){
-    var v=totalDoMes(k);
+    var tm=nfTotaisMes(k);
+    var pago=tm.totC-tm.totP;
     var bg = ativo ? 'var(--grn)' : 'var(--bg2)';
     var cor = ativo ? '#fff' : 'var(--tx)';
+    var subPago = pago>0.004 ? ' <span style="opacity:.8;font-size:10px">('+fmtF(pago)+' j&aacute; pago)</span>' : '';
     return '<button class="btn btn-sm" style="margin:0 6px 6px 0;background:'+bg+';color:'+cor+';border-color:transparent" onclick="_nfMesAtivo=\''+k+'\';rNF()">'+
-      nfMesLabel(k)+(vigente?' &middot; vigente':'')+'<span style="opacity:.85;margin-left:6px">'+fmtF(v)+'</span></button>';
+      nfMesLabel(k)+(vigente?' &middot; vigente':'')+'<span style="opacity:.85;margin-left:6px">'+fmtF(tm.totC)+'</span>'+subPago+'</button>';
   }
   var navHtml='';
   if(historico.length){
@@ -1994,11 +2158,17 @@ function rNF(){
   document.getElementById('nf-mes-ativo-label').textContent = monthKeysAll.length ? nfMesLabel(mesAtivo) : 'sem lançamentos';
 
   // ── KPIs do mês selecionado (não do histórico inteiro) ──────────────────────
-  var totM=nfTotaisMes(mesAtivo), totC=totM.totC, totP=totM.totP, parcelasAbertas=totM.parcelasAbertas;
+  // "Já recebido" é do mês selecionado, mas "Comissão pendente" é sempre o total em aberto em
+  // TODOS os meses (passado + futuro) — não faz sentido esconder um atraso só porque você está
+  // olhando outro mês na tela. Recalculado toda vez que uma parcela muda de status.
+  var totM=nfTotaisMes(mesAtivo), totC=totM.totC, totP=totM.totP;
+  var totPago=totC-totP;
+  var totGeral=nfTotais(); // pendente somando TODOS os meses, independente do mês selecionado acima
   document.getElementById('nf-kpis').innerHTML=
     '<div class="kpi"><div class="kpi-l">NFs em '+nfMesLabel(mesAtivo)+'</div><div class="kpi-v">'+totM.qtdNotas+'</div><div class="kpi-s">de '+notas.length+' notas no total</div></div>'+
     '<div class="kpi"><div class="kpi-l">Comissão de '+nfMesLabel(mesAtivo)+'</div><div class="kpi-v" style="color:var(--grn-tx)">'+fmtF(totC)+'</div><div class="kpi-s">3% do valor dos produtos &middot; exclui canceladas</div></div>'+
-    '<div class="kpi"><div class="kpi-l">Comissão pendente</div><div class="kpi-v" style="color:var(--amb-tx)">'+fmtF(totP)+'</div><div class="kpi-s">'+parcelasAbertas+' parcela(s) em aberto</div></div>';
+    '<div class="kpi"><div class="kpi-l">J&aacute; recebido</div><div class="kpi-v" style="color:var(--grn-tx)">'+fmtF(totPago)+'</div><div class="kpi-s">parcelas marcadas como "pago"</div></div>'+
+    '<div class="kpi"><div class="kpi-l">Comiss&atilde;o pendente</div><div class="kpi-v" style="color:var(--amb-tx)">'+fmtF(totGeral.totP)+'</div><div class="kpi-s">'+totGeral.parcelasAbertas+' parcela(s) em aberto &middot; todos os meses</div></div>';
 
   // ── Tabela detalhada estilo planilha, filtrada para o mês selecionado acima ──
   if(!notas.length){document.getElementById('nf-tbl').innerHTML='<div class="empty">Nenhuma NF.</div>';return}
@@ -2466,7 +2636,7 @@ function go(id,btn){
 }
 function refresh(){
   tryRun(rDash);
-  if(document.getElementById('p-lanc').classList.contains('on')){tryRun(rTbl);tryRun(rSaldoAnterior);}
+  if(document.getElementById('p-lanc').classList.contains('on')){tryRun(rTbl);tryRun(rSaldoAnterior);tryRun(rComissoesOutras);}
   if(document.getElementById('p-alertas').classList.contains('on'))tryRun(rAlertas);
   if(document.getElementById('p-fixas').classList.contains('on'))tryRun(rFixas);
   if(document.getElementById('p-variaveis').classList.contains('on'))tryRun(rVariaveis);
@@ -2488,6 +2658,7 @@ tryRun(rComp);
 tryRun(rSim);
 tryRun(rVencStrip);
 tryRun(rSaldoAnterior);
+tryRun(rComissoesOutras);
 document.getElementById('upd').textContent=new Date().toLocaleDateString('pt-BR');
 window.addEventListener('load', function(){
   tryRun(rDash);
