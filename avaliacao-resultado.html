@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resultado da Avaliação · Effect Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:var(--navy);color:#fff;padding:16px 24px}
+header .logo{font-weight:800;font-size:16px}header .logo span{color:var(--green)}
+.container{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+.card{background:#fff;border-radius:12px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px}
+.card-title{font-weight:800;font-size:13px;color:var(--navy);margin-bottom:10px}
+.top-row{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.nome{font-size:18px;font-weight:800}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.disc-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.disc-bar-l{font-size:11px;font-weight:800;width:14px}
+.disc-bar-track{flex:1;background:#e8ecf1;border-radius:999px;height:11px;overflow:hidden}
+.disc-bar-f{height:100%;border-radius:999px}
+.disc-bar-pct{font-size:11px;font-weight:700;color:var(--muted);width:30px;text-align:right}
+.tag{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;margin:3px 4px 0 0;color:var(--navy)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px}
+.kv b{color:var(--muted);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}
+.empty{color:var(--muted);font-size:12.5px;text-align:center;padding:40px 10px}
+.btn-print{background:#2a2a2b;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;width:100%;margin-top:6px}
+@media print{header,.btn-print{display:none!important}body{background:#fff}.container{padding:0}.card{box-shadow:none;border:1px solid #e5e7eb;break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<header><div class="logo">Effect <span>Pessoas</span> · Resultado da Avaliação</div></header>
+
+<div class="container" id="container">
+  <div class="empty">Carregando...</div>
+</div>
+
+<script>
+const CORES = {D:'#dc2626',I:'#d97706',S:'#16a34a',C:'#2563eb'};
+const NOMES = {D:'Dominante',I:'Influente',S:'Estável',C:'Criterioso'};
+const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function barras(pct) {
+  if (!pct) return '<p style="font-size:12px;color:var(--muted)">Sem dados de DISC.</p>';
+  return ['D','I','S','C'].map(k => `
+    <div class="disc-bar-row">
+      <div class="disc-bar-l" style="color:${CORES[k]}">${k}</div>
+      <div class="disc-bar-track"><div class="disc-bar-f" style="width:${pct[k]||0}%;background:${CORES[k]}"></div></div>
+      <div class="disc-bar-pct">${pct[k]||0}%</div>
+    </div>`).join('');
+}
+
+async function carregar() {
+  const token = location.pathname.split('/').pop();
+  const container = document.getElementById('container');
+  try {
+    const r = await fetch('/api/avaliacao-resultado/' + encodeURIComponent(token));
+    const data = await r.json();
+    if (!data.ok || !data.avaliacao) {
+      container.innerHTML = '<div class="empty">Avaliação não encontrada.</div>';
+      return;
+    }
+    render(data.avaliacao);
+  } catch(e) {
+    container.innerHTML = '<div class="empty">Erro ao carregar o resultado.</div>';
+  }
+}
+
+function render(d) {
+  const container = document.getElementById('container');
+  if (d.status !== 'respondido') {
+    container.innerHTML = `<div class="card"><div class="top-row"><div><div class="nome">${escapeHtml(d.nome||'—')}</div>
+      <div class="sub">${escapeHtml(d.vaga||'Vaga não informada')}</div></div></div>
+      <p style="font-size:12.5px;color:var(--muted)">Ainda não respondido — status: pendente.</p></div>`;
+    return;
+  }
+
+  const disc = d.disc || {};
+  const pctN = disc.percentuaisNatural || {};
+  const primario = disc.primarioNatural;
+  const secundario = disc.secundarioNatural;
+  const g = disc.relatorioGestor || {};
+  const rh = disc.relatorioRH || {};
+  const nivelLabel = NIVEL_LABEL[disc.nivel] || '';
+  const respondidoEm = d.respondidoEm ? new Date(d.respondidoEm).toLocaleDateString('pt-BR') : '';
+
+  const discCard = primario ? `
+    <div class="card">
+      <div class="top-row">
+        <div>
+          <div class="nome">${escapeHtml(d.nome||'—')}</div>
+          <div class="sub">${escapeHtml(d.vaga||'Vaga não informada')}${nivelLabel?' · Nível '+nivelLabel:''} · ${respondidoEm}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:800;color:${CORES[primario]||'#374151'}">${NOMES[primario]||primario}${secundario?' / '+(NOMES[secundario]||secundario):''}</div>
+          <div class="sub">Perfil DISC natural</div>
+        </div>
+      </div>
+      ${barras(pctN)}
+      ${rh.resumoRH ? `<p style="font-size:12.5px;color:#374151;line-height:1.6;margin-top:10px">${escapeHtml(rh.resumoRH)}</p>` : ''}
+    </div>
+    ${g.comoGerenciar ? `<div class="card"><div class="card-title">👔 Como gerenciar no dia a dia</div><p style="font-size:12.5px;color:#374151;line-height:1.6">${escapeHtml(g.comoGerenciar)}</p></div>` : ''}
+    ${rh.alertas && rh.alertas.length ? `<div class="card"><div class="card-title" style="color:#dc2626">⚠️ Pontos de atenção</div>${rh.alertas.map(a=>`<div style="font-size:12px;color:#374151;margin-bottom:5px;line-height:1.5">• ${escapeHtml(a)}</div>`).join('')}</div>` : ''}
+  ` : '<div class="card"><div class="card-title">🧠 DISC</div><p style="font-size:12px;color:var(--muted)">Sem resultado de DISC nesta avaliação.</p></div>';
+
+  const valoresCard = (d.valores && d.valores.length) ? `
+    <div class="card">
+      <div class="card-title">💡 O que motiva</div>
+      <div>${d.valores.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
+    </div>` : '';
+
+  const disp = d.disponibilidade || {};
+  const dispLinhas = [
+    ['Pretensão salarial', disp.pretensaoSalarial],
+    ['Dias disponíveis', (disp.dias||[]).join(', ')],
+    ['Turnos', (disp.turnos||[]).join(', ')],
+    ['Transporte próprio', disp.transporteProprio],
+    ['Disponível para começar', disp.inicioDisponivel],
+    ['Experiência anterior', disp.experienciaAnterior],
+  ].filter(([,v]) => v);
+  const dispCard = dispLinhas.length ? `
+    <div class="card">
+      <div class="card-title">📋 Disponibilidade e expectativas</div>
+      <div class="kv">${dispLinhas.map(([k,v]) => `<b>${k}</b><span>${escapeHtml(v)}</span>`).join('')}</div>
+    </div>` : '';
+
+  container.innerHTML = discCard + valoresCard + dispCard +
+    '<button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>';
+}
+
+carregar();
+</script>
+</body>
+</html>

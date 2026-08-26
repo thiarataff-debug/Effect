@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliação de Candidatos · Effect Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:10px}
+header .logo{font-weight:800;font-size:16px}header .logo span{color:var(--green)}
+.container{max-width:960px;margin:0 auto;padding:20px 16px 60px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
+.card-title{font-weight:800;font-size:14px;color:var(--navy);margin-bottom:14px}
+label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px}
+select,input[type=text]{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;background:#fff;color:var(--text)}
+select:focus,input:focus{border-color:var(--blue)}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.row > div{flex:1;min-width:180px}
+.btn{padding:11px 20px;border-radius:9px;border:none;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-sm{padding:6px 12px;font-size:11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;color:var(--navy);cursor:pointer;font-family:'Montserrat',sans-serif;font-weight:700}
+.link-box{display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:14px}
+.link-box.show{display:block}
+.link-box input{background:#fff;font-size:12px;color:var(--navy);font-weight:700}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:11px 12px;font-size:12.5px;border-bottom:1px solid #eef0f3}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800}
+tr:last-child td{border-bottom:none}
+.badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.badge.pendente{background:#fef9c3;color:#78350f}
+.badge.respondido{background:#f0fdf4;color:#16a34a}
+.acoes-cell{display:flex;gap:6px;flex-wrap:wrap}
+.empty{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 10px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:9px;font-size:12px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Effect <span>Pessoas</span></div>
+  <div style="display:flex;gap:14px;font-size:11px">
+    <a href="/roteiro-entrevista" style="color:rgba(255,255,255,.85);text-decoration:none;font-weight:700">🎯 Roteiro de entrevista →</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div class="card-title">🔗 Gerar novo link de avaliação</div>
+    <div class="row">
+      <div>
+        <label>Nome do candidato</label>
+        <input type="text" id="f-nome" placeholder="Nome completo">
+      </div>
+      <div>
+        <label>Vaga</label>
+        <input type="text" id="f-vaga" placeholder="Ex: Garçom, Analista de RH...">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Nível do cargo</label>
+        <select id="f-nivel">
+          <option value="operacional">Operacional</option>
+          <option value="administrativo" selected>Administrativo</option>
+          <option value="estrategico">Estratégico</option>
+        </select>
+      </div>
+      <div>
+        <label>WhatsApp do candidato <span style="font-weight:400;text-transform:none">(opcional)</span></label>
+        <input type="text" id="f-telefone" placeholder="(27) 99999-9999">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="criarAvaliacao()">Gerar link →</button>
+
+    <div class="link-box" id="link-box">
+      <label style="margin-bottom:8px">Link pronto — envie pro candidato</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="link-gerado" readonly>
+        <button class="btn-sm" onclick="copiarLink()">📋 Copiar</button>
+        <a class="btn-sm" id="link-whatsapp" href="#" target="_blank" style="display:none;text-decoration:none;text-align:center">💬 WhatsApp</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="card-title" style="margin:0">📋 Avaliações enviadas</div>
+      <input type="text" id="busca" placeholder="🔍 Buscar por nome ou vaga..." style="max-width:240px" oninput="renderLista()">
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Candidato</th><th>Vaga</th><th>Status</th><th>Criado em</th><th></th></tr></thead>
+        <tbody id="lista-corpo"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="lista-vazia" style="display:none">Nenhuma avaliação enviada ainda.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let avaliacoesCache = [];
+
+async function carregarLista() {
+  try {
+    const r = await fetch('/api/avaliacoes');
+    const data = await r.json();
+    avaliacoesCache = (data.ok && data.avaliacoes) ? data.avaliacoes : [];
+  } catch(e) {
+    avaliacoesCache = [];
+  }
+  renderLista();
+}
+
+function renderLista() {
+  const busca = (document.getElementById('busca').value || '').toLowerCase();
+  const corpo = document.getElementById('lista-corpo');
+  const vazio = document.getElementById('lista-vazia');
+  const filtradas = avaliacoesCache.filter(a =>
+    !busca || (a.nome||'').toLowerCase().includes(busca) || (a.vaga||'').toLowerCase().includes(busca)
+  );
+
+  if (!filtradas.length) {
+    corpo.innerHTML = '';
+    vazio.style.display = 'block';
+    return;
+  }
+  vazio.style.display = 'none';
+
+  corpo.innerHTML = filtradas.map(a => {
+    const criado = a.criadoEm ? new Date(a.criadoEm).toLocaleDateString('pt-BR') : '—';
+    const statusLbl = a.status === 'respondido' ? 'Respondido' : 'Pendente';
+    const link = `${location.origin}/avaliar/${a.token}${a.nivel && a.nivel!=='administrativo' ? '?nivel='+a.nivel : ''}`;
+    return `<tr>
+      <td>${escapeHtml(a.nome||'—')}</td>
+      <td>${escapeHtml(a.vaga||'—')}</td>
+      <td><span class="badge ${a.status}">${statusLbl}</span></td>
+      <td>${criado}</td>
+      <td class="acoes-cell">
+        <button class="btn-sm" onclick="copiarTexto('${link}')">📋 Link</button>
+        ${a.status === 'respondido' ? `<a class="btn-sm" href="/avaliacao-resultado/${a.token}" target="_blank" style="text-decoration:none;text-align:center">Ver resultado ↗</a>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function criarAvaliacao() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const vaga = document.getElementById('f-vaga').value.trim();
+  const nivel = document.getElementById('f-nivel').value;
+  const telefone = document.getElementById('f-telefone').value.trim();
+
+  if (!nome) { mostrarToast('Informe o nome do candidato'); return; }
+
+  try {
+    const r = await fetch('/api/avaliacoes/criar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ nome, vaga, nivel, telefone })
+    });
+    const data = await r.json();
+    if (!data.ok) { mostrarToast('Erro ao gerar link: ' + (data.erro||'')); return; }
+
+    document.getElementById('link-gerado').value = data.link;
+    document.getElementById('link-box').classList.add('show');
+    const waBtn = document.getElementById('link-whatsapp');
+    if (telefone) {
+      const num = telefone.replace(/\D/g,'');
+      const msg = encodeURIComponent(`Oi ${nome.split(' ')[0]}! Pra seguirmos no processo seletivo, responde essa avaliação rapidinha: ${data.link}`);
+      waBtn.href = `https://wa.me/55${num}?text=${msg}`;
+      waBtn.style.display = 'inline-block';
+    } else {
+      waBtn.style.display = 'none';
+    }
+
+    document.getElementById('f-nome').value = '';
+    document.getElementById('f-vaga').value = '';
+    document.getElementById('f-telefone').value = '';
+    carregarLista();
+  } catch(e) {
+    mostrarToast('Erro de conexão ao gerar o link');
+  }
+}
+
+function copiarLink() {
+  const el = document.getElementById('link-gerado');
+  el.select();
+  copiarTexto(el.value);
+}
+
+function copiarTexto(texto) {
+  navigator.clipboard.writeText(texto).then(() => mostrarToast('Link copiado!')).catch(() => mostrarToast('Não deu pra copiar automaticamente'));
+}
+
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+carregarLista();
+</script>
+</body>
+</html>

@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PSI — Thiara</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Chart.js, jsPDF e SheetJS — usados pelos gráficos (Dashboard/Checklist Mensal) e pelas
+     exportações de Relatórios (PDF/XLSX). Sem esses três scripts nada disso funciona. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#1a2a4a;--bg:#f5f7fa;--muted:#a1a1aa;--green:#8ed1b2;--blue:#1fa5ff;--pink:#f4afa1;--text:#2a2a2b;--border:#e5e7eb;--purple:#8b5cf6}
@@ -122,6 +128,17 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 .slider-val{font-weight:800;font-size:13px;color:var(--blue);min-width:18px;text-align:center}
 .psi-time-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;outline:none;color:var(--text);background:var(--bg)}
 .psi-time-input:focus{border-color:var(--blue)}
+/* .chart-wrap não tinha altura definida em lugar nenhum do arquivo — com Chart.js
+   responsive:true + maintainAspectRatio:false isso deixa os canvases com altura
+   imprevisível (ou zero). Vale pra todo gráfico do arquivo, não só o novo. */
+.chart-wrap{position:relative;height:220px;width:100%}
+/* ══ CHECKLIST MENSAL ══ */
+.cm-item{margin-bottom:12px}
+.cm-item:last-child{margin-bottom:0}
+.cm-item-label{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:5px;display:block;line-height:1.35}
+.cm-item-row{display:flex;align-items:center;gap:10px}
+.cm-item-row input[type=range]{flex:1}
+.cm-domain-avg{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;color:#fff;white-space:nowrap}
 .med-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .med-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
 .med-item.taken{background:#f0fdf4;border-color:#86efac}
@@ -994,6 +1011,7 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
     <button class="psi-nav-btn active" onclick="psiMostrarSec('hoje',this)">📝 Hoje</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('dashboard',this)">📊 Dashboard</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('historico',this)">📅 Histórico</button>
+    <button class="psi-nav-btn" onclick="psiMostrarSec('checklist-mensal',this)">🗓️ Checklist Mensal</button>
     <button class="psi-nav-btn" onclick="psiMostrarSec('relatorios',this)">📄 Relatórios</button>
   </div>
   <div id="psi-stock-section"></div>
@@ -1229,7 +1247,53 @@ header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-it
 </div>
 </div>
 
-<!-- ═══════════════════════════════════ QUESTIONÁRIOS ═══════════════════════════════════ -->
+<!-- ═══════════════════════════════════ CHECKLIST MENSAL ═══════════════════════════════════ -->
+<div id="sec-checklist-mensal" class="psi-sec">
+<div class="psi-container">
+
+  <div class="today-header">
+    <div>
+      <h1 style="font-size:1.1rem;font-weight:700;">Checklist Mensal</h1>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;max-width:540px;line-height:1.45">
+        Autoavaliação de 1 a 10 por domínio, feita 1x por mês, pra levar a evolução ao psiquiatra.
+        <strong>Não é um instrumento diagnóstico validado</strong> — é só um jeito de acompanhar como
+        você vem se sentindo ao longo do tempo.
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+      <input type="month" id="cm-mes-picker" class="psi-time-input" style="width:auto" onchange="renderChecklistMensal()">
+      <button class="btn btn-primary" onclick="salvarChecklistMensal()">💾 Salvar mês</button>
+    </div>
+  </div>
+
+  <div id="cm-status" style="display:none;margin-bottom:10px"></div>
+
+  <div id="cm-dominios"></div>
+
+  <div class="card">
+    <div class="card-title">📈 Evolução mensal por domínio <span class="badge">escala 0-10</span></div>
+    <div class="chart-wrap"><canvas id="ch-checklist-mensal"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 Histórico de médias mensais</div>
+    <div id="cm-hist-table"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📄 Exportar</div>
+    <div class="export-grid">
+      <div class="export-card" onclick="exportChecklistMensalPDF()">
+        <div class="export-icon">📋</div>
+        <div class="export-title">PDF para o psiquiatra</div>
+        <div class="export-desc">Notas do mês selecionado, gráfico de evolução e médias por domínio.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
 <!-- ═══════════════════════════════════ RELATÓRIOS ═══════════════════════════════════ -->
 <div id="sec-relatorios" class="psi-sec">
 <div class="psi-container">
@@ -2410,6 +2474,7 @@ function psiMostrarSec(id, btn) {
   if (id === 'dashboard') setTimeout(renderDashboard, 50);
   if (id === 'historico') setTimeout(renderHistory, 50);
   if (id === 'questionarios') setTimeout(renderQuestionarios, 50);
+  if (id === 'checklist-mensal') setTimeout(renderChecklistMensal, 50);
 }
 
 function showSection(id) {
@@ -2922,6 +2987,287 @@ function showTab(id) {
   document.getElementById('tab-'+id).style.display = 'block';
   event.target.classList.add('active');
   if (id === 'hist-quest') renderQuestHistChart();
+}
+
+// ═══════════════════════ CHECKLIST MENSAL ═══════════════════════
+// Autoavaliação mensal (1-10) por domínio — preenchida 1x/mês pra acompanhar
+// evolução ao longo do tempo e levar ao psiquiatra. NÃO é um instrumento
+// diagnóstico validado (tipo PHQ-9/GAD-7 acima) — é tracking pessoal, com
+// itens em linguagem de autopercepção do dia a dia.
+const CHECKLIST_KEY = 'effect_checklist_mensal_v1';
+
+const CHECKLIST_DOMINIOS = [
+  { id:'tdah', nome:'Atenção e Hiperatividade', emoji:'🧩', cor:'#1fa5ff', itens:[
+    'Dificuldade para manter o foco em tarefas ou conversas',
+    'Distração fácil por estímulos externos ou pensamentos',
+    'Esquecimentos do dia a dia (compromissos, objetos, prazos)',
+    'Dificuldade para organizar tarefas e administrar o tempo',
+    'Procrastinação mesmo em tarefas importantes',
+    'Inquietação física ou sensação de estar "ligada no 220"',
+    'Impulsividade em falas, decisões ou compras',
+    'Dificuldade para terminar o que começa',
+    'Sensação de sobrecarga mental / "cabeça cheia"',
+    'Perda de noção do tempo'
+  ]},
+  { id:'ah', nome:'Altas Habilidades', emoji:'💡', cor:'#8ed1b2', itens:[
+    'Pensamento acelerado, muitas ideias ao mesmo tempo',
+    'Dificuldade em desligar a mente',
+    'Perfeccionismo elevado consigo mesma',
+    'Sensação de não se encaixar / se sentir diferente das pessoas ao redor',
+    'Alta sensibilidade emocional ou sensorial',
+    'Tédio ou frustração diante de tarefas pouco desafiadoras',
+    'Múltiplos interesses ou projetos simultâneos',
+    'Autocobrança intensa por desempenho',
+    'Impaciência com processos lentos ou pouco eficientes',
+    'Necessidade de aprofundar assuntos além do necessário'
+  ]},
+  { id:'humor', nome:'Humor Depressivo', emoji:'🌧️', cor:'#7b8e6e', itens:[
+    'Tristeza ou desânimo na maior parte do dia',
+    'Perda de interesse ou prazer em atividades que antes gostava',
+    'Fadiga ou falta de energia',
+    'Sentimento de culpa ou inutilidade',
+    'Alterações no sono (dormir demais ou de menos)',
+    'Alterações no apetite',
+    'Dificuldade de concentração',
+    'Lentidão ou agitação perceptível por quem convive com você',
+    'Visão pessimista do futuro',
+    'Isolamento social'
+  ]},
+  { id:'tag', nome:'Ansiedade Generalizada (TAG)', emoji:'🌀', cor:'#f4afa1', itens:[
+    'Preocupação excessiva com várias áreas da vida',
+    'Dificuldade para controlar a preocupação',
+    'Inquietação ou sensação de estar "no limite"',
+    'Tensão muscular',
+    'Irritabilidade',
+    'Dificuldade para relaxar',
+    'Sintomas físicos (coração acelerado, sudorese, tontura)',
+    'Dificuldade para dormir por causa de preocupações',
+    'Antecipar problemas antes que aconteçam',
+    'Evitar situações por medo do que pode dar errado'
+  ]},
+  { id:'esquiva', nome:'Padrão de Esquiva / Evitação Social', emoji:'🚪', cor:'#a1a1aa', itens:[
+    'Evitar atividades sociais por medo de crítica ou rejeição',
+    'Relutância em se envolver com pessoas sem ter certeza de ser aceita',
+    'Reserva em relacionamentos íntimos por medo de exposição ao ridículo',
+    'Preocupação excessiva com crítica ou desaprovação em situações sociais',
+    'Inibição em situações novas por sentir-se inadequada',
+    'Autopercepção de ser socialmente incapaz ou inferior',
+    'Relutância em assumir riscos pessoais por medo de constrangimento',
+    'Evitar iniciativas que envolvam contato interpessoal significativo',
+    'Ensaiar mentalmente interações antes que aconteçam',
+    'Alívio ao cancelar compromissos sociais'
+  ]}
+];
+
+function getChecklistDB() {
+  try { return JSON.parse(localStorage.getItem(CHECKLIST_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveChecklistDB(db) { localStorage.setItem(CHECKLIST_KEY, JSON.stringify(db)); }
+
+function currentMonthKey() {
+  const iso = new Date().toLocaleDateString('sv-SE', {timeZone:'America/Sao_Paulo'}); // AAAA-MM-DD
+  return iso.slice(0,7); // AAAA-MM
+}
+function monthLabel(mk) {
+  const [y,m] = mk.split('-');
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return nomes[parseInt(m,10)-1] + '/' + y;
+}
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  const n = parseInt(h,16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+function renderChecklistMensal() {
+  const picker = document.getElementById('cm-mes-picker');
+  if (!picker.value) picker.value = currentMonthKey();
+  const mk = picker.value;
+  const db = getChecklistDB();
+  const entry = db[mk];
+
+  const statusEl = document.getElementById('cm-status');
+  if (entry) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<span class="badge" style="background:#f0fdf4;color:#16a34a">✓ ${monthLabel(mk)} já preenchido em ${new Date(entry.ts).toLocaleDateString('pt-BR')} — ajuste e salve de novo se quiser atualizar</span>`;
+  } else {
+    statusEl.style.display = 'none';
+  }
+
+  const wrap = document.getElementById('cm-dominios');
+  wrap.innerHTML = CHECKLIST_DOMINIOS.map(dom => {
+    const savedVals = (entry && entry.itens && entry.itens[dom.id]) || {};
+    const media = entry && entry.medias ? entry.medias[dom.id] : null;
+    return `
+    <div class="card" style="border-left:4px solid ${dom.cor}">
+      <div class="card-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span>${dom.emoji} ${dom.nome}</span>
+        ${(media!==null && media!==undefined) ? `<span class="cm-domain-avg" style="background:${dom.cor}">média ${media}</span>` : ''}
+      </div>
+      ${dom.itens.map((texto,i) => {
+        const val = savedVals[i] !== undefined ? savedVals[i] : 5;
+        const id = `cm-${dom.id}-${i}`;
+        return `
+        <div class="cm-item">
+          <span class="cm-item-label">${texto}</span>
+          <div class="cm-item-row">
+            <input type="range" min="1" max="10" value="${val}" id="${id}" style="accent-color:${dom.cor}" oninput="document.getElementById('${id}-val').textContent=this.value">
+            <span class="slider-val" id="${id}-val" style="color:${dom.cor}">${val}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  renderChecklistChart();
+  renderChecklistTable();
+}
+
+function coletarChecklistAtual() {
+  const itens = {}, medias = {};
+  CHECKLIST_DOMINIOS.forEach(dom => {
+    itens[dom.id] = {};
+    let soma = 0;
+    dom.itens.forEach((_,i) => {
+      const v = +document.getElementById(`cm-${dom.id}-${i}`).value;
+      itens[dom.id][i] = v;
+      soma += v;
+    });
+    medias[dom.id] = +(soma/dom.itens.length).toFixed(1);
+  });
+  return { itens, medias };
+}
+
+function salvarChecklistMensal() {
+  const mk = document.getElementById('cm-mes-picker').value || currentMonthKey();
+  const { itens, medias } = coletarChecklistAtual();
+  const db = getChecklistDB();
+  db[mk] = { mes: mk, itens, medias, ts: new Date().toISOString() };
+  saveChecklistDB(db);
+  showSaved();
+  renderChecklistMensal();
+}
+
+function renderChecklistChart() {
+  const db = getChecklistDB();
+  const meses = Object.keys(db).sort();
+  destroyChart('checklist-mensal');
+  const ctx = document.getElementById('ch-checklist-mensal');
+  if (!ctx || !meses.length) return;
+  chartInstances['checklist-mensal'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: meses.map(monthLabel),
+      datasets: CHECKLIST_DOMINIOS.map(dom => ({
+        label: dom.nome,
+        data: meses.map(mk => (db[mk].medias ? db[mk].medias[dom.id] : null)),
+        borderColor: dom.cor,
+        backgroundColor: dom.cor + '20',
+        borderWidth: 2, spanGaps: true, tension: 0.3
+      }))
+    },
+    // animation:false é de propósito: esse gráfico é capturado com toBase64Image()
+    // pro PDF logo depois de criado, e com animação ligada a captura pega o quadro
+    // inicial (linha quase no zero) em vez do gráfico pronto.
+    options: { ...chartOpts(0, 10), animation: false }
+  });
+}
+
+function renderChecklistTable() {
+  const db = getChecklistDB();
+  const meses = Object.keys(db).sort().reverse();
+  const el = document.getElementById('cm-hist-table');
+  if (!meses.length) { el.innerHTML = '<p style="color:var(--muted);font-size:0.8rem">Nenhum mês preenchido ainda.</p>'; return; }
+  el.innerHTML = `<table class="hist-table">
+    <thead><tr><th>Mês</th>${CHECKLIST_DOMINIOS.map(d=>`<th title="${d.nome}">${d.emoji}</th>`).join('')}</tr></thead>
+    <tbody>${meses.map(mk => `<tr><td>${monthLabel(mk)}</td>${CHECKLIST_DOMINIOS.map(d=>`<td>${(db[mk].medias && db[mk].medias[d.id]!=null) ? db[mk].medias[d.id] : '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function exportChecklistMensalPDF() {
+  const db = getChecklistDB();
+  const meses = Object.keys(db).sort();
+  if (!meses.length) { alert('Preencha ao menos um mês antes de exportar.'); return; }
+  const mk = document.getElementById('cm-mes-picker').value;
+  const entry = db[mk] || db[meses[meses.length-1]];
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 15;
+
+  doc.setFillColor(31,165,255);
+  doc.rect(0,0,pageW,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('Effect · Checklist Mensal de Sintomas', 14, 12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(`Mês de referência: ${monthLabel(entry.mes)} — gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
+  doc.text('Autoavaliação (1-10) para acompanhamento — não é instrumento diagnóstico validado.', 14, 25);
+  y = 36;
+
+  doc.setTextColor(42,42,43);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('Médias por domínio — ' + monthLabel(entry.mes) + ':', 14, y); y += 6;
+  doc.autoTable({
+    startY: y,
+    head: [['Domínio','Média (0-10)']],
+    body: CHECKLIST_DOMINIOS.map(d => [d.nome, (entry.medias && entry.medias[d.id]!=null) ? entry.medias[d.id] : '—']),
+    theme: 'grid',
+    headStyles: {fillColor:[31,165,255], textColor:255, fontStyle:'bold', fontSize:9},
+    bodyStyles: {fontSize:9},
+    margin: {left:14, right:14},
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const chart = chartInstances['checklist-mensal'];
+  if (chart) {
+    try {
+      if (y > 150) { doc.addPage(); y = 15; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(42,42,43);
+      doc.text('Evolução mensal por domínio:', 14, y); y += 4;
+      doc.addImage(chart.toBase64Image(), 'PNG', 14, y, pageW-28, 70);
+      y += 78;
+    } catch (e) {
+      // Gráfico não pôde ser capturado (ex.: seção não estava visível) — segue sem
+      // travar o resto do PDF, que já tem as tabelas com todos os dados.
+      console.warn('Checklist Mensal: não deu pra incluir o gráfico no PDF —', e.message);
+    }
+  }
+
+  if (y > 230) { doc.addPage(); y = 15; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(42,42,43);
+  doc.text('Itens avaliados em ' + monthLabel(entry.mes) + ':', 14, y); y += 5;
+
+  CHECKLIST_DOMINIOS.forEach(dom => {
+    const body = dom.itens.map((texto,i) => [texto, (entry.itens && entry.itens[dom.id] && entry.itens[dom.id][i]!=null) ? entry.itens[dom.id][i] : '—']);
+    if (y > 250) { doc.addPage(); y = 15; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...hexToRgb(dom.cor));
+    // Sem emoji aqui: a fonte padrão do jsPDF (helvetica) não tem esses
+    // glifos e o PDF sai com caracteres quebrados — emoji só na tela.
+    doc.text(dom.nome, 14, y); y += 4;
+    doc.setTextColor(42,42,43);
+    doc.autoTable({
+      startY: y,
+      head: [['Item','Nota']],
+      body,
+      theme: 'striped',
+      headStyles: {fillColor:[240,240,240], textColor:[42,42,43], fontStyle:'bold', fontSize:8},
+      bodyStyles: {fontSize:8},
+      columnStyles: {1:{cellWidth:18, halign:'center'}},
+      margin: {left:14, right:14},
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  });
+
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i=1; i<=pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(161,161,170);
+    doc.text(`Página ${i} de ${pageCount} · Effect Pessoas · Checklist mensal · Uso exclusivo médico`, 14, doc.internal.pageSize.getHeight()-8);
+  }
+
+  doc.save(`checklist_mensal_${entry.mes}.pdf`);
 }
 
 // ═══════════════════════ EXPORTS ═══════════════════════

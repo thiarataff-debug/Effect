@@ -1778,7 +1778,13 @@ app.get("/inbox/backup/status", (req, res) => {
 // ROTAS PRINCIPAIS
 // ============================================================
 
-app.get("/", (req, res) => {
+// Menu principal — 4 áreas (Pessoal · Financeiro · Avaliação de Candidatos · Dashboard).
+// Ver CHANGELOG_FASE4_MENU_PRINCIPAL.md para o motivo de ter virado uma página nova
+// (menu.html) em vez de reaproveitar um "shell" que, na prática, não existia.
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "menu.html")));
+
+// Endpoint simples de diagnóstico — o texto que antes vivia em "/".
+app.get("/status", (req, res) => {
   res.send("Lia Effect rodando — modo supervisor + Linhares via planilha ✅");
 });
 
@@ -3523,6 +3529,32 @@ function salvarContrato(registro) {
     lista.unshift(registro);
     contratosDriveStore.gravar(lista.slice(0, 500));
   } catch (e) { console.error("Erro salvando contrato:", e.message); }
+}
+
+// ============================================================
+// AVALIAÇÃO DE CANDIDATOS — link independente (não depende mais da Lia/WhatsApp)
+// ============================================================
+// Mesmo padrão de persistência dos contratos: JSON no Google Drive, com
+// migração automática de um arquivo local antigo (Volume do Railway), caso exista.
+const avaliacoesDriveStore = criarStoreCacheado({
+  nomeArquivo: "avaliacoes.json",
+  pastaNome: "Avaliacoes",
+  valorPadrao: [],
+  migrarDeArquivoLocal: process.env.AVALIACOES_PATH || "/data/avaliacoes.json"
+});
+
+function lerAvaliacoes() {
+  return avaliacoesDriveStore.ler() || [];
+}
+
+function gravarAvaliacoes(lista) {
+  try {
+    avaliacoesDriveStore.gravar(lista.slice(0, 1000));
+  } catch (e) { console.error("Erro salvando avaliações:", e.message); }
+}
+
+function gerarTokenAvaliacao() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 function escapeHtml(v) {
@@ -6084,6 +6116,114 @@ app.post("/inbox/agenda-sync", (req, res) => {
 // ── FINANCEIRO ────────────────────────────────────────────────────────────
 app.get("/financeiro", (req, res) => res.sendFile(path.join(__dirname, "financeiro.html")));
 app.get("/avaliacao", (req, res) => res.sendFile(path.join(__dirname, "avaliacao.html")));
+
+// ── AVALIAÇÃO DE CANDIDATOS (link independente, sem depender da Lia) ──────
+app.get("/roteiro-entrevista", (req, res) => res.sendFile(path.join(__dirname, "roteiro-entrevista.html")));
+app.get("/templates-cargos.js", (req, res) => res.sendFile(path.join(__dirname, "templates-cargos.js")));
+app.get("/avaliacoes", (req, res) => res.sendFile(path.join(__dirname, "avaliacoes-painel.html")));
+app.get("/avaliacao-resultado/:token", (req, res) => res.sendFile(path.join(__dirname, "avaliacao-resultado.html")));
+app.get("/avaliar/:token", (req, res) => res.sendFile(path.join(__dirname, "avaliar.html")));
+
+// Recrutadora gera um novo link para um candidato/vaga.
+app.post("/api/avaliacoes/criar", (req, res) => {
+  try {
+    const nome = String(req.body.nome || "").trim();
+    const vaga = String(req.body.vaga || "").trim();
+    const nivel = String(req.body.nivel || "administrativo").trim().toLowerCase();
+    const telefone = req.body.telefone ? limparTelefone(req.body.telefone) : "";
+    if (!nome) return res.json({ ok: false, erro: "Informe o nome do candidato" });
+
+    const token = gerarTokenAvaliacao();
+    const registro = {
+      token, nome, vaga, nivel, telefone,
+      status: "pendente",
+      criadoEm: new Date().toISOString(),
+      respondidoEm: null,
+      disc: null,
+      valores: null,
+      disponibilidade: null
+    };
+
+    const lista = lerAvaliacoes();
+    lista.unshift(registro);
+    gravarAvaliacoes(lista);
+
+    const link = `${CONFIG.PUBLIC_BASE_URL}/avaliar/${token}${nivel && nivel !== "administrativo" ? "?nivel=" + encodeURIComponent(nivel) : ""}`;
+    res.json({ ok: true, token, link });
+  } catch (e) {
+    console.error("Erro /api/avaliacoes/criar:", e.message);
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Lista para o painel da recrutadora (avaliacoes-painel.html).
+app.get("/api/avaliacoes", (req, res) => {
+  try {
+    const lista = lerAvaliacoes().map(a => ({
+      token: a.token, nome: a.nome, vaga: a.vaga, nivel: a.nivel,
+      status: a.status, criadoEm: a.criadoEm, respondidoEm: a.respondidoEm
+    }));
+    res.json({ ok: true, avaliacoes: lista });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message, avaliacoes: [] });
+  }
+});
+
+// Checagem de existência/status consumida pela tela inicial de avaliar.html
+// (link inválido, já respondido, ou pré-preenchimento de nome/vaga).
+app.get("/api/avaliacoes/:token", (req, res) => {
+  try {
+    const registro = lerAvaliacoes().find(a => a.token === req.params.token);
+    if (!registro) return res.json({ ok: true, existe: false });
+    res.json({
+      ok: true, existe: true,
+      respondido: registro.status === "respondido",
+      nome: registro.nome, vaga: registro.vaga, nivel: registro.nivel
+    });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Resultado consolidado — JSON consumido por avaliacao-resultado.html.
+app.get("/api/avaliacao-resultado/:token", (req, res) => {
+  try {
+    const registro = lerAvaliacoes().find(a => a.token === req.params.token);
+    if (!registro) return res.json({ ok: false, erro: "Avaliação não encontrada" });
+    res.json({ ok: true, avaliacao: registro });
+  } catch (e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+// Candidata envia o pacote completo (DISC + Valores + Disponibilidade) de uma vez só,
+// ao final do fluxo em avaliar.html — sem depender de sessão/telefone da Lia.
+app.post("/avaliar/:token/submit", (req, res) => {
+  try {
+    const token = req.params.token;
+    const lista = lerAvaliacoes();
+    const idx = lista.findIndex(a => a.token === token);
+    if (idx === -1) return res.json({ ok: false, erro: "Avaliação não encontrada" });
+
+    const body = req.body || {};
+    const registro = lista[idx];
+    if (body.nome) registro.nome = String(body.nome).trim() || registro.nome;
+    if (body.vaga) registro.vaga = String(body.vaga).trim() || registro.vaga;
+    registro.disc = body.disc || null;
+    registro.valores = Array.isArray(body.valores) ? body.valores : [];
+    registro.disponibilidade = body.disponibilidade || null;
+    registro.status = "respondido";
+    registro.respondidoEm = new Date().toISOString();
+
+    lista[idx] = registro;
+    gravarAvaliacoes(lista);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Erro /avaliar/:token/submit:", e.message);
+    res.json({ ok: false, erro: e.message });
+  }
+});
 
 app.post("/financeiro/lancamento", async (req, res) => {
   try {

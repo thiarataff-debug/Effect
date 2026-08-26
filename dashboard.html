@@ -159,6 +159,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
 .kc-client{font-size:10px;color:var(--gray);margin-bottom:8px}
 .kc-name{font-size:11px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px}
 .kc-score{display:flex;align-items:center;gap:3px;font-size:9px;font-weight:700;margin-bottom:8px;color:var(--sage)}
+.kc-aval{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:8px;text-decoration:none;width:fit-content}
+.kc-aval-ok{background:rgba(142,209,178,.2);color:var(--green)}
+.kc-aval-pend{background:rgba(244,175,161,.2);color:var(--salmon)}
 .kc-footer{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--gray)}
 .kc-footer.late{color:var(--salmon);font-weight:600}
 .add-btn{width:100%;padding:7px;background:transparent;border:1px dashed rgba(0,0,0,0.12);border-radius:7px;color:var(--gray);font-size:11px;cursor:pointer;font-family:'Montserrat',sans-serif;transition:.2s;margin-top:4px}
@@ -524,8 +527,11 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
     
     <div class="nav-item" onclick="gotoView('banco-talentos',this)"><i class="fas fa-star"></i> Banco de Talentos <span class="badge" id="bt-badge"></span></div>
     <div class="nav-section">Ferramentas</div>
-    <div class="nav-item" onclick="window.open('https://effect-production.up.railway.app/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
+    <div class="nav-item" onclick="window.open('/cliente','_blank')"><i class="fas fa-link"></i> Portal do Cliente</div>
     <div class="nav-item" onclick="window.open('/divulgacao','_blank')"><i class="fas fa-bullhorn"></i> Divulgar Vaga</div>
+    <div class="nav-item" onclick="window.open('/visualizador-vagas','_blank')"><i class="fas fa-bolt"></i> Vagas Rápido</div>
+    <div class="nav-item" onclick="window.open('/contratos','_blank')"><i class="fas fa-file-contract"></i> Contratos</div>
+    <div class="nav-item" onclick="window.open('/avaliacoes','_blank')"><i class="fas fa-clipboard-check"></i> Avaliação de Candidatos</div>
     <div class="nav-item" onclick="gotoView('relatorios',this)"><i class="fas fa-chart-bar"></i> Relatórios</div>
 
     <div class="nav-item" onclick="gotoView('financeiro',this)"><i class="fas fa-coins"></i> Financeiro</div>
@@ -656,7 +662,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
         <table class="cands-tbl">
           <thead><tr>
             <th>Candidato</th><th>Vaga</th><th>Cliente</th><th>Etapa</th>
-            <th>Score</th><th>Dias</th><th>Observação</th><th></th>
+            <th>Score</th><th>Dias</th><th>Observação</th><th>Avaliação</th><th></th>
           </tr></thead>
           <tbody id="cands-tbody"></tbody>
         </table>
@@ -782,7 +788,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--dark);
             <h3 style="font-size:16px;font-weight:700">Inbox · Lia</h3>
             <p style="font-size:12px;color:var(--gray);margin-top:4px">Mensagens, respostas e interações da assistente Lia com candidatos.</p>
           </div>
-          <a href="https://effect-production.up.railway.app/painel" target="_blank" class="btn btn-outline" style="font-size:11px"><i class="fas fa-external-link-alt"></i> Abrir Lia</a>
+          <a href="/painel" target="_blank" class="btn btn-outline" style="font-size:11px"><i class="fas fa-external-link-alt"></i> Abrir Lia</a>
         </div>
         <div id="lia-inbox-list"></div>
       </div>
@@ -1431,6 +1437,30 @@ const API = (()=>{
 let vagasData = [];
 let candidatosData = [];
 let sessoesData = [];
+let avaliacoesData = []; // Fase 2 — Avaliação de Candidatos (link independente)
+
+// Encontra a avaliação (Fase 2) desse candidato, cruzando por telefone (preferência) ou nome.
+function avaliacaoDoCandidato(candidato){
+  if(!avaliacoesData.length) return null;
+  const tel = String(candidato?.telefone||'').replace(/\D/g,'');
+  const nome = String(candidato?.nome||'').trim().toLowerCase();
+  if(!tel && !nome) return null;
+  return avaliacoesData.find(a=>{
+    const atel = String(a.telefone||'').replace(/\D/g,'');
+    if(tel && atel) return tel===atel;
+    return nome && String(a.nome||'').trim().toLowerCase()===nome;
+  }) || null;
+}
+
+// Badge compacto pra card do Kanban — usa só cores da paleta Effect.
+function avaliacaoBadgeHTML(candidato){
+  const a = avaliacaoDoCandidato(candidato);
+  if(!a) return '';
+  if(a.status==='respondido'){
+    return `<a href="/avaliacao-resultado/${a.token}" target="_blank" class="kc-aval kc-aval-ok" onclick="event.stopPropagation()" title="Avaliação respondida — ver resultado"><i class="fas fa-circle-check"></i> Avaliação</a>`;
+  }
+  return `<span class="kc-aval kc-aval-pend" title="Link de avaliação enviado, aguardando resposta"><i class="fas fa-hourglass-half"></i> Avaliação pendente</span>`;
+}
 let agendaItems = JSON.parse(localStorage.getItem('effect-agenda') || '[]');
 let curModal = null;
 let editingAgendaId = null;
@@ -1522,10 +1552,11 @@ function linkarCandidatos(){
 async function loadData(){
   showLoadingOverlay(true);
   try{
-    const [r1,r2,r3]=await Promise.allSettled([
+    const [r1,r2,r3,r4]=await Promise.allSettled([
       fetch(`${API}/sheets/vagas`).then(r=>r.json()).catch(()=>({vagas:[]})),
       fetch(`${API}/sheets/candidatos`).then(r=>r.json()).catch(()=>({candidatos:[]})),
       fetch(`${API}/inbox/sessoes`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API}/api/avaliacoes`).then(r=>r.json()).catch(()=>({avaliacoes:[]})),
     ]);
     if(r1.status==='fulfilled'){
       const raw=r1.value?.vagas||r1.value?.data||[];
@@ -1540,6 +1571,9 @@ async function loadData(){
       // /inbox/sessoes retorna {sessoes:{tel:obj,...}, totalConversas, ...}
       const src=raw?.sessoes||raw;
       sessoesData=Array.isArray(src)?src:Object.values(src||{});
+    }
+    if(r4.status==='fulfilled'){
+      avaliacoesData=Array.isArray(r4.value?.avaliacoes)?r4.value.avaliacoes:[];
     }
     linkarCandidatos();
     atualizarBadges();
@@ -1782,6 +1816,7 @@ function renderKanban(){
           <div class="kc-num">${c.vaga.num}</div><div class="kc-job">${c.vaga.titulo}</div>
           <div class="kc-client"><i class="fas fa-user" style="font-size:9px;margin-right:3px"></i>${c.nome}</div>
           ${c.score?`<div class="kc-score">${c.score}/100</div>`:''}
+          ${avaliacaoBadgeHTML(c)}
           <div class="kc-footer">${c.vaga.prazo||''}</div>
         </div>`).join('')}
         <button class="add-btn" onclick="openAgendarModal()">+ Adicionar candidato</button>
@@ -1798,7 +1833,7 @@ function renderCandidatos(){
   const seen=new Set();
   const unique=all.filter(c=>{const k=(c.nome||'').toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
   if(!unique.length){
-    document.getElementById('cands-tbody').innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px">${vagasData.length===0?'⏳ Carregando candidatos...':'Nenhum candidato encontrado.'}</td></tr>`;
+    document.getElementById('cands-tbody').innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:20px">${vagasData.length===0?'⏳ Carregando candidatos...':'Nenhum candidato encontrado.'}</td></tr>`;
     return;
   }
   document.getElementById('cands-tbody').innerHTML=unique.map(c=>{
@@ -1811,6 +1846,7 @@ function renderCandidatos(){
       <td>${c.score?`<span class="score-chip" style="background:${sc}22;color:${sc}">${c.score}/100</span>`:'—'}</td>
       <td style="color:var(--gray)">—</td>
       <td style="color:var(--gray);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.obs||'—'}</td>
+      <td>${avaliacaoBadgeHTML(c)||'<span style="color:var(--gray);font-size:10px">—</span>'}</td>
       <td>${c.telefone?`<button class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="window.open('https://wa.me/${c.telefone}','_blank')"><i class='fab fa-whatsapp'></i></button>`:''}</td>
     </tr>`;
   }).join('');
@@ -2195,7 +2231,7 @@ function sendMsgClick(){
   document.getElementById('m-chat').innerHTML+=`<div class="chat-msg"><div class="cm-av" style="background:#8ed1b2">TT</div><div class="cm-bubble"><div class="cm-name">Thiara</div>${inp.value}<div class="cm-time">${hora}</div></div></div>`;
   const chat=document.getElementById('m-chat');chat.scrollTop=chat.scrollHeight;inp.value='';
 }
-function openNovaVaga(){window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');}
+function openNovaVaga(){window.open('/cliente#formulario','_blank');}
   // ===== INICIAR DASHBOARD =====
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
@@ -2215,7 +2251,7 @@ function abrirFormularioCliente() {
         <div style="font-size:12px;font-weight:700;color:var(--navy)">📊 Status: ${vagasData.length} vagas cadastradas</div>
       </div>
       <div style="display:flex;gap:10px">
-        <button onclick="window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');document.getElementById('${modalId}').remove()" style="flex:1;background:#8ed1b2;color:#2a2a2b;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">🔗 Abrir Formulário</button>
+        <button onclick="window.open('/cliente#formulario','_blank');document.getElementById('${modalId}').remove()" style="flex:1;background:#8ed1b2;color:#2a2a2b;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">🔗 Abrir Formulário</button>
         <button onclick="document.getElementById('${modalId}').remove()" style="flex:1;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
       </div>
     </div>
@@ -2234,7 +2270,7 @@ function abrirAcessoContratos() {
       </div>
       <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong>Gerados automaticamente com:</strong> Razão social, CNPJ, honorários, pagamento, minuta legal...</p>
       <div style="display:flex;gap:10px;flex-direction:column">
-        <button onclick="window.open('https://effect-production.up.railway.app/cliente/contratos','_blank')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">📄 Ver Todos os Contratos</button>
+        <button onclick="window.open('/cliente/contratos','_blank')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">📄 Ver Todos os Contratos</button>
         <button onclick="document.getElementById('${modalId}').remove()" style="width:100%;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
       </div>
     </div>
@@ -2890,158 +2926,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(ov) ov.addEventListener('click', e=>{ if(e.target===ov) btFecharModal(); });
 });
 // ═════════════════════════════════════════════════════════════════════════
-
-// ===== FORMULÁRIO VAGAS =====
-function abrirFormularioCliente() {
-  const modalId = 'form-modal-' + Date.now();
-  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
-    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:520px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
-        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📋 Formulário de Vagas</h3>
-        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
-      </div>
-      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong>Clientes preenchem:</strong> Dados da vaga, localização, salário, regime, prazo, justificativa, orçamento...</p>
-      <div style="background:rgba(142,209,178,0.05);padding:16px;border-radius:10px;border-left:3px solid #8ed1b2;margin-bottom:24px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">📊 Status: ${vagasData.length} vagas cadastradas</div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button onclick="window.open('https://effect-production.up.railway.app/cliente#formulario','_blank');document.getElementById('${modalId}').remove()" style="flex:1;background:#8ed1b2;color:#2a2a2b;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">🔗 Abrir Formulário</button>
-        <button onclick="document.getElementById('${modalId}').remove()" style="flex:1;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', conteudo);
-}
-
-// ===== CONTRATOS =====
-function abrirAcessoContratos() {
-  const modalId = 'contratos-modal-' + Date.now();
-  const conteudo = `<div id="${modalId}" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s">
-    <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,0.15);min-width:380px;max-width:540px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
-        <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">📄 Contratos & Minutas</h3>
-        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray)">✕</button>
-      </div>
-      <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"><strong>Gerados automaticamente com:</strong> Razão social, CNPJ, honorários, pagamento, minuta legal...</p>
-      <div style="display:flex;gap:10px;flex-direction:column">
-        <button onclick="window.open('https://effect-production.up.railway.app/cliente/contratos','_blank')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">📄 Ver Todos os Contratos</button>
-        <button onclick="document.getElementById('${modalId}').remove()" style="width:100%;background:rgba(0,0,0,0.05);color:var(--gray);border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer">Fechar</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', conteudo);
-}
-
-
-// ===== GESTORES ===== 
-const gestoresConfig = {
-  'Auxiliar de Logística': 'Rafael',
-  'Analista Administrativo': 'Carla',
-  'Assistente de Projetos': 'Marina',
-  'Auxiliar de Manutenção': 'João',
-  'Mecânico de Refrigeração': 'Pedro',
-  'Trainee Operações': 'Fernando',
-};
-
-// ===== AGENDA DE ENTREVISTAS =====
-function renderAgendaEntrevistas() {
-  const dataFiltro = document.getElementById('ag-filtro-data')?.value || '';
-  const gestorFiltro = document.getElementById('ag-filtro-gestor')?.value || '';
-  const agendaPorData = {};
-  
-  agendaItems.forEach(item => {
-    if (!item.tipo?.includes('Entrevista')) return;
-    if (dataFiltro && item.data !== dataFiltro) return;
-    const gestor = gestoresConfig[item.vagaTitulo] || 'Não atribuído';
-    if (gestorFiltro && gestor !== gestorFiltro) return;
-    if (!agendaPorData[item.data]) agendaPorData[item.data] = [];
-    agendaPorData[item.data].push({ hora: item.hora, candidato: item.cand, cargo: item.vagaTitulo, gestor: gestor, tipo: item.tipo });
-  });
-
-  const datasOrdenadas = Object.keys(agendaPorData).sort();
-  let html = '';
-  
-  if (datasOrdenadas.length === 0) {
-    html = '<div style="text-align:center;padding:40px;color:var(--gray)">📅 Nenhuma entrevista agendada</div>';
-  } else {
-    datasOrdenadas.forEach(data => {
-      const agendas = agendaPorData[data];
-      agendas.sort((a, b) => a.hora.localeCompare(b.hora));
-      const dataFormatada = formatarDataCompleta(data);
-      html += `<div style="margin-bottom:24px"><h4 style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--teal)">📅 ${dataFormatada}</h4>`;
-      html += '<div style="display:flex;flex-direction:column;gap:8px">';
-      agendas.forEach(ag => {
-        html += `<div style="display:grid;grid-template-columns:80px 1fr 1fr 120px;gap:12px;align-items:center;padding:12px;background:rgba(31,165,240,0.05);border-radius:8px;border-left:3px solid var(--blue)"><div style="font-weight:700;color:var(--blue);font-size:13px">${ag.hora}</div><div><div style="font-weight:700;font-size:12px;color:var(--dark)">${ag.candidato}</div><div style="font-size:10px;color:var(--gray);margin-top:2px">${ag.cargo}</div></div><div style="text-align:center"><div style="font-size:11px;font-weight:600;color:var(--gray)">Gestor</div><div style="font-weight:700;font-size:12px;color:var(--navy)">${ag.gestor}</div></div><div style="text-align:right;font-size:9px;color:var(--gray)">${ag.tipo}</div></div>`;
-      });
-      html += '</div></div>';
-    });
-  }
-  document.getElementById('agenda-entrevistas-conteudo').innerHTML = html;
-}
-
-function formatarDataCompleta(data) {
-  if (!data) return '';
-  const [ano, mes, dia] = data.split('-');
-  const date = new Date(ano, parseInt(mes) - 1, dia);
-  const diasSemana = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const diaSemana = diasSemana[date.getDay()];
-  const nomeMes = meses[date.getMonth()];
-  return `${diaSemana}, ${dia} de ${nomeMes} de ${ano}`;
-}
-
-function imprimirAgenda() {
-  window.print();
-}
-
-function gerarPdfAgenda() {
-  alert('Para salvar como PDF:\n1. Clique em Imprimir\n2. Selecione "Salvar como PDF"\n3. Clique em Salvar');
-  window.print();
-}
-
-
-// ===== GOOGLE CALENDAR SYNC =====
-function gerarLinkGoogleCalendar(item) {
-  // Formata para URL do Google Calendar
-  const titulo = `Entrevista - ${item.cand} (${item.vagaTitulo})`;
-  const descricao = `Cargo: ${item.vagaTitulo}\nCandidato: ${item.cand}\nTipo: ${item.tipo}`;
-  const dataHora = `${item.data}T${item.hora}:00`;
-  const dataFim = `${item.data}T${String(parseInt(item.hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
-  
-  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(titulo)}&details=${encodeURIComponent(descricao)}&dates=${dataHora.replace(/-/g, '')}/${dataFim.replace(/-/g, '')}`;
-  
-  return url;
-}
-
-function mostrarBotaoAdicionarCalendar(link, item) {
-  // Mostrar toast com botão para adicionar ao Google Calendar
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position:fixed;bottom:20px;right:20px;
-    background:#1f5e9f;color:#fff;padding:16px 20px;
-    border-radius:8px;z-index:9999;
-    box-shadow:0 4px 12px rgba(0,0,0,0.25);
-    font-family:'Montserrat',sans-serif;
-    max-width:320px
-  `;
-  toast.innerHTML = `
-    <div style="font-weight:700;margin-bottom:8px">✅ Entrevista agendada!</div>
-    <a href="${link}" target="_blank" style="color:#fff;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(255,255,255,0.2);border-radius:6px;cursor:pointer;transition:.2s;font-size:12px">
-      📅 Adicionar ao Google Calendar
-    </a>
-  `;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 10000);
-}
-
-
-// Renderizar agenda quando iniciar
-setTimeout(() => {
-  if (document.getElementById('agenda-entrevistas-conteudo')) {
-    renderAgendaEntrevistas();
-  }
-}, 1000);
-
 </script>
 
 <!-- MODAL BANCO DE TALENTOS -->
