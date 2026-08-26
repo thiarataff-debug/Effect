@@ -28,6 +28,19 @@ function getCalendar() {
   return google.calendar({ version: "v3", auth: getAuthClient() });
 }
 
+// Evita que uma instabilidade de rede do Google deixe a Agenda Pessoal
+// "carregando" pra sempre: qualquer chamada ao Calendar que passe de 15s
+// falha com um erro claro (tratado nos catch abaixo), em vez de ficar pendurada.
+const TIMEOUT_CALENDAR_MS = 15000;
+function comTimeout(promise, ms = TIMEOUT_CALENDAR_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Tempo esgotado (${ms / 1000}s) ao falar com o Google Calendar`)), ms)
+    ),
+  ]);
+}
+
 // ─── CRIAR EVENTO ─────────────────────────────────────────────────────────────
 // dados: { candidato, cargo, empresa, data (YYYY-MM-DD), hora (HH:MM),
 //          tipo ('Online'|'Presencial'), local, telefone }
@@ -76,10 +89,10 @@ async function criarEventoEntrevista(dados) {
     };
 
     const cal = getCalendar();
-    const res = await cal.events.insert({
+    const res = await comTimeout(cal.events.insert({
       calendarId: CALENDAR_ID,
       resource: evento,
-    });
+    }));
 
     console.log(
       `[Calendar] Evento criado: ${res.data.summary} — ${res.data.htmlLink}`
@@ -100,14 +113,14 @@ async function buscarHorariosLivres(dataISO) {
     const timeMax = `${dataISO}T18:00:00-03:00`;
 
     const cal = getCalendar();
-    const res = await cal.freebusy.query({
+    const res = await comTimeout(cal.freebusy.query({
       resource: {
         timeMin,
         timeMax,
         timeZone: "America/Sao_Paulo",
         items: [{ id: CALENDAR_ID }],
       },
-    });
+    }));
 
     const ocupados = res.data.calendars?.[CALENDAR_ID]?.busy || [];
 
@@ -149,14 +162,14 @@ async function verificarDisponibilidade(dataISO, hora) {
     const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
 
     const cal = getCalendar();
-    const res = await cal.freebusy.query({
+    const res = await comTimeout(cal.freebusy.query({
       resource: {
         timeMin: slotStart.toISOString(),
         timeMax: slotEnd.toISOString(),
         timeZone: "America/Sao_Paulo",
         items: [{ id: CALENDAR_ID }],
       },
-    });
+    }));
 
     const ocupados = res.data.calendars?.[CALENDAR_ID]?.busy || [];
     return { ok: true, livre: ocupados.length === 0 };
@@ -206,14 +219,14 @@ async function listarEventos(inicioISO, fimISO) {
     const timeMax = `${fimISO}T23:59:59-03:00`;
 
     const cal = getCalendar();
-    const res = await cal.events.list({
+    const res = await comTimeout(cal.events.list({
       calendarId: CALENDAR_ID,
       timeMin,
       timeMax,
       singleEvents: true,
       orderBy: "startTime",
       maxResults: 2500,
-    });
+    }));
 
     const eventos = (res.data.items || []).map(_mapEventoGoogle);
     return { ok: true, eventos };
@@ -263,7 +276,7 @@ async function criarEventoPessoal(dados) {
     }
 
     const cal = getCalendar();
-    const res = await cal.events.insert({ calendarId: CALENDAR_ID, resource: evento });
+    const res = await comTimeout(cal.events.insert({ calendarId: CALENDAR_ID, resource: evento }));
 
     console.log(`[Calendar] Evento pessoal criado: ${res.data.summary} — ${res.data.htmlLink}`);
     return { ok: true, evento: _mapEventoGoogle(res.data) };
@@ -309,7 +322,7 @@ async function editarEvento(eventId, dados) {
     }
 
     const cal = getCalendar();
-    const res = await cal.events.patch({ calendarId: CALENDAR_ID, eventId, resource: patch });
+    const res = await comTimeout(cal.events.patch({ calendarId: CALENDAR_ID, eventId, resource: patch }));
 
     console.log(`[Calendar] Evento editado: ${res.data.summary}`);
     return { ok: true, evento: _mapEventoGoogle(res.data) };
@@ -324,7 +337,7 @@ async function excluirEvento(eventId) {
   try {
     if (!eventId) throw new Error("eventId obrigatório");
     const cal = getCalendar();
-    await cal.events.delete({ calendarId: CALENDAR_ID, eventId });
+    await comTimeout(cal.events.delete({ calendarId: CALENDAR_ID, eventId }));
     console.log(`[Calendar] Evento excluído: ${eventId}`);
     return { ok: true };
   } catch (e) {
