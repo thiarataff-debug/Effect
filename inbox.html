@@ -644,6 +644,8 @@ header{background:var(--navy);color:#fff;padding:6px 20px;display:flex;flex-dire
     <div class="hlogo" style="flex-shrink:0">Effect <span>Pessoas</span></div>
     <button class="rbtn" onclick="mostrarView('agenda')" id="nav-agenda">📅 Agenda Pessoal</button>
     <button class="rbtn" onclick="mostrarView('financeiro')" id="nav-financeiro">💰 Financeiro</button>
+    <a class="rbtn" href="/avaliacoes" target="_blank" style="text-decoration:none;background:#7b8e6e;color:#fff;font-weight:800" id="nav-avaliacoes">🎯 Avaliação de Candidatos</a>
+    <button class="rbtn" onclick="mostrarView('dashboard')" id="nav-dashboard-principal">📊 Dashboard</button>
     <button class="rbtn" onclick="mostrarView('inbox')" id="nav-conversas">💬 Conversas</button>
    <a class="rbtn" href="/financeiro?tab=nf" id="nav-nf" style="cursor:pointer;">📄 Lançar NF</a>
     <a class="rbtn" href="/divulgacao" target="_blank" style="text-decoration:none;background:#e11d48;color:#fff;font-weight:800" id="nav-divulgacao">🖼️ Divulgação</a>
@@ -2259,6 +2261,8 @@ function mostrarView(v){
   if(navMeuApp)navMeuApp.style.background=v==='meu-app'?'rgba(255,255,255,.22)':'';
   const navFin=document.getElementById('nav-financeiro');
   if(navFin)navFin.style.background=v==='financeiro'?'rgba(255,255,255,.22)':'';
+  const navDashP=document.getElementById('nav-dashboard-principal');
+  if(navDashP)navDashP.style.background=v==='dashboard'?'rgba(255,255,255,.22)':'';
   if(v==='entrevistas') renderEntrevistasView();
   // Agenda agora é a Agenda Pessoal embutida (iframe de /meu-app?view=agenda&embed=1).
   // A antiga renderAgenda() operava na Agenda de Entrevistas operacional, aposentada.
