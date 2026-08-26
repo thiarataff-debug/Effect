@@ -32,7 +32,13 @@ header .logo{font-weight:800;font-size:16px}header .logo span{color:var(--green)
 </head>
 <body>
 
-<header><div class="logo">Effect <span>Pessoas</span> · Resultado da Avaliação</div></header>
+<header style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <div class="logo">Effect <span>Pessoas</span> · Resultado da Avaliação</div>
+  <div style="display:flex;gap:14px;font-size:11px">
+    <a href="/inbox" style="color:rgba(255,255,255,.85);text-decoration:none;font-weight:700">🏠 Início</a>
+    <a href="/avaliacoes" style="color:rgba(255,255,255,.85);text-decoration:none;font-weight:700">← Avaliação de Candidatos</a>
+  </div>
+</header>
 
 <div class="container" id="container">
   <div class="empty">Carregando...</div>
