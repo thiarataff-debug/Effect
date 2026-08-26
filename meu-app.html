@@ -3901,7 +3901,7 @@ let notasQaCor='default';
 let notasEditandoId=null;
 let notasLembreteAlvoId=null;
 
-function notasGetAll(){ try{ return JSON.parse(localStorage.getItem(NOTAS_KEY)||'[]'); }catch(e){ return []; } }
+function notasGetAll(){ try{ const v=JSON.parse(localStorage.getItem(NOTAS_KEY)||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
 function notasSaveAll(arr){ localStorage.setItem(NOTAS_KEY, JSON.stringify(arr)); }
 function notasNovoId(){ return 'n'+Date.now()+Math.floor(Math.random()*1000); }
 function notasCorBg(corId){ return (NOTAS_CORES.find(c=>c.id===corId)||NOTAS_CORES[0]).bg; }
