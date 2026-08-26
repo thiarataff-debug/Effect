@@ -68,6 +68,22 @@ input[type=text]:focus{border-color:var(--blue)}
 .ref-btn.sel{border-color:var(--green);background:#f0fdf4;color:#14532d}
 .ref-icon{font-size:22px;display:block;margin-bottom:4px}
 
+/* ── TESTE SITUACIONAL / PRÁTICO — opções em lista (texto mais longo) ── */
+.sit-situacao{background:#f8fafc;border-left:3px solid var(--navy);border-radius:8px;padding:12px 14px;font-size:12.5px;color:#374151;line-height:1.55;margin-bottom:14px}
+.opt-item{display:flex;align-items:flex-start;gap:10px;background:var(--white);border:2px solid #dde3ea;border-radius:12px;padding:12px 14px;margin-bottom:9px;cursor:pointer;font-size:12px;line-height:1.5;color:var(--text);transition:all .15s;-webkit-tap-highlight-color:transparent}
+.opt-item:hover{border-color:var(--blue)}
+.opt-item.sel{border-color:var(--navy);background:#f0f4fa}
+.opt-letter{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid #dde3ea;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.opt-item.sel .opt-letter{background:var(--navy);border-color:var(--navy);color:#fff}
+
+/* ── ESCALA DE CONCORDÂNCIA (Resiliência) ── */
+.lik-item{margin-bottom:22px}
+.lik-txt{font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:9px;line-height:1.4}
+.lik-scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.lik-opt{background:var(--white);border:2px solid #dde3ea;border-radius:9px;padding:11px 0;text-align:center;font-weight:800;font-size:13px;cursor:pointer;color:var(--muted);transition:all .15s;-webkit-tap-highlight-color:transparent}
+.lik-opt.sel{background:var(--navy);border-color:var(--navy);color:#fff}
+.lik-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:5px}
+
 /* ── CARD-CLICK UX ── */
 .grupo-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .grupo-num{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
@@ -392,7 +408,71 @@ input[type=text]:focus{border-color:var(--blue)}
       <div class="card-grid" id="valores-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
       <div class="quiz-hint" id="valores-hint" style="margin-top:12px">Escolha até 3</div>
     </div>
-    <button class="btn btn-primary" id="btn-valores-continuar" onclick="irParaDisponibilidade()" disabled>Continuar →</button>
+    <button class="btn btn-primary" id="btn-valores-continuar" onclick="irParaSituacional()" disabled>Continuar →</button>
+  </div>
+
+  <!-- ══ TELA: TESTE SITUACIONAL ══ -->
+  <div id="tela-situacional" class="hidden">
+    <div class="card">
+      <h2>🎬 Situações do dia a dia</h2>
+      <p>Sem certo ou errado — conte o que você faria de verdade em cada situação.</p>
+    </div>
+    <div class="card">
+      <div class="grupo-hdr">
+        <span class="grupo-num" id="sit-num">Situação 1 de 3</span>
+      </div>
+      <div class="sit-situacao" id="sit-situacao"></div>
+      <div id="sit-opcoes"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-sit-continuar" onclick="avancarSituacional()" disabled>Continuar →</button>
+  </div>
+
+  <!-- ══ TELA: TESTE PRÁTICO ══ -->
+  <div id="tela-pratico" class="hidden">
+    <div class="card">
+      <h2 id="prat-titulo">🧮 Teste rápido</h2>
+      <p id="prat-sub">Só pra confirmar uma coisinha prática — não precisa ser rápido, capricha na resposta.</p>
+    </div>
+    <div class="card">
+      <div class="grupo-hdr">
+        <span class="grupo-num" id="prat-num">Pergunta 1 de 4</span>
+      </div>
+      <div class="sit-situacao" id="prat-pergunta"></div>
+      <div id="prat-opcoes"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-prat-continuar" onclick="avancarPratico()" disabled>Continuar →</button>
+  </div>
+
+  <!-- ══ TELA: RESILIÊNCIA SOB PRESSÃO ══ -->
+  <div id="tela-resiliencia" class="hidden">
+    <div class="card">
+      <h2>💪 Como você lida com a correria</h2>
+      <p>Pra cada frase, marque o quanto ela combina com você — de 1 (discordo totalmente) a 5 (concordo totalmente).</p>
+    </div>
+    <div class="card" id="resil-lista"></div>
+    <button class="btn btn-primary" id="btn-resil-continuar" onclick="irParaEstabilidade()" disabled>Continuar →</button>
+  </div>
+
+  <!-- ══ TELA: TRIAGEM DE ESTABILIDADE ══ -->
+  <div id="tela-estabilidade" class="hidden">
+    <div class="card">
+      <h2>🧭 Sua experiência até aqui</h2>
+      <p>Últimas perguntas sobre seu histórico — ajuda a gente a entender se essa vaga combina com o seu momento.</p>
+    </div>
+    <div class="card">
+      <div class="fl">Já trabalhou nessa área antes?</div>
+      <div class="ref-grid" id="est-ja-trabalhou-grid" style="grid-template-columns:1fr 1fr"></div>
+
+      <div class="fl" style="margin-top:14px">Quanto tempo ficou no seu emprego mais recente?</div>
+      <div class="ref-grid" id="est-tempo-grid" style="grid-template-columns:1fr 1fr"></div>
+
+      <div class="fl" style="margin-top:14px">Por que motivo saiu do seu último emprego?</div>
+      <div class="ref-grid" id="est-motivo-grid" style="grid-template-columns:1fr 1fr"></div>
+
+      <div class="fl" style="margin-top:14px">Pensando nessa vaga, por quanto tempo pretende ficar?</div>
+      <div class="ref-grid" id="est-pretende-grid" style="grid-template-columns:1fr 1fr"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-est-continuar" onclick="irParaDisponibilidade()">Continuar →</button>
   </div>
 
   <!-- ══ TELA: DISPONIBILIDADE E EXPECTATIVAS ══ -->
@@ -468,6 +548,22 @@ const NIVEL = (() => {
   return NIVEIS_VALIDOS.includes(p) ? p : 'administrativo';
 })();
 const NIVEL_LABEL = {operacional:'Operacional', administrativo:'Administrativo', estrategico:'Estratégico'};
+
+// Cargo/função — usado pra escolher o banco certo de Teste Situacional e Teste Prático
+// (módulos novos, pensados pro público operacional de bares e restaurantes).
+const CARGOS_VALIDOS = ['garcom_atendimento','cozinha_producao','bar_barman','caixa_recepcao','auxiliar_geral','outro'];
+const CARGO_LABEL = {
+  garcom_atendimento: 'Garçom / Atendimento de Salão',
+  cozinha_producao:   'Cozinha / Produção',
+  bar_barman:          'Bar / Barman',
+  caixa_recepcao:      'Caixa / Recepção',
+  auxiliar_geral:      'Auxiliar Geral / Estoque / Limpeza',
+  outro:                'Outra função'
+};
+const CARGO = (() => {
+  const p = (new URLSearchParams(location.search).get('cargo') || '').toLowerCase().trim();
+  return CARGOS_VALIDOS.includes(p) ? p : 'outro';
+})();
 const QUESTOES = QUESTOES_POR_NIVEL[NIVEL] || QUESTOES_POR_NIVEL.administrativo;
 const KEYS = ['D','I','S','C'];
 const TOTAL = 12;
@@ -859,7 +955,8 @@ function embaralhar() {
 // ══════════════════════════════════════════
 function mostrarTela(id) {
   ['tela-concluido','tela-invalido','tela-intro','tela-quiz','tela-transicao','tela-calc',
-   'tela-resultado','tela-valores','tela-disponibilidade','tela-obrigado']
+   'tela-resultado','tela-valores','tela-situacional','tela-pratico','tela-resiliencia',
+   'tela-estabilidade','tela-disponibilidade','tela-obrigado']
     .forEach(t => document.getElementById(t).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
   window.scrollTo({top:0, behavior:'smooth'});
@@ -1343,8 +1440,384 @@ function atualizarValoresUI() {
   document.getElementById('btn-valores-continuar').disabled = valoresSelecionados.length === 0;
 }
 
+function escapeHtmlLocal(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // ══════════════════════════════════════════════════════════
-// MÓDULO 3 — DISPONIBILIDADE E EXPECTATIVAS
+// MÓDULO 3 — TESTE SITUACIONAL (cenários por cargo/função)
+// Sem "certo ou errado" explícito pro candidato — cada opção é uma resposta
+// plausível de verdade, só marcada por baixo dos panos como ideal/atenção/alerta
+// pra dar um sinal rápido pra recrutadora, sem virar uma prova.
+// ══════════════════════════════════════════════════════════
+const SITUACIONAL_BANCO = {
+  garcom_atendimento: [
+    { situacao: 'Mesa cheia, você é o único garçom disponível no momento, e um cliente reclama educadamente que o prato demorou e veio errado.',
+      opcoes: [
+        { tag:'ideal',   txt:'Peço desculpas, levo o prato de volta pra cozinha na hora e explico que vou resolver o mais rápido possível.' },
+        { tag:'atencao', txt:'Peço desculpas e digo que vou repassar pra cozinha assim que puder, mas continuo atendendo as outras mesas primeiro.' },
+        { tag:'alerta',  txt:'Explico que a cozinha está sobrecarregada e que não é culpa minha, o cliente vai ter que esperar.' }
+      ]},
+    { situacao: 'Um cliente está visivelmente insatisfeito e levanta a voz na frente de outras mesas.',
+      opcoes: [
+        { tag:'ideal',   txt:'Mantenho a calma, abaixo o tom e convido ele a conversar mais reservadamente pra resolver.' },
+        { tag:'atencao', txt:'Peço desculpas rapidamente e sigo atendendo, sem entrar muito na conversa.' },
+        { tag:'alerta',  txt:'Respondo no mesmo tom, pra deixar claro que ele também precisa se acalmar.' }
+      ]},
+    { situacao: 'Faltam 20 minutos pro fechamento e chega um grupo grande de última hora.',
+      opcoes: [
+        { tag:'ideal',   txt:'Recebo bem, aviso educadamente o horário de fechamento e me organizo pra atender direito no tempo que sobrar.' },
+        { tag:'atencao', txt:'Atendo, mas sem muito entusiasmo, torcendo pra acabar logo.' },
+        { tag:'alerta',  txt:'Digo que já estamos fechando e sugiro que voltem outro dia.' }
+      ]}
+  ],
+  cozinha_producao: [
+    { situacao: 'No meio da produção, você percebe que faltou um ingrediente importante pro prato do dia.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso o responsável na hora e já penso numa alternativa ou substituto, sem parar o fluxo da cozinha.' },
+        { tag:'atencao', txt:'Aviso o responsável, mas espero instrução antes de fazer qualquer coisa.' },
+        { tag:'alerta',  txt:'Sigo preparando do jeito que dá, sem avisar ninguém, pra não atrasar.' }
+      ]},
+    { situacao: 'Horário de pico, vários pedidos ao mesmo tempo, e um colega erra a montagem de um prato.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso com calma pro colega corrigir e ajudo se precisar, sem perder o ritmo dos outros pedidos.' },
+        { tag:'atencao', txt:'Aponto o erro na frente de todo mundo, mas sigo trabalhando.' },
+        { tag:'alerta',  txt:'Ignoro o erro do colega pra não me atrasar com os meus próprios pedidos.' }
+      ]},
+    { situacao: 'Você percebe que um alimento está próximo do prazo de validade ou passando do ponto ideal de conservação.',
+      opcoes: [
+        { tag:'ideal',   txt:'Separo, aviso o responsável e sigo os procedimentos de descarte ou uso prioritário.' },
+        { tag:'atencao', txt:'Aviso, mas só quando alguém perguntar sobre aquele alimento.' },
+        { tag:'alerta',  txt:'Uso mesmo assim, já que ainda dá pra usar.' }
+      ]}
+  ],
+  bar_barman: [
+    { situacao: 'Um cliente já visivelmente alterado por bebida pede mais uma dose.',
+      opcoes: [
+        { tag:'ideal',   txt:'Atendo com educação, mas ofereço água ou um petisco e converso com discrição sobre desacelerar.' },
+        { tag:'atencao', txt:'Sirvo normalmente, a decisão é do cliente.' },
+        { tag:'alerta',  txt:'Sirvo rápido, pra não ter que discutir sobre isso.' }
+      ]},
+    { situacao: 'Fila grande no bar e um cliente reclama que o pedido dele está demorando.',
+      opcoes: [
+        { tag:'ideal',   txt:'Peço desculpas, explico o motivo rapidamente e priorizo terminar o pedido dele.' },
+        { tag:'atencao', txt:'Peço desculpas e sigo na ordem normal, sem dar prioridade.' },
+        { tag:'alerta',  txt:'Digo que ele que veja o movimento, não dá pra ser mais rápido.' }
+      ]},
+    { situacao: 'Um pedido de drink saiu diferente da receita porque faltou um ingrediente.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso o cliente da substituição antes de servir e explico o motivo.' },
+        { tag:'atencao', txt:'Sirvo sem avisar, já que a diferença é pequena.' },
+        { tag:'alerta',  txt:'Sirvo sem pensar muito, o cliente que reclame se notar.' }
+      ]}
+  ],
+  caixa_recepcao: [
+    { situacao: 'Um cliente questiona o troco, dizendo que está errado.',
+      opcoes: [
+        { tag:'ideal',   txt:'Confiro com calma na frente dele, explico o cálculo e corrijo se realmente estiver errado.' },
+        { tag:'atencao', txt:'Refaço o troco rapidamente, sem muita explicação, só pra resolver logo.' },
+        { tag:'alerta',  txt:'Digo que o sistema não erra e que ele deve ter se confundido.' }
+      ]},
+    { situacao: 'Fila grande e o sistema ou a maquininha trava bem na hora.',
+      opcoes: [
+        { tag:'ideal',   txt:'Mantenho a calma, aviso os clientes da fila o que está acontecendo e tento resolver ou chamo ajuda.' },
+        { tag:'atencao', txt:'Fico tentando resolver sozinho sem avisar os clientes, mesmo demorando.' },
+        { tag:'alerta',  txt:'Fico visivelmente nervoso e a fila percebe minha ansiedade.' }
+      ]},
+    { situacao: 'Um cliente pede pra usar dois cupons de desconto que não podem ser somados.',
+      opcoes: [
+        { tag:'ideal',   txt:'Explico com educação a regra e ofereço aplicar o cupom de maior valor.' },
+        { tag:'atencao', txt:'Aplico só um dos cupons, sem muita explicação.' },
+        { tag:'alerta',  txt:'Aplico os dois pra evitar discussão, mesmo sabendo que não pode.' }
+      ]}
+  ],
+  auxiliar_geral: [
+    { situacao: 'Você percebe que um produto de limpeza ou insumo básico acabou no meio do turno.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso o responsável na hora e já busco uma solução temporária, se possível.' },
+        { tag:'atencao', txt:'Aviso só no fim do turno.' },
+        { tag:'alerta',  txt:'Não aviso, presumo que outra pessoa vai perceber.' }
+      ]},
+    { situacao: 'Pedem pra você refazer uma tarefa que já tinha terminado, porque não ficou do jeito esperado.',
+      opcoes: [
+        { tag:'ideal',   txt:'Refaço sem problema e pergunto o que exatamente esperavam, pra acertar da próxima vez.' },
+        { tag:'atencao', txt:'Refaço, mas fico incomodado e não pergunto nada.' },
+        { tag:'alerta',  txt:'Discordo e digo que já tinha feito certo.' }
+      ]},
+    { situacao: 'Você encontra algo quebrado ou fora do lugar que não foi você quem fez.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso o responsável, mesmo não tendo sido eu.' },
+        { tag:'atencao', txt:'Só arrumo se for rápido, sem avisar ninguém.' },
+        { tag:'alerta',  txt:'Ignoro, já que não fui eu quem estragou.' }
+      ]}
+  ],
+  outro: [
+    { situacao: 'No meio do seu trabalho, surge um problema inesperado que não estava nos seus planos do dia.',
+      opcoes: [
+        { tag:'ideal',   txt:'Aviso quem precisa saber e já penso em como resolver ou me adaptar.' },
+        { tag:'atencao', txt:'Resolvo sozinho, sem avisar ninguém, mesmo que demore mais.' },
+        { tag:'alerta',  txt:'Deixo pra resolver depois, quando sobrar tempo.' }
+      ]},
+    { situacao: 'Um colega de trabalho comete um erro que afeta o seu trabalho também.',
+      opcoes: [
+        { tag:'ideal',   txt:'Converso com ele com calma pra entender o que aconteceu e ajudar a resolver.' },
+        { tag:'atencao', txt:'Reclamo com outras pessoas, mas não falo diretamente com ele.' },
+        { tag:'alerta',  txt:'Ignoro e sigo o meu, o problema é dele.' }
+      ]},
+    { situacao: 'Você recebe uma instrução que não ficou muito clara pra fazer uma tarefa nova.',
+      opcoes: [
+        { tag:'ideal',   txt:'Pergunto na hora pra ter certeza antes de começar.' },
+        { tag:'atencao', txt:'Faço do meu jeito e só pergunto se der errado.' },
+        { tag:'alerta',  txt:'Não pergunto, com medo de parecer que não sei fazer.' }
+      ]}
+  ]
+};
+
+let sitIdx = 0;
+let sitRespostas = [];
+let sitOpcoesAtuais = [];
+
+function irParaSituacional() {
+  sitIdx = 0;
+  sitRespostas = [];
+  renderSituacional();
+  mostrarTela('tela-situacional');
+}
+
+function renderSituacional() {
+  const lista = SITUACIONAL_BANCO[CARGO] || SITUACIONAL_BANCO.outro;
+  const item = lista[sitIdx];
+  document.getElementById('sit-num').textContent = 'Situação ' + (sitIdx + 1) + ' de ' + lista.length;
+  document.getElementById('sit-situacao').textContent = item.situacao;
+  sitOpcoesAtuais = item.opcoes.slice().sort(() => Math.random() - 0.5);
+  document.getElementById('sit-opcoes').innerHTML = sitOpcoesAtuais.map((o, i) => `
+    <div class="opt-item" onclick="selecionarSituacional(${i})">
+      <span class="opt-letter">${String.fromCharCode(65 + i)}</span>
+      <span>${escapeHtmlLocal(o.txt)}</span>
+    </div>`).join('');
+  document.getElementById('btn-sit-continuar').disabled = true;
+}
+
+function selecionarSituacional(i) {
+  document.querySelectorAll('#sit-opcoes .opt-item').forEach((el, idx) => el.classList.toggle('sel', idx === i));
+  sitRespostas[sitIdx] = sitOpcoesAtuais[i].tag;
+  document.getElementById('btn-sit-continuar').disabled = false;
+}
+
+function avancarSituacional() {
+  const lista = SITUACIONAL_BANCO[CARGO] || SITUACIONAL_BANCO.outro;
+  if (sitIdx < lista.length - 1) {
+    sitIdx++;
+    renderSituacional();
+  } else {
+    irParaPratico();
+  }
+}
+
+function calcularSituacionalScore() {
+  if (!sitRespostas.length) return null;
+  const pesos = {ideal:2, atencao:1, alerta:0};
+  const pontos = sitRespostas.reduce((s, tag) => s + (pesos[tag] || 0), 0);
+  return Math.round(pontos / (sitRespostas.length * 2) * 100);
+}
+
+// ══════════════════════════════════════════════════════════
+// MÓDULO 4 — TESTE PRÁTICO (matemática/leitura pra quem mexe com caixa e
+// atendimento; segurança alimentar básica pra quem mexe com cozinha).
+// Cargos sem teste prático definido (auxiliar geral, outro) pulam esse módulo.
+// ══════════════════════════════════════════════════════════
+const PRATICO_BANCO = {
+  garcom_atendimento: {
+    tipo: 'matematica_leitura',
+    titulo: '🧮 Teste rápido de conta e pedido',
+    sub: 'Situações comuns de mesa — não precisa ser rápido, capricha na resposta.',
+    perguntas: [
+      { pergunta: 'Uma conta deu R$ 47,00. O cliente pagou com uma nota de R$ 50,00. Quanto de troco você devolve?',
+        opcoes: [{txt:'R$ 3,00',correta:true},{txt:'R$ 5,00',correta:false},{txt:'R$ 13,00',correta:false},{txt:'R$ 2,00',correta:false}] },
+      { pergunta: 'Uma mesa pediu 3 pratos de R$ 25,00 cada. Qual o valor total da conta?',
+        opcoes: [{txt:'R$ 65,00',correta:false},{txt:'R$ 75,00',correta:true},{txt:'R$ 70,00',correta:false},{txt:'R$ 80,00',correta:false}] },
+      { pergunta: 'Um cliente vai dividir a conta de R$ 90,00 entre 3 pessoas, igualmente. Quanto cada um paga?',
+        opcoes: [{txt:'R$ 30,00',correta:true},{txt:'R$ 25,00',correta:false},{txt:'R$ 35,00',correta:false},{txt:'R$ 45,00',correta:false}] },
+      { pergunta: 'Um pedido diz: "1 suco de laranja sem açúcar, 1 água sem gás". O que você deve levar pra mesa?',
+        opcoes: [{txt:'Um suco de laranja sem açúcar e uma água sem gás',correta:true},{txt:'Dois sucos de laranja',correta:false},{txt:'Um suco de laranja com açúcar e uma água com gás',correta:false},{txt:'Só uma água sem gás',correta:false}] }
+    ]
+  },
+  bar_barman: {
+    tipo: 'matematica_leitura',
+    titulo: '🧮 Teste rápido de conta e pedido',
+    sub: 'Situações comuns de balcão — não precisa ser rápido, capricha na resposta.',
+    perguntas: [
+      { pergunta: 'A conta do balcão deu R$ 38,00. O cliente pagou com R$ 40,00. Quanto de troco você devolve?',
+        opcoes: [{txt:'R$ 2,00',correta:true},{txt:'R$ 12,00',correta:false},{txt:'R$ 5,00',correta:false},{txt:'R$ 8,00',correta:false}] },
+      { pergunta: 'Um cliente pediu 4 chopps de R$ 12,00 cada. Qual o valor total?',
+        opcoes: [{txt:'R$ 40,00',correta:false},{txt:'R$ 48,00',correta:true},{txt:'R$ 44,00',correta:false},{txt:'R$ 52,00',correta:false}] },
+      { pergunta: 'Uma comanda vai ser dividida em partes iguais entre 4 amigos, totalizando R$ 100,00. Quanto cada um paga?',
+        opcoes: [{txt:'R$ 20,00',correta:false},{txt:'R$ 25,00',correta:true},{txt:'R$ 30,00',correta:false},{txt:'R$ 22,50',correta:false}] },
+      { pergunta: 'Um pedido diz: "2 caipirinhas de limão, 1 sem álcool". O que você deve preparar?',
+        opcoes: [{txt:'Duas caipirinhas de limão, sendo uma delas sem álcool',correta:true},{txt:'Duas caipirinhas de limão normais',correta:false},{txt:'Uma caipirinha de limão só',correta:false},{txt:'Três caipirinhas, todas sem álcool',correta:false}] }
+    ]
+  },
+  caixa_recepcao: {
+    tipo: 'matematica_leitura',
+    titulo: '🧮 Teste rápido de troco e conferência',
+    sub: 'Situações comuns de caixa — não precisa ser rápido, capricha na resposta.',
+    perguntas: [
+      { pergunta: 'Uma compra deu R$ 47,00. O cliente pagou com uma nota de R$ 50,00. Quanto de troco você devolve?',
+        opcoes: [{txt:'R$ 3,00',correta:true},{txt:'R$ 5,00',correta:false},{txt:'R$ 13,00',correta:false},{txt:'R$ 2,00',correta:false}] },
+      { pergunta: 'Um cliente comprou 3 itens de R$ 18,00 cada. Qual o valor total?',
+        opcoes: [{txt:'R$ 44,00',correta:false},{txt:'R$ 54,00',correta:true},{txt:'R$ 50,00',correta:false},{txt:'R$ 60,00',correta:false}] },
+      { pergunta: 'Uma compra de R$ 90,00 tem 10% de desconto. Qual o valor final?',
+        opcoes: [{txt:'R$ 80,00',correta:false},{txt:'R$ 81,00',correta:true},{txt:'R$ 85,00',correta:false},{txt:'R$ 79,00',correta:false}] },
+      { pergunta: 'Um cliente pede pra usar dois cupons que, segundo a regra da loja, não podem ser somados. O que a regra permite?',
+        opcoes: [{txt:'Aplicar só um dos dois cupons',correta:true},{txt:'Aplicar os dois, sempre',correta:false},{txt:'Não aplicar nenhum',correta:false},{txt:'Depende só da vontade do cliente',correta:false}] }
+    ]
+  },
+  cozinha_producao: {
+    tipo: 'seguranca_alimentar',
+    titulo: '🧤 Teste rápido de segurança na cozinha',
+    sub: 'Noções básicas do dia a dia — não precisa ser rápido, capricha na resposta.',
+    perguntas: [
+      { pergunta: 'Qual é a forma correta de verificar se um alimento perecível ainda pode ser usado?',
+        opcoes: [{txt:'Checar a validade e as condições de conservação (cheiro, cor, temperatura)',correta:true},{txt:'Confiar só no cheiro',correta:false},{txt:'Usar sempre, já que foi comprado recentemente',correta:false},{txt:'Perguntar pro cliente se ele se importa',correta:false}] },
+      { pergunta: 'Depois de manusear carne crua, antes de mexer em outro alimento, o que você deve fazer?',
+        opcoes: [{txt:'Lavar bem as mãos (e trocar utensílios/tábua se possível)',correta:true},{txt:'Só limpar as mãos num pano',correta:false},{txt:'Seguir direto, se estiver com pressa',correta:false},{txt:'Lavar só se sujar visivelmente',correta:false}] },
+      { pergunta: 'Um alimento que deveria estar refrigerado ficou fora da geladeira por várias horas. O que fazer?',
+        opcoes: [{txt:'Avisar o responsável e não usar, seguindo o descarte correto',correta:true},{txt:'Cheirar e usar se estiver com aparência normal',correta:false},{txt:'Colocar de volta na geladeira e usar depois',correta:false},{txt:'Usar rapidamente antes que estrague mais',correta:false}] },
+      { pergunta: 'Qual desses é um sinal de que um utensílio ou bancada não está pronta pra uso?',
+        opcoes: [{txt:'Está com sujeira visível ou não foi higienizada depois do uso anterior',correta:true},{txt:'Está com uma leve marca de água',correta:false},{txt:'Foi usada há poucos minutos',correta:false},{txt:'Está guardada no lugar certo',correta:false}] }
+    ]
+  }
+  // auxiliar_geral e outro não têm banco definido → módulo é pulado automaticamente.
+};
+
+let pratIdx = 0;
+let pratRespostas = [];
+let pratOpcoesAtuais = [];
+
+function irParaPratico() {
+  const banco = PRATICO_BANCO[CARGO];
+  if (!banco) { irParaResiliencia(); return; }
+  pratIdx = 0;
+  pratRespostas = [];
+  document.getElementById('prat-titulo').textContent = banco.titulo;
+  document.getElementById('prat-sub').textContent = banco.sub;
+  renderPratico();
+  mostrarTela('tela-pratico');
+}
+
+function renderPratico() {
+  const banco = PRATICO_BANCO[CARGO];
+  const item = banco.perguntas[pratIdx];
+  document.getElementById('prat-num').textContent = 'Pergunta ' + (pratIdx + 1) + ' de ' + banco.perguntas.length;
+  document.getElementById('prat-pergunta').textContent = item.pergunta;
+  pratOpcoesAtuais = item.opcoes.slice().sort(() => Math.random() - 0.5);
+  document.getElementById('prat-opcoes').innerHTML = pratOpcoesAtuais.map((o, i) => `
+    <div class="opt-item" onclick="selecionarPratico(${i})">
+      <span class="opt-letter">${String.fromCharCode(65 + i)}</span>
+      <span>${escapeHtmlLocal(o.txt)}</span>
+    </div>`).join('');
+  document.getElementById('btn-prat-continuar').disabled = true;
+}
+
+function selecionarPratico(i) {
+  document.querySelectorAll('#prat-opcoes .opt-item').forEach((el, idx) => el.classList.toggle('sel', idx === i));
+  pratRespostas[pratIdx] = !!pratOpcoesAtuais[i].correta;
+  document.getElementById('btn-prat-continuar').disabled = false;
+}
+
+function avancarPratico() {
+  const banco = PRATICO_BANCO[CARGO];
+  if (pratIdx < banco.perguntas.length - 1) {
+    pratIdx++;
+    renderPratico();
+  } else {
+    irParaResiliencia();
+  }
+}
+
+function calcularPraticoScore() {
+  if (!PRATICO_BANCO[CARGO] || !pratRespostas.length) return null;
+  const certas = pratRespostas.filter(Boolean).length;
+  return Math.round(certas / pratRespostas.length * 100);
+}
+
+// ══════════════════════════════════════════════════════════
+// MÓDULO 5 — RESILIÊNCIA SOB PRESSÃO (autoavaliação curta, não clínica —
+// só um sinal a mais sobre como a pessoa lida com correria e imprevisto).
+// ══════════════════════════════════════════════════════════
+const RESILIENCIA_ITENS = [
+  { txt: 'Consigo manter a calma mesmo quando várias pessoas pedem coisas ao mesmo tempo.', reverso: false },
+  { txt: 'Fico de bom humor mesmo em dias corridos, com pouco tempo pra pausa.', reverso: false },
+  { txt: 'Quando cometo um erro no meio do trabalho, isso me deixa desanimado(a) pelo resto do turno.', reverso: true },
+  { txt: 'Consigo ficar em pé e em movimento por várias horas seguidas sem que isso afete meu ânimo.', reverso: false },
+  { txt: 'Um comentário rude de um cliente ou colega estraga o meu dia.', reverso: true },
+  { txt: 'Prefiro ambientes de trabalho mais calmos e previsíveis, com pouca coisa mudando de repente.', reverso: true }
+];
+let resilRespostas = new Array(RESILIENCIA_ITENS.length).fill(null);
+
+function irParaResiliencia() {
+  resilRespostas = new Array(RESILIENCIA_ITENS.length).fill(null);
+  document.getElementById('resil-lista').innerHTML = RESILIENCIA_ITENS.map((it, i) => `
+    <div class="lik-item">
+      <div class="lik-txt">${escapeHtmlLocal(it.txt)}</div>
+      <div class="lik-scale" id="lik-scale-${i}">
+        ${[1,2,3,4,5].map(v => `<div class="lik-opt" onclick="selecionarResiliencia(${i},${v})">${v}</div>`).join('')}
+      </div>
+      <div class="lik-labels"><span>Discordo totalmente</span><span>Concordo totalmente</span></div>
+    </div>`).join('');
+  document.getElementById('btn-resil-continuar').disabled = true;
+  mostrarTela('tela-resiliencia');
+}
+
+function selecionarResiliencia(i, v) {
+  resilRespostas[i] = v;
+  const scale = document.getElementById('lik-scale-' + i);
+  Array.from(scale.children).forEach((el, idx) => el.classList.toggle('sel', idx === (v - 1)));
+  document.getElementById('btn-resil-continuar').disabled = resilRespostas.includes(null);
+}
+
+function calcularResilienciaScore() {
+  if (!resilRespostas.length || resilRespostas.includes(null)) return null;
+  const soma = RESILIENCIA_ITENS.reduce((s, it, i) => {
+    const v = resilRespostas[i];
+    return s + (it.reverso ? (6 - v) : v);
+  }, 0);
+  const media = soma / RESILIENCIA_ITENS.length; // 1..5
+  return Math.round((media - 1) / 4 * 100);
+}
+
+// ══════════════════════════════════════════════════════════
+// MÓDULO 6 — TRIAGEM DE ESTABILIDADE / PERMANÊNCIA
+// Perguntas diretas de histórico — mira no problema real de rotatividade,
+// sem nada que seja discriminatório (não pergunta idade, estado civil etc.).
+// ══════════════════════════════════════════════════════════
+const EST_JA_TRABALHOU_OPCOES = ['Sim, já trabalhei', 'Não, seria minha primeira vez'];
+const EST_TEMPO_OPCOES = ['Menos de 3 meses', '3 a 6 meses', '6 meses a 1 ano', '1 a 2 anos', 'Mais de 2 anos', 'Primeiro emprego'];
+const EST_MOTIVO_OPCOES = ['Pedi demissão (outra oportunidade)', 'Pedi demissão (insatisfação)', 'Fui desligado(a) pela empresa', 'Contrato temporário terminou', 'Motivos pessoais/família', 'Não se aplica'];
+const EST_PRETENDE_OPCOES = ['Só até achar algo melhor', 'Alguns meses', 'Pelo menos 1 ano', 'Pretendo construir carreira aqui', 'Não sei dizer ainda'];
+
+let estJaTrabalhou = null, estTempo = null, estMotivo = null, estPretende = null;
+
+function renderEstGrid(containerId, opcoes, valorAtual, setterNome) {
+  document.getElementById(containerId).innerHTML = opcoes.map(op =>
+    `<div class="ref-btn ${valorAtual === op ? 'sel' : ''}" onclick="${setterNome}('${op.replace(/'/g, "\\'")}')">${escapeHtmlLocal(op)}</div>`
+  ).join('');
+}
+function setEstJaTrabalhou(v){ estJaTrabalhou=v; renderEstGrid('est-ja-trabalhou-grid', EST_JA_TRABALHOU_OPCOES, v, 'setEstJaTrabalhou'); }
+function setEstTempo(v){ estTempo=v; renderEstGrid('est-tempo-grid', EST_TEMPO_OPCOES, v, 'setEstTempo'); }
+function setEstMotivo(v){ estMotivo=v; renderEstGrid('est-motivo-grid', EST_MOTIVO_OPCOES, v, 'setEstMotivo'); }
+function setEstPretende(v){ estPretende=v; renderEstGrid('est-pretende-grid', EST_PRETENDE_OPCOES, v, 'setEstPretende'); }
+
+function irParaEstabilidade() {
+  renderEstGrid('est-ja-trabalhou-grid', EST_JA_TRABALHOU_OPCOES, estJaTrabalhou, 'setEstJaTrabalhou');
+  renderEstGrid('est-tempo-grid', EST_TEMPO_OPCOES, estTempo, 'setEstTempo');
+  renderEstGrid('est-motivo-grid', EST_MOTIVO_OPCOES, estMotivo, 'setEstMotivo');
+  renderEstGrid('est-pretende-grid', EST_PRETENDE_OPCOES, estPretende, 'setEstPretende');
+  mostrarTela('tela-estabilidade');
+}
+
+// ══════════════════════════════════════════════════════════
+// MÓDULO 7 — DISPONIBILIDADE E EXPECTATIVAS
 // ══════════════════════════════════════════════════════════
 const DIAS_OPCOES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
 const TURNOS_OPCOES = ['Manhã','Tarde','Noite'];
@@ -1400,8 +1873,29 @@ async function finalizarTudo() {
   const payload = {
     nome: nomeCandidata,
     vaga: vagaCandidato,
+    cargo: CARGO,
+    cargoLabel: CARGO_LABEL[CARGO],
     disc: discPayloadPendente,
     valores: valoresSelecionados.map(id => (VALORES_OPCOES.find(v => v.id === id) || {}).lbl).filter(Boolean),
+    situacional: sitRespostas.length ? {
+      score: calcularSituacionalScore(),
+      respostas: sitRespostas.slice()
+    } : null,
+    pratico: (PRATICO_BANCO[CARGO] && pratRespostas.length) ? {
+      tipo: PRATICO_BANCO[CARGO].tipo,
+      score: calcularPraticoScore(),
+      acertos: pratRespostas.filter(Boolean).length,
+      total: pratRespostas.length
+    } : null,
+    resiliencia: (!resilRespostas.includes(null) && resilRespostas.length) ? {
+      score: calcularResilienciaScore()
+    } : null,
+    estabilidade: {
+      jaTrabalhouNaArea: estJaTrabalhou,
+      tempoUltimoEmprego: estTempo,
+      motivoSaida: estMotivo,
+      pretendeFicar: estPretende
+    },
     disponibilidade: {
       pretensaoSalarial: document.getElementById('disp-salario').value.trim(),
       dias: diasSelecionados.slice(),

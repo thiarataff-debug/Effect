@@ -47,6 +47,21 @@ function escapeHtml(s) {
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function corPorFaixa(score) {
+  if (score === null || score === undefined) return '#a1a1aa';
+  return score >= 70 ? '#16a34a' : score >= 40 ? '#d97706' : '#dc2626';
+}
+
+function scoreBar(label, score, cor) {
+  if (score === null || score === undefined) return '';
+  return `<div style="margin-bottom:4px">
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:5px">
+      <span>${escapeHtml(label)}</span><span>${score}%</span>
+    </div>
+    <div class="disc-bar-track"><div class="disc-bar-f" style="width:${score}%;background:${cor}"></div></div>
+  </div>`;
+}
+
 function barras(pct) {
   if (!pct) return '<p style="font-size:12px;color:var(--muted)">Sem dados de DISC.</p>';
   return ['D','I','S','C'].map(k => `
@@ -116,6 +131,46 @@ function render(d) {
       <div>${d.valores.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
     </div>` : '';
 
+  const sit = d.situacional;
+  const situacionalCard = (sit && sit.score !== null && sit.score !== undefined) ? `
+    <div class="card">
+      <div class="card-title">🎬 Teste Situacional</div>
+      ${scoreBar('Aderência às respostas ideais', sit.score, corPorFaixa(sit.score))}
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Baseado em cenários do dia a dia do cargo${d.cargoLabel ? ' (' + escapeHtml(d.cargoLabel) + ')' : ''} — não é uma nota de prova, é um sinal de como a pessoa tende a reagir.</p>
+    </div>` : '';
+
+  const prat = d.pratico;
+  const praticoCard = (prat && prat.score !== null && prat.score !== undefined) ? `
+    <div class="card">
+      <div class="card-title">${prat.tipo === 'seguranca_alimentar' ? '🧤 Teste de Segurança na Cozinha' : '🧮 Teste de Conta e Pedido'}</div>
+      ${scoreBar('Acertos', prat.score, corPorFaixa(prat.score))}
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">${prat.acertos} de ${prat.total} respostas corretas.</p>
+    </div>` : '';
+
+  const resil = d.resiliencia;
+  const resilLabel = (resil && resil.score != null) ? (resil.score >= 70 ? 'Alta tolerância à pressão' : resil.score >= 40 ? 'Tolerância moderada' : 'Pode se sentir mais sobrecarregada em ritmo intenso') : '';
+  const resilienciaCard = (resil && resil.score !== null && resil.score !== undefined) ? `
+    <div class="card">
+      <div class="card-title">💪 Resiliência sob Pressão</div>
+      ${scoreBar(resilLabel, resil.score, corPorFaixa(resil.score))}
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Autoavaliação da própria candidata — não é um teste clínico, é só mais um sinal pra conversar na entrevista.</p>
+    </div>` : '';
+
+  const est = d.estabilidade || {};
+  const estLinhas = [
+    ['Já trabalhou nessa área', est.jaTrabalhouNaArea],
+    ['Tempo no último emprego', est.tempoUltimoEmprego],
+    ['Motivo de saída do último emprego', est.motivoSaida],
+    ['Pretende ficar por', est.pretendeFicar],
+  ].filter(([, v]) => v);
+  const alertaPermanencia = est.pretendeFicar === 'Só até achar algo melhor';
+  const estabilidadeCard = estLinhas.length ? `
+    <div class="card">
+      <div class="card-title">🧭 Estabilidade e Permanência</div>
+      <div class="kv">${estLinhas.map(([k, v]) => `<b>${k}</b><span>${escapeHtml(v)}</span>`).join('')}</div>
+      ${alertaPermanencia ? `<p style="font-size:11.5px;color:#dc2626;margin-top:10px;font-weight:700">⚠️ Candidata sinalizou intenção de permanência curta — vale conversar sobre isso na entrevista.</p>` : ''}
+    </div>` : '';
+
   const disp = d.disponibilidade || {};
   const dispLinhas = [
     ['Pretensão salarial', disp.pretensaoSalarial],
@@ -131,7 +186,7 @@ function render(d) {
       <div class="kv">${dispLinhas.map(([k,v]) => `<b>${k}</b><span>${escapeHtml(v)}</span>`).join('')}</div>
     </div>` : '';
 
-  container.innerHTML = discCard + valoresCard + dispCard +
+  container.innerHTML = discCard + situacionalCard + praticoCard + resilienciaCard + valoresCard + estabilidadeCard + dispCard +
     '<button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>';
 }
 

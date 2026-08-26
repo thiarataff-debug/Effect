@@ -6130,17 +6130,22 @@ app.post("/api/avaliacoes/criar", (req, res) => {
     const nome = String(req.body.nome || "").trim();
     const vaga = String(req.body.vaga || "").trim();
     const nivel = String(req.body.nivel || "administrativo").trim().toLowerCase();
+    const cargo = String(req.body.cargo || "outro").trim().toLowerCase();
     const telefone = req.body.telefone ? limparTelefone(req.body.telefone) : "";
     if (!nome) return res.json({ ok: false, erro: "Informe o nome do candidato" });
 
     const token = gerarTokenAvaliacao();
     const registro = {
-      token, nome, vaga, nivel, telefone,
+      token, nome, vaga, nivel, cargo, telefone,
       status: "pendente",
       criadoEm: new Date().toISOString(),
       respondidoEm: null,
       disc: null,
       valores: null,
+      situacional: null,
+      pratico: null,
+      resiliencia: null,
+      estabilidade: null,
       disponibilidade: null
     };
 
@@ -6148,7 +6153,11 @@ app.post("/api/avaliacoes/criar", (req, res) => {
     lista.unshift(registro);
     gravarAvaliacoes(lista);
 
-    const link = `${CONFIG.PUBLIC_BASE_URL}/avaliar/${token}${nivel && nivel !== "administrativo" ? "?nivel=" + encodeURIComponent(nivel) : ""}`;
+    const query = new URLSearchParams();
+    if (nivel && nivel !== "administrativo") query.set("nivel", nivel);
+    if (cargo && cargo !== "outro") query.set("cargo", cargo);
+    const qs = query.toString();
+    const link = `${CONFIG.PUBLIC_BASE_URL}/avaliar/${token}${qs ? "?" + qs : ""}`;
     res.json({ ok: true, token, link });
   } catch (e) {
     console.error("Erro /api/avaliacoes/criar:", e.message);
@@ -6160,7 +6169,7 @@ app.post("/api/avaliacoes/criar", (req, res) => {
 app.get("/api/avaliacoes", (req, res) => {
   try {
     const lista = lerAvaliacoes().map(a => ({
-      token: a.token, nome: a.nome, vaga: a.vaga, nivel: a.nivel,
+      token: a.token, nome: a.nome, vaga: a.vaga, nivel: a.nivel, cargo: a.cargo,
       status: a.status, criadoEm: a.criadoEm, respondidoEm: a.respondidoEm
     }));
     res.json({ ok: true, avaliacoes: lista });
@@ -6178,7 +6187,7 @@ app.get("/api/avaliacoes/:token", (req, res) => {
     res.json({
       ok: true, existe: true,
       respondido: registro.status === "respondido",
-      nome: registro.nome, vaga: registro.vaga, nivel: registro.nivel
+      nome: registro.nome, vaga: registro.vaga, nivel: registro.nivel, cargo: registro.cargo
     });
   } catch (e) {
     res.json({ ok: false, erro: e.message });
@@ -6209,8 +6218,14 @@ app.post("/avaliar/:token/submit", (req, res) => {
     const registro = lista[idx];
     if (body.nome) registro.nome = String(body.nome).trim() || registro.nome;
     if (body.vaga) registro.vaga = String(body.vaga).trim() || registro.vaga;
+    if (body.cargo) registro.cargo = String(body.cargo).trim().toLowerCase() || registro.cargo;
+    if (body.cargoLabel) registro.cargoLabel = String(body.cargoLabel).trim() || registro.cargoLabel;
     registro.disc = body.disc || null;
     registro.valores = Array.isArray(body.valores) ? body.valores : [];
+    registro.situacional = body.situacional || null;
+    registro.pratico = body.pratico || null;
+    registro.resiliencia = body.resiliencia || null;
+    registro.estabilidade = body.estabilidade || null;
     registro.disponibilidade = body.disponibilidade || null;
     registro.status = "respondido";
     registro.respondidoEm = new Date().toISOString();

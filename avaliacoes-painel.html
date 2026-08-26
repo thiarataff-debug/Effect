@@ -75,6 +75,19 @@ tr:last-child td{border-bottom:none}
         <input type="text" id="f-telefone" placeholder="(27) 99999-9999">
       </div>
     </div>
+    <div class="row">
+      <div>
+        <label>Cargo / Função <span style="font-weight:400;text-transform:none">(define os cenários do Teste Situacional e do Teste Prático)</span></label>
+        <select id="f-cargo">
+          <option value="garcom_atendimento">Garçom / Atendimento de Salão</option>
+          <option value="cozinha_producao">Cozinha / Produção</option>
+          <option value="bar_barman">Bar / Barman</option>
+          <option value="caixa_recepcao">Caixa / Recepção</option>
+          <option value="auxiliar_geral">Auxiliar Geral / Estoque / Limpeza</option>
+          <option value="outro" selected>Outra função (sem teste prático)</option>
+        </select>
+      </div>
+    </div>
     <button class="btn btn-primary" onclick="criarAvaliacao()">Gerar link →</button>
 
     <div class="link-box" id="link-box">
@@ -136,7 +149,10 @@ function renderLista() {
   corpo.innerHTML = filtradas.map(a => {
     const criado = a.criadoEm ? new Date(a.criadoEm).toLocaleDateString('pt-BR') : '—';
     const statusLbl = a.status === 'respondido' ? 'Respondido' : 'Pendente';
-    const link = `${location.origin}/avaliar/${a.token}${a.nivel && a.nivel!=='administrativo' ? '?nivel='+a.nivel : ''}`;
+    const linkParams = [];
+    if (a.nivel && a.nivel !== 'administrativo') linkParams.push('nivel=' + a.nivel);
+    if (a.cargo && a.cargo !== 'outro') linkParams.push('cargo=' + a.cargo);
+    const link = `${location.origin}/avaliar/${a.token}${linkParams.length ? '?' + linkParams.join('&') : ''}`;
     return `<tr>
       <td>${escapeHtml(a.nome||'—')}</td>
       <td>${escapeHtml(a.vaga||'—')}</td>
@@ -154,6 +170,7 @@ async function criarAvaliacao() {
   const nome = document.getElementById('f-nome').value.trim();
   const vaga = document.getElementById('f-vaga').value.trim();
   const nivel = document.getElementById('f-nivel').value;
+  const cargo = document.getElementById('f-cargo').value;
   const telefone = document.getElementById('f-telefone').value.trim();
 
   if (!nome) { mostrarToast('Informe o nome do candidato'); return; }
@@ -162,7 +179,7 @@ async function criarAvaliacao() {
     const r = await fetch('/api/avaliacoes/criar', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ nome, vaga, nivel, telefone })
+      body: JSON.stringify({ nome, vaga, nivel, cargo, telefone })
     });
     const data = await r.json();
     if (!data.ok) { mostrarToast('Erro ao gerar link: ' + (data.erro||'')); return; }
