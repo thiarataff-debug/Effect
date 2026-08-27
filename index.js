@@ -4603,7 +4603,11 @@ async function processarCurriculo(telefoneOriginal, documento, opcoes = {}) {
     const localInfo = salvarCurriculoLocal(arquivoBuffer, arquivoNome || `curriculo_${telefone}`, telefone, recebidoEmMs) || {};
     cvSalvo = registrarCurriculoNaSessao(sessao, {
       mediaId: documento.id || null,
-      base64: arquivoBuffer.toString("base64"),
+      // Guarda o arquivo em base64 na memória só quando o Drive falhou — é a rede de
+      // segurança pra não perder o currículo (ver rota /inbox/curriculos/retentar-drive).
+      // Quando o Drive já tem o link, manter os bytes do PDF em RAM pra sempre em cada
+      // sessão é o que estava enchendo os 512MB do servidor e derrubando o serviço.
+      base64: driveLink ? "" : arquivoBuffer.toString("base64"),
       localPath: localInfo.localPath || "",
       localFilename: localInfo.localFilename || "",
       filename: arquivoNome || `curriculo_${telefone}`,
