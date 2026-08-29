@@ -1137,16 +1137,30 @@ async function salvarConversaCompletaSheets(telefoneOriginal, historico, nome) {
   }
 }
 
+// Só restaura pro início da memória conversas com atividade recente — conversas
+// antigas da Lia continuam salvas com segurança no Sheets/backup, mas não
+// precisam ficar ocupando RAM a cada boot do servidor (eram um dos maiores
+// consumidores de memória, principal causa das quedas por falta de memória).
+// Ajustável via env var se um dia precisar de uma janela maior/menor.
+const DIAS_RESTAURAR_SESSOES_ANTIGAS = Number(process.env.DIAS_RESTAURAR_SESSOES_ANTIGAS || 30);
+
 async function restaurarDoUltimoBackup() {
   try {
     const resp = await fetch(`${CONFIG.VAGAS_URL}?acao=ultimoBackup`);
     if (!resp.ok) return false;
     const backup = await resp.json();
     if (!backup.sessoes) return false;
+    const corteMs = Date.now() - DIAS_RESTAURAR_SESSOES_ANTIGAS * 24 * 60 * 60 * 1000;
     let restauradas = 0;
+    let ignoradasPorAntigas = 0;
     Object.entries(backup.sessoes).forEach(([tel, s]) => {
       if (!sessoes[tel] && s.historico?.length) {
         const histBackup = (s.historico || []).map(normalizarEventoHistorico);
+        const ultimaAtividadeMs = Number(s.lastMessageAtMs || 0) || Number(histBackup[histBackup.length - 1]?.timestampMs || 0);
+        if (ultimaAtividadeMs && ultimaAtividadeMs < corteMs) {
+          ignoradasPorAntigas++;
+          return;
+        }
         sessoes[tel] = {
           historico: histBackup,
           lastMessageAtMs: Number(s.lastMessageAtMs || 0) || Number(histBackup[histBackup.length - 1]?.timestampMs || 0),
@@ -1163,7 +1177,7 @@ async function restaurarDoUltimoBackup() {
         restauradas++;
       }
     });
-    console.log(`✅ Restauradas ${restauradas} sessões do backup`);
+    console.log(`✅ Restauradas ${restauradas} sessões do backup (${ignoradasPorAntigas} ignoradas por inatividade > ${DIAS_RESTAURAR_SESSOES_ANTIGAS} dias — continuam no Sheets)`);
     return restauradas > 0;
   } catch(e) {
     console.error("Erro restaurarDoUltimoBackup:", e.message);
@@ -5402,7 +5416,8 @@ const vagasDivulgacaoDriveStore = criarStoreCacheado({
   nomeArquivo: "vagas-divulgacoes.json",
   pastaNome: "Vagas",
   valorPadrao: [],
-  migrarDeArquivoLocal: process.env.VAGAS_DIVULGACOES_PATH || "/data/vagas-divulgacoes.json"
+  migrarDeArquivoLocal: process.env.VAGAS_DIVULGACOES_PATH || "/data/vagas-divulgacoes.json",
+  eager: false // Thiara não usa mais Divulgação no dia a dia — só carrega se a tela for aberta
 });
 
 function lerVagasDivulgacao() {
@@ -5486,7 +5501,8 @@ const vagasTemplatesDriveStore = criarStoreCacheado({
   nomeArquivo: "vagas-templates.json",
   pastaNome: "Vagas",
   valorPadrao: [],
-  migrarDeArquivoLocal: process.env.VAGAS_TEMPLATES_PATH || "/data/vagas-templates.json"
+  migrarDeArquivoLocal: process.env.VAGAS_TEMPLATES_PATH || "/data/vagas-templates.json",
+  eager: false // Thiara não usa mais os Templates de Arte — só carrega se a tela for aberta
 });
 
 function lerVagasTemplates() {
